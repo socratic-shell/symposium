@@ -86,6 +86,44 @@ struct ContentView: View {
             
             Divider()
             
+            // Configuration section
+            VStack {
+                HStack {
+                    Text("Stacking Configuration")
+                        .font(.headline)
+                    Spacer()
+                }
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Follower Inset:")
+                            .font(.caption)
+                        Spacer()
+                        Text("\(Int(windowManager.insetPercentage * 100))%")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Slider(
+                        value: Binding(
+                            get: { windowManager.insetPercentage },
+                            set: { windowManager.insetPercentage = $0 }
+                        ),
+                        in: 0.05...0.20,
+                        step: 0.01
+                    ) {
+                        Text("Inset Percentage")
+                    }
+                    
+                    Text("Controls how much smaller follower windows are relative to the leader.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+            }
+            
+            Divider()
+            
             // Available windows section
             VStack {
                 HStack {
