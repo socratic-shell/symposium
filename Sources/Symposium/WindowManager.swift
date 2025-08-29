@@ -497,7 +497,7 @@ class WindowManager: ObservableObject {
             }
         }
         
-        let result = AXObserverCreate(getpid(), callback, &axObserver)
+        // Try creating observer without specific PID (should work for any process)\n        log(\"🔧 Creating AXObserver with PID 0 (system-wide observer)\")\n        let result = AXObserverCreate(0, callback, &axObserver)\n        log(\"📊 AXObserver creation result: \\(result.rawValue) (\\(axErrorString(result)))\")
         
         if result == .success, let observer = axObserver {
             log("✅ AXObserver created successfully")
