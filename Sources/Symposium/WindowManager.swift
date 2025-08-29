@@ -169,7 +169,10 @@ class WindowManager: ObservableObject {
 
         // Focus the newly added window and make it the new leader if it's not the first
         currentStackIndex = stackedWindows.count - 1
-        if stackedWindows.count > 1 {
+        if stackedWindows.count == 1 {
+            // First window - subscribe to its movements
+            subscribeToLeaderMovement(windowWithFrame)
+        } else {
             // Switch leadership to the new window
             switchToLeader(windowWithFrame)
         }
@@ -487,12 +490,116 @@ class WindowManager: ObservableObject {
     private func handleWindowMovement(element: AXUIElement, notification: CFString) {
         guard notification as String == kAXMovedNotification as String else { return }
         
-        log("🔄 Window movement detected")
+        log("🔄 Leader window movement detected")
         
-        // TODO: Implement follower position synchronization
-        // This will be added in the next commit
+        // Get the new position of the leader window
+        guard let currentLeader = currentLeaderWindow,
+              let windowID = getWindowID(from: element),
+              windowID == currentLeader.id else {
+            log("⚠️ Movement notification for non-leader window, ignoring")
+            return
+        }
+        
+        guard let newLeaderFrame = getWindowFrame(currentLeader.id) else {
+            log("❌ Could not get new frame for leader window")
+            return
+        }
+        
+        log("🎨 Leader moved to: \(newLeaderFrame)")
+        
+        // Update all follower positions
+        updateFollowerPositions(leaderFrame: newLeaderFrame)
+        
+        // Update the stored leader frame
+        if let leaderIndex = stackedWindows.firstIndex(where: { $0.id == currentLeader.id }) {
+            stackedWindows[leaderIndex].originalFrame = newLeaderFrame
+        }
     }
     
+    private func updateFollowerPositions(leaderFrame: CGRect) {
+        let followers = stackedWindows.filter { !$0.isLeader }
+        log("📎 Updating \(followers.count) follower positions")
+        
+        for follower in followers {
+            let followerFrame = calculateFollowerFrame(leaderFrame: leaderFrame)
+            let success = setWindowPosition(follower.id, frame: followerFrame)
+            
+            if success {
+                log("✅ Updated follower \(follower.appName) position")
+                
+                // Update stored frame in the array
+                if let index = stackedWindows.firstIndex(where: { $0.id == follower.id }) {
+                    stackedWindows[index].originalFrame = followerFrame
+                }
+            } else {
+                log("❌ Failed to update follower \(follower.appName) position")
+            }
+        }
+    }
+    
+    private func subscribeToLeaderMovement(_ leader: WindowInfo) {
+        guard let observer = axObserver else {
+            log("❌ Cannot subscribe to movement - no observer")
+            return
+        }
+        
+        // Get AX element for the leader window
+        guard let app = getAppForWindow(leader.id) else {
+            log("❌ Cannot find app for leader window")
+            return
+        }
+        
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        var windows: CFTypeRef?
+        let windowsResult = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windows)
+        
+        guard windowsResult == .success,
+              let windowArray = windows as? [AXUIElement] else {
+            log("❌ Failed to get windows for notification subscription")
+            return
+        }
+        
+        // Find the matching AX element
+        for axWindow in windowArray {
+            if let axWindowID = getWindowID(from: axWindow), axWindowID == leader.id {
+                let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+                let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, selfPtr)
+                
+                if result == .success {
+                    log("✅ Subscribed to movement notifications for \(leader.appName)")
+                } else {
+                    log("❌ Failed to subscribe to movement notifications: \(axErrorString(result))")
+                }
+                return
+            }
+        }
+        
+        log("❌ Could not find AX element for leader window")
+    }
+    
+    private func unsubscribeFromLeaderMovement(_ leader: WindowInfo) {
+        guard let observer = axObserver else { return }
+        
+        guard let app = getAppForWindow(leader.id) else { return }
+        
+        let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        var windows: CFTypeRef?
+        let windowsResult = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windows)
+        
+        guard windowsResult == .success,
+              let windowArray = windows as? [AXUIElement] else {
+            return
+        }
+        
+        for axWindow in windowArray {
+            if let axWindowID = getWindowID(from: axWindow), axWindowID == leader.id {
+                AXObserverRemoveNotification(observer, axWindow, kAXMovedNotification as CFString)
+                log("🧹 Unsubscribed from movement notifications for \(leader.appName)")
+                return
+            }
+        }
+    }
+
     private func cleanupObserver() {
         if let observer = axObserver {
             CFRunLoopRemoveSource(
@@ -520,8 +627,16 @@ class WindowManager: ObservableObject {
             stackedWindows[i].isLeader = (i == newLeaderIndex)
         }
         
+        // Unsubscribe from old leader's movements
+        if let oldLeader = currentLeaderWindow, oldLeader.id != newLeader.id {
+            unsubscribeFromLeaderMovement(oldLeader)
+        }
+        
         currentLeaderWindow = newLeader
         currentStackIndex = newLeaderIndex
+        
+        // Subscribe to new leader's movements
+        subscribeToLeaderMovement(newLeader)
         
         // Move new leader to leader position and raise it
         if let leaderFrame = newLeader.originalFrame {
