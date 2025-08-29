@@ -615,13 +615,27 @@ class WindowManager: ObservableObject {
                 log("🔍 AX Window \(index): ID = \(axWindowID) (looking for \(leader.id))")
                 
                 if axWindowID == leader.id {
-                    log("🎯 Found matching window, attempting to subscribe...")
-                    let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-                    log("📋 selfPtr created: \(selfPtr)")
+                    log("🎯 Found matching window, attempting subscription...")
                     
-                    // Try without refcon first to isolate the issue
-                    let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, nil)
-                    log("🔬 Notification subscription attempt result: \(result.rawValue) (\(axErrorString(result)))")
+                    // Try multiple subscription approaches to see what works
+                    log("🧪 Method 1: Subscribe with nil refcon")
+                    let result1 = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, nil)
+                    log("🔬 Result 1: \(result1.rawValue) (\(axErrorString(result1)))")
+                    
+                    var result = result1
+                    if result != .success {
+                        log("🧪 Method 2: Subscribe with valid refcon")
+                        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+                        let result2 = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, selfPtr)
+                        log("🔬 Result 2: \(result2.rawValue) (\(axErrorString(result2)))")
+                        result = result2
+                        
+                        if result != .success {
+                            log("🧪 Method 3: Try subscribing to different notification as test")
+                            let result3 = AXObserverAddNotification(observer, axWindow, kAXApplicationActivatedNotification as CFString, nil)
+                            log("🔬 Result 3 (app activated): \(result3.rawValue) (\(axErrorString(result3)))")
+                        }
+                    }
                     
                     if result == .success {
                         log("✅ Successfully subscribed to movement notifications for \(leader.appName)")
