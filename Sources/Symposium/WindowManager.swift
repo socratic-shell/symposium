@@ -500,12 +500,29 @@ class WindowManager: ObservableObject {
         let result = AXObserverCreate(getpid(), callback, &axObserver)
         
         if result == .success, let observer = axObserver {
+            log("✅ AXObserver created successfully")
+            
+            // Add observer to RunLoop BEFORE adding any notifications
             CFRunLoopAddSource(
                 CFRunLoopGetCurrent(),
                 AXObserverGetRunLoopSource(observer),
                 CFRunLoopMode.defaultMode
             )
-            log("✅ Movement observer setup successful")
+            log("✅ Observer added to RunLoop")
+            
+            // Test if we can add a simple notification to verify the observer works
+            // We'll try subscribing to the application itself rather than a window
+            let testApp = AXUIElementCreateApplication(getpid()) // Our own process
+            let testResult = AXObserverAddNotification(observer, testApp, kAXApplicationActivatedNotification as CFString, nil)
+            log("🧪 Test notification on our own app: \(testResult.rawValue) (\(axErrorString(testResult)))")
+            
+            if testResult == .success {
+                log("✅ Basic notification subscription works - observer is functional")
+            } else {
+                log("❌ Even basic notification subscription fails - observer issue")
+            }
+            
+            log("✅ Movement observer setup complete")
         } else {
             log("❌ Failed to create movement observer: \(axErrorString(result))")
         }
