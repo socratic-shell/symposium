@@ -49,6 +49,10 @@ class WindowManager: ObservableObject {
     @Published var insetPercentage: Float = 0.10 // 10% default inset
     private let minimumInset: CGFloat = 10.0
     private let maximumInset: CGFloat = 150.0
+    
+    // Movement tracking
+    private var axObserver: AXObserver?
+    private var currentLeaderWindow: WindowInfo?
 
     init() {
         checkAccessibilityPermission()
@@ -56,6 +60,11 @@ class WindowManager: ObservableObject {
         lastOperationMessage =
             hasAccessibilityPermission
             ? "Ready to manage windows" : "Accessibility permission required"
+        setupMovementObserver()
+    }
+    
+    deinit {
+        cleanupObserver()
     }
 
     func checkAccessibilityPermission() {
@@ -428,6 +437,57 @@ class WindowManager: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Movement Observer Setup
+    
+    private func setupMovementObserver() {
+        guard hasAccessibilityPermission else {
+            log("⚠️ Cannot setup movement observer without accessibility permission")
+            return
+        }
+        
+        let callback: AXObserverCallback = { observer, element, notification, refcon in
+            guard let windowManager = Unmanaged<WindowManager>.fromOpaque(refcon!).takeUnretainedValue() as WindowManager? else {
+                return
+            }
+            windowManager.handleWindowMovement(element: element, notification: notification)
+        }
+        
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        let result = AXObserverCreate(getpid(), callback, &axObserver)
+        
+        if result == .success, let observer = axObserver {
+            CFRunLoopAddSource(
+                CFRunLoopGetCurrent(),
+                AXObserverGetRunLoopSource(observer),
+                CFRunLoopMode.defaultMode
+            )
+            log("✅ Movement observer setup successful")
+        } else {
+            log("❌ Failed to create movement observer: \(axErrorString(result))")
+        }
+    }
+    
+    private func handleWindowMovement(element: AXUIElement, notification: CFString) {
+        guard notification as String == kAXMovedNotification as String else { return }
+        
+        log("🔄 Window movement detected")
+        
+        // TODO: Implement follower position synchronization
+        // This will be added in the next commit
+    }
+    
+    private func cleanupObserver() {
+        if let observer = axObserver {
+            CFRunLoopRemoveSource(
+                CFRunLoopGetCurrent(),
+                AXObserverGetRunLoopSource(observer),
+                CFRunLoopMode.defaultMode
+            )
+        }
+        axObserver = nil
+        log("🧹 Movement observer cleaned up")
     }
 
     // MARK: - Window Positioning
