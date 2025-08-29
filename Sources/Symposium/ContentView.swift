@@ -3,6 +3,19 @@ import AppKit
 
 struct ContentView: View {
     @ObservedObject var windowManager: WindowManager
+    @State private var searchText: String = ""
+    
+    var filteredWindows: [WindowManager.WindowInfo] {
+        if searchText.isEmpty {
+            return windowManager.allWindows
+        } else {
+            return windowManager.allWindows.filter { window in
+                window.displayName.localizedCaseInsensitiveContains(searchText) ||
+                window.appName.localizedCaseInsensitiveContains(searchText) ||
+                window.title.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -85,8 +98,17 @@ struct ContentView: View {
                     }
                 }
                 
+                // Search field
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Filter windows...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                
                 ScrollView {
-                    ForEach(windowManager.allWindows) { window in
+                    ForEach(filteredWindows) { window in
                         HStack {
                             Text(window.displayName)
                             Spacer()
@@ -97,6 +119,51 @@ struct ContentView: View {
                         .padding(.horizontal)
                     }
                 }
+            }
+            
+            Divider()
+            
+            // Debug log section
+            VStack {
+                HStack {
+                    Text("Debug Log")
+                        .font(.headline)
+                    Spacer()
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(windowManager.debugLog, forType: .string)
+                    }
+                    .font(.caption)
+                    .disabled(windowManager.debugLog.isEmpty)
+                    
+                    Button("Clear") {
+                        windowManager.clearLog()
+                    }
+                    .font(.caption)
+                }
+                
+                ScrollView {
+                    ScrollViewReader { proxy in
+                        Text(windowManager.debugLog.isEmpty ? "No debug output yet..." : windowManager.debugLog)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                            .background(Color.black.opacity(0.05))
+                            .onChange(of: windowManager.debugLog) { _ in
+                                // Auto-scroll to bottom when new log entries are added
+                                withAnimation {
+                                    proxy.scrollTo("bottom", anchor: .bottom)
+                                }
+                            }
+                            .id("logContent")
+                        
+                        // Invisible element to enable auto-scroll to bottom
+                        HStack { }
+                            .id("bottom")
+                    }
+                }
+                .frame(height: 150)
+                .border(Color.gray)
             }
         }
         .padding()
