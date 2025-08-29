@@ -53,6 +53,7 @@ class WindowManager: ObservableObject {
     // Movement tracking
     private var axObserver: AXObserver?
     private var currentLeaderWindow: WindowInfo?
+    private static var sharedInstance: WindowManager?
 
     init() {
         checkAccessibilityPermission()
@@ -482,14 +483,18 @@ class WindowManager: ObservableObject {
             return
         }
         
+        // Store instance for callback access
+        WindowManager.sharedInstance = self
+        
         let callback: AXObserverCallback = { observer, element, notification, refcon in
             print("🔔 AXObserver callback triggered: \(notification)")
-            guard let refcon = refcon else {
-                print("❌ No refcon in callback")
-                return
+            print("📝 refcon: \(String(describing: refcon))")
+            
+            if let instance = WindowManager.sharedInstance {
+                instance.handleWindowMovement(element: element, notification: notification)
+            } else {
+                print("❌ No shared instance available")
             }
-            let windowManager = Unmanaged<WindowManager>.fromOpaque(refcon).takeUnretainedValue()
-            windowManager.handleWindowMovement(element: element, notification: notification)
         }
         
         let result = AXObserverCreate(getpid(), callback, &axObserver)
@@ -610,8 +615,13 @@ class WindowManager: ObservableObject {
                 log("🔍 AX Window \(index): ID = \(axWindowID) (looking for \(leader.id))")
                 
                 if axWindowID == leader.id {
+                    log("🎯 Found matching window, attempting to subscribe...")
                     let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-                    let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, selfPtr)
+                    log("📋 selfPtr created: \(selfPtr)")
+                    
+                    // Try without refcon first to isolate the issue
+                    let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, nil)
+                    log("🔬 Notification subscription attempt result: \(result.rawValue) (\(axErrorString(result)))")
                     
                     if result == .success {
                         log("✅ Successfully subscribed to movement notifications for \(leader.appName)")
