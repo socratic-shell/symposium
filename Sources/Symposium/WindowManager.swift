@@ -136,27 +136,43 @@ class WindowManager: ObservableObject {
         var windowWithFrame = window
         windowWithFrame.originalFrame = getWindowFrame(window.id)
 
-        print("📍 Original frame: \(windowWithFrame.originalFrame?.debugDescription ?? "nil")")
+        log("📍 Original frame: \(windowWithFrame.originalFrame?.debugDescription ?? "nil")")
 
-        if let firstWindow = stackedWindows.first,
-            let targetFrame = firstWindow.originalFrame
-        {
-            print("🎯 Moving window to target frame: \(targetFrame)")
-            let success = setWindowPosition(window.id, frame: targetFrame)
-            print(success ? "✅ Window move successful" : "❌ Window move failed")
-            lastOperationMessage =
-                success
-                ? "✅ Added \(window.appName) to stack" : "❌ Failed to move \(window.appName) window"
+        if stackedWindows.isEmpty {
+            // First window becomes the leader
+            windowWithFrame.isLeader = true
+            currentLeaderWindow = windowWithFrame
+            log("👑 \(window.appName) is now the leader (first in stack)")
+            lastOperationMessage = "👑 \(window.appName) is now the stack leader"
         } else {
-            print("📌 First window in stack - keeping original position")
-            lastOperationMessage = "📌 \(window.appName) is now the first window in stack"
+            // New window becomes follower
+            windowWithFrame.isLeader = false
+            
+            // Position as follower relative to current leader
+            if let leaderFrame = currentLeaderWindow?.originalFrame {
+                let followerFrame = calculateFollowerFrame(leaderFrame: leaderFrame)
+                log("🎯 Positioning follower at: \(followerFrame)")
+                let success = setWindowPosition(window.id, frame: followerFrame)
+                log(success ? "✅ Follower positioned successfully" : "❌ Failed to position follower")
+                
+                // Update the stored frame to the follower position
+                windowWithFrame.originalFrame = followerFrame
+                
+                lastOperationMessage = success
+                    ? "✅ Added \(window.appName) as follower"
+                    : "❌ Failed to position \(window.appName) as follower"
+            }
         }
 
         stackedWindows.append(windowWithFrame)
         refreshWindowList()
 
-        // Focus the newly added window
+        // Focus the newly added window and make it the new leader if it's not the first
         currentStackIndex = stackedWindows.count - 1
+        if stackedWindows.count > 1 {
+            // Switch leadership to the new window
+            switchToLeader(windowWithFrame)
+        }
         print("🔄 Focusing window...")
         focusWindow(window.id)
         print("📚 Stack now contains \(stackedWindows.count) windows")
@@ -487,6 +503,34 @@ class WindowManager: ObservableObject {
         }
         axObserver = nil
         log("🧹 Movement observer cleaned up")
+    }
+
+    // MARK: - Leader Management
+    
+    private func switchToLeader(_ newLeader: WindowInfo) {
+        guard let newLeaderIndex = stackedWindows.firstIndex(where: { $0.id == newLeader.id }) else {
+            log("❌ Cannot switch to leader - window not found in stack")
+            return
+        }
+        
+        log("🔄 Switching leader to: \(newLeader.displayName)")
+        
+        // Update leader status in the array
+        for i in 0..<stackedWindows.count {
+            stackedWindows[i].isLeader = (i == newLeaderIndex)
+        }
+        
+        currentLeaderWindow = newLeader
+        currentStackIndex = newLeaderIndex
+        
+        // Move new leader to leader position and raise it
+        if let leaderFrame = newLeader.originalFrame {
+            let success = setWindowPosition(newLeader.id, frame: leaderFrame)
+            if success {
+                focusWindow(newLeader.id)
+                log("👑 Leadership switched to \(newLeader.appName)")
+            }
+        }
     }
 
     // MARK: - Window Positioning
