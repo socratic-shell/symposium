@@ -1,0 +1,3 @@
+## Symposium
+
+Symposium is a "meta-IDE" that is meant to orchestrate multiple *taskspaces*. A *taskspace* is the combination of an AI agent and a window (could be an IDE, a terminal, an Emacs.app window, etc) that permits editing. Symposium is intentionally generic with respect to what AI agents are in use and what kind of windows are in use. Symposium includes an MCP server that allows the user to easily spawn off new taskspaces as well as a GUI that is meant to 

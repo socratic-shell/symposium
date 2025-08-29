@@ -1,6 +1,13 @@
 # Summary
 
-- [Chapter 1](./chapter_1.md)
+<!-- 
+    AGENTS: Please keep this design documentation up-to-date/
+
+    Also, please review appropriate chapters and research reports
+    whne looking to learn more details about a specific area.
+-->
+
+- [Introduction](./introduction.md)
 
 # Design
 

@@ -483,7 +483,11 @@ class WindowManager: ObservableObject {
         }
         
         let callback: AXObserverCallback = { observer, element, notification, refcon in
-            guard let refcon = refcon else { return }
+            print("🔔 AXObserver callback triggered: \(notification)")
+            guard let refcon = refcon else {
+                print("❌ No refcon in callback")
+                return
+            }
             let windowManager = Unmanaged<WindowManager>.fromOpaque(refcon).takeUnretainedValue()
             windowManager.handleWindowMovement(element: element, notification: notification)
         }
@@ -503,17 +507,35 @@ class WindowManager: ObservableObject {
     }
     
     private func handleWindowMovement(element: AXUIElement, notification: CFString) {
-        guard notification as String == kAXMovedNotification as String else { return }
+        log("📡 Received notification: \(notification) (expecting kAXMovedNotification)")
         
-        log("🔄 Leader window movement detected")
-        
-        // Get the new position of the leader window
-        guard let currentLeader = currentLeaderWindow,
-              let windowID = getWindowID(from: element),
-              windowID == currentLeader.id else {
-            log("⚠️ Movement notification for non-leader window, ignoring")
+        guard notification as String == kAXMovedNotification as String else {
+            log("⚠️ Ignoring non-movement notification: \(notification)")
             return
         }
+        
+        log("🔄 Processing leader window movement notification")
+        
+        // Get window ID from the element
+        guard let windowID = getWindowID(from: element) else {
+            log("❌ Cannot get window ID from AX element")
+            return
+        }
+        
+        log("🎯 Movement detected for window ID: \(windowID)")
+        
+        // Verify this is our current leader
+        guard let currentLeader = currentLeaderWindow else {
+            log("⚠️ No current leader window set, ignoring movement")
+            return
+        }
+        
+        if windowID != currentLeader.id {
+            log("⚠️ Movement notification for window \(windowID), but current leader is \(currentLeader.id) - ignoring")
+            return
+        }
+        
+        log("✅ Confirmed movement of leader window: \(currentLeader.displayName)")
         
         guard let newLeaderFrame = getWindowFrame(currentLeader.id) else {
             log("❌ Could not get new frame for leader window")
@@ -529,6 +551,8 @@ class WindowManager: ObservableObject {
         if let leaderIndex = stackedWindows.firstIndex(where: { $0.id == currentLeader.id }) {
             stackedWindows[leaderIndex].originalFrame = newLeaderFrame
         }
+        
+        log("✅ Movement synchronization complete")
     }
     
     private func updateFollowerPositions(leaderFrame: CGRect) {
@@ -558,11 +582,15 @@ class WindowManager: ObservableObject {
             return
         }
         
+        log("🔍 Starting subscription process for leader: \(leader.displayName) (ID: \(leader.id))")
+        
         // Get AX element for the leader window
         guard let app = getAppForWindow(leader.id) else {
             log("❌ Cannot find app for leader window")
             return
         }
+        
+        log("🎨 Found app: \(app.localizedName ?? app.bundleIdentifier ?? "Unknown") (PID: \(app.processIdentifier))")
         
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         var windows: CFTypeRef?
@@ -570,26 +598,35 @@ class WindowManager: ObservableObject {
         
         guard windowsResult == .success,
               let windowArray = windows as? [AXUIElement] else {
-            log("❌ Failed to get windows for notification subscription")
+            log("❌ Failed to get windows for notification subscription: \(axErrorString(windowsResult))")
             return
         }
         
+        log("📊 Found \(windowArray.count) AX windows to search")
+        
         // Find the matching AX element
-        for axWindow in windowArray {
-            if let axWindowID = getWindowID(from: axWindow), axWindowID == leader.id {
-                let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-                let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, selfPtr)
+        for (index, axWindow) in windowArray.enumerated() {
+            if let axWindowID = getWindowID(from: axWindow) {
+                log("🔍 AX Window \(index): ID = \(axWindowID) (looking for \(leader.id))")
                 
-                if result == .success {
-                    log("✅ Subscribed to movement notifications for \(leader.appName)")
-                } else {
-                    log("❌ Failed to subscribe to movement notifications: \(axErrorString(result))")
+                if axWindowID == leader.id {
+                    let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+                    let result = AXObserverAddNotification(observer, axWindow, kAXMovedNotification as CFString, selfPtr)
+                    
+                    if result == .success {
+                        log("✅ Successfully subscribed to movement notifications for \(leader.appName)")
+                        log("📡 Notification setup complete - should receive kAXMovedNotification when window moves")
+                    } else {
+                        log("❌ Failed to subscribe to movement notifications: \(axErrorString(result))")
+                    }
+                    return
                 }
-                return
+            } else {
+                log("⚠️ AX Window \(index): getWindowID failed")
             }
         }
         
-        log("❌ Could not find AX element for leader window")
+        log("❌ Could not find AX element for leader window \(leader.id)")
     }
     
     private func unsubscribeFromLeaderMovement(_ leader: WindowInfo) {
