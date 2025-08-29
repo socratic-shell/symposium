@@ -9,6 +9,7 @@ class WindowManager: ObservableObject {
         let title: String
         let appName: String
         var originalFrame: CGRect?
+        var isLeader: Bool = false
 
         var displayName: String {
             if !title.isEmpty {
@@ -43,6 +44,11 @@ class WindowManager: ObservableObject {
     @Published var hasAccessibilityPermission: Bool = false
     @Published var lastOperationMessage: String = ""
     @Published var debugLog: String = ""
+    
+    // Window stacking configuration
+    @Published var insetPercentage: Float = 0.10 // 10% default inset
+    private let minimumInset: CGFloat = 10.0
+    private let maximumInset: CGFloat = 150.0
 
     init() {
         checkAccessibilityPermission()
@@ -422,6 +428,22 @@ class WindowManager: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - Window Positioning
+    
+    private func calculateFollowerFrame(leaderFrame: CGRect) -> CGRect {
+        let horizontalInset = max(minimumInset,
+                                 min(maximumInset, leaderFrame.width * CGFloat(insetPercentage)))
+        let verticalInset = max(minimumInset,
+                               min(maximumInset, leaderFrame.height * CGFloat(insetPercentage)))
+        
+        return CGRect(
+            x: leaderFrame.origin.x + horizontalInset,
+            y: leaderFrame.origin.y + verticalInset,
+            width: leaderFrame.width - (2 * horizontalInset),
+            height: leaderFrame.height - (2 * verticalInset)
+        )
     }
 
     // MARK: - Helper Functions
