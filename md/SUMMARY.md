@@ -2,6 +2,10 @@
 
 - [Chapter 1](./chapter_1.md)
 
+# Design
+
+- [Window Stacking Design](./window-stacking-design.md)
+
 # Research reports
 
 - [Taskspace Implementation Guide](./research/taskspace-implementation-guide.md)
