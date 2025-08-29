@@ -182,17 +182,31 @@ class WindowManager: ObservableObject {
     }
 
     func removeFromStack(_ window: WindowInfo) {
-        print("🗑️ Removing window from stack: \(window.displayName) (ID: \(window.id))")
+        log("🗑️ Removing window from stack: \(window.displayName) (ID: \(window.id))")
 
         guard let index = stackedWindows.firstIndex(where: { $0.id == window.id }) else { return }
 
         let removed = stackedWindows.remove(at: index)
+        
+        // If we're removing the leader, unsubscribe from its movements
+        if removed.isLeader {
+            unsubscribeFromLeaderMovement(removed)
+        }
 
         // Restore original position if we have it
         if let originalFrame = removed.originalFrame {
-            print("↩️ Restoring original position: \(originalFrame)")
+            log("↩️ Restoring original position: \(originalFrame)")
             let success = setWindowPosition(removed.id, frame: originalFrame)
-            print(success ? "✅ Position restored successfully" : "❌ Failed to restore position")
+            log(success ? "✅ Position restored successfully" : "❌ Failed to restore position")
+        }
+
+        // Handle leadership change if needed
+        if removed.isLeader && !stackedWindows.isEmpty {
+            // Make the first remaining window the new leader
+            let newLeaderIndex = min(currentStackIndex, stackedWindows.count - 1)
+            let newLeader = stackedWindows[newLeaderIndex]
+            log("🔄 Transferring leadership to: \(newLeader.displayName)")
+            switchToLeader(newLeader)
         }
 
         // Adjust current index
@@ -200,25 +214,24 @@ class WindowManager: ObservableObject {
             currentStackIndex = stackedWindows.count - 1
         }
 
-        print("📚 Stack now contains \(stackedWindows.count) windows")
+        log("📚 Stack now contains \(stackedWindows.count) windows")
         refreshWindowList()
     }
 
     func nextWindow() {
         guard !stackedWindows.isEmpty else { return }
-        currentStackIndex = (currentStackIndex + 1) % stackedWindows.count
-        let window = stackedWindows[currentStackIndex]
-        log("⏭️ Next window: \(window.displayName) (index \(currentStackIndex))")
-        focusWindow(stackedWindows[currentStackIndex].id)
+        let newIndex = (currentStackIndex + 1) % stackedWindows.count
+        let newLeader = stackedWindows[newIndex]
+        log("⏭️ Next window: \(newLeader.displayName) (index \(newIndex))")
+        switchToLeader(newLeader)
     }
 
     func previousWindow() {
         guard !stackedWindows.isEmpty else { return }
-        currentStackIndex =
-            currentStackIndex == 0 ? stackedWindows.count - 1 : currentStackIndex - 1
-        let window = stackedWindows[currentStackIndex]
-        log("⏮️ Previous window: \(window.displayName) (index \(currentStackIndex))")
-        focusWindow(stackedWindows[currentStackIndex].id)
+        let newIndex = currentStackIndex == 0 ? stackedWindows.count - 1 : currentStackIndex - 1
+        let newLeader = stackedWindows[newIndex]
+        log("⏮️ Previous window: \(newLeader.displayName) (index \(newIndex))")
+        switchToLeader(newLeader)
     }
 
     // MARK: - Window Manipulation
@@ -630,6 +643,18 @@ class WindowManager: ObservableObject {
         // Unsubscribe from old leader's movements
         if let oldLeader = currentLeaderWindow, oldLeader.id != newLeader.id {
             unsubscribeFromLeaderMovement(oldLeader)
+            
+            // Resize old leader to follower size if we have a leader frame
+            if let currentLeaderFrame = oldLeader.originalFrame {
+                let followerFrame = calculateFollowerFrame(leaderFrame: currentLeaderFrame)
+                let success = setWindowPosition(oldLeader.id, frame: followerFrame)
+                log(success ? "✅ Resized old leader to follower" : "❌ Failed to resize old leader")
+                
+                // Update stored frame for old leader
+                if let oldIndex = stackedWindows.firstIndex(where: { $0.id == oldLeader.id }) {
+                    stackedWindows[oldIndex].originalFrame = followerFrame
+                }
+            }
         }
         
         currentLeaderWindow = newLeader
@@ -638,13 +663,39 @@ class WindowManager: ObservableObject {
         // Subscribe to new leader's movements
         subscribeToLeaderMovement(newLeader)
         
-        // Move new leader to leader position and raise it
-        if let leaderFrame = newLeader.originalFrame {
-            let success = setWindowPosition(newLeader.id, frame: leaderFrame)
-            if success {
-                focusWindow(newLeader.id)
-                log("👑 Leadership switched to \(newLeader.appName)")
+        // Calculate leader frame (expand from follower size if needed)
+        let leaderFrame: CGRect
+        if let existingFrame = newLeader.originalFrame {
+            // If this window was a follower, calculate the full leader size
+            if !newLeader.isLeader {
+                // Reverse the inset calculation to get full size
+                let horizontalInset = max(minimumInset, min(maximumInset, existingFrame.width * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
+                let verticalInset = max(minimumInset, min(maximumInset, existingFrame.height * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
+                
+                leaderFrame = CGRect(
+                    x: existingFrame.origin.x - horizontalInset,
+                    y: existingFrame.origin.y - verticalInset,
+                    width: existingFrame.width + (2 * horizontalInset),
+                    height: existingFrame.height + (2 * verticalInset)
+                )
+            } else {
+                leaderFrame = existingFrame
             }
+        } else {
+            log("❌ No frame available for new leader")
+            return
+        }
+        
+        // Move new leader to leader position and raise it
+        let success = setWindowPosition(newLeader.id, frame: leaderFrame)
+        if success {
+            focusWindow(newLeader.id)
+            log("👑 Leadership switched to \(newLeader.appName)")
+            
+            // Update stored frame for new leader
+            stackedWindows[newLeaderIndex].originalFrame = leaderFrame
+        } else {
+            log("❌ Failed to position new leader")
         }
     }
 
@@ -665,6 +716,20 @@ class WindowManager: ObservableObject {
     }
 
     // MARK: - Helper Functions
+    
+    private func calculateLeaderFrame(from followerFrame: CGRect) -> CGRect {
+        let horizontalInset = max(minimumInset,
+                                 min(maximumInset, followerFrame.width * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
+        let verticalInset = max(minimumInset,
+                               min(maximumInset, followerFrame.height * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
+        
+        return CGRect(
+            x: followerFrame.origin.x - horizontalInset,
+            y: followerFrame.origin.y - verticalInset,
+            width: followerFrame.width + (2 * horizontalInset),
+            height: followerFrame.height + (2 * verticalInset)
+        )
+    }
 
     private func log(_ message: String) {
         let formatter = DateFormatter()
