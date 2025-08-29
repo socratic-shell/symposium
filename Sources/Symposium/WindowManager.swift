@@ -40,10 +40,18 @@ class WindowManager: ObservableObject {
     @Published var allWindows: [WindowInfo] = []
     @Published var stackedWindows: [WindowInfo] = []
     @Published var currentStackIndex: Int = 0
+    @Published var hasAccessibilityPermission: Bool = false
+    @Published var lastOperationMessage: String = ""
     
     init() {
-        requestAccessibilityPermission()
+        checkAccessibilityPermission()
         refreshWindowList()
+        lastOperationMessage = hasAccessibilityPermission ? "Ready to manage windows" : "Accessibility permission required"
+    }
+    
+    func checkAccessibilityPermission() {
+        hasAccessibilityPermission = AXIsProcessTrusted()
+        print("🔐 Accessibility permission status: \(hasAccessibilityPermission)")
     }
     
     // MARK: - Core Functions
@@ -90,13 +98,32 @@ class WindowManager: ObservableObject {
     }
     
     func addToStack(_ window: WindowInfo) {
+        print("🔍 Adding window to stack: \(window.displayName) (ID: \(window.id))")
+        
+        // Check permission first
+        checkAccessibilityPermission()
+        if !hasAccessibilityPermission {
+            lastOperationMessage = "❌ Accessibility permission required to move windows"
+            requestAccessibilityPermission()
+            return
+        }
+        
         var windowWithFrame = window
         windowWithFrame.originalFrame = getWindowFrame(window.id)
         
+        print("📍 Original frame: \(windowWithFrame.originalFrame?.debugDescription ?? "nil")")
+        
         if let firstWindow = stackedWindows.first,
            let targetFrame = firstWindow.originalFrame {
-            // Move window to same position as first in stack
-            setWindowPosition(window.id, frame: targetFrame)
+            print("🎯 Moving window to target frame: \(targetFrame)")
+            let success = setWindowPosition(window.id, frame: targetFrame)
+            print(success ? "✅ Window move successful" : "❌ Window move failed")
+            lastOperationMessage = success ? 
+                "✅ Added \(window.appName) to stack" : 
+                "❌ Failed to move \(window.appName) window"
+        } else {
+            print("📌 First window in stack - keeping original position")
+            lastOperationMessage = "📌 \(window.appName) is now the first window in stack"
         }
         
         stackedWindows.append(windowWithFrame)
@@ -104,17 +131,23 @@ class WindowManager: ObservableObject {
         
         // Focus the newly added window
         currentStackIndex = stackedWindows.count - 1
+        print("🔄 Focusing window...")
         focusWindow(window.id)
+        print("📚 Stack now contains \(stackedWindows.count) windows")
     }
     
     func removeFromStack(_ window: WindowInfo) {
+        print("🗑️ Removing window from stack: \(window.displayName) (ID: \(window.id))")
+        
         guard let index = stackedWindows.firstIndex(where: { $0.id == window.id }) else { return }
         
         let removed = stackedWindows.remove(at: index)
         
         // Restore original position if we have it
         if let originalFrame = removed.originalFrame {
-            setWindowPosition(removed.id, frame: originalFrame)
+            print("↩️ Restoring original position: \(originalFrame)")
+            let success = setWindowPosition(removed.id, frame: originalFrame)
+            print(success ? "✅ Position restored successfully" : "❌ Failed to restore position")
         }
         
         // Adjust current index
@@ -122,6 +155,7 @@ class WindowManager: ObservableObject {
             currentStackIndex = stackedWindows.count - 1
         }
         
+        print("📚 Stack now contains \(stackedWindows.count) windows")
         refreshWindowList()
     }
     
@@ -181,32 +215,76 @@ class WindowManager: ObservableObject {
         )
     }
     
-    private func setWindowPosition(_ windowID: CGWindowID, frame: CGRect) {
-        guard let app = getAppForWindow(windowID) else { return }
+    private func setWindowPosition(_ windowID: CGWindowID, frame: CGRect) -> Bool {
+        print("🔧 Attempting to set position for window \(windowID)")
+        
+        // Check accessibility permission first
+        let trusted = AXIsProcessTrusted()
+        print("🔐 Accessibility trusted: \(trusted)")
+        if !trusted {
+            print("❌ No accessibility permission - cannot move windows")
+            return false
+        }
+        
+        guard let app = getAppForWindow(windowID) else { 
+            print("❌ Could not find app for window \(windowID)")
+            return false
+        }
+        
+        print("🏃 Found app: \(app.localizedName ?? app.bundleIdentifier ?? "Unknown") (PID: \(app.processIdentifier))")
         
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         var windows: CFTypeRef?
-        AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windows)
+        let windowsResult = AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &windows)
         
-        if let windowArray = windows as? [AXUIElement] {
-            for axWindow in windowArray {
-                var windowIDRef: CFTypeRef?
-                AXUIElementCopyAttributeValue(axWindow, "AXWindowID" as CFString, &windowIDRef)
+        if windowsResult != .success {
+            print("❌ Failed to get windows list, error: \(windowsResult.rawValue)")
+            return false
+        }
+        
+        guard let windowArray = windows as? [AXUIElement] else {
+            print("❌ Windows list is not an array")
+            return false
+        }
+        
+        print("🪟 Found \(windowArray.count) windows in app")
+        
+        for (index, axWindow) in windowArray.enumerated() {
+            var windowIDRef: CFTypeRef?
+            let idResult = AXUIElementCopyAttributeValue(axWindow, "AXWindowID" as CFString, &windowIDRef)
+            
+            if idResult != .success {
+                print("⚠️ Window \(index): Could not get window ID, error: \(idResult.rawValue)")
+                continue
+            }
+            
+            if let id = windowIDRef as? CGWindowID {
+                print("🔎 Window \(index): ID = \(id) (looking for \(windowID))")
                 
-                if let id = windowIDRef as? CGWindowID, id == windowID {
+                if id == windowID {
+                    print("🎯 Found matching window!")
+                    
                     // Set position
                     var position = CGPoint(x: frame.origin.x, y: frame.origin.y)
-                    let positionValue = AXValueCreate(.cgPoint, &position)
-                    AXUIElementSetAttributeValue(axWindow, kAXPositionAttribute as CFString, positionValue!)
+                    let positionValue = AXValueCreate(.cgPoint, &position)!
+                    let posResult = AXUIElementSetAttributeValue(axWindow, kAXPositionAttribute as CFString, positionValue)
+                    print("📍 Set position result: \(posResult.rawValue)")
                     
                     // Set size
                     var size = CGSize(width: frame.width, height: frame.height)
-                    let sizeValue = AXValueCreate(.cgSize, &size)
-                    AXUIElementSetAttributeValue(axWindow, kAXSizeAttribute as CFString, sizeValue!)
-                    break
+                    let sizeValue = AXValueCreate(.cgSize, &size)!
+                    let sizeResult = AXUIElementSetAttributeValue(axWindow, kAXSizeAttribute as CFString, sizeValue)
+                    print("📏 Set size result: \(sizeResult.rawValue)")
+                    
+                    return posResult == .success && sizeResult == .success
                 }
+            } else {
+                print("⚠️ Window \(index): Window ID is not CGWindowID type")
             }
         }
+        
+        print("❌ No matching window found in app")
+        return false
     }
     
     private func getAppForWindow(_ windowID: CGWindowID) -> NSRunningApplication? {
@@ -255,7 +333,7 @@ class WindowManager: ObservableObject {
         return nil
     }
     
-    private func requestAccessibilityPermission() {
+    func requestAccessibilityPermission() {
         let trusted = AXIsProcessTrusted()
         if !trusted {
             let alert = NSAlert()

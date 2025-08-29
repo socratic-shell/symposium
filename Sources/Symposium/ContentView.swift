@@ -6,6 +6,33 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 20) {
+            // Status section
+            VStack(spacing: 8) {
+                HStack {
+                    Image(systemName: windowManager.hasAccessibilityPermission ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundColor(windowManager.hasAccessibilityPermission ? .green : .orange)
+                    Text(windowManager.hasAccessibilityPermission ? "Accessibility: Enabled" : "Accessibility: Required")
+                        .font(.caption)
+                    Spacer()
+                    if !windowManager.hasAccessibilityPermission {
+                        Button("Grant Permission") {
+                            windowManager.requestAccessibilityPermission()
+                        }
+                        .font(.caption)
+                    }
+                }
+                
+                if !windowManager.lastOperationMessage.isEmpty {
+                    Text(windowManager.lastOperationMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .padding(.horizontal)
+            
+            Divider()
+            
             // Stack section
             VStack {
                 Text("Stack (\(windowManager.stackedWindows.count) windows)")
@@ -53,6 +80,7 @@ struct ContentView: View {
                         .font(.headline)
                     Spacer()
                     Button("Refresh") {
+                        windowManager.checkAccessibilityPermission()
                         windowManager.refreshWindowList()
                     }
                 }

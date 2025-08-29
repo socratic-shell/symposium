@@ -6,7 +6,23 @@
     <string>com.symposium.app</string>
     <key>CFBundleName</key>
     <string>Symposium</string>
+    <key>CFBundleDisplayName</key>
+    <string>Symposium</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>Symposium</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Symposium needs accessibility permission to manage and stack windows from other applications.</string>
+    <key>LSUIElement</key>
+    <false/>
 </dict>
 </plist>
