@@ -447,10 +447,13 @@ class WindowManager: ObservableObject {
             return
         }
         
-        let callback: AXObserverCallback = { [weak self] observer, element, notification, refcon in
-            self?.handleWindowMovement(element: element, notification: notification)
+        let callback: AXObserverCallback = { observer, element, notification, refcon in
+            guard let refcon = refcon else { return }
+            let windowManager = Unmanaged<WindowManager>.fromOpaque(refcon).takeUnretainedValue()
+            windowManager.handleWindowMovement(element: element, notification: notification)
         }
         
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         let result = AXObserverCreate(getpid(), callback, &axObserver)
         
         if result == .success, let observer = axObserver {
