@@ -201,12 +201,15 @@ class WindowManager: ObservableObject {
         }
 
         // Handle leadership change if needed
-        if removed.isLeader && !stackedWindows.isEmpty {
-            // Make the first remaining window the new leader
-            let newLeaderIndex = min(currentStackIndex, stackedWindows.count - 1)
-            let newLeader = stackedWindows[newLeaderIndex]
-            log("🔄 Transferring leadership to: \(newLeader.displayName)")
-            switchToLeader(newLeader)
+        if removed.isLeader {
+            currentLeaderWindow = nil
+            if !stackedWindows.isEmpty {
+                // Make the first remaining window the new leader
+                let newLeaderIndex = min(currentStackIndex, stackedWindows.count - 1)
+                let newLeader = stackedWindows[newLeaderIndex]
+                log("🔄 Transferring leadership to: \(newLeader.displayName)")
+                switchToLeader(newLeader)
+            }
         }
 
         // Adjust current index
@@ -485,7 +488,6 @@ class WindowManager: ObservableObject {
             windowManager.handleWindowMovement(element: element, notification: notification)
         }
         
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         let result = AXObserverCreate(getpid(), callback, &axObserver)
         
         if result == .success, let observer = axObserver {
@@ -614,6 +616,11 @@ class WindowManager: ObservableObject {
     }
 
     private func cleanupObserver() {
+        // Unsubscribe from any current leader before cleanup
+        if let currentLeader = currentLeaderWindow {
+            unsubscribeFromLeaderMovement(currentLeader)
+        }
+        
         if let observer = axObserver {
             CFRunLoopRemoveSource(
                 CFRunLoopGetCurrent(),
@@ -622,6 +629,7 @@ class WindowManager: ObservableObject {
             )
         }
         axObserver = nil
+        currentLeaderWindow = nil
         log("🧹 Movement observer cleaned up")
     }
 
@@ -668,16 +676,7 @@ class WindowManager: ObservableObject {
         if let existingFrame = newLeader.originalFrame {
             // If this window was a follower, calculate the full leader size
             if !newLeader.isLeader {
-                // Reverse the inset calculation to get full size
-                let horizontalInset = max(minimumInset, min(maximumInset, existingFrame.width * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
-                let verticalInset = max(minimumInset, min(maximumInset, existingFrame.height * CGFloat(insetPercentage) / (1.0 - 2 * CGFloat(insetPercentage))))
-                
-                leaderFrame = CGRect(
-                    x: existingFrame.origin.x - horizontalInset,
-                    y: existingFrame.origin.y - verticalInset,
-                    width: existingFrame.width + (2 * horizontalInset),
-                    height: existingFrame.height + (2 * verticalInset)
-                )
+                leaderFrame = calculateLeaderFrame(from: existingFrame)
             } else {
                 leaderFrame = existingFrame
             }
