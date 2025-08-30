@@ -3,12 +3,11 @@ import AppKit
 
 @main
 struct SymposiumApp: App {
-    @StateObject private var windowManager = WindowManager()
-    
     var body: some Scene {
         WindowGroup {
-            ContentView(windowManager: windowManager)
-                .frame(width: 450, height: 800)
+            ContentView()
+                .frame(minWidth: 1000, idealWidth: 1200, maxWidth: .infinity,
+                       minHeight: 700, idealHeight: 800, maxHeight: .infinity)
         }
     }
 }
