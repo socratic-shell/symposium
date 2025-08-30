@@ -14,7 +14,28 @@ The settings dialog displays:
         * it should say "Symposium requires accessibility permissions."
 * Then it should offer a choice of modes, each accompanied by a representative screenshot drawn using rectangles:
     * Free-form
-    * Stacked
+    * Tiled
 * And it should have some preferences like
     * On connecting to a new agentspace start:
-    * Communicate with the 
+        * 
+    * How do you want to communicate with the agent:
+        * Inside the IDE
+        * Separate terminal
+
+## "Agentspace" concept
+
+An "agentspace" is the combination of
+
+* an active AI agent
+* 
+
+## Free-form mode
+
+The default mode is free-form. In this mode, Symposium tracks the windows associated with an agent
+
+## Stacked mode
+
+In 
+
+## Dock behavior
+

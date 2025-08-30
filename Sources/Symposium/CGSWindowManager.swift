@@ -18,11 +18,16 @@ class CGSWindowManager: ObservableObject {
         var isOrderedOut: Bool = false
         
         var displayName: String {
+            let prefix = appName == "Symposium" ? "🧪 " : ""
             if !title.isEmpty {
-                return "\(appName): \(title)"
+                return "\(prefix)\(appName): \(title)"
             } else {
-                return "\(appName): Window \(id)"
+                return "\(prefix)\(appName): Window \(id)"
             }
+        }
+        
+        var isOwnWindow: Bool {
+            return appName == "Symposium"
         }
     }
     
@@ -89,10 +94,7 @@ class CGSWindowManager: ObservableObject {
                 continue
             }
             
-            // Skip our own window
-            if appName == "Symposium" {
-                continue
-            }
+            // Include all windows (including our own for testing)
             
             let title = dict[kCGWindowName as String] as? String ?? ""
             
@@ -295,5 +297,59 @@ class CGSWindowManager: ObservableObject {
     
     func clearLog() {
         testLog = ""
+    }
+    
+    // MARK: - Test Window Creation
+    
+    func createTestWindow() {
+        log("🪟 Creating new test window...")
+        
+        // Create a new SwiftUI window
+        let testWindow = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        
+        testWindow.title = "Symposium Test Window"
+        testWindow.contentView = NSHostingView(rootView: TestWindowView())
+        testWindow.makeKeyAndOrderFront(nil)
+        
+        // Store the window to keep it alive
+        testWindows.append(testWindow)
+        
+        // Refresh the window list to pick up our new window
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.refreshWindowList()
+        }
+    }
+    
+    // Keep references to test windows
+    private var testWindows: [NSWindow] = []
+}
+
+// MARK: - Test Window Content View
+
+struct TestWindowView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("🧪 CGS Test Window")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("This window is created by Symposium and should be controllable via CGS APIs.")
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+            
+            Text("Window ID: \(NSApp.keyWindow?.windowNumber ?? 0)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.controlBackgroundColor))
     }
 }

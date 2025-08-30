@@ -36,6 +36,11 @@ struct ContentView: View {
                             cgsManager.refreshWindowList()
                         }
                         .font(.caption)
+                        
+                        Button("Create Test Window") {
+                            cgsManager.createTestWindow()
+                        }
+                        .font(.caption)
                     }
                     
                     if !cgsManager.hasAccessibilityPermission {
@@ -58,6 +63,11 @@ struct ContentView: View {
                     Text("Available Windows (\(cgsManager.allWindows.count))")
                         .font(.subheadline)
                         .fontWeight(.medium)
+                    
+                    Text("✅ Own windows should respond to all CGS APIs\n❌ Other windows may only respond to level/alpha changes")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 4)
                     
                     // Search field
                     HStack {
@@ -175,13 +185,31 @@ struct ContentView: View {
             
             Spacer()
             
-            if window.isOrderedOut {
-                Text("Hidden")
-                    .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.2))
-                    .cornerRadius(4)
+            HStack(spacing: 4) {
+                if window.isOrderedOut {
+                    Text("Hidden")
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.2))
+                        .cornerRadius(4)
+                }
+                
+                if window.isOwnWindow {
+                    Text("✅ Own")
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(4)
+                } else {
+                    Text("❌ Other")
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.red.opacity(0.2))
+                        .cornerRadius(4)
+                }
             }
         }
         .padding(.horizontal, 8)

@@ -26,3 +26,4 @@
     - [Mac OS Window identification research by Gemini](./research/macos_window_identification_research_gemini.md)
 - [Core Graphics Window APIs](./research/cg-window-apis.md)
 - [How macOS Applications Respond to CG APIs](./research/how-mac-os-applications-respond-to-cg-apis.md)
+- [CGS API Security Restrictions Research Report](./research/cgs-api-security-restrictions.md)
