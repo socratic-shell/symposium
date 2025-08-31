@@ -1,5 +1,13 @@
 [book]
 authors = ["Niko Matsakis"]
 language = "en"
-src = "src"
+src = "md"
 title = "Symposium"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output]
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]

@@ -9,6 +9,7 @@
 
 - [Introduction](./introduction.md)
 - [Interface plan](./interface-plan.md)
+- [Implementation Overview](./implementation-overview.md)
 
 # Design
 
@@ -28,3 +29,59 @@
     - [Core Graphics Window APIs](./research/cg-window-apis.md)
     - [How macOS Applications Respond to CG APIs](./research/how-mac-os-applications-respond-to-cg-apis.md)
     - [CGS API Security Restrictions Research Report](./research/cgs-api-security-restrictions.md)
+
+# Dialectic Integration Documentation
+
+<!-- Research and design docs from dialectic integration -->
+
+- [User Guide]() <!-- From dialectic -->
+    - [Installation](./installation.md) 
+    - [Quick start](./quick-start.md)
+    - [Features]()
+        - [Code walkthroughs and Ask Socratic Shell](./walkthroughs.md)
+        - [Synthetic Pull Requests](./synthetic-pr.md)
+        - [IDE Capabilities](./ide-capabilities.md)
+        - [Review format](./review-format.md)
+    - [Frequently asked questions](./faq.md)
+
+- [Development and contribution guide]()
+    - [Building and testing](./design/build-and-test.md)
+    - [System overview](./design/overview.md)
+        - [Communication protocol](./design/protocol.md)
+        - [Security considerations](./design/security.md)
+        - [AI Guidance design considerations](./design/ai-guidance.md)
+        - [Codebase structure](./design/codebase-structure.md)
+    - [How each feature works]()
+        - [Code walkthroughs](./design/code-walkthroughs.md)
+        - [Synthetic Pull Requests](./design/synthetic-pr.md)
+        - [Ask Socratic Shell](./design/ask-socratic-shell.md)
+        - [IDE Capabilities](./design/ide-capabilities.md)
+    - [MCP server](./design/mcp-server.md)
+        - [Daemon message bus](./design/daemon.md)
+        - [MCP Tool interface](./design/mcp-tool-interface.md)
+    - [VSCode extension](./design/extension.md)
+    - [Walkthrough format](./design/walkthrough-format.md)
+    - [Dialect language](./design/dialect-language.md)
+
+- [Research reports from dialectic]()
+    - [Markdown to HTML in VSCode Extensions](./references/markdown-to-html-in-vscode.md)
+    - [VSCode Extension Communication Patterns](./references/cli-extension-communication-guide.md)
+    - [VSCode Sidebar Panel Research](./references/vscode-extensions-sidebar-panel-research-report.md)
+    - [Language Server Protocol Overview](./references/lsp-overview/README.md)
+        - [Base Protocol](./references/lsp-overview/base-protocol.md)
+        - [Language Features](./references/lsp-overview/language-features.md)
+        - [Implementation Guide](./references/lsp-overview/implementation-guide.md)
+        - [Message Reference](./references/lsp-overview/message-reference.md)
+    - [Unix IPC Message Bus Implementation Guide](./references/unix-message-bus-architecture.md)
+    - [VSCode PR Extension Research](./references/vscode-extensions-dev-pattern.md)
+    - [VSCode File System Watching APIs](./references/VS-Code-file-system-watching.md)
+    - [Synthetic PRs in VSCode](./references/Synthetic-PRs-in-vscode.md)
+    - [VSCode Git Extension API Capabilities](./references/VSCode-Git-Extension-API-capabilities.md)
+    - [Comment System Architecture for PR Reviews](./references/comment-system-on-pr.md)
+    - [Diff Visualization Strategies](./references/diff-visualization.md)
+    - [Cumulative Diff Visualization Analysis](./references/diff-visualization-cumulative.md)
+    - [Copilot Integration Guide](./references/copilot-guide.md)
+    - [Copilot Integration Guide 2](./references/copilot-guide-2.md)
+    - [Copilot Integration Guide 3](./references/copilot-guide-3.md)
+    - [VSCode Comments API Reply Button Implementation](./references/VSCode-Comments-API-Reply-Button.md)
+    - [VSCode WebviewView State Persistence](./references/vscode-webview-state-persistence.md)

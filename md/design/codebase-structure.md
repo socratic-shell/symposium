@@ -1,0 +1,1 @@
+# Codebase structure

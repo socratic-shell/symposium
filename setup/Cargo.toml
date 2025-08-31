@@ -1,0 +1,20 @@
+[package]
+name = "setup"
+version = "0.1.0"
+edition = "2021"
+authors = ["Niko Matsakis"]
+description = "Dialectic development setup tool"
+
+[[bin]]
+name = "setup"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Additional dependencies for setup functionality
+which = { workspace = true }
+home = { workspace = true }
