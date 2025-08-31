@@ -212,8 +212,14 @@ export class DaemonClient implements vscode.Disposable {
 
         this.socket.on('error', (error) => {
             // Only log at debug level to avoid spam during normal startup
-            this.outputChannel.appendLine(`Daemon connection failed: ${error.message} (will retry in ${this.RECONNECT_INTERVAL_MS / 1000}s)`);
-            this.scheduleReconnect();
+            this.outputChannel.appendLine(`Daemon connection failed: ${error.message}`);
+            
+            // Try to start the daemon if it's not running
+            this.tryStartDaemon().then(() => {
+                this.scheduleReconnect();
+            }).catch(() => {
+                this.scheduleReconnect();
+            });
         });
 
         this.socket.on('close', () => {
@@ -761,13 +767,68 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private getDaemonSocketPath(): string {
-        const discoveredPid = findVSCodePID(this.outputChannel);
-        const vscodePid = discoveredPid || (() => {
-            this.outputChannel.appendLine('Warning: Could not discover VSCode PID, using fallback');
-            return crypto.randomUUID();
-        })();
+        // 💡: Use a single global daemon socket for all Symposium instances
+        return `/tmp/symposium-daemon.sock`;
+    }
 
-        return `/tmp/symposium-daemon-${vscodePid}.sock`;
+    private async tryStartDaemon(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            // Check if daemon is already running by testing socket connection
+            const fs = require('fs');
+            const socketPath = this.getDaemonSocketPath();
+            
+            if (fs.existsSync(socketPath)) {
+                this.outputChannel.appendLine('Daemon socket exists, assuming daemon is running');
+                resolve();
+                return;
+            }
+            
+            this.outputChannel.appendLine('Attempting to start symposium daemon...');
+            
+            // Try to find the symposium-mcp binary
+            const { spawn } = require('child_process');
+            
+            // First try to find it in PATH, then try common development paths
+            let binaryPath = 'symposium-mcp';
+            
+            try {
+                // If which doesn't find it, try common development paths
+                const which = require('which');
+                if (!which.sync(binaryPath, { nothrow: true })) {
+                    // Try workspace root + target/debug/symposium-mcp
+                    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                    if (workspacePath) {
+                        const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
+                        if (require('fs').existsSync(devPath)) {
+                            binaryPath = devPath;
+                            this.outputChannel.appendLine(`Found development binary: ${binaryPath}`);
+                        }
+                    }
+                }
+            } catch (e) {
+                // which failed, continue with original path
+                this.outputChannel.appendLine(`Warning: which command failed, trying PATH: ${e}`);
+            }
+            
+            // Start the global daemon (using a dummy PID for now)
+            const daemon = spawn(binaryPath, ['daemon', '--dev-log', '1'], {
+                detached: true,
+                stdio: 'ignore'
+            });
+            
+            daemon.unref(); // Allow extension to exit without waiting for daemon
+            
+            daemon.on('spawn', () => {
+                this.outputChannel.appendLine(`✅ Daemon started successfully (PID: ${daemon.pid})`);
+                // Give the daemon a moment to create the socket
+                setTimeout(() => resolve(), 1000);
+            });
+            
+            daemon.on('error', (error: Error) => {
+                this.outputChannel.appendLine(`❌ Failed to start daemon: ${error.message}`);
+                reject(error);
+            });
+        });
     }
 
     private scheduleReconnect(): void {

@@ -1,6 +1,6 @@
 #!/usr/bin/env cargo run --
 
-//! Dialectic MCP Server - Rust Implementation
+//! Symposium MCP Server - Rust Implementation
 //!
 //! Provides tools for AI assistants to display code reviews in VSCode.
 //! Acts as a communication bridge between AI and the VSCode extension via IPC.
@@ -15,7 +15,7 @@ use symposium_mcp::DialecticServer;
 
 #[derive(Parser)]
 #[command(name = "symposium-mcp")]
-#[command(about = "Dialectic MCP Server for VSCode integration")]
+#[command(about = "Symposium MCP Server for VSCode integration")]
 struct Args {
     /// Enable development logging to /tmp/symposium-mcp.log
     #[arg(long, global = true)]
@@ -102,7 +102,7 @@ async fn main() -> Result<()> {
             symposium_mcp::run_daemon_with_prefix(vscode_pid, prefix, None).await?;
         }
         None => {
-            info!("Starting Dialectic MCP Server (Rust)");
+            info!("Starting Symposium MCP Server (Rust)");
 
             // Create our server instance
             let server = DialecticServer::new().await?;
@@ -115,12 +115,12 @@ async fn main() -> Result<()> {
                 error!("MCP server error: {:?}", e);
             })?;
 
-            info!("Dialectic MCP Server is ready and listening");
+            info!("Symposium MCP Server is ready and listening");
 
             // Wait for the service to complete
             service.waiting().await?;
 
-            info!("Dialectic MCP Server shutting down");
+            info!("Symposium MCP Server shutting down");
 
             // Send Goodbye discovery message before shutdown
             if let Err(e) = ipc_for_shutdown.shutdown().await {
@@ -137,7 +137,7 @@ async fn run_pid_probe() -> Result<()> {
     use std::process;
     use tracing::{error, info};
 
-    info!("=== DIALECTIC MCP SERVER PID PROBE ===");
+    info!("=== SYMPOSIUM MCP SERVER PID PROBE ===");
 
     let current_pid = process::id();
     info!("MCP Server PID: {}", current_pid);
