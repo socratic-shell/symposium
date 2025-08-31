@@ -653,7 +653,7 @@ impl ServerHandler for DialecticServer {
             protocol_version: ProtocolVersion::V_2024_11_05,
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
-                name: "dialectic-mcp-server".to_string(),
+                name: "symposium-mcp".to_string(),
                 version: "0.1.0".to_string(),
             },
             instructions: Some(

@@ -17,11 +17,11 @@ async fn test_daemon_readiness_message() {
     cmd.args(&[
         "run",
         "-p",
-        "dialectic-mcp-server",
+        "symposium-mcp",
         "--",
         "daemon",
         "--prefix",
-        "dialectic-mcp-server-test_daemon_readiness_message",
+        "symposium-mcp-test_daemon_readiness_message",
         &test_pid.to_string(),
     ]);
     cmd.stdout(Stdio::piped());

@@ -29,9 +29,9 @@ class SyntheticPRProvider {
         this.currentPR = null;
         // Create diff content provider for virtual diff content
         this.diffContentProvider = new DialecticDiffContentProvider();
-        context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('dialectic-diff', this.diffContentProvider));
+        context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('symposium-diff', this.diffContentProvider));
         // Create comment controller for in-line comments
-        this.commentController = vscode.comments.createCommentController('dialectic-synthetic-pr', 'Synthetic PR Comments');
+        this.commentController = vscode.comments.createCommentController('symposium-synthetic-pr', 'Synthetic PR Comments');
         // Configure comment controller options
         this.commentController.options = {
             prompt: 'Add a comment...',
@@ -78,19 +78,19 @@ class SyntheticPRProvider {
         console.log('[SYNTHETIC PR] Creating tree provider');
         this.treeProvider = new syntheticPRTreeProvider_1.SyntheticPRTreeProvider();
         // Register tree view
-        console.log('[SYNTHETIC PR] Registering tree view with ID: dialectic.syntheticPR');
-        const treeView = vscode.window.createTreeView('dialectic.syntheticPR', {
+        console.log('[SYNTHETIC PR] Registering tree view with ID: symposium.syntheticPR');
+        const treeView = vscode.window.createTreeView('symposium.syntheticPR', {
             treeDataProvider: this.treeProvider
         });
         console.log('[SYNTHETIC PR] Tree view created successfully:', !!treeView);
         // Register diff command
-        const diffCommand = vscode.commands.registerCommand('dialectic.showFileDiff', (filePath) => this.showFileDiff(filePath));
+        const diffCommand = vscode.commands.registerCommand('symposium.showFileDiff', (filePath) => this.showFileDiff(filePath));
         // Register comment reply command
-        const commentReplyCommand = vscode.commands.registerCommand('dialectic.addCommentReply', (thread, text) => this.addCommentReply(thread, text));
+        const commentReplyCommand = vscode.commands.registerCommand('symposium.addCommentReply', (thread, text) => this.addCommentReply(thread, text));
         // Register add comment command (for new comments)
-        const addCommentCommand = vscode.commands.registerCommand('dialectic.addComment', (reply) => this.handleCommentSubmission(reply));
+        const addCommentCommand = vscode.commands.registerCommand('symposium.addComment', (reply) => this.handleCommentSubmission(reply));
         // Register toggle comments command
-        const toggleCommentsCommand = vscode.commands.registerCommand('dialectic.toggleComments', () => this.treeProvider.toggleCommentsExpansion());
+        const toggleCommentsCommand = vscode.commands.registerCommand('symposium.toggleComments', () => this.treeProvider.toggleCommentsExpansion());
         context.subscriptions.push(this.commentController, treeView, diffCommand, commentReplyCommand, addCommentCommand, toggleCommentsCommand);
     }
     /**
@@ -128,7 +128,7 @@ class SyntheticPRProvider {
         this.treeProvider.updatePR(prData);
         // Recreate comment threads
         this.commentController.dispose();
-        this.commentController = vscode.comments.createCommentController('dialectic-synthetic-pr', `PR: ${prData.title}`);
+        this.commentController = vscode.comments.createCommentController('symposium-synthetic-pr', `PR: ${prData.title}`);
         for (const thread of prData.comment_threads) {
             await this.createCommentThread(thread);
         }
@@ -167,7 +167,7 @@ class SyntheticPRProvider {
             const originalContent = await this.generateOriginalContent(fileChange, modifiedContent);
             console.log(`[DIFF] Generated original content length: ${originalContent.length} chars`);
             // Create URIs for diff content provider
-            const originalUri = vscode.Uri.parse(`dialectic-diff:${filePath}?original`);
+            const originalUri = vscode.Uri.parse(`symposium-diff:${filePath}?original`);
             const modifiedUri = absolutePath; // Use actual file for "after" state
             console.log(`[DIFF] Original URI: ${originalUri.toString()}`);
             console.log(`[DIFF] Modified URI: ${modifiedUri.toString()}`);
@@ -331,7 +331,7 @@ class SyntheticPRProvider {
         if (this.onCommentCallback && reply.thread.range) {
             const uri = reply.thread.uri;
             const lineNumber = reply.thread.range.start.line + 1; // Convert to 1-based
-            const filePath = uri.scheme === 'dialectic-diff' ?
+            const filePath = uri.scheme === 'symposium-diff' ?
                 uri.path.replace('/diff/', '') : // Extract file path from diff URI
                 vscode.workspace.asRelativePath(uri);
             this.onCommentCallback(reply.text, filePath, lineNumber);

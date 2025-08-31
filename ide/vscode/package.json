@@ -1,12 +1,12 @@
 {
-  "name": "dialectic",
-  "displayName": "Dialectic Walkthroughs",
-  "description": "AI-powered code walkthroughs for collaborative development",
+  "name": "symposium",
+  "displayName": "Symposium",
+  "description": "AI-powered code walkthroughs and agentspace orchestration",
   "version": "0.1.0",
   "publisher": "socratic-shell",
   "repository": {
     "type": "git",
-    "url": "https://github.com/socratic-shell/dialectic.git"
+    "url": "https://github.com/socratic-shell/symposium.git"
   },
   "license": "MIT",
   "engines": {
@@ -22,66 +22,66 @@
   "contributes": {
     "commands": [
       {
-        "command": "dialectic.showReview",
+        "command": "symposium.showReview",
         "title": "Show Review",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.copyReview",
+        "command": "symposium.copyReview",
         "title": "Copy Review",
-        "category": "Dialectic",
+        "category": "Symposium",
         "icon": "$(copy)"
       },
       {
-        "command": "dialectic.logPIDs",
+        "command": "symposium.logPIDs",
         "title": "Log PIDs",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.showFileDiff",
+        "command": "symposium.showFileDiff",
         "title": "Show File Diff",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.addComment",
+        "command": "symposium.addComment",
         "title": "Add Comment",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.addCommentReply",
+        "command": "symposium.addCommentReply",
         "title": "Add Comment Reply",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.addWalkthroughComment",
+        "command": "symposium.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
-        "category": "Dialectic"
+        "category": "Symposium"
       },
       {
-        "command": "dialectic.toggleComments",
+        "command": "symposium.toggleComments",
         "title": "Toggle Comments",
-        "category": "Dialectic",
+        "category": "Symposium",
         "icon": "$(comment)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "dialectic",
-          "title": "Socratic Shell",
+          "id": "symposium",
+          "title": "Symposium",
           "icon": "activitybar-logo.svg"
         }
       ]
     },
     "views": {
-      "dialectic": [
+      "symposium": [
         {
-          "id": "dialectic.walkthrough",
+          "id": "symposium.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
         },
         {
-          "id": "dialectic.syntheticPR",
+          "id": "symposium.syntheticPR",
           "name": "Synthetic PR",
           "type": "tree"
         }
@@ -90,19 +90,19 @@
     "menus": {
       "view/title": [
         {
-          "command": "dialectic.toggleComments",
+          "command": "symposium.toggleComments",
           "when": "view == dialectic.syntheticPR",
           "group": "navigation"
         }
       ],
       "comments/commentThread/context": [
         {
-          "command": "dialectic.addComment",
+          "command": "symposium.addComment",
           "group": "inline@1",
           "when": "commentController == dialectic-synthetic-pr"
         },
         {
-          "command": "dialectic.addWalkthroughComment",
+          "command": "symposium.addWalkthroughComment",
           "group": "inline@1",
           "when": "commentController == dialectic-walkthrough"
         }

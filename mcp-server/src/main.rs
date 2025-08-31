@@ -11,13 +11,13 @@ use rmcp::{ServiceExt, transport::stdio};
 use tracing::{Level, error, info};
 use tracing_subscriber::{self, EnvFilter};
 
-use dialectic_mcp_server::DialecticServer;
+use symposium_mcp::DialecticServer;
 
 #[derive(Parser)]
-#[command(name = "dialectic-mcp-server")]
+#[command(name = "symposium-mcp")]
 #[command(about = "Dialectic MCP Server for VSCode integration")]
 struct Args {
-    /// Enable development logging to /tmp/dialectic-mcp-server.log
+    /// Enable development logging to /tmp/symposium-mcp.log
     #[arg(long, global = true)]
     dev_log: bool,
 
@@ -45,7 +45,7 @@ enum Command {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    // If we are logging to /tmp/dialectic-mcp-server.log
+    // If we are logging to /tmp/symposium-mcp.log
     // then when we drop this flush guard, any final messages
     // will be flushed for sure.
     let mut flush_guard = None;
@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("/tmp/dialectic-mcp-server.log")
+            .open("/tmp/symposium-mcp.log")
             .expect("Failed to open log file");
 
         let (file_writer, _guard) = non_blocking(file);
@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
 
         // Also log to stderr for immediate feedback
         eprintln!(
-            "Development logging enabled - writing to /tmp/dialectic-mcp-server.log (PID: {})",
+            "Development logging enabled - writing to /tmp/symposium-mcp.log (PID: {})",
             std::process::id()
         );
     } else {
@@ -94,12 +94,12 @@ async fn main() -> Result<()> {
         Some(Command::Daemon { vscode_pid, prefix }) => {
             let prefix = match &prefix {
                 Some(s) => s,
-                None => "dialectic-daemon",
+                None => "symposium-daemon",
             };
             info!(
                 "🚀 DAEMON MODE - Starting message bus daemon for VSCode PID {vscode_pid} with prefix {prefix}",
             );
-            dialectic_mcp_server::run_daemon_with_prefix(vscode_pid, prefix, None).await?;
+            symposium_mcp::run_daemon_with_prefix(vscode_pid, prefix, None).await?;
         }
         None => {
             info!("Starting Dialectic MCP Server (Rust)");
@@ -143,7 +143,7 @@ async fn run_pid_probe() -> Result<()> {
     info!("MCP Server PID: {}", current_pid);
 
     // Try to walk up the process tree to find VSCode
-    match dialectic_mcp_server::find_vscode_pid_from_mcp(current_pid).await {
+    match symposium_mcp::find_vscode_pid_from_mcp(current_pid).await {
         Ok(Some((vscode_pid, terminal_shell_pid))) => {
             info!("✅ SUCCESS: Found VSCode PID: {}", vscode_pid);
             info!("✅ SUCCESS: Terminal Shell PID: {}", terminal_shell_pid);

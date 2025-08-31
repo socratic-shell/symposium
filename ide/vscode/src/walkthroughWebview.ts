@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
-import { openDialecticUrl } from './fileNavigation';
+import { openSymposiumUrl } from './fileNavigation';
 import { Bus } from './bus';
 
 // Placement state for unified link and comment management
@@ -65,7 +65,7 @@ interface WalkthroughData {
 }
 
 export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'dialectic.walkthrough';
+    public static readonly viewType = 'symposium.walkthrough';
 
     private _view?: vscode.WebviewView;
     private md: MarkdownIt;
@@ -111,7 +111,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 const placementState = this.placementMemory?.get(linkKey);
 
                 token.attrSet('href', 'javascript:void(0)');
-                token.attrSet('data-dialectic-url', href);
+                token.attrSet('data-symposium-url', href);
                 token.attrSet('class', 'file-ref');
 
                 if (placementState?.isPlaced) {
@@ -152,7 +152,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     const action = isPlaced ? 'relocate' : 'place';
                     const title = isPlaced ? 'Relocate this link' : 'Place this link';
 
-                    const result = `</a><button class="placement-icon" data-dialectic-url="${href}" data-action="${action}" title="${title}">${icon}</button>`;
+                    const result = `</a><button class="placement-icon" data-symposium-url="${href}" data-action="${action}" title="${title}">${icon}</button>`;
                     console.log('[RENDERER] Generated icon HTML:', result);
                     return result;
                 }
@@ -179,14 +179,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 await this.clearWalkthrough();
                 break;
             case 'openFile':
-                console.log('Walkthrough: openFile command received:', message.dialecticUrl);
-                await openDialecticUrl(message.dialecticUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
+                console.log('Walkthrough: openFile command received:', message.symposiumUrl);
+                await openSymposiumUrl(message.symposiumUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
                 // After placement, update the UI
-                this.updateLinkPlacementUI(message.dialecticUrl);
+                this.updateLinkPlacementUI(message.symposiumUrl);
                 break;
             case 'relocateLink':
-                console.log('Walkthrough: relocateLink command received:', message.dialecticUrl);
-                await this.relocateLink(message.dialecticUrl);
+                console.log('Walkthrough: relocateLink command received:', message.symposiumUrl);
+                await this.relocateLink(message.symposiumUrl);
                 break;
             case 'action':
                 console.log('Walkthrough: action received:', message.message);
@@ -223,7 +223,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             
             // Recreate the comment controller for future use
             this.commentController = vscode.comments.createCommentController(
-                'dialectic-walkthrough',
+                'symposium-walkthrough',
                 'Dialectic Walkthrough'
             );
             
@@ -426,7 +426,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             // Create comment controller if it doesn't exist
             if (!this.commentController) {
                 this.commentController = vscode.comments.createCommentController(
-                    'dialectic-walkthrough',
+                    'symposium-walkthrough',
                     'Dialectic Walkthrough Comments'
                 );
                 
@@ -893,31 +893,31 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         };
     }
 
-    private async relocateLink(dialecticUrl: string): Promise<void> {
+    private async relocateLink(symposiumUrl: string): Promise<void> {
         // Remove the current placement to force re-disambiguation
-        const linkKey = `link:${dialecticUrl}`;
+        const linkKey = `link:${symposiumUrl}`;
         this.placementMemory?.delete(linkKey);
 
         // Open the link again - this will show disambiguation
-        await openDialecticUrl(dialecticUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
+        await openSymposiumUrl(symposiumUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
 
         // Update UI after relocation
-        this.updateLinkPlacementUI(dialecticUrl);
+        this.updateLinkPlacementUI(symposiumUrl);
     }
 
-    private updateLinkPlacementUI(dialecticUrl: string): void {
+    private updateLinkPlacementUI(symposiumUrl: string): void {
         if (!this._view) return;
 
-        const linkKey = `link:${dialecticUrl}`;
+        const linkKey = `link:${symposiumUrl}`;
         const placementState = this.placementMemory?.get(linkKey);
         const isPlaced = placementState?.isPlaced || false;
 
-        console.log(`[Walkthrough] Updating UI for ${dialecticUrl}: isPlaced=${isPlaced}, placementState=`, placementState);
+        console.log(`[Walkthrough] Updating UI for ${symposiumUrl}: isPlaced=${isPlaced}, placementState=`, placementState);
 
         // Send update to webview
         this._view.webview.postMessage({
             type: 'updateLinkPlacement',
-            dialecticUrl: dialecticUrl,
+            symposiumUrl: symposiumUrl,
             isPlaced: isPlaced
         });
     }
@@ -1304,20 +1304,20 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Handle placement icon clicks
                         if (target.classList.contains('placement-icon')) {
                             event.preventDefault();
-                            const dialecticUrl = target.getAttribute('data-dialectic-url');
+                            const symposiumUrl = target.getAttribute('data-symposium-url');
                             const action = target.getAttribute('data-action');
                             
-                            console.log('[Walkthrough] Placement icon clicked:', dialecticUrl, 'action:', action);
+                            console.log('[Walkthrough] Placement icon clicked:', symposiumUrl, 'action:', action);
                             
                             if (action === 'relocate') {
                                 vscode.postMessage({
                                     command: 'relocateLink',
-                                    dialecticUrl: dialecticUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                             } else {
                                 vscode.postMessage({
                                     command: 'openFile',
-                                    dialecticUrl: dialecticUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                             }
                             return;
@@ -1326,14 +1326,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Check if clicked element or parent has dialectic URL (link text clicked)
                         let element = target;
                         while (element && element !== document) {
-                            const dialecticUrl = element.getAttribute('data-dialectic-url');
-                            if (dialecticUrl && element.classList.contains('file-ref')) {
+                            const symposiumUrl = element.getAttribute('data-symposium-url');
+                            if (symposiumUrl && element.classList.contains('file-ref')) {
                                 event.preventDefault();
-                                console.log('[Walkthrough] Link text clicked - navigating:', dialecticUrl);
+                                console.log('[Walkthrough] Link text clicked - navigating:', symposiumUrl);
                                 
                                 vscode.postMessage({
                                     command: 'openFile',
-                                    dialecticUrl: dialecticUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                                 return;
                             }
@@ -1344,24 +1344,24 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     // Function to add placement icons to all dialectic links
                     function addPlacementIcons() {
                         console.log('[ICONS] Adding placement icons to dialectic links');
-                        const dialecticLinks = document.querySelectorAll('a[data-dialectic-url]');
+                        const dialecticLinks = document.querySelectorAll('a[data-symposium-url]');
                         console.log('[ICONS] Found', dialecticLinks.length, 'dialectic links');
                         
                         dialecticLinks.forEach((link, index) => {
-                            const dialecticUrl = link.getAttribute('data-dialectic-url');
-                            console.log('[ICONS] Processing link', index, 'URL:', dialecticUrl);
+                            const symposiumUrl = link.getAttribute('data-symposium-url');
+                            console.log('[ICONS] Processing link', index, 'URL:', symposiumUrl);
                             
                             // Check if ANY placement icon already exists for this URL
-                            const existingIcons = document.querySelectorAll('.placement-icon[data-dialectic-url="' + dialecticUrl + '"]');
+                            const existingIcons = document.querySelectorAll('.placement-icon[data-symposium-url="' + symposiumUrl + '"]');
                             if (existingIcons.length > 0) {
-                                console.log('[ICONS] Icon already exists for URL:', dialecticUrl, 'count:', existingIcons.length);
+                                console.log('[ICONS] Icon already exists for URL:', symposiumUrl, 'count:', existingIcons.length);
                                 return;
                             }
                             
                             // Create placement icon
                             const icon = document.createElement('button');
                             icon.className = 'placement-icon';
-                            icon.setAttribute('data-dialectic-url', dialecticUrl);
+                            icon.setAttribute('data-symposium-url', symposiumUrl);
                             icon.setAttribute('data-action', 'place');
                             icon.setAttribute('title', 'Place this link');
                             icon.textContent = '🔍'; // Default to search icon
@@ -1373,19 +1373,19 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     }
 
                     // Function to update link rendering after placement changes
-                    function updateLinkPlacement(dialecticUrl, isPlaced) {
-                        console.log('[PLACEMENT] updateLinkPlacement called with:', dialecticUrl, 'isPlaced:', isPlaced);
+                    function updateLinkPlacement(symposiumUrl, isPlaced) {
+                        console.log('[PLACEMENT] updateLinkPlacement called with:', symposiumUrl, 'isPlaced:', isPlaced);
                         
                         // Debug: show all placement icons in the DOM
                         const allIcons = document.querySelectorAll('.placement-icon');
                         console.log('[PLACEMENT] All placement icons in DOM:', allIcons.length);
                         allIcons.forEach((icon, i) => {
-                            console.log('[PLACEMENT] Icon ' + i + ': data-dialectic-url="' + icon.getAttribute('data-dialectic-url') + '" text="' + icon.textContent + '"');
+                            console.log('[PLACEMENT] Icon ' + i + ': data-symposium-url="' + icon.getAttribute('data-symposium-url') + '" text="' + icon.textContent + '"');
                         });
                         
                         // Update placement icons
-                        const icons = document.querySelectorAll('.placement-icon[data-dialectic-url="' + dialecticUrl + '"]');
-                        console.log('[PLACEMENT] Found', icons.length, 'icons to update for URL:', dialecticUrl);
+                        const icons = document.querySelectorAll('.placement-icon[data-symposium-url="' + symposiumUrl + '"]');
+                        console.log('[PLACEMENT] Found', icons.length, 'icons to update for URL:', symposiumUrl);
                         
                         icons.forEach((icon, index) => {
                             console.log('[PLACEMENT] Updating icon', index, 'current text:', icon.textContent);
@@ -1403,7 +1403,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         });
                         
                         // Update link data attributes
-                        const links = document.querySelectorAll('.file-ref[data-dialectic-url="' + dialecticUrl + '"]');
+                        const links = document.querySelectorAll('.file-ref[data-symposium-url="' + symposiumUrl + '"]');
                         console.log('[PLACEMENT] Found', links.length, 'links to update');
                         links.forEach(link => {
                             link.setAttribute('data-placement-state', isPlaced ? 'placed' : 'unplaced');
@@ -1601,8 +1601,8 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                                 console.error('[ERROR] Content element not found!');
                             }
                         } else if (message.type === 'updateLinkPlacement') {
-                            console.log('[PLACEMENT] Updating link placement:', message.dialecticUrl, 'isPlaced:', message.isPlaced);
-                            updateLinkPlacement(message.dialecticUrl, message.isPlaced);
+                            console.log('[PLACEMENT] Updating link placement:', message.symposiumUrl, 'isPlaced:', message.isPlaced);
+                            updateLinkPlacement(message.symposiumUrl, message.isPlaced);
                         } else if (message.type === 'updateCommentDisplay') {
                             console.log('[COMMENT] Updating comment display:', message.commentId, message.chosenLocation);
                             updateCommentDisplay(message.commentId, message.chosenLocation);

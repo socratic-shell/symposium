@@ -1,5 +1,5 @@
 #!/usr/bin/env cargo
-//! Dialectic Development Setup Tool
+//! Symposium Development Setup Tool
 //!
 //! Builds the Rust MCP server, VSCode extension, and configures them for use
 //! with AI assistants like Claude CLI and Q CLI.
@@ -34,9 +34,9 @@ enum ClaudeScope {
 #[derive(Parser)]
 #[command(
     name = "setup",
-    about = "Build Dialectic components and set up for development with AI assistants",
+    about = "Build Symposium components and set up for development with AI assistants",
     long_about = r#"
-Build Dialectic components and set up for development with AI assistants
+Build Symposium components and set up for development with AI assistants
 
 This tool builds both the Rust MCP server and VSCode extension, then configures
 them for use with Claude CLI or Q CLI.
@@ -80,7 +80,7 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    println!("🎭 Dialectic Development Setup");
+    println!("🎭 Symposium Development Setup");
     println!("{}", "=".repeat(35));
 
     // Determine which tool to use
@@ -250,12 +250,12 @@ fn install_rust_server() -> Result<PathBuf> {
         ));
     }
 
-    // The binary should now be available as 'dialectic-mcp-server' in PATH
-    let binary_name = "dialectic-mcp-server";
+    // The binary should now be available as 'symposium-mcp' in PATH
+    let binary_name = "symposium-mcp";
 
     // Verify the binary is accessible
     if which::which(binary_name).is_err() {
-        println!("⚠️  Warning: dialectic-mcp-server not found in PATH after installation");
+        println!("⚠️  Warning: symposium-mcp not found in PATH after installation");
 
         // Try to give helpful guidance about PATH
         if let Some(home) = home::home_dir() {
@@ -308,7 +308,7 @@ fn build_rust_server() -> Result<PathBuf> {
     // Verify the binary exists
     let binary_path = PathBuf::from(target_dir)
         .join("release")
-        .join("dialectic-mcp-server");
+        .join("symposium-mcp");
     if !binary_path.exists() {
         return Err(anyhow!(
             "❌ Build verification failed: Built binary not found at {}",
@@ -428,13 +428,13 @@ fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
             "mcp",
             "add",
             "--name",
-            "dialectic",
+            "symposium",
             "--command",
             &binary_path.to_string_lossy(),
             "--args",
             "--dev-log",
             "--env",
-            "RUST_LOG=dialectic_mcp_server=debug",
+            "RUST_LOG=symposium_mcp=debug",
             "--force", // Always overwrite existing configuration
         ]);
     } else {
@@ -443,17 +443,17 @@ fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
             "mcp",
             "add",
             "--name",
-            "dialectic",
+            "symposium",
             "--command",
             &binary_path.to_string_lossy(),
             "--force", // Always overwrite existing configuration
         ]);
     }
 
-    println!("🔧 Registering Dialectic MCP server with Q CLI...");
+    println!("🔧 Registering Symposium MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
     if dev_mode {
-        println!("   Development mode: logging to /tmp/dialectic-mcp-server.log with RUST_LOG=dialectic_mcp_server=debug");
+        println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
     }
 
     let output = cmd.output().context("Failed to execute q mcp add")?;
@@ -483,11 +483,11 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
         "add",
         "--scope",
         scope_str,
-        "dialectic",
+        "symposium",
         &binary_path.to_string_lossy(),
     ]);
 
-    println!("🔧 Registering Dialectic MCP server with Claude Code...");
+    println!("🔧 Registering Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Scope: {}", scope_str);
 
@@ -511,13 +511,13 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
 
 fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
     if dev_mode {
-        println!("\n🎉 Development setup complete! Dialectic is ready for development.");
+        println!("\n🎉 Development setup complete! Symposium is ready for development.");
         println!(
-            "🔧 Running in development mode - server will use target/release/dialectic-mcp-server"
+            "🔧 Running in development mode - server will use target/release/symposium-mcp"
         );
     } else {
-        println!("\n🎉 Production setup complete! Dialectic is installed and ready.");
-        println!("📦 Server installed to PATH as 'dialectic-mcp-server'");
+        println!("\n🎉 Production setup complete! Symposium is installed and ready.");
+        println!("📦 Server installed to PATH as 'symposium-mcp'");
     }
 
     println!("📋 VSCode extension installed and ready to use");
@@ -541,7 +541,7 @@ fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
     println!("\n📝 Next steps:");
     println!("1. Restart VSCode to activate the extension");
     println!("2. Ask your AI assistant to present a code review");
-    println!("3. Reviews will appear in the Dialectic panel in VSCode");
+    println!("3. Reviews will appear in the Symposium panel in VSCode");
 
     if dev_mode {
         println!("\n🔧 Development workflow:");

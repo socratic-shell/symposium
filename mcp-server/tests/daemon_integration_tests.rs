@@ -1,6 +1,6 @@
 //! Integration tests for daemon spawning and MCP server integration
 
-use dialectic_mcp_server::DialecticServer;
+use symposium_mcp::DialecticServer;
 
 #[tokio::test]
 async fn test_daemon_spawning_integration() {
@@ -21,7 +21,7 @@ async fn test_daemon_spawning_integration() {
 
 #[tokio::test]
 async fn test_daemon_ensure_running_separate_process() {
-    use dialectic_mcp_server::run_daemon_with_prefix;
+    use symposium_mcp::run_daemon_with_prefix;
     use std::sync::Arc;
     use tokio::sync::Barrier;
     use uuid::Uuid;

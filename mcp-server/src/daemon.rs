@@ -11,7 +11,7 @@ use tracing::{error, info};
 pub async fn spawn_daemon_process(vscode_pid: u32) -> Result<()> {
     use std::process::Command;
 
-    let socket_path = format!("/tmp/dialectic-daemon-{}.sock", vscode_pid);
+    let socket_path = format!("/tmp/symposium-daemon-{}.sock", vscode_pid);
 
     // Check if daemon is already running by trying to connect
     if tokio::net::UnixStream::connect(&socket_path).await.is_ok() {

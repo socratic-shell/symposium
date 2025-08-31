@@ -13,7 +13,7 @@ class PRTreeItem extends vscode.TreeItem {
         if (itemType === 'file') {
             // Use diff command instead of opening file normally
             this.command = {
-                command: 'dialectic.showFileDiff',
+                command: 'symposium.showFileDiff',
                 title: 'Show Diff',
                 arguments: [data.path]
             };
@@ -31,7 +31,7 @@ class PRTreeItem extends vscode.TreeItem {
         else if (itemType === 'action') {
             // Add command for action buttons
             this.command = {
-                command: 'dialectic.reviewAction',
+                command: 'symposium.reviewAction',
                 title: 'Review Action',
                 arguments: [data.action]
             };

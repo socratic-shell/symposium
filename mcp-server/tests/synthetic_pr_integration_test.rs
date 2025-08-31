@@ -1,5 +1,5 @@
-use dialectic_mcp_server::DialecticServer;
-use dialectic_mcp_server::synthetic_pr::*;
+use symposium_mcp::DialecticServer;
+use symposium_mcp::synthetic_pr::*;
 use rmcp::ServerHandler;
 use serde_json::json;
 use tempfile::TempDir;

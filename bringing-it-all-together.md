@@ -159,25 +159,25 @@ My main goal is to move in as small increments as possible.
 - [ ] VSCode extension builds: `cd ide/vscode && npm run compile`
 - [ ] mdbook builds: `mdbook build md/`
 
-**Step 1.3: Rename from Dialectic to Symposium**
-- [ ] Rename binary: `dialectic-mcp-server` → `symposium-mcp` in `mcp-server/Cargo.toml`
-- [ ] Update extension identity in `ide/vscode/package.json`:
-  - [ ] `name`: `dialectic` → `symposium`
-  - [ ] `displayName`: `Dialectic Walkthroughs` → `Symposium`
-  - [ ] `publisher`: update as needed
-  - [ ] Commands: `dialectic.*` → `symposium.*`
-  - [ ] Views: `dialectic` → `symposium` 
-- [ ] Update extension TypeScript code to use new command names
-- [ ] Update MCP server references from "dialectic" to "symposium"
-- [ ] Update socket file paths and other runtime identifiers
-- [ ] Update documentation and comments throughout codebase
+**Step 1.3: Rename from Dialectic to Symposium** ✅
+- [x] Rename binary: `dialectic-mcp-server` → `symposium-mcp` in `mcp-server/Cargo.toml`
+- [x] Update extension identity in `ide/vscode/package.json`:
+  - [x] `name`: `dialectic` → `symposium`
+  - [x] `displayName`: `Dialectic Walkthroughs` → `Symposium`
+  - [x] `publisher`: update as needed
+  - [x] Commands: `dialectic.*` → `symposium.*`
+  - [x] Views: `dialectic` → `symposium` 
+- [x] Update extension TypeScript code to use new command names
+- [x] Update MCP server references from "dialectic" to "symposium"
+- [x] Update socket file paths and other runtime identifiers
+- [x] Update documentation and comments throughout codebase
 
-**Step 1.4: Adapt Setup Command**
-- [ ] Copy dialectic's `setup/` directory to symposium root
-- [ ] Update setup tool to work with new directory structure
-- [ ] Update setup tool to install as "symposium" everywhere (no "dialectic" references)
-- [ ] Update setup tool to reference new binary name `symposium-mcp`
-- [ ] Test setup tool builds: `cargo build -p setup`
+**Step 1.4: Adapt Setup Command** ✅
+- [x] Copy dialectic's `setup/` directory to symposium root
+- [x] Update setup tool to work with new directory structure
+- [x] Update setup tool to install as "symposium" everywhere (no "dialectic" references)
+- [x] Update setup tool to reference new binary name `symposium-mcp`
+- [x] Test setup tool builds: `cargo build -p setup`
 
 **Test 1.3**: Renaming is complete and consistent
 - [ ] No "dialectic" references remain in code, configs, or documentation

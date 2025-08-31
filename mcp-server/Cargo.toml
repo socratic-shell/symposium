@@ -1,17 +1,17 @@
 [package]
-name = "dialectic-mcp-server"
+name = "symposium-mcp"
 version = "0.1.0"
 edition = "2024"
-description = "Rust implementation of Dialectic MCP server for code review integration"
+description = "Rust implementation of Symposium MCP server for code review integration"
 authors = ["Niko Matsakis"]
 license = "MIT"
 
 [lib]
-name = "dialectic_mcp_server"
+name = "symposium_mcp"
 path = "src/lib.rs"
 
 [[bin]]
-name = "dialectic-mcp-server"
+name = "symposium-mcp"
 path = "src/main.rs"
 
 [dependencies]

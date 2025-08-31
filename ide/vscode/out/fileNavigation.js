@@ -1,23 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.openDialecticUrl = exports.resolveDialecticUrlPlacement = void 0;
+exports.openSymposiumUrl = exports.resolveSymposiumUrlPlacement = void 0;
 const vscode = require("vscode");
 const path = require("path");
-const dialecticUrl_1 = require("./dialecticUrl");
+const symposiumUrl_1 = require("./symposiumUrl");
 const searchEngine_1 = require("./searchEngine");
 /**
  * Resolve a dialectic URL to a precise location, using placement memory and user disambiguation
  * Returns the resolved location without navigating to it
  */
-async function resolveDialecticUrlPlacement(dialecticUrl, outputChannel, baseUri, placementMemory) {
+async function resolveSymposiumUrlPlacement(symposiumUrl, outputChannel, baseUri, placementMemory) {
     try {
         // Parse the dialectic URL to extract components
-        const parsed = (0, dialecticUrl_1.parseDialecticUrl)(dialecticUrl);
+        const parsed = (0, symposiumUrl_1.parseSymposiumUrl)(symposiumUrl);
         if (!parsed) {
-            vscode.window.showErrorMessage(`Invalid dialectic URL: ${dialecticUrl}`);
+            vscode.window.showErrorMessage(`Invalid dialectic URL: ${symposiumUrl}`);
             return null;
         }
-        outputChannel.appendLine(`Resolving dialectic URL: ${dialecticUrl}`);
+        outputChannel.appendLine(`Resolving dialectic URL: ${symposiumUrl}`);
         outputChannel.appendLine(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
         // Resolve the file path
         let resolvedPath = parsed.path;
@@ -45,7 +45,7 @@ async function resolveDialecticUrlPlacement(dialecticUrl, outputChannel, baseUri
                 }
                 else {
                     // Check if we have a stored placement
-                    const linkKey = `link:${dialecticUrl}`;
+                    const linkKey = `link:${symposiumUrl}`;
                     const placementState = placementMemory?.get(linkKey);
                     if (placementState?.isPlaced && placementState.chosenLocation) {
                         // Use stored placement
@@ -107,14 +107,14 @@ async function resolveDialecticUrlPlacement(dialecticUrl, outputChannel, baseUri
         return null;
     }
 }
-exports.resolveDialecticUrlPlacement = resolveDialecticUrlPlacement;
+exports.resolveSymposiumUrlPlacement = resolveSymposiumUrlPlacement;
 /**
  * Open a file location specified by a dialectic URL
  * Full implementation with regex search support extracted from reviewWebview
  */
-async function openDialecticUrl(dialecticUrl, outputChannel, baseUri, placementMemory) {
+async function openSymposiumUrl(symposiumUrl, outputChannel, baseUri, placementMemory) {
     // Resolve the placement
-    const resolved = await resolveDialecticUrlPlacement(dialecticUrl, outputChannel, baseUri, placementMemory);
+    const resolved = await resolveSymposiumUrlPlacement(symposiumUrl, outputChannel, baseUri, placementMemory);
     if (!resolved) {
         return; // Resolution failed or was cancelled
     }
@@ -143,7 +143,7 @@ async function openDialecticUrl(dialecticUrl, outputChannel, baseUri, placementM
     }
     outputChannel.appendLine(`Successfully navigated to ${document.fileName}:${range.start.line + 1}:${range.start.character + 1}`);
 }
-exports.openDialecticUrl = openDialecticUrl;
+exports.openSymposiumUrl = openSymposiumUrl;
 /**
  * Show disambiguation dialog with "same as last time" option
  */

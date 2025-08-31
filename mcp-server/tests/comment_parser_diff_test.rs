@@ -1,4 +1,4 @@
-use dialectic_mcp_server::synthetic_pr::{GitService, CommentParser};
+use symposium_mcp::synthetic_pr::{GitService, CommentParser};
 use test_utils::TestRepo;
 
 #[test]

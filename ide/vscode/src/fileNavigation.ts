@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { parseDialecticUrl, DialecticUrl } from './dialecticUrl';
+import { parseSymposiumUrl, SymposiumUrl } from './symposiumUrl';
 import { searchInFile, getBestSearchResult, formatSearchResults, needsDisambiguation } from './searchEngine';
 
 // Placement state for unified link and comment management
@@ -14,21 +14,21 @@ interface PlacementState {
  * Resolve a dialectic URL to a precise location, using placement memory and user disambiguation
  * Returns the resolved location without navigating to it
  */
-export async function resolveDialecticUrlPlacement(
-    dialecticUrl: string,
+export async function resolveSymposiumUrlPlacement(
+    symposiumUrl: string,
     outputChannel: vscode.OutputChannel,
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<{ range: vscode.Range; document: vscode.TextDocument } | null> {
     try {
         // Parse the dialectic URL to extract components
-        const parsed = parseDialecticUrl(dialecticUrl);
+        const parsed = parseSymposiumUrl(symposiumUrl);
         if (!parsed) {
-            vscode.window.showErrorMessage(`Invalid dialectic URL: ${dialecticUrl}`);
+            vscode.window.showErrorMessage(`Invalid dialectic URL: ${symposiumUrl}`);
             return null;
         }
 
-        outputChannel.appendLine(`Resolving dialectic URL: ${dialecticUrl}`);
+        outputChannel.appendLine(`Resolving dialectic URL: ${symposiumUrl}`);
         outputChannel.appendLine(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
 
         // Resolve the file path
@@ -60,7 +60,7 @@ export async function resolveDialecticUrlPlacement(
                     }
                 } else {
                     // Check if we have a stored placement
-                    const linkKey = `link:${dialecticUrl}`;
+                    const linkKey = `link:${symposiumUrl}`;
                     const placementState = placementMemory?.get(linkKey);
                     
                     if (placementState?.isPlaced && placementState.chosenLocation) {
@@ -126,14 +126,14 @@ export async function resolveDialecticUrlPlacement(
  * Open a file location specified by a dialectic URL
  * Full implementation with regex search support extracted from reviewWebview
  */
-export async function openDialecticUrl(
-    dialecticUrl: string, 
+export async function openSymposiumUrl(
+    symposiumUrl: string, 
     outputChannel: vscode.OutputChannel, 
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<void> {
     // Resolve the placement
-    const resolved = await resolveDialecticUrlPlacement(dialecticUrl, outputChannel, baseUri, placementMemory);
+    const resolved = await resolveSymposiumUrlPlacement(symposiumUrl, outputChannel, baseUri, placementMemory);
     if (!resolved) {
         return; // Resolution failed or was cancelled
     }
@@ -412,7 +412,7 @@ async function showSearchDisambiguation(
  */
 function createDecorationRanges(
     document: vscode.TextDocument, 
-    lineSpec?: import('./dialecticUrl').LineSpec, 
+    lineSpec?: import('./symposiumUrl').LineSpec, 
     targetLine?: number, 
     targetColumn?: number,
     searchResult?: import('./searchEngine').SearchResult

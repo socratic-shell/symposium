@@ -1,59 +1,40 @@
-// 💡: URL parser for dialectic: scheme supporting flexible search and line parameters
-// Handles dialectic:path?search=term&line=N|N:C|N-M|N:C-M:D format as designed in issue #2
-
-export interface DialecticUrl {
-    path: string;
-    regex?: string;
-    line?: LineSpec;
-}
-
-export interface LineSpec {
-    type: 'single' | 'range' | 'single-with-column' | 'range-with-columns';
-    startLine: number;
-    startColumn?: number;
-    endLine?: number;
-    endColumn?: number;
-}
-
+"use strict";
+// 💡: URL parser for symposium: scheme supporting flexible search and line parameters
+// Handles symposium:path?search=term&line=N|N:C|N-M|N:C-M:D format as designed in issue #2
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.formatSymposiumUrl = exports.parseSymposiumUrl = void 0;
 /**
- * Parse a dialectic: URL into its components
- * 
+ * Parse a symposium: URL into its components
+ *
  * Supported formats:
- * - dialectic:path/to/file.ts
- * - dialectic:path/to/file.ts?regex=pattern
- * - dialectic:path/to/file.ts?line=42
- * - dialectic:path/to/file.ts?regex=pattern&line=42
- * - dialectic:path/to/file.ts?line=42:10 (line with column)
- * - dialectic:path/to/file.ts?line=42-50 (line range)
- * - dialectic:path/to/file.ts?line=42:10-50:20 (precise range)
+ * - symposium:path/to/file.ts
+ * - symposium:path/to/file.ts?regex=pattern
+ * - symposium:path/to/file.ts?line=42
+ * - symposium:path/to/file.ts?regex=pattern&line=42
+ * - symposium:path/to/file.ts?line=42:10 (line with column)
+ * - symposium:path/to/file.ts?line=42-50 (line range)
+ * - symposium:path/to/file.ts?line=42:10-50:20 (precise range)
  */
-export function parseDialecticUrl(url: string): DialecticUrl | null {
-    // 💡: Remove dialectic: prefix and validate scheme
-    if (!url.startsWith('dialectic:')) {
+function parseSymposiumUrl(url) {
+    // 💡: Remove symposium: prefix and validate scheme
+    if (!url.startsWith('symposium:')) {
         return null;
     }
-    
-    const urlWithoutScheme = url.substring('dialectic:'.length);
-    
+    const urlWithoutScheme = url.substring('symposium:'.length);
     // 💡: Split path from query parameters
     const [path, queryString] = urlWithoutScheme.split('?', 2);
-    
     if (!path) {
         return null;
     }
-    
-    const result: DialecticUrl = { path };
-    
+    const result = { path };
     // 💡: Parse query parameters if present
     if (queryString) {
         const params = new URLSearchParams(queryString);
-        
         // Handle regex parameter
         const regex = params.get('regex');
         if (regex) {
             result.regex = regex;
         }
-        
         // Handle line parameter
         const line = params.get('line');
         if (line) {
@@ -63,20 +44,19 @@ export function parseDialecticUrl(url: string): DialecticUrl | null {
             }
         }
     }
-    
     return result;
 }
-
+exports.parseSymposiumUrl = parseSymposiumUrl;
 /**
  * Parse line specification into structured format
- * 
+ *
  * Supported formats:
  * - "42" -> single line
  * - "42:10" -> line with column
  * - "42-50" -> line range
  * - "42:10-50:20" -> precise character range
  */
-function parseLineSpec(lineStr: string): LineSpec | null {
+function parseLineSpec(lineStr) {
     // 💡: Handle range with columns: 42:10-50:20
     const rangeWithColumnsMatch = lineStr.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
     if (rangeWithColumnsMatch) {
@@ -88,7 +68,6 @@ function parseLineSpec(lineStr: string): LineSpec | null {
             endColumn: parseInt(rangeWithColumnsMatch[4])
         };
     }
-    
     // 💡: Handle line range: 42-50
     const rangeMatch = lineStr.match(/^(\d+)-(\d+)$/);
     if (rangeMatch) {
@@ -98,7 +77,6 @@ function parseLineSpec(lineStr: string): LineSpec | null {
             endLine: parseInt(rangeMatch[2])
         };
     }
-    
     // 💡: Handle single line with column: 42:10
     const singleWithColumnMatch = lineStr.match(/^(\d+):(\d+)$/);
     if (singleWithColumnMatch) {
@@ -108,7 +86,6 @@ function parseLineSpec(lineStr: string): LineSpec | null {
             startColumn: parseInt(singleWithColumnMatch[2])
         };
     }
-    
     // 💡: Handle single line: 42
     const singleMatch = lineStr.match(/^(\d+)$/);
     if (singleMatch) {
@@ -117,39 +94,32 @@ function parseLineSpec(lineStr: string): LineSpec | null {
             startLine: parseInt(singleMatch[1])
         };
     }
-    
     return null;
 }
-
 /**
- * Convert a DialecticUrl back to string format
+ * Convert a SymposiumUrl back to string format
  * Useful for debugging and testing
  */
-export function formatDialecticUrl(dialecticUrl: DialecticUrl): string {
-    let url = `dialectic:${dialecticUrl.path}`;
-    
+function formatSymposiumUrl(symposiumUrl) {
+    let url = `symposium:${symposiumUrl.path}`;
     const params = new URLSearchParams();
-    
-    if (dialecticUrl.regex) {
-        params.set('regex', dialecticUrl.regex);
+    if (symposiumUrl.regex) {
+        params.set('regex', symposiumUrl.regex);
     }
-    
-    if (dialecticUrl.line) {
-        params.set('line', formatLineSpec(dialecticUrl.line));
+    if (symposiumUrl.line) {
+        params.set('line', formatLineSpec(symposiumUrl.line));
     }
-    
     const queryString = params.toString();
     if (queryString) {
         url += `?${queryString}`;
     }
-    
     return url;
 }
-
+exports.formatSymposiumUrl = formatSymposiumUrl;
 /**
  * Convert LineSpec back to string format
  */
-function formatLineSpec(lineSpec: LineSpec): string {
+function formatLineSpec(lineSpec) {
     switch (lineSpec.type) {
         case 'single':
             return lineSpec.startLine.toString();
@@ -161,3 +131,4 @@ function formatLineSpec(lineSpec: LineSpec): string {
             return `${lineSpec.startLine}:${lineSpec.startColumn}-${lineSpec.endLine}:${lineSpec.endColumn}`;
     }
 }
+//# sourceMappingURL=symposiumUrl.js.map

@@ -137,20 +137,20 @@ interface UserFeedback {
     additional_notes?: string;
 }
 
-// 💡: Corresponds to `dialectic_mcp_server::ide::SymbolRef` in the Rust code
+// 💡: Corresponds to `symposium_mcp::ide::SymbolRef` in the Rust code
 interface SymbolDef {
     name: String,
     kind?: String,
     definedAt: FileRange,
 }
 
-// 💡: Corresponds to `dialectic_mcp_server::ide::SymbolRef` in the Rust code
+// 💡: Corresponds to `symposium_mcp::ide::SymbolRef` in the Rust code
 interface SymbolRef {
     definition: SymbolDef,
     referencedAt: FileLocation,
 }
 
-// 💡: Corresponds to `dialectic_mcp_server::ide::FileRange` in the Rust code
+// 💡: Corresponds to `symposium_mcp::ide::FileRange` in the Rust code
 interface FileRange {
     path: string,
     start: FileLocation,
@@ -158,7 +158,7 @@ interface FileRange {
     content?: string,
 }
 
-// 💡: Corresponds to `dialectic_mcp_server::ide::FileLocation` in the Rust code
+// 💡: Corresponds to `symposium_mcp::ide::FileLocation` in the Rust code
 interface FileLocation {
     line: number,    // 💡: 1-based, vscode is 0-based
     column: number,  // 💡: 1-based, vscode is 0-based
@@ -606,7 +606,7 @@ export class DaemonClient implements vscode.Disposable {
         this.currentReviewId = reviewId;
 
         // Automatically show the review
-        vscode.commands.executeCommand('dialectic.showReview');
+        vscode.commands.executeCommand('symposium.showReview');
 
         return new Promise<UserFeedback>((resolve) => {
             this.pendingFeedbackResolvers.set(reviewId, resolve);
@@ -767,7 +767,7 @@ export class DaemonClient implements vscode.Disposable {
             return crypto.randomUUID();
         })();
 
-        return `/tmp/dialectic-daemon-${vscodePid}.sock`;
+        return `/tmp/symposium-daemon-${vscodePid}.sock`;
     }
 
     private scheduleReconnect(): void {
@@ -918,9 +918,9 @@ export class DaemonClient implements vscode.Disposable {
 export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Create dedicated output channel for cleaner logging
-    const outputChannel = vscode.window.createOutputChannel('Dialectic');
-    outputChannel.appendLine('Dialectic extension is now active');
-    console.log('Dialectic extension is now active');
+    const outputChannel = vscode.window.createOutputChannel('Symposium');
+    outputChannel.appendLine('Symposium extension is now active');
+    console.log('Symposium extension is now active');
 
     // Create the central bus
     const bus = new Bus(context, outputChannel);
@@ -942,7 +942,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Register walkthrough comment reply command
-    const walkthroughCommentCommand = vscode.commands.registerCommand('dialectic.addWalkthroughComment',
+    const walkthroughCommentCommand = vscode.commands.registerCommand('symposium.addWalkthroughComment',
         (reply: vscode.CommentReply) => walkthroughProvider.handleCommentSubmission(reply)
     );
     context.subscriptions.push(walkthroughCommentCommand);
@@ -964,23 +964,29 @@ export function activate(context: vscode.ExtensionContext) {
     setupSelectionDetection(bus);
 
     // Register review action command for tree view buttons
-    const reviewActionCommand = vscode.commands.registerCommand('dialectic.reviewAction', (action: string) => {
+    // 💡: Show review command - displays the walkthrough panel
+    const showReviewCommand = vscode.commands.registerCommand('symposium.showReview', () => {
+        // Focus on the walkthrough webview panel
+        vscode.commands.executeCommand('symposium.walkthrough.focus');
+    });
+
+    const reviewActionCommand = vscode.commands.registerCommand('symposium.reviewAction', (action: string) => {
         daemonClient.handleReviewAction(action);
     });
 
     // 💡: Copy review command is now handled via webview postMessage
-    const copyReviewCommand = vscode.commands.registerCommand('dialectic.copyReview', () => {
+    const copyReviewCommand = vscode.commands.registerCommand('symposium.copyReview', () => {
         vscode.window.showInformationMessage('Use the Copy Review button in the review panel');
     });
 
     // 💡: PID discovery command for testing
-    const logPIDsCommand = vscode.commands.registerCommand('dialectic.logPIDs', async () => {
+    const logPIDsCommand = vscode.commands.registerCommand('symposium.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
         await logPIDDiscovery(outputChannel);
-        vscode.window.showInformationMessage('PID information logged to Dialectic output channel');
+        vscode.window.showInformationMessage('PID information logged to Symposium output channel');
     });
 
-    context.subscriptions.push(reviewActionCommand, copyReviewCommand, logPIDsCommand, syntheticPRProvider, daemonClient);
+    context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, syntheticPRProvider, daemonClient);
 
     // Return API for Ask Socratic Shell integration
     return {
@@ -1027,7 +1033,7 @@ function setupSelectionDetection(bus: Bus): void {
                         vscode.CodeActionKind.QuickFix
                     );
                     action.command = {
-                        command: 'dialectic.chatAboutSelection',
+                        command: 'symposium.chatAboutSelection',
                         title: 'Ask Socratic Shell'
                     };
                     action.isPreferred = true; // Show at top of list
@@ -1043,7 +1049,7 @@ function setupSelectionDetection(bus: Bus): void {
     );
 
     // 💡: Register command for when user clicks the code action
-    const chatIconCommand = vscode.commands.registerCommand('dialectic.chatAboutSelection', async () => {
+    const chatIconCommand = vscode.commands.registerCommand('symposium.chatAboutSelection', async () => {
         if (currentSelection) {
             const selectedText = currentSelection.editor.document.getText(currentSelection.selection);
             const filePath = currentSelection.editor.document.fileName;
@@ -1142,7 +1148,7 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
         outputChannel.appendLine(`Multiple AI-enabled terminals found: ${aiEnabledTerminals.length}`);
 
         // Get previously selected terminal PID from workspace state
-        const lastSelectedPID = context.workspaceState.get<number>('dialectic.lastSelectedTerminalPID');
+        const lastSelectedPID = context.workspaceState.get<number>('symposium.lastSelectedTerminalPID');
         outputChannel.appendLine(`Last selected terminal PID: ${lastSelectedPID}`);
 
         // Create picker items with terminal info
@@ -1215,7 +1221,7 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
             outputChannel.appendLine(`User selected terminal: ${selectedItem.terminal.name} (PID: ${selectedItem.pid})`);
 
             // Remember this selection for next time
-            await context.workspaceState.update('dialectic.lastSelectedTerminalPID', selectedItem.pid);
+            await context.workspaceState.update('symposium.lastSelectedTerminalPID', selectedItem.pid);
             outputChannel.appendLine(`Saved terminal PID ${selectedItem.pid} as last selected`);
 
             return selectedItem.terminal;
