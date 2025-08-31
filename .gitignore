@@ -1,10 +1,47 @@
+# macOS
 .DS_Store
+
+# Swift/Xcode
 /.build
 /Packages
 xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# Rust
+/target/
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
 .netrc
 .claude
-book
+
+# Node.js (VSCode extension)
+ide/vscode/node_modules/
+ide/vscode/out/
+ide/vscode/*.vsix
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# mdbook generated files
+/book/
+
+# Editor files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# dialectic-repo (temporary during migration)
+dialectic-repo/
