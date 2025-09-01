@@ -137,7 +137,7 @@ export class Bus {
         }
 
         // Generate <symposium-ref id="..."/> XML (using current format)
-        const xmlMessage = `<symposium-ref id="${referenceId}"/>` + (options.includeNewline ? '\n\n' : '');
+        const xmlMessage = `<symposium-ref id="${referenceId}"/>` + (options.includeNewline ? '\n\n' : ' ');
 
         // Send XML to terminal
         selectedTerminal.terminal.sendText(xmlMessage, false); // false = don't execute, just insert text
