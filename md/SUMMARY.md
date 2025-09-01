@@ -18,6 +18,7 @@
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
 - [Window Stacking Design](./window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
+- [Code walkthroughs](./design/walkthroughs.md)
 
 # Research reports
 
@@ -55,9 +56,7 @@
         - [AI Guidance design considerations](./design/ai-guidance.md)
         - [Codebase structure](./design/codebase-structure.md)
     - [How each feature works]()
-        - [Code walkthroughs](./design/code-walkthroughs.md)
         - [Synthetic Pull Requests](./design/synthetic-pr.md)
-        - [Ask Socratic Shell](./design/ask-socratic-shell.md)
         - [IDE Capabilities](./design/ide-capabilities.md)
     - [MCP server](./design/mcp-server.md)
         - [MCP Tool interface](./design/mcp-tool-interface.md)
