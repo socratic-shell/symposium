@@ -44,6 +44,17 @@ Our [message types](#message-types) include PIDs as needed to help clients filte
 }
 ```
 
+### Development Workflow Messages
+```json
+// Daemon broadcasts window reload signal before shutdown
+{
+  "type": "ReloadWindow",
+  "shellPid": 0,  // 0 indicates broadcast message
+  "payload": {},
+  "id": "unique-message-id"
+}
+```
+
 ### Response Messages
 ```json
 // Success response

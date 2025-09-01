@@ -13,6 +13,7 @@
 
 # Design
 
+- [IPC Communication and Daemon Architecture](./design/daemon.md)
 - [Window Stacking Design](./window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
 
@@ -57,7 +58,6 @@
         - [Ask Socratic Shell](./design/ask-socratic-shell.md)
         - [IDE Capabilities](./design/ide-capabilities.md)
     - [MCP server](./design/mcp-server.md)
-        - [Daemon message bus](./design/daemon.md)
         - [MCP Tool interface](./design/mcp-tool-interface.md)
     - [VSCode extension](./design/extension.md)
     - [Walkthrough format](./design/walkthrough-format.md)
