@@ -125,11 +125,11 @@ fn main() -> Result<()> {
                 success = setup_q_cli_mcp(&binary_path, args.dev)?;
             }
             CLITool::ClaudeCode => {
-                success = setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
+                success = setup_claude_code_mcp(&binary_path, &args.claude_scope, args.dev)?;
             }
             CLITool::Both => {
                 success = setup_q_cli_mcp(&binary_path, args.dev)?
-                    && setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
+                    && setup_claude_code_mcp(&binary_path, &args.claude_scope, args.dev)?;
             }
             CLITool::Auto => unreachable!("Auto should have been resolved earlier"),
         }
@@ -469,7 +469,7 @@ fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
     }
 }
 
-fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool> {
+fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope, dev_mode: bool) -> Result<bool> {
     let scope_str = match scope {
         ClaudeScope::User => "user",
         ClaudeScope::Local => "local",
@@ -479,6 +479,9 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Scope: {}", scope_str);
+    if dev_mode {
+        println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
+    }
 
     // First, check if symposium MCP server is already configured
     println!("🔍 Checking existing MCP server configuration...");
@@ -542,17 +545,35 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
     let action = if symposium_exists { "Re-adding" } else { "Adding" };
     println!("➕ {} Symposium MCP server...", action);
     
-    let add_output = Command::new("claude")
-        .args([
+    let mut cmd = Command::new("claude");
+    
+    if dev_mode {
+        // In dev mode, use add-json with --dev-log argument and debug logging
+        let config_json = format!(
+            r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
+            desired_binary_ref
+        );
+        cmd.args([
+            "mcp",
+            "add-json",
+            "--scope",
+            scope_str,
+            "symposium",
+            &config_json,
+        ]);
+    } else {
+        // In production mode, register without arguments
+        cmd.args([
             "mcp",
             "add",
             "--scope",
             scope_str,
             "symposium",
             desired_binary_ref,
-        ])
-        .output()
-        .context("Failed to execute claude mcp add")?;
+        ]);
+    }
+    
+    let add_output = cmd.output().context("Failed to execute claude mcp add")?;
 
     if add_output.status.success() {
         println!("✅ Symposium MCP server registered successfully with Claude Code!");

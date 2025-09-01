@@ -288,7 +288,7 @@ export class DaemonClient implements vscode.Disposable {
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
         // First check: is this message for our window?
         // Marco messages (shellPid = 0) are broadcasts that everyone should ignore
-        if (message.shellPid !== 0 && !await this.isMessageForOurWindow(message.shellPid)) {
+        if (message.shellPid && !await this.isMessageForOurWindow(message.shellPid)) {
             return; // Silently ignore messages for other windows
         }
 
