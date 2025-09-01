@@ -70,7 +70,7 @@ This document defines the expected user workflows for walkthrough features in Di
 
 **Expected Behavior**: Comment thread should either clear the reply or indicate it was sent to the AI.
 
-### 🚨 SSRef Resolution Issue
-**Problem**: Socratic Shell references (`<ssref id="..."/>`) fail to resolve.
+### 🚨 Symposium-Ref Resolution Issue
+**Problem**: Socratic Shell references (`<symposium-ref id="..."/>`) fail to resolve.
 
 **Expected Behavior**: References should expand to provide context to the AI assistant.

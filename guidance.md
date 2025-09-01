@@ -24,7 +24,7 @@ Dialectic offers tools to aid you in developing and discussing code with the use
 
 # Socratic Shell references
 
-Whenever the user sends you a message that includes an XML `<ssref/>` element, you SHOULD use the `expand_reference` tool with the contents of the `id` attribute to determine what it means.
+Whenever the user sends you a message that includes an XML `<symposium-ref/>` element, you SHOULD use the `expand_reference` tool with the contents of the `id` attribute to determine what it means.
 
 # IDE operations
 

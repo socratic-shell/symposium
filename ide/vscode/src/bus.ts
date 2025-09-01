@@ -136,8 +136,8 @@ export class Bus {
             await this.sendReferenceToActiveShell(referenceId, referenceData);
         }
 
-        // Generate <ssref id="..."/> XML (using current format)
-        const xmlMessage = `<ssref id="${referenceId}"/>` + (options.includeNewline ? '\n\n' : '');
+        // Generate <symposium-ref id="..."/> XML (using current format)
+        const xmlMessage = `<symposium-ref id="${referenceId}"/>` + (options.includeNewline ? '\n\n' : '');
 
         // Send XML to terminal
         selectedTerminal.terminal.sendText(xmlMessage, false); // false = don't execute, just insert text

@@ -570,10 +570,10 @@ impl DialecticServer {
 
     /// Expand a compact reference to get full context
     ///
-    /// This tool allows LLMs to retrieve the full context for a compact ssref reference.
+    /// This tool allows LLMs to retrieve the full context for a compact symposium-ref reference.
     // ANCHOR: expand_reference_tool
     #[tool(description = "
-        Expand a compact reference (denoted as `<ssref id='..'/>`) to get full context. \
+        Expand a compact reference (denoted as `<symposium-ref id='..'/>`) to get full context. \
         Invoke with the contents of `id` attribute. \
         Returns structured JSON with all available context data. \
     ")]

@@ -1333,7 +1333,7 @@ async function createCompactSelectionReference(
         await bus.sendReferenceToActiveShell(referenceId, referenceData);
 
         // Return compact reference tag
-        const compactRef = `<ssref id="${referenceId}"/>\n\n`;
+        const compactRef = `<symposium-ref id="${referenceId}"/>\n\n`;
         bus.log(`Created compact reference ${referenceId} for ${relativePath}:${startLine}`);
 
         return compactRef;

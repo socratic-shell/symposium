@@ -13,6 +13,8 @@
 
 # Design
 
+- [Symposium Reference System](./design/symposium-ref-system.md)
+- [Ask Socratic Shell](./design/ask-socratic-shell.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
 - [Window Stacking Design](./window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)

@@ -167,7 +167,7 @@ pub enum IPCMessageType {
     UpdateSyntheticPr,
     /// User feedback from VSCode extension (comments, review completion)
     UserFeedback,
-    /// Store reference context for compact ssref system
+    /// Store reference context for compact symposium-ref system
     StoreReference,
     /// Signal VSCode extension to reload window (sent by daemon on shutdown)
     ReloadWindow,
