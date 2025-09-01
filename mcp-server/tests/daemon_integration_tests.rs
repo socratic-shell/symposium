@@ -21,7 +21,7 @@ async fn test_daemon_spawning_integration() {
 
 #[tokio::test]
 async fn test_daemon_ensure_running_separate_process() {
-    use symposium_mcp::run_daemon_with_prefix;
+    use symposium_mcp::run_daemon_with_idle_timeout;
     use std::sync::Arc;
     use tokio::sync::Barrier;
     use uuid::Uuid;
@@ -30,11 +30,10 @@ async fn test_daemon_ensure_running_separate_process() {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Test the daemon spawning logic in isolation using the library function
-    // (We can't easily test the separate process spawning in unit tests)
-    let test_pid = std::process::id();
+    // Note: Current implementation uses global socket, not PID-specific
     let test_id = Uuid::new_v4();
-    let socket_prefix = format!("dialectic-integration-test-{}", test_id);
-    let socket_path = format!("/tmp/{}-{}.sock", socket_prefix, test_pid);
+    let socket_prefix = format!("symposium-integration-test-{}", test_id);
+    let socket_path = "/tmp/symposium-daemon.sock"; // Global socket path
 
     // Clean up any existing socket
     let _ = std::fs::remove_file(&socket_path);
@@ -42,10 +41,10 @@ async fn test_daemon_ensure_running_separate_process() {
     // Barrier for coordinating when daemon is ready
     let ready_barrier = Arc::new(Barrier::new(2));
 
-    // Start daemon with unique prefix (using library function, not separate process)
+    // Start daemon with idle timeout (using library function, not separate process)
     let ready_barrier_clone = ready_barrier.clone();
     let daemon_handle = tokio::spawn(async move {
-        run_daemon_with_prefix(test_pid, &socket_prefix, Some(ready_barrier_clone)).await
+        run_daemon_with_idle_timeout(&socket_prefix, 30, Some(ready_barrier_clone)).await
     });
 
     // Wait for daemon to be ready
