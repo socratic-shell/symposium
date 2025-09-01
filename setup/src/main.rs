@@ -106,11 +106,6 @@ fn main() -> Result<()> {
         }
     }
 
-    // Clean up any existing daemon (for clean dev environment)
-    if args.dev {
-        cleanup_existing_daemon()?;
-    }
-    
     // Build components
     let binary_path = if args.dev {
         build_rust_server()?
@@ -120,11 +115,12 @@ fn main() -> Result<()> {
 
     if !args.skip_extension {
         build_and_install_extension(args.dev)?;
-        
-        // Automatically reload VSCode window if in dev mode
-        if args.dev {
-            reload_vscode_window()?;
-        }
+    }
+
+    // Clean up any existing daemon (for clean dev environment)
+    // Do this AFTER building so the old daemon can send reload signal
+    if args.dev {
+        cleanup_existing_daemon()?;
     }
 
     // Setup MCP server(s)
@@ -646,8 +642,9 @@ fn cleanup_existing_daemon() -> Result<()> {
     println!("🧹 Cleaning up existing daemon...");
     
     // Try to gracefully kill any running symposium-mcp daemons
+    // Use -f flag to match against full command line (including path)
     let output = Command::new("pkill")
-        .args(["-TERM", "symposium-mcp"])
+        .args(["-TERM", "-f", "symposium-mcp"])
         .output();
     
     match output {
@@ -679,9 +676,3 @@ fn cleanup_existing_daemon() -> Result<()> {
     Ok(())
 }
 
-/// Reload will be handled automatically by daemon shutdown signal
-fn reload_vscode_window() -> Result<()> {
-    println!("🔄 VSCode window will reload automatically when daemon restarts...");
-    println!("   ℹ️  Daemon sends reload signal to extension on shutdown");
-    Ok(())
-}
