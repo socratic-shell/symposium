@@ -684,7 +684,7 @@ impl IPCCommunicatorInner {
         const MAX_RETRIES: u32 = 5;
         const BASE_DELAY_MS: u64 = 100;
 
-        let socket_path = crate::constants::global_daemon_socket_path();
+        let socket_path = crate::constants::daemon_socket_path(crate::constants::DAEMON_SOCKET_PREFIX);
         info!(
             "Attempting connection to message bus daemon: {}",
             socket_path

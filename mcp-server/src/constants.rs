@@ -17,17 +17,7 @@ pub fn daemon_socket_path(prefix: &str) -> String {
     format!("{}/{}.sock", TEMP_DIR, prefix)
 }
 
-/// Global daemon socket path (used by all clients and servers)
-pub fn global_daemon_socket_path() -> String {
-    daemon_socket_path(DAEMON_SOCKET_PREFIX)
-}
-
 /// Development log file path
 pub fn dev_log_path() -> String {
     format!("{}/{}", TEMP_DIR, DEV_LOG_FILENAME)
-}
-
-/// Legacy PID-specific daemon socket path (for backward compatibility during migration)
-pub fn pid_specific_daemon_socket_path(pid: u32) -> String {
-    format!("{}/{}-{}.sock", TEMP_DIR, DAEMON_SOCKET_PREFIX, pid)
 }
