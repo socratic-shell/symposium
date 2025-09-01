@@ -507,21 +507,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
     /// Generate HTML for comment elements
     
-    /// Make a path relative to the base URI if possible
-    fn make_relative_path(&self, path: &str) -> String {
-        if let Some(base_uri) = &self.base_uri {
-            if let Ok(base_path) = std::path::Path::new(base_uri).canonicalize() {
-                if let Ok(file_path) = std::path::Path::new(path).canonicalize() {
-                    if let Ok(relative) = file_path.strip_prefix(&base_path) {
-                        return relative.to_string_lossy().to_string();
-                    }
-                }
-            }
-        }
-        // If we can't make it relative, just return the original
-        path.to_string()
-    }
-    
     /// Format dialect expressions in a more user-friendly way
     fn format_dialect_expression(&self, dialect_expression: &str) -> String {
         // If empty, return as-is
@@ -536,13 +521,8 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 .unwrap()
                 .captures(dialect_expression) 
             {
-                let path = captures.get(1).unwrap().as_str();
                 let pattern = captures.get(2).unwrap().as_str();
-                if let Some(ext) = captures.get(3) {
-                    return format!("'{}' in {} files in {}", pattern, ext.as_str(), path);
-                } else {
-                    return format!("'{}' in {}", pattern, path);
-                }
+                return format!("/{pattern}/");
             }
         } else if dialect_expression.starts_with("findDefinition(") {
             // Parse findDefinition("symbol") or findDefinitions("symbol")
@@ -551,7 +531,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 .captures(dialect_expression) 
             {
                 let symbol = captures.get(1).unwrap().as_str();
-                return format!("Definition of `{}`", symbol);
+                return format!("`{symbol}`");
             }
         } else if dialect_expression.starts_with("findReferences(") {
             // Parse findReferences("symbol")
@@ -560,7 +540,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 .captures(dialect_expression) 
             {
                 let symbol = captures.get(1).unwrap().as_str();
-                return format!("References to `{}`", symbol);
+                return format!("References to `{symbol}`", );
             }
         } else if dialect_expression.starts_with("lines(") {
             // Parse lines("path", start, end)
@@ -571,7 +551,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 let path = captures.get(1).unwrap().as_str();
                 let start = captures.get(2).unwrap().as_str();
                 let end = captures.get(3).unwrap().as_str();
-                return format!("Lines {}-{} in `{}`", start, end, path);
+                return format!("`{path}:{start}-{end}`");
             }
         }
 
@@ -667,7 +647,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 <div style="display: flex; align-items: flex-start;">
                     <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">{icon_emoji}</div>
                     <div class="comment-content" style="flex: 1;">
-                        <div class="comment-expression" style="display: inline-block; background-color: var(--vscode-textCodeBlock-background); color: var(--vscode-textPreformat-foreground); padding: 2px 6px; border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: 0.8em; margin-bottom: 4px; border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));">{formatted_dialect_expression}</div>
+                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">{formatted_dialect_expression}</div>
                         <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">{location_display}</div>
                         <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">{resolved_content}</div>
                     </div>
