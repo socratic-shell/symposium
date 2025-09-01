@@ -73,7 +73,7 @@ impl DialecticServer {
         // Create shared reference store
         let reference_store = Arc::new(ReferenceStore::new());
 
-        let mut ipc = IPCCommunicator::new(vscode_pid, shell_pid, reference_store.clone()).await?;
+        let mut ipc = IPCCommunicator::new(shell_pid, reference_store.clone()).await?;
 
         // Initialize IPC connection to message bus daemon (not directly to VSCode)
         ipc.initialize().await?;

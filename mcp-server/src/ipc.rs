@@ -88,9 +88,6 @@ struct IPCCommunicatorInner {
     /// When true, ensure_connection() is a no-op
     connected: bool,
 
-    /// VSCode process PID discovered during initialization
-    /// Used to construct socket path: /tmp/dialectic-vscode-{vscode_pid}.sock
-    vscode_pid: u32,
 
     /// Terminal shell PID for this MCP server instance
     /// Reported to extension during handshake for smart terminal selection
@@ -98,8 +95,8 @@ struct IPCCommunicatorInner {
 }
 
 impl IPCCommunicator {
-    pub async fn new(vscode_pid: u32, shell_pid: u32, reference_store: Arc<crate::reference_store::ReferenceStore>) -> Result<Self> {
-        info!("Creating IPC communicator for VSCode PID {vscode_pid} and shell PID {shell_pid}");
+    pub async fn new(shell_pid: u32, reference_store: Arc<crate::reference_store::ReferenceStore>) -> Result<Self> {
+        info!("Creating IPC communicator for shell PID {shell_pid}");
 
         Ok(Self {
             inner: Arc::new(Mutex::new(IPCCommunicatorInner {
@@ -107,7 +104,6 @@ impl IPCCommunicator {
                 pending_requests: HashMap::new(),
                 pending_feedback: HashMap::new(),
                 connected: false,
-                vscode_pid,
                 terminal_shell_pid: shell_pid,
             })),
             reference_store,
@@ -124,7 +120,6 @@ impl IPCCommunicator {
                 pending_requests: HashMap::new(),
                 pending_feedback: HashMap::new(),
                 connected: false,
-                vscode_pid: 0,         // Dummy PID for test mode
                 terminal_shell_pid: 0, // Dummy PID for test mode
             })),
             reference_store,
