@@ -44,8 +44,15 @@ impl<U: Send> DialectInterpreter<U> {
         // Extract just the struct name from the full path (e.g., "module::Uppercase" -> "uppercase")
         let struct_name = type_name.split("::").last().unwrap_or(type_name);
         let type_name_lower = struct_name.to_ascii_lowercase();
+        self.add_function_with_name::<F>(type_name_lower);
+    }
+
+    pub fn add_function_with_name<F>(&mut self, name: String)
+    where
+        F: DialectFunction<U>,
+    {
         self.functions.insert(
-            type_name_lower,
+            name,
             (
                 |interpreter, value| Box::pin(async move { interpreter.execute::<F>(value).await }),
                 F::PARAMETER_ORDER,

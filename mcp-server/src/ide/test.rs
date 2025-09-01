@@ -123,6 +123,21 @@ async fn test_find_definition_with_string_symbol() {
 }
 
 #[tokio::test]
+async fn test_find_definition_alias_singular() {
+    let mut interpreter = DialectInterpreter::new(MockIpcClient::new());
+    interpreter.add_function::<FindDefinitions>();
+    interpreter.add_function_with_name::<FindDefinitions>("finddefinition".to_string());
+
+    let result = interpreter.evaluate("findDefinition(\"User\")").await.unwrap();
+    let definitions: Vec<SymbolDef> = serde_json::from_value(result).unwrap();
+
+    assert_eq!(definitions.len(), 1);
+    assert_eq!(definitions[0].name, "User");
+    assert_eq!(definitions[0].defined_at.path, "src/models.rs");
+    assert_eq!(definitions[0].defined_at.start.line, 10);
+}
+
+#[tokio::test]
 async fn test_find_definition_with_to_string_symbol() {
     let mut interpreter = DialectInterpreter::new(MockIpcClient::new());
     interpreter.add_function::<FindDefinitions>();

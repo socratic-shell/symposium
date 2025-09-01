@@ -86,6 +86,7 @@ impl DialecticServer {
         // Initialize Dialect interpreter with IDE functions
         let mut interpreter = DialectInterpreter::new(ipc.clone());
         interpreter.add_function::<crate::ide::FindDefinitions>();
+        interpreter.add_function_with_name::<crate::ide::FindDefinitions>("finddefinition".to_string());
         interpreter.add_function::<crate::ide::FindReferences>();
         interpreter.add_function::<crate::ide::Search>();
         interpreter.add_function::<crate::ide::Lines>();
@@ -184,6 +185,7 @@ impl DialecticServer {
         // Initialize Dialect interpreter with IDE functions for test mode
         let mut interpreter = DialectInterpreter::new(ipc.clone());
         interpreter.add_function::<crate::ide::FindDefinitions>();
+        interpreter.add_function_with_name::<crate::ide::FindDefinitions>("finddefinition".to_string());
         interpreter.add_function::<crate::ide::FindReferences>();
         interpreter.add_function::<crate::ide::Search>();
         interpreter.add_function::<crate::ide::Lines>();
@@ -338,7 +340,7 @@ impl DialecticServer {
                        This tool provides access to VSCode's Language Server Protocol (LSP) capabilities \
                        through a composable function system.\n\n\
                        Common operations:\n\
-                       - findDefinitions(\"MyFunction\") - list of locations where a symbol named `MyFunction` is defined\n\
+                       - findDefinitions(\"MyFunction\") or findDefinition(\"MyFunction\") - list of locations where a symbol named `MyFunction` is defined\n\
                        - findReferences(\"MyFunction\") - list of locations where a symbol named `MyFunction` is referenced\n\
                        "
     )]
