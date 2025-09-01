@@ -641,25 +641,54 @@ fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
 fn cleanup_existing_daemon() -> Result<()> {
     println!("🧹 Cleaning up existing daemon...");
     
-    // Try to gracefully kill any running symposium-mcp daemons
-    // Use -f flag to match against full command line (including path)
-    let output = Command::new("pkill")
-        .args(["-TERM", "-f", "symposium-mcp"])
-        .output();
+    // Find symposium-mcp daemon processes directly
+    let ps_output = Command::new("ps")
+        .args(["ux"])
+        .output()
+        .context("Failed to run ps command")?;
     
-    match output {
-        Ok(output) if output.status.success() => {
-            println!("   ✅ Sent SIGTERM to existing daemon");
-            // Give it a moment to shut down gracefully
-            std::thread::sleep(std::time::Duration::from_millis(500));
+    if !ps_output.status.success() {
+        println!("   ⚠️  Could not list processes");
+        return Ok(());
+    }
+    
+    let ps_stdout = String::from_utf8_lossy(&ps_output.stdout);
+    let mut killed_any = false;
+    
+    for line in ps_stdout.lines() {
+        if line.contains("symposium-mcp daemon") {
+            // Extract PID (second column in ps ux output)
+            if let Some(pid_str) = line.split_whitespace().nth(1) {
+                if let Ok(pid) = pid_str.parse::<u32>() {
+                    println!("   🎯 Found daemon process: PID {}", pid);
+                    
+                    // Send SIGTERM to the daemon
+                    let kill_result = Command::new("kill")
+                        .args(["-TERM", &pid.to_string()])
+                        .output();
+                    
+                    match kill_result {
+                        Ok(output) if output.status.success() => {
+                            println!("   ✅ Sent SIGTERM to daemon PID {}", pid);
+                            killed_any = true;
+                        }
+                        Ok(_) => {
+                            println!("   ⚠️  Failed to kill daemon PID {}", pid);
+                        }
+                        Err(e) => {
+                            println!("   ⚠️  Error killing daemon PID {}: {}", pid, e);
+                        }
+                    }
+                }
+            }
         }
-        Ok(_) => {
-            // No process found - that's fine
-            println!("   ℹ️  No existing daemon found");
-        }
-        Err(e) => {
-            println!("   ⚠️  Could not check for existing daemon: {}", e);
-        }
+    }
+    
+    if killed_any {
+        // Give daemons time to shut down gracefully and send reload signals
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    } else {
+        println!("   ℹ️  No existing daemon processes found");
     }
     
     // Clean up any stale socket files
