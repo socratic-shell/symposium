@@ -980,11 +980,41 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.registerWebviewViewProvider(WalkthroughWebviewProvider.viewType, walkthroughProvider)
     );
 
-    // Register walkthrough comment reply command
+    // Register walkthrough comment reply command (legacy - may not be needed)
     const walkthroughCommentCommand = vscode.commands.registerCommand('symposium.addWalkthroughComment',
         (reply: vscode.CommentReply) => walkthroughProvider.handleCommentSubmission(reply)
     );
     context.subscriptions.push(walkthroughCommentCommand);
+
+    // Register new walkthrough comment reply command that uses symposium-ref
+    const walkthroughReplyCommand = vscode.commands.registerCommand('symposium.replyToWalkthroughComment',
+        async (commentData: { file: string; range: { start: { line: number }; end: { line: number } }; comment: string }) => {
+            try {
+                // Generate a unique reference ID
+                const referenceId = `walkthrough-comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Create reference data for symposium-ref
+                const referenceData = {
+                    'in-reply-to-comment-at': {
+                        file: vscode.workspace.asRelativePath(commentData.file),
+                        start: commentData.range.start,
+                        end: commentData.range.end,
+                        comment: commentData.comment
+                    }
+                };
+
+                // Send the reference to the active shell
+                await messageBus.sendReferenceToActiveShell(referenceId, referenceData);
+                
+                // Show success message
+                vscode.window.showInformationMessage('Comment reply inserted into AI chat');
+            } catch (error) {
+                console.error('Failed to reply to walkthrough comment:', error);
+                vscode.window.showErrorMessage(`Failed to reply to comment: ${error}`);
+            }
+        }
+    );
+    context.subscriptions.push(walkthroughReplyCommand);
 
     console.log('Webview provider created successfully');
 

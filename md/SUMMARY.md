@@ -19,6 +19,7 @@
 - [Window Stacking Design](./window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
 - [Code walkthroughs](./design/walkthroughs.md)
+    - [Comment Interactions](./design/walkthrough-comment-interactions.md)
 
 # Research reports
 

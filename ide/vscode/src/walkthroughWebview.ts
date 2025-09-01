@@ -430,10 +430,12 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     'Dialectic Walkthrough Comments'
                 );
                 
-                // Set options to enable submit button
+                // Set options with custom reply command instead of text area
                 this.commentController.options = {
-                    prompt: 'Ask Socratic Shell...',
-                    placeHolder: 'Type your question or comment here'
+                    // Remove prompt and placeHolder to eliminate embedded text area
+                    // Add custom command for replies
+                    // placeHolder: undefined, // Explicitly disable
+                    // prompt: undefined
                 };
             }
 
@@ -446,11 +448,21 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             const thread = this.commentController.createCommentThread(uri, range, []);
             thread.label = 'Walkthrough Comment';
             thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded; // Make visible immediately
-            thread.canReply = true; // Enable reply functionality
+            thread.canReply = false; // Disable default reply - we'll use custom commands
 
-            // Add the comment content as the initial comment
+            // Add the comment content as the initial comment with reply button
             if (comment.comment && comment.comment.length > 0) {
-                const commentBody = new vscode.MarkdownString(comment.comment.join('\n\n'));
+                const commentText = comment.comment.join('\n\n');
+                // Add reply button as a command link in the comment body
+                const commentWithReply = `${commentText}\n\n---\n[$(reply) Reply](command:symposium.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
+                    file: uri.fsPath,
+                    range: { start: { line: startLine + 1 }, end: { line: endLine + 1 } },
+                    comment: commentText
+                }))})`;
+                
+                const commentBody = new vscode.MarkdownString(commentWithReply);
+                commentBody.isTrusted = true; // Allow command execution
+                
                 const vscodeComment: vscode.Comment = {
                     body: commentBody,
                     mode: vscode.CommentMode.Preview,
