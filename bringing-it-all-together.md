@@ -315,21 +315,21 @@ At the end of Phase 1, the user should be able to:
 - Mermaid diagrams display but have missing logic/incomplete rendering  
 - Comments with unambiguous locations don't display automatically upfront
 
-**Missing Functionality:**
-- Missing `findDefinition` function (should alias `findDefinitions`)
-- Comment reply system missing "Send" button - can type but can't submit
+**Fixed Issues:**
+- ✅ **Reference System**: Ask Socratic Shell now working - daemon properly handles `store_reference` and `expand_reference` messages
+- ✅ **findDefinition function**: Added as alias for `findDefinitions` - IDE operations now support both variants
 
-**Interaction/UX Issues:**
+**Still Outstanding:**
+- Comment reply system missing "Send" button - can type but can't submit
+- Mermaid diagrams display but have missing logic/incomplete rendering  
+- Comments with unambiguous locations don't display automatically upfront
 - Ambiguous comment placement: sidebar doesn't update after choosing location, no way to change afterward
 - Sidebar state persistence: hide/restore loses walkthrough content entirely
-
-**Reference System Bug:**
-- Ask Socratic Shell broken: daemon receives `store_reference` messages but ignores as "unknown message type"
 
 **Enhancement Opportunities:**
 - Smart search context: use LSP hover to extract surrounding code context (full functions, etc.)
 - Add hover operation for type info and documentation  
 - Add expand selection operation for intelligent selection expansion
 
-**Next Priority**: Fix reference system message handling in daemon to restore Ask Socratic Shell functionality
+**Next Priority**: Comment reply "Send" button functionality to complete the interactive comment system
 
