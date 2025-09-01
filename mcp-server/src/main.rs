@@ -32,12 +32,13 @@ enum Command {
 
     /// Run as message bus daemon for multi-window support
     Daemon {
-        /// VSCode process ID to monitor
-        vscode_pid: u32,
-
         /// Optional filename prefix to use (for testing)
         #[arg(long)]
         prefix: Option<String>,
+        
+        /// Idle timeout in seconds before auto-shutdown (default: 30)
+        #[arg(long, default_value = "30")]
+        idle_timeout: u64,
     },
 }
 
@@ -91,15 +92,15 @@ async fn main() -> Result<()> {
             run_pid_probe().await?;
             info!("🔍 PROBE MODE COMPLETE - Exiting");
         }
-        Some(Command::Daemon { vscode_pid, prefix }) => {
+        Some(Command::Daemon { prefix, idle_timeout }) => {
             let prefix = match &prefix {
                 Some(s) => s,
                 None => "symposium-daemon",
             };
             info!(
-                "🚀 DAEMON MODE - Starting message bus daemon for VSCode PID {vscode_pid} with prefix {prefix}",
+                "🚀 DAEMON MODE - Starting message bus daemon with prefix {prefix}, idle timeout {idle_timeout}s",
             );
-            symposium_mcp::run_daemon_with_prefix(vscode_pid, prefix, None).await?;
+            symposium_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
         }
         None => {
             info!("Starting Symposium MCP Server (Rust)");

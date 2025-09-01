@@ -810,8 +810,8 @@ export class DaemonClient implements vscode.Disposable {
                 this.outputChannel.appendLine(`Warning: which command failed, trying PATH: ${e}`);
             }
             
-            // Start the global daemon (using a dummy PID for now)
-            const daemon = spawn(binaryPath, ['daemon', '--dev-log', '1'], {
+            // Start the global daemon (no PID required)
+            const daemon = spawn(binaryPath, ['daemon', '--dev-log'], {
                 detached: true,
                 stdio: 'ignore'
             });
