@@ -43,11 +43,29 @@ pub struct ResolvedXmlElement {
 /// Main walkthrough parser
 pub struct WalkthroughParser<T: IpcClient + Clone + 'static> {
     interpreter: DialectInterpreter<T>,
+    uuid_generator: Box<dyn Fn() -> String + Send + Sync>,
 }
 
 impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     pub fn new(interpreter: DialectInterpreter<T>) -> Self {
-        Self { interpreter }
+        Self { 
+            interpreter,
+            uuid_generator: Box::new(|| Uuid::new_v4().to_string()),
+        }
+    }
+    
+    pub fn with_uuid_generator<F>(interpreter: DialectInterpreter<T>, generator: F) -> Self 
+    where 
+        F: Fn() -> String + Send + Sync + 'static 
+    {
+        Self {
+            interpreter,
+            uuid_generator: Box::new(generator),
+        }
+    }
+    
+    fn generate_uuid(&self) -> String {
+        (self.uuid_generator)()
     }
 
     /// Parse markdown with embedded XML elements and return normalized output
@@ -454,7 +472,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
         // Generate comment data for click handler
         let comment_data = serde_json::json!({
-            "id": format!("comment-{}", Uuid::new_v4()),
+            "id": format!("comment-{}", self.generate_uuid()),
             "locations": locations,
             "comment": [&resolved.content]
         });
@@ -546,7 +564,7 @@ mod tests {
         let mut interpreter = DialectInterpreter::new(MockIpcClient::new());
         interpreter.add_function::<FindDefinitions>();
         interpreter.add_function::<FindReferences>();
-        WalkthroughParser::new(interpreter)
+        WalkthroughParser::with_uuid_generator(interpreter, || "test-uuid".to_string())
     }
 
     fn check(input: &str, expect: Expect) {
@@ -570,7 +588,10 @@ mod tests {
     fn test_self_closing_gitdiff() {
         check(
             r#"<gitdiff range="HEAD~1..HEAD" />"#,
-            expect![[r#"<gitdiff data-resolved='{"error":"Not a git repository: could not find repository at '.'; class=Repository (6); code=NotFound (-3)","range":"HEAD~1..HEAD","type":"gitdiff"}' />"#]],
+            expect![[r#"
+                <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
+                            </div>"#]],
         );
     }
 
@@ -603,9 +624,19 @@ More markdown here.
             expect![[r#"
                 <h1>My Walkthrough</h1>
                 <p>This is some markdown content.</p>
-                <comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}' icon="lightbulb">This explains the User struct</comment>
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;definedAt&quot;:{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}},&quot;kind&quot;:&quot;struct&quot;,&quot;name&quot;:&quot;User&quot;}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">unknown:1</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the User struct</div>
+                                    </div>
+                                </div>
+                            </div>
                 <p>More markdown here.</p>
-                <gitdiff data-resolved='{"error":"Not a git repository: could not find repository at '.'; class=Repository (6); code=NotFound (-3)","range":"HEAD~1..HEAD","type":"gitdiff"}' />
+                <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
+                            </div>
                 <p><action data-resolved='{"button_text":"Next Step"}' button="Next Step">What should we do next?</action></p>
             "#]],
         );
@@ -625,7 +656,9 @@ More text"#,
                 <p>Some text before
                 <comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>User comment</comment>
                 Some text after
-                <gitdiff data-resolved='{"error":"Not a git repository: could not find repository at '.'; class=Repository (6); code=NotFound (-3)","range":"HEAD","type":"gitdiff"}' />
+                <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD</div>
+                            </div>
                 More text</p>
             "#]],
         );
