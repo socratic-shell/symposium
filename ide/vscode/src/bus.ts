@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import { DaemonClient } from './extension';
 import { SyntheticPRProvider } from './syntheticPRProvider';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
+import { StructuredLogger } from './structuredLogger';
 
 /**
  * Central message bus for extension components
@@ -11,6 +12,7 @@ import { WalkthroughWebviewProvider } from './walkthroughWebview';
 export class Bus {
     public context: vscode.ExtensionContext;
     public outputChannel: vscode.OutputChannel;
+    private logger: StructuredLogger;
     private _daemonClient: DaemonClient | undefined;
     private _syntheticPRProvider: SyntheticPRProvider | undefined;
     private _walkthroughProvider: WalkthroughWebviewProvider | undefined;
@@ -18,6 +20,7 @@ export class Bus {
     constructor(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
         this.context = context;
         this.outputChannel = outputChannel;
+        this.logger = new StructuredLogger(outputChannel, 'EXTENSION-BUS');
     }
 
     // Register components as they're created
@@ -163,6 +166,13 @@ export class Bus {
     }
 
     log(message: string) {
-        this.outputChannel.appendLine(message);
+        // Check if message is already structured (has [COMPONENT:PID] prefix)
+        if (message.match(/^\[[A-Z-]+:\d+\]/)) {
+            // Already structured, use as-is
+            this.outputChannel.appendLine(message);
+        } else {
+            // Not structured, add our prefix
+            this.logger.info(message);
+        }
     }
 }

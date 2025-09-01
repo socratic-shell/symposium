@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { SyntheticPRProvider } from './syntheticPRProvider';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { Bus } from './bus';
+import { StructuredLogger } from './structuredLogger';
 
 // TEST TEST TEST 
 
@@ -13,7 +14,7 @@ import { Bus } from './bus';
 // 💡: Types for IPC communication with MCP server
 interface IPCMessage {
     shellPid: number;
-    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | string; // string allows unknown types
+    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | string; // string allows unknown types
     payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | unknown; // unknown allows any payload
     id: string;
 }
@@ -178,15 +179,19 @@ export class DaemonClient implements vscode.Disposable {
     private pendingFeedbackResolvers: Map<string, (feedback: UserFeedback) => void> = new Map();
     private currentReviewId?: string;
 
+    private logger: StructuredLogger;
+
     constructor(
         private context: vscode.ExtensionContext,
         private outputChannel: vscode.OutputChannel,
         private syntheticPRProvider: SyntheticPRProvider,
         private walkthroughProvider: WalkthroughWebviewProvider
-    ) { }
+    ) {
+        this.logger = new StructuredLogger(this.outputChannel);
+    }
 
     start(): void {
-        this.outputChannel.appendLine('Starting symposium client...');
+        this.logger.info('Starting symposium client...');
         this.startClientProcess();
     }
 
@@ -200,7 +205,7 @@ export class DaemonClient implements vscode.Disposable {
             return;
         }
 
-        this.outputChannel.appendLine(`Using symposium binary: ${binaryPath}`);
+        this.logger.info(`Using symposium binary: ${binaryPath}`);
 
         // Spawn symposium-mcp client process
         const { spawn } = require('child_process');
@@ -211,17 +216,17 @@ export class DaemonClient implements vscode.Disposable {
 
         // Handle client process events
         this.clientProcess.on('spawn', () => {
-            this.outputChannel.appendLine('✅ Symposium client process started');
+            this.logger.info('✅ Symposium client process started');
             this.setupClientCommunication();
         });
 
         this.clientProcess.on('error', (error: Error) => {
-            this.outputChannel.appendLine(`❌ Client process error: ${error.message}`);
+            this.logger.error(`❌ Client process error: ${error.message}`);
             this.scheduleReconnect();
         });
 
         this.clientProcess.on('exit', (code: number | null) => {
-            this.outputChannel.appendLine(`Client process exited with code: ${code}`);
+            this.logger.info(`Client process exited with code: ${code}`);
             this.scheduleReconnect();
         });
     }
@@ -235,7 +240,7 @@ export class DaemonClient implements vscode.Disposable {
             const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
             const fs = require('fs');
             if (fs.existsSync(devPath)) {
-                this.outputChannel.appendLine(`Found development binary: ${devPath}`);
+                this.logger.info(`Found development binary: ${devPath}`);
                 return devPath;
             }
         }
@@ -264,9 +269,9 @@ export class DaemonClient implements vscode.Disposable {
                 if (line.trim()) {
                     try {
                         const message: IPCMessage = JSON.parse(line);
-                        this.outputChannel.appendLine(`Received message: ${message.type} (${message.id})`);
+                        this.logger.debug(`Received message: ${message.type} (${message.id})`);
                         this.handleIncomingMessage(message).catch(error => {
-                            this.outputChannel.appendLine(`Error handling message: ${error}`);
+                            this.logger.error(`Error handling message: ${error}`);
                         });
                     } catch (error) {
                         // Not JSON, might be daemon startup output - ignore
@@ -277,7 +282,13 @@ export class DaemonClient implements vscode.Disposable {
 
         // Set up stderr reader for logging
         this.clientProcess.stderr.on('data', (data: Buffer) => {
-            this.outputChannel.appendLine(`Client stderr: ${data.toString().trim()}`);
+            const stderrText = data.toString().trim();
+            // If stderr already has structured format, use as-is, otherwise add CLIENT prefix
+            if (stderrText.match(/^\[[A-Z-]+:\d+\]/)) {
+                this.outputChannel.appendLine(stderrText);
+            } else {
+                this.logger.error(`Client stderr: ${stderrText}`);
+            }
         });
 
         // Send initial Marco message to announce presence
@@ -311,7 +322,7 @@ export class DaemonClient implements vscode.Disposable {
                 // Send success response back through daemon
                 this.sendResponse(message.id, { success: true });
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling present_walkthrough: ${error}`);
+                this.logger.error(`Error handling present_walkthrough: ${error}`);
                 this.sendResponse(message.id, {
                     success: false,
                     error: error instanceof Error ? error.message : String(error)
@@ -325,7 +336,7 @@ export class DaemonClient implements vscode.Disposable {
                     data: selectionData
                 });
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling get_selection: ${error}`);
+                this.logger.error(`Error handling get_selection: ${error}`);
                 this.sendResponse(message.id, {
                     success: false,
                     error: error instanceof Error ? error.message : String(error)
@@ -456,6 +467,19 @@ export class DaemonClient implements vscode.Disposable {
                     error: error instanceof Error ? error.message : String(error)
                 });
             }
+        } else if (message.type === 'log') {
+            // Handle log messages from daemon/MCP servers with structured formatting
+            try {
+                const logPayload = message.payload as { level: string; message: string };
+                // The message already has structured prefix from Rust side, display as-is
+                this.outputChannel.appendLine(logPayload.message);
+            } catch (error) {
+                this.outputChannel.appendLine(`Error handling log message: ${error}`);
+            }
+        } else if (message.type === 'reload_window') {
+            // Handle reload window signal from daemon (on shutdown)
+            this.logger.info('Received reload_window signal from daemon, reloading window...');
+            vscode.commands.executeCommand('workbench.action.reloadWindow');
         } else if (message.type === 'response') {
             // Ignore this, response messages are messages that WE send to clients.
         } else {
@@ -786,7 +810,7 @@ export class DaemonClient implements vscode.Disposable {
 
         try {
             this.clientProcess.stdin.write(JSON.stringify(marcoMessage) + '\n');
-            this.outputChannel.appendLine('[DISCOVERY] Sent Marco broadcast to discover MCP servers');
+            this.logger.info('[DISCOVERY] Sent Marco broadcast to discover MCP servers');
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send Marco: ${error}`);
         }
