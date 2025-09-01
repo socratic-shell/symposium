@@ -35,6 +35,19 @@ impl ReferenceStore {
         Ok(())
     }
 
+    /// Store arbitrary JSON value with a specific ID (for generic reference system)
+    pub async fn store_json_with_id(&self, id: &str, value: serde_json::Value) -> Result<()> {
+        let mut refs = self.references.write().await;
+        refs.insert(id.to_string(), value);
+        Ok(())
+    }
+
+    /// Retrieve arbitrary JSON value by ID (for generic reference system)
+    pub async fn get_json(&self, id: &str) -> Result<Option<serde_json::Value>> {
+        let refs = self.references.read().await;
+        Ok(refs.get(id).cloned())
+    }
+
     /// Retrieve a reference context by ID
     pub async fn get(&self, id: &str) -> Result<Option<ReferenceContext>> {
         let refs = self.references.read().await;

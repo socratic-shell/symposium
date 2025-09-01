@@ -134,7 +134,7 @@ pub struct IPCMessage {
     #[serde(rename = "type")]
     pub message_type: IPCMessageType,
 
-    /// Message payload
+    /// Message payload - for store_reference: { key: string, value: arbitrary_json }
     pub payload: serde_json::Value,
 
     /// Unique message ID for response tracking
@@ -172,6 +172,17 @@ pub enum IPCMessageType {
     /// Signal VSCode extension to reload window (sent by daemon on shutdown)
     ReloadWindow,
 }
+
+// ANCHOR: store_reference_payload
+/// Payload for store_reference messages - generic key-value storage
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StoreReferencePayload {
+    /// UUID key for the reference
+    pub key: String,
+    /// Arbitrary JSON value - self-documenting structure determined by extension
+    pub value: serde_json::Value,
+}
+// ANCHOR_END: store_reference_payload
 
 /// Payload for synthetic PR creation/update messages
 #[derive(Debug, Clone, Deserialize, Serialize)]

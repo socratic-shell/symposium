@@ -60,6 +60,15 @@ interface SyntheticPRPayload {
     status: string;
 }
 
+// ANCHOR: store_reference_payload
+interface StoreReferencePayload {
+    /** UUID key for the reference */
+    key: string;
+    /** Arbitrary JSON value - self-documenting structure determined by extension */
+    value: any;
+}
+// ANCHOR_END: store_reference_payload
+
 interface PresentWalkthroughPayload {
     content: string;  // HTML content with resolved XML elements
     base_uri: string;
@@ -751,13 +760,15 @@ export class DaemonClient implements vscode.Disposable {
             return;
         }
 
+        const storePayload: StoreReferencePayload = {
+            key,
+            value
+        };
+
         const storeMessage: IPCMessage = {
             shellPid,
             type: 'store_reference',
-            payload: {
-                key,
-                value
-            },
+            payload: storePayload,
             id: crypto.randomUUID()
         };
 
@@ -769,32 +780,6 @@ export class DaemonClient implements vscode.Disposable {
         }
     }
 
-    public sendStoreReference(key: string, value: any): void {
-        if (!this.clientProcess || this.clientProcess.stdin?.destroyed) {
-            this.outputChannel.appendLine(`Cannot send store_reference - client not connected`);
-            return;
-        }
-
-        // Send to all active terminals
-        for (const shellPid of this.activeTerminals) {
-            const storeMessage: IPCMessage = {
-                shellPid,
-                type: 'store_reference',
-                payload: {
-                    key,
-                    value
-                },
-                id: crypto.randomUUID()
-            };
-
-            try {
-                this.clientProcess.stdin?.write(JSON.stringify(storeMessage) + '\n');
-                this.outputChannel.appendLine(`[REFERENCE] Stored reference ${key} for shell ${shellPid}`);
-            } catch (error) {
-                this.outputChannel.appendLine(`Failed to send store_reference to shell ${shellPid}: ${error}`);
-            }
-        }
-    }
 
     private sendMarco(): void {
         if (!this.clientProcess || this.clientProcess.killed) {

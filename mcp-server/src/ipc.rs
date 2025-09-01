@@ -942,38 +942,22 @@ impl IPCCommunicator {
             IPCMessageType::StoreReference => {
                 info!("Received store reference message");
 
-                // Extract key and value from payload
-                let key = match message.payload.get("key").and_then(|v| v.as_str()) {
-                    Some(key) => key,
-                    None => {
-                        error!("Store reference payload missing 'key' field");
-                        return;
-                    }
-                };
-
-                let value = match message.payload.get("value") {
-                    Some(value) => value.clone(),
-                    None => {
-                        error!("Store reference payload missing 'value' field");
-                        return;
-                    }
-                };
-
-                // Store the value in the reference store
-                let context: crate::types::ReferenceContext = match serde_json::from_value(value) {
-                    Ok(context) => context,
+                // Deserialize payload into StoreReferencePayload struct
+                let payload: crate::types::StoreReferencePayload = match serde_json::from_value(message.payload) {
+                    Ok(payload) => payload,
                     Err(e) => {
-                        error!("Failed to deserialize reference context: {}", e);
+                        error!("Failed to deserialize store_reference payload: {}", e);
                         return;
                     }
                 };
-                
-                match reference_store.store_with_id(key, context).await {
+
+                // Store the arbitrary JSON value in the reference store
+                match reference_store.store_json_with_id(&payload.key, payload.value).await {
                     Ok(()) => {
-                        info!("Successfully stored reference {}", key);
+                        info!("Successfully stored reference {}", payload.key);
                     }
                     Err(e) => {
-                        error!("Failed to store reference {}: {}", key, e);
+                        error!("Failed to store reference {}: {}", payload.key, e);
                     }
                 }
             }

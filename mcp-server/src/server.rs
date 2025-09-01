@@ -589,7 +589,7 @@ impl DialecticServer {
             )
             .await;
 
-        match self.reference_store.get(&params.id).await {
+        match self.reference_store.get_json(&params.id).await {
             Ok(Some(context)) => {
                 self.ipc
                     .send_log(
