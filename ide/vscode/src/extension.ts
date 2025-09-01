@@ -990,9 +990,8 @@ export function activate(context: vscode.ExtensionContext) {
     const walkthroughReplyCommand = vscode.commands.registerCommand('symposium.replyToWalkthroughComment',
         async (commentData: { file: string; range: { start: { line: number }; end: { line: number } }; comment: string }) => {
             try {
-                // Generate a unique reference ID
-                const referenceId = `walkthrough-comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                
+                console.log('Walkthrough reply command called with data:', commentData);
+
                 // Create reference data for symposium-ref
                 const referenceData = {
                     'in-reply-to-comment-at': {
@@ -1002,10 +1001,13 @@ export function activate(context: vscode.ExtensionContext) {
                         comment: commentData.comment
                     }
                 };
+                console.log('Reference data created:', referenceData);
 
-                // Send the reference to the active shell
-                await bus.sendReferenceToActiveShell(referenceId, referenceData);
-                
+                // Use sendToActiveTerminal to handle both storing data and inserting XML
+                console.log('Sending reference to active terminal...');
+                await bus.sendToActiveTerminal(referenceData, { includeNewline: false });
+                console.log('Reference sent successfully');
+
                 // Show success message
                 vscode.window.showInformationMessage('Comment reply inserted into AI chat');
             } catch (error) {

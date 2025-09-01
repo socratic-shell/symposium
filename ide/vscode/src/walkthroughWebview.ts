@@ -454,7 +454,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             if (comment.comment && comment.comment.length > 0) {
                 const commentText = comment.comment.join('\n\n');
                 // Add reply button as a command link in the comment body
-                const commentWithReply = `${commentText}\n\n---\n[$(reply) Reply](command:symposium.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
+                const commentWithReply = `${commentText}\n\n---\n[Reply](command:symposium.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
                     file: uri.fsPath,
                     range: { start: { line: startLine + 1 }, end: { line: endLine + 1 } },
                     comment: commentText
@@ -462,6 +462,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 
                 const commentBody = new vscode.MarkdownString(commentWithReply);
                 commentBody.isTrusted = true; // Allow command execution
+                commentBody.supportThemeIcons = true; // Enable theme icons if needed
                 
                 const vscodeComment: vscode.Comment = {
                     body: commentBody,
