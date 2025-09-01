@@ -85,14 +85,7 @@ impl DialecticServer {
 
         // Initialize Dialect interpreter with IDE functions
         let mut interpreter = DialectInterpreter::new(ipc.clone());
-        interpreter.add_function::<crate::ide::FindDefinitions>();
-        interpreter.add_function_with_name::<crate::ide::FindDefinitions>("finddefinition".to_string());
-        interpreter.add_function::<crate::ide::FindReferences>();
-        interpreter.add_function::<crate::ide::Search>();
-        interpreter.add_function::<crate::ide::Lines>();
-        interpreter.add_function::<crate::ide::GitDiff>();
-        interpreter.add_function::<crate::ide::Comment>();
-        interpreter.add_function::<crate::ide::Action>();
+        interpreter.add_standard_ide_functions();
 
         Ok(Self {
             ipc: ipc.clone(),
@@ -184,14 +177,7 @@ impl DialecticServer {
 
         // Initialize Dialect interpreter with IDE functions for test mode
         let mut interpreter = DialectInterpreter::new(ipc.clone());
-        interpreter.add_function::<crate::ide::FindDefinitions>();
-        interpreter.add_function_with_name::<crate::ide::FindDefinitions>("finddefinition".to_string());
-        interpreter.add_function::<crate::ide::FindReferences>();
-        interpreter.add_function::<crate::ide::Search>();
-        interpreter.add_function::<crate::ide::Lines>();
-        interpreter.add_function::<crate::ide::GitDiff>();
-        interpreter.add_function::<crate::ide::Comment>();
-        interpreter.add_function::<crate::ide::Action>();
+        interpreter.add_standard_ide_functions();
 
         Self {
             ipc,

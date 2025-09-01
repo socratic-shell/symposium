@@ -557,13 +557,11 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 mod tests {
     use super::*;
     use crate::ide::test::MockIpcClient;
-    use crate::ide::{FindDefinitions, FindReferences};
     use expect_test::{expect, Expect};
 
     fn create_test_parser() -> WalkthroughParser<MockIpcClient> {
         let mut interpreter = DialectInterpreter::new(MockIpcClient::new());
-        interpreter.add_function::<FindDefinitions>();
-        interpreter.add_function::<FindReferences>();
+        interpreter.add_standard_ide_functions();
         WalkthroughParser::with_uuid_generator(interpreter, || "test-uuid".to_string())
     }
 

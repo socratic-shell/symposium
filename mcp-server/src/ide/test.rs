@@ -126,7 +126,7 @@ async fn test_find_definition_with_string_symbol() {
 async fn test_find_definition_alias_singular() {
     let mut interpreter = DialectInterpreter::new(MockIpcClient::new());
     interpreter.add_function::<FindDefinitions>();
-    interpreter.add_function_with_name::<FindDefinitions>("finddefinition".to_string());
+    interpreter.add_function_with_name::<FindDefinitions>("finddefinition");
 
     let result = interpreter.evaluate("findDefinition(\"User\")").await.unwrap();
     let definitions: Vec<SymbolDef> = serde_json::from_value(result).unwrap();

@@ -47,17 +47,33 @@ impl<U: Send> DialectInterpreter<U> {
         self.add_function_with_name::<F>(type_name_lower);
     }
 
-    pub fn add_function_with_name<F>(&mut self, name: String)
+    pub fn add_function_with_name<F>(&mut self, name: impl ToString)
     where
         F: DialectFunction<U>,
     {
         self.functions.insert(
-            name,
+            name.to_string(),
             (
                 |interpreter, value| Box::pin(async move { interpreter.execute::<F>(value).await }),
                 F::PARAMETER_ORDER,
             ),
         );
+    }
+
+    /// Add all standard IDE functions to the interpreter.
+    /// Requires that U implements IpcClient for IDE communication.
+    pub fn add_standard_ide_functions(&mut self)
+    where
+        U: crate::ide::IpcClient,
+    {
+        self.add_function::<crate::ide::FindDefinitions>();
+        self.add_function_with_name::<crate::ide::FindDefinitions>("finddefinition");
+        self.add_function::<crate::ide::FindReferences>();
+        self.add_function::<crate::ide::Search>();
+        self.add_function::<crate::ide::Lines>();
+        self.add_function::<crate::ide::GitDiff>();
+        self.add_function::<crate::ide::Comment>();
+        self.add_function::<crate::ide::Action>();
     }
 
     pub fn evaluate(
