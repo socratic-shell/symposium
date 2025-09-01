@@ -342,7 +342,7 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
                 .map_err(|e| anyhow::anyhow!("Failed to get current executable: {}", e))?;
 
             let mut cmd = Command::new(&current_exe);
-            cmd.args(&["daemon", "--prefix", crate::constants::DAEMON_SOCKET_PREFIX]);
+            cmd.args(&["daemon"]);
 
             // Make it truly independent
             #[cfg(unix)]
