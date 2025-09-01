@@ -5,8 +5,9 @@
 
 use anyhow::Result;
 use std::collections::HashMap;
-use tracing::{error, info};
 use tokio::time::{Duration, Instant};
+use tokio::signal;
+use tracing::{error, info};
 
 
 
@@ -31,7 +32,7 @@ pub async fn handle_client(
                 match result {
                     Ok(0) => {
                         // EOF - client disconnected
-                        info!("daemon: client {} disconnected (EOF)", client_id);
+                        info!("client {} disconnected (EOF)", client_id);
                         break;
                     }
                     Ok(_) => {
@@ -102,6 +103,20 @@ pub async fn run_daemon_with_idle_timeout(
     let _listener = match UnixListener::bind(&socket_path) {
         Ok(listener) => {
             info!("✅ daemon: successfully claimed socket: {}", socket_path);
+            
+            // Clear debug logs on successful bind (indicates fresh debug session)
+            let log_path = crate::constants::dev_log_path();
+            if std::path::Path::new(&log_path).exists() {
+                if let Err(e) = std::fs::OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .open(&log_path) {
+                    info!("⚠️  Could not clear previous debug log: {}", e);
+                } else {
+                    info!("🧹 Cleared previous debug log for fresh session");
+                }
+            }
+            
             listener
         }
         Err(e) => {
@@ -128,24 +143,63 @@ pub async fn run_daemon_with_idle_timeout(
     // Signal that daemon is ready to accept connections
     println!("DAEMON_READY");
 
-    // Run the message bus loop with idle timeout
-    run_message_bus_with_idle_timeout(listener, idle_timeout_secs, ready_barrier).await?;
+    // Set up graceful shutdown handling
+    let socket_path_for_cleanup = socket_path.clone();
+    
+    // Create signal handlers
+    let ctrl_c = signal::ctrl_c();
+    
+    #[cfg(unix)]
+    let sigterm = async {
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut sig) => sig.recv().await,
+            Err(_) => std::future::pending().await,
+        }
+    };
+    
+    #[cfg(not(unix))]
+    let sigterm = std::future::pending::<()>();
+    
+    // Create a channel for shutdown signals that can trigger reload broadcast
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    
+    let shutdown_result = tokio::select! {
+        // Run the message bus loop with idle timeout and shutdown signal
+        result = run_message_bus_with_shutdown_signal(listener, idle_timeout_secs, ready_barrier, shutdown_rx) => {
+            result
+        }
+        // Handle SIGTERM/SIGINT for graceful shutdown
+        _ = ctrl_c => {
+            info!("🛑 Received SIGINT (Ctrl+C), shutting down gracefully...");
+            let _ = shutdown_tx.send(()); // Signal the message bus to send reload and shutdown
+            Ok(())
+        }
+        _ = sigterm => {
+            info!("🛑 Received SIGTERM, shutting down gracefully...");
+            let _ = shutdown_tx.send(()); // Signal the message bus to send reload and shutdown
+            Ok(())
+        }
+    };
 
     // Clean up socket file on exit
-    if Path::new(&socket_path).exists() {
-        std::fs::remove_file(&socket_path)?;
-        info!("🧹 daemon: Cleaned up socket file: {}", socket_path);
+    if Path::new(&socket_path_for_cleanup).exists() {
+        std::fs::remove_file(&socket_path_for_cleanup)?;
+        info!("🧹 Cleaned up socket file: {}", socket_path_for_cleanup);
     }
 
     info!("🛑 Daemon shutdown complete");
-    Ok(())
+    
+    // Return the shutdown result (could be an error from the message bus loop)
+    shutdown_result
 }
 
-/// Run the message bus loop with idle timeout - shuts down when no clients connected for timeout period
-async fn run_message_bus_with_idle_timeout(
+/// Run the message bus loop with idle timeout and shutdown signal
+/// Shuts down when no clients connected for timeout period OR when shutdown signal received
+async fn run_message_bus_with_shutdown_signal(
     listener: tokio::net::UnixListener,
     idle_timeout_secs: u64,
     ready_barrier: Option<std::sync::Arc<tokio::sync::Barrier>>,
+    mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
 ) -> Result<()> {
     use tokio::sync::broadcast;
     use tokio::time::interval;
@@ -224,6 +278,38 @@ async fn run_message_bus_with_idle_timeout(
                     // We have active clients, update activity timestamp
                     last_activity = Instant::now();
                 }
+            }
+            
+            // Handle shutdown signal (SIGTERM/SIGINT)
+            _ = &mut shutdown_rx => {
+                info!("🔄 Daemon received shutdown signal, broadcasting reload_window to all clients");
+                
+                // Create reload_window message
+                use crate::types::{IPCMessage, IPCMessageType};
+                use serde_json::json;
+                use uuid::Uuid;
+                
+                let reload_message = IPCMessage {
+                    shell_pid: 0, // Use 0 for broadcast messages
+                    message_type: IPCMessageType::ReloadWindow,
+                    payload: json!({}), // Empty payload
+                    id: Uuid::new_v4().to_string(),
+                };
+                
+                // Broadcast reload message to all connected clients
+                if let Ok(message_json) = serde_json::to_string(&reload_message) {
+                    if let Err(e) = tx.send(message_json) {
+                        info!("No clients to receive reload signal: {}", e);
+                    } else {
+                        info!("✅ Broadcast reload_window message to all clients");
+                        // Give clients a moment to process the reload message
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    }
+                } else {
+                    error!("Failed to serialize reload_window message");
+                }
+                
+                break; // Exit the message bus loop
             }
         }
     }

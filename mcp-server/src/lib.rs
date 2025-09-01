@@ -9,6 +9,7 @@ mod ide;
 mod ipc;
 mod pid_discovery;
 mod reference_store;
+pub mod structured_logging;
 mod walkthrough_parser;
 mod server;
 mod types;

@@ -169,6 +169,8 @@ pub enum IPCMessageType {
     UserFeedback,
     /// Store reference context for compact ssref system
     StoreReference,
+    /// Signal VSCode extension to reload window (sent by daemon on shutdown)
+    ReloadWindow,
 }
 
 /// Payload for synthetic PR creation/update messages

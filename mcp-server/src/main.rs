@@ -8,10 +8,9 @@
 use anyhow::Result;
 use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
-use tracing::{Level, error, info};
-use tracing_subscriber::{self, EnvFilter};
+use tracing::{error, info};
 
-use symposium_mcp::DialecticServer;
+use symposium_mcp::{DialecticServer, structured_logging::{self, Component}};
 
 #[derive(Parser)]
 #[command(name = "symposium-mcp")]
@@ -57,45 +56,23 @@ enum Command {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    // If we are logging to the dev log file
-    // then when we drop this flush guard, any final messages
-    // will be flushed for sure.
-    let mut flush_guard = None;
+    // Determine component type based on command
+    let component = match &args.command {
+        Some(Command::Daemon { .. }) => Component::Daemon,
+        Some(Command::Client { .. }) => Component::Client,
+        _ => Component::McpServer,
+    };
 
-    // Initialize logging to stderr (MCP uses stdout for protocol).
-    // By default, we respect `RUST_LOG` for level etc.
-    // In dev mode, we use debug level, and also log to a temporary file.
+    // Initialize structured logging with component-specific prefixes
+    let flush_guard = structured_logging::init_component_tracing(component, args.dev_log)
+        .expect("Failed to initialize logging");
+    
     if args.dev_log {
-        use std::fs::OpenOptions;
-        use tracing_appender::non_blocking;
-
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(symposium_mcp::constants::dev_log_path())
-            .expect("Failed to open log file");
-
-        let (file_writer, _guard) = non_blocking(file);
-        flush_guard = Some(_guard);
-
-        tracing_subscriber::fmt()
-            .with_max_level(Level::DEBUG)
-            .with_writer(file_writer)
-            .with_ansi(false) // No ANSI codes in file
-            .init();
-
-        // Also log to stderr for immediate feedback
         eprintln!(
             "Development logging enabled - writing to {} (PID: {})",
             symposium_mcp::constants::dev_log_path(),
             std::process::id()
         );
-    } else {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .with_writer(std::io::stderr)
-            .with_ansi(true)
-            .init();
     }
 
     match args.command {

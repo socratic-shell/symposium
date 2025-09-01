@@ -106,6 +106,11 @@ fn main() -> Result<()> {
         }
     }
 
+    // Clean up any existing daemon (for clean dev environment)
+    if args.dev {
+        cleanup_existing_daemon()?;
+    }
+    
     // Build components
     let binary_path = if args.dev {
         build_rust_server()?
@@ -115,6 +120,11 @@ fn main() -> Result<()> {
 
     if !args.skip_extension {
         build_and_install_extension(args.dev)?;
+        
+        // Automatically reload VSCode window if in dev mode
+        if args.dev {
+            reload_vscode_window()?;
+        }
     }
 
     // Setup MCP server(s)
@@ -622,10 +632,56 @@ fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
 
     if dev_mode {
         println!("\n🔧 Development workflow:");
+        println!("- Run 'cargo setup --dev' to rebuild and restart cleanly");
         println!("- For server changes: cd mcp-server && cargo build --release");
         println!("- For extension changes: cd ide/vscode && npm run webpack-dev");
-        println!("- Reload VSCode window (Cmd/Ctrl + R) to pick up extension changes");
+        println!("- VSCode window reloading is handled automatically");
     }
 
+    Ok(())
+}
+
+/// Clean up existing daemon process and stale socket files
+fn cleanup_existing_daemon() -> Result<()> {
+    println!("🧹 Cleaning up existing daemon...");
+    
+    // Try to gracefully kill any running symposium-mcp daemons
+    let output = Command::new("pkill")
+        .args(["-TERM", "symposium-mcp"])
+        .output();
+    
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("   ✅ Sent SIGTERM to existing daemon");
+            // Give it a moment to shut down gracefully
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        Ok(_) => {
+            // No process found - that's fine
+            println!("   ℹ️  No existing daemon found");
+        }
+        Err(e) => {
+            println!("   ⚠️  Could not check for existing daemon: {}", e);
+        }
+    }
+    
+    // Clean up any stale socket files
+    let socket_path = "/tmp/symposium-daemon.sock";
+    if std::path::Path::new(socket_path).exists() {
+        if let Err(e) = std::fs::remove_file(socket_path) {
+            println!("   ⚠️  Could not remove stale socket: {}", e);
+        } else {
+            println!("   ✅ Removed stale socket file");
+        }
+    }
+    
+    println!("   🎯 Environment ready for fresh daemon");
+    Ok(())
+}
+
+/// Reload will be handled automatically by daemon shutdown signal
+fn reload_vscode_window() -> Result<()> {
+    println!("🔄 VSCode window will reload automatically when daemon restarts...");
+    println!("   ℹ️  Daemon sends reload signal to extension on shutdown");
     Ok(())
 }
