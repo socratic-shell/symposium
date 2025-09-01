@@ -237,7 +237,7 @@ export class DaemonClient implements vscode.Disposable {
         // Try workspace development build first
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (workspacePath) {
-            const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
+            const devPath = require('path').join(workspacePath, 'target', 'release', 'symposium-mcp');
             const fs = require('fs');
             if (fs.existsSync(devPath)) {
                 this.logger.info(`Found development binary: ${devPath}`);
