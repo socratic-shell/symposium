@@ -204,7 +204,7 @@ export class DaemonClient implements vscode.Disposable {
 
         // Spawn symposium-mcp client process
         const { spawn } = require('child_process');
-        
+
         this.clientProcess = spawn(binaryPath, ['client'], {
             stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
         });
@@ -228,16 +228,8 @@ export class DaemonClient implements vscode.Disposable {
 
     private async findSymposiumBinary(): Promise<string | null> {
         const { which } = require('which');
-        
-        // Try PATH first
-        try {
-            const pathBinary = which.sync('symposium-mcp', { nothrow: true });
-            if (pathBinary) return pathBinary;
-        } catch (e) {
-            // Continue to workspace check
-        }
 
-        // Try workspace development build
+        // Try workspace development build first
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (workspacePath) {
             const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
@@ -247,6 +239,15 @@ export class DaemonClient implements vscode.Disposable {
                 return devPath;
             }
         }
+
+        // Consult PATH second
+        try {
+            const pathBinary = which.sync('symposium-mcp', { nothrow: true });
+            if (pathBinary) return pathBinary;
+        } catch (e) {
+            // Continue to workspace check
+        }
+
 
         return null;
     }
