@@ -1004,7 +1004,7 @@ export function activate(context: vscode.ExtensionContext) {
                 };
 
                 // Send the reference to the active shell
-                await messageBus.sendReferenceToActiveShell(referenceId, referenceData);
+                await bus.sendReferenceToActiveShell(referenceId, referenceData);
                 
                 // Show success message
                 vscode.window.showInformationMessage('Comment reply inserted into AI chat');
