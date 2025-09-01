@@ -7,7 +7,18 @@ use std::collections::{HashMap, VecDeque};
 use uuid::Uuid;
 
 use crate::dialect::DialectInterpreter;
-use crate::ide::IpcClient;
+use crate::ide::{FileRange, IpcClient, SymbolDef};
+
+/// Location data that can be either a symbol definition or a file range
+/// Uses untagged enum to automatically deserialize from different location formats
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum LocationData {
+    /// Symbol definition (from findDefinitions, findReferences, etc.)
+    SymbolDef(SymbolDef),
+    /// File range (from search operations)  
+    FileRange(FileRange),
+}
 
 /// Parsed XML element from walkthrough markdown
 #[derive(Debug, Clone, PartialEq)]
@@ -487,18 +498,33 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
     /// Generate HTML for comment elements
     fn create_comment_html(&self, resolved: &ResolvedXmlElement) -> String {
-        // Extract locations from resolved data
+        // Extract and normalize locations from resolved data
         let empty_vec = vec![];
-        let locations = resolved
+        let raw_locations = resolved
             .resolved_data
             .get("locations")
             .and_then(|v| v.as_array())
             .unwrap_or(&empty_vec);
 
-        // Generate comment data for click handler
+        // Normalize locations to consistent format for webview consumption
+        let normalized_locations: Vec<FileRange> = raw_locations
+            .iter()
+            .filter_map(|loc| {
+                // Try to deserialize as LocationData using untagged enum
+                match serde_json::from_value::<LocationData>(loc.clone()) {
+                    Ok(LocationData::FileRange(r)) => Some(r),
+                    Ok(LocationData::SymbolDef(d)) => Some(d.defined_at),
+
+                    // if deserialization files, ignore, but we should really do something else
+                    Err(_) => None,
+                }
+            })
+            .collect();
+
+        // Generate comment data for click handler with normalized locations
         let comment_data = serde_json::json!({
             "id": format!("comment-{}", self.generate_uuid()),
-            "locations": locations,
+            "locations": normalized_locations,
             "comment": [&resolved.content]
         });
 
@@ -514,26 +540,14 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             _ => "💬",
         };
 
-        // Generate location display
-        let location_display = if locations.len() == 1 {
+        // Generate location display using normalized locations
+        let location_display = if normalized_locations.len() == 1 {
             // Single location - show file:line
-            if let Some(loc) = locations[0].as_object() {
-                let path = loc
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                let line = loc
-                    .get("start")
-                    .and_then(|v| v.get("line"))
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(1);
-                format!("{}:{}", path, line)
-            } else {
-                "unknown location".to_string()
-            }
-        } else if locations.len() > 1 {
+            let loc = &normalized_locations[0];
+            format!("{}:{}", loc.path, loc.start.line)
+        } else if normalized_locations.len() > 1 {
             // Multiple locations - show count
-            format!("({} possible locations) 🔍", locations.len())
+            format!("({} possible locations) 🔍", normalized_locations.len())
         } else {
             "no location".to_string()
         };
@@ -658,11 +672,11 @@ More markdown here.
             expect![[r#"
                 <h1>My Walkthrough</h1>
                 <p>This is some markdown content.</p>
-                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;definedAt&quot;:{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}},&quot;kind&quot;:&quot;struct&quot;,&quot;name&quot;:&quot;User&quot;}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;column&quot;:0,&quot;content&quot;:&quot;struct User {&quot;,&quot;end_column&quot;:4,&quot;end_line&quot;:10,&quot;file&quot;:&quot;src/models.rs&quot;,&quot;kind&quot;:&quot;struct&quot;,&quot;line&quot;:10,&quot;name&quot;:&quot;User&quot;,&quot;path&quot;:&quot;src/models.rs&quot;}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="display: flex; align-items: flex-start;">
                                     <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
                                     <div class="comment-content" style="flex: 1;">
-                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">unknown:1</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
                                         <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the User struct</div>
                                     </div>
                                 </div>
