@@ -32,9 +32,18 @@ When a walkthrough is presented:
 3. **HTML Generation**: XML elements are converted to styled HTML with embedded data for interactivity
 4. **VSCode Rendering**: The extension displays the HTML in a webview and attaches click handlers
 
-## Walkthrough Format Specification
+## Walkthrough Format Overview
 
-{{#include ../../guidance.md:walkthrough_format}}
+Walkthroughs are authored as standard markdown documents with embedded XML elements for interactive features:
+
+- `<comment location="...">` - Contextual comments at specific code locations
+- `<gitdiff range="...">` - Embedded git diffs showing code changes  
+- `<action button="...">` - Interactive buttons for follow-up tasks
+- `<mermaid>` - Architecture diagrams and flowcharts
+
+The `location` attributes use Dialect expressions to target code locations (e.g., `findDefinition("MyClass")`, `search("src/auth.rs", "async fn")`).
+
+For complete format specification and usage guidelines, see the [AI guidance documentation](../../guidance.md).
 
 ## Technical Implementation
 
