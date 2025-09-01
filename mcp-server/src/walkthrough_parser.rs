@@ -4,6 +4,7 @@ use quick_xml::Reader;
 use quick_xml::events::Event as XmlEvent;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 use uuid::Uuid;
 
 use crate::dialect::DialectInterpreter;
@@ -55,6 +56,7 @@ pub struct ResolvedXmlElement {
 pub struct WalkthroughParser<T: IpcClient + Clone + 'static> {
     interpreter: DialectInterpreter<T>,
     uuid_generator: Box<dyn Fn() -> String + Send + Sync>,
+    base_uri: Option<String>,
 }
 
 impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
@@ -62,7 +64,13 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         Self {
             interpreter,
             uuid_generator: Box::new(|| Uuid::new_v4().to_string()),
+            base_uri: None,
         }
+    }
+
+    pub fn with_base_uri(mut self, base_uri: String) -> Self {
+        self.base_uri = Some(base_uri);
+        self
     }
 
     #[cfg(test)]
@@ -73,6 +81,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         Self {
             interpreter,
             uuid_generator: Box::new(generator),
+            base_uri: None,
         }
     }
 
@@ -497,6 +506,79 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     }
 
     /// Generate HTML for comment elements
+    
+    /// Make a path relative to the base URI if possible
+    fn make_relative_path(&self, path: &str) -> String {
+        if let Some(base_uri) = &self.base_uri {
+            if let Ok(base_path) = std::path::Path::new(base_uri).canonicalize() {
+                if let Ok(file_path) = std::path::Path::new(path).canonicalize() {
+                    if let Ok(relative) = file_path.strip_prefix(&base_path) {
+                        return relative.to_string_lossy().to_string();
+                    }
+                }
+            }
+        }
+        // If we can't make it relative, just return the original
+        path.to_string()
+    }
+    
+    /// Format dialect expressions in a more user-friendly way
+    fn format_dialect_expression(&self, dialect_expression: &str) -> String {
+        // If empty, return as-is
+        if dialect_expression.is_empty() {
+            return dialect_expression.to_string();
+        }
+
+        // Try to parse and format common expressions
+        if dialect_expression.starts_with("search(") {
+            // Parse search("path", "pattern") or search("path", "pattern", ".ext")
+            if let Some(captures) = regex::Regex::new(r#"search\(\s*["`]([^"`]+)["`]\s*,\s*["`]([^"`]+)["`](?:\s*,\s*["`]([^"`]+)["`])?\s*\)"#)
+                .unwrap()
+                .captures(dialect_expression) 
+            {
+                let path = captures.get(1).unwrap().as_str();
+                let pattern = captures.get(2).unwrap().as_str();
+                if let Some(ext) = captures.get(3) {
+                    return format!("'{}' in {} files in {}", pattern, ext.as_str(), path);
+                } else {
+                    return format!("'{}' in {}", pattern, path);
+                }
+            }
+        } else if dialect_expression.starts_with("findDefinition(") {
+            // Parse findDefinition("symbol") or findDefinitions("symbol")
+            if let Some(captures) = regex::Regex::new(r#"findDefinitions?\(\s*["`]([^"`]+)["`]\s*\)"#)
+                .unwrap()
+                .captures(dialect_expression) 
+            {
+                let symbol = captures.get(1).unwrap().as_str();
+                return format!("Definition of `{}`", symbol);
+            }
+        } else if dialect_expression.starts_with("findReferences(") {
+            // Parse findReferences("symbol")
+            if let Some(captures) = regex::Regex::new(r#"findReferences\(\s*["`]([^"`]+)["`]\s*\)"#)
+                .unwrap()
+                .captures(dialect_expression) 
+            {
+                let symbol = captures.get(1).unwrap().as_str();
+                return format!("References to `{}`", symbol);
+            }
+        } else if dialect_expression.starts_with("lines(") {
+            // Parse lines("path", start, end)
+            if let Some(captures) = regex::Regex::new(r#"lines\(\s*["`]([^"`]+)["`]\s*,\s*(\d+)\s*,\s*(\d+)\s*\)"#)
+                .unwrap()
+                .captures(dialect_expression) 
+            {
+                let path = captures.get(1).unwrap().as_str();
+                let start = captures.get(2).unwrap().as_str();
+                let end = captures.get(3).unwrap().as_str();
+                return format!("Lines {}-{} in `{}`", start, end, path);
+            }
+        }
+
+        // If we can't parse it, return the original expression
+        dialect_expression.to_string()
+    }
+
     fn create_comment_html(&self, resolved: &ResolvedXmlElement) -> String {
         // Extract and normalize locations from resolved data
         let empty_vec = vec![];
@@ -507,7 +589,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             .unwrap_or(&empty_vec);
 
         // Normalize locations to consistent format for webview consumption
-        let normalized_locations: Vec<FileRange> = raw_locations
+        let mut normalized_locations: Vec<FileRange> = raw_locations
             .iter()
             .filter_map(|loc| {
                 // Try to deserialize as LocationData using untagged enum
@@ -520,6 +602,19 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 }
             })
             .collect();
+
+        // Convert paths to resolve if base-uri provided 
+        if let Some(base_uri) = &self.base_uri {
+            if let Ok(base_uri) = Path::new(base_uri).canonicalize() {
+                for l in &mut normalized_locations {
+                    if let Ok(abs_path) = std::path::Path::new(&l.path).canonicalize() {
+                        if let Ok(rel_path) = abs_path.strip_prefix(&base_uri) {
+                            l.path = rel_path.to_string_lossy().to_string();
+                        }
+                    }
+                }
+            }
+        }
 
         // Generate comment data for click handler with normalized locations
         let comment_data = serde_json::json!({
@@ -540,9 +635,17 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             _ => "💬",
         };
 
+        // Extract and format dialect expression from resolved data
+        let raw_dialect_expression = resolved
+            .resolved_data
+            .get("dialect_expression")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let formatted_dialect_expression = self.format_dialect_expression(raw_dialect_expression);
+
         // Generate location display using normalized locations
         let location_display = if normalized_locations.len() == 1 {
-            // Single location - show file:line
+            // Single location - show file:line with relative path
             let loc = &normalized_locations[0];
             format!("{}:{}", loc.path, loc.start.line)
         } else if normalized_locations.len() > 1 {
@@ -552,20 +655,25 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             "no location".to_string()
         };
 
+        // Keep them separate for individual div rendering
+
         let comment_data_encoded = serde_json::to_string(&comment_data).unwrap_or_default();
         let comment_data_escaped = comment_data_encoded.replace('"', "&quot;");
 
+        // Build the expression content for the inline div
+
         format!(
-            r#"<div class="comment-item" data-comment="{}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+            r#"<div class="comment-item" data-comment="{comment_data_escaped}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                 <div style="display: flex; align-items: flex-start;">
-                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">{}</div>
+                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">{icon_emoji}</div>
                     <div class="comment-content" style="flex: 1;">
-                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">{}</div>
-                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">{}</div>
+                        <div class="comment-expression" style="display: inline-block; background-color: var(--vscode-textCodeBlock-background); color: var(--vscode-textPreformat-foreground); padding: 2px 6px; border-radius: 3px; font-family: var(--vscode-editor-font-family); font-size: 0.8em; margin-bottom: 4px; border: 1px solid var(--vscode-widget-border, rgba(128, 128, 128, 0.2));">{formatted_dialect_expression}</div>
+                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">{location_display}</div>
+                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">{resolved_content}</div>
                     </div>
                 </div>
             </div>"#,
-            comment_data_escaped, icon_emoji, location_display, resolved.content
+            resolved_content = resolved.content
         )
     }
 

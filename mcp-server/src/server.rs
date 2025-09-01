@@ -218,7 +218,8 @@ impl DialecticServer {
             .await;
 
         // Parse markdown with XML elements and resolve Dialect expressions
-        let mut parser = crate::walkthrough_parser::WalkthroughParser::new(self.interpreter.clone());
+        let mut parser = crate::walkthrough_parser::WalkthroughParser::new(self.interpreter.clone())
+            .with_base_uri(params.base_uri.clone());
         let resolved_html = parser.parse_and_normalize(&params.content).await.map_err(|e| {
             McpError::internal_error(
                 "Failed to parse walkthrough markdown",
