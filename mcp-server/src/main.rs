@@ -66,14 +66,6 @@ async fn main() -> Result<()> {
     // Initialize structured logging with component-specific prefixes
     let flush_guard = structured_logging::init_component_tracing(component, args.dev_log)
         .expect("Failed to initialize logging");
-    
-    if args.dev_log {
-        eprintln!(
-            "Development logging enabled - writing to {} (PID: {})",
-            symposium_mcp::constants::dev_log_path(),
-            std::process::id()
-        );
-    }
 
     match args.command {
         Some(Command::Probe {}) => {

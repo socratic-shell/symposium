@@ -5,12 +5,10 @@
 
 use anyhow::Result;
 use std::collections::HashMap;
-use tokio::time::{Duration, Instant};
+use std::pin::pin;
 use tokio::signal;
+use tokio::time::{Duration, Instant};
 use tracing::{error, info};
-
-
-
 
 /// Handle a single client connection - read messages and broadcast them
 pub async fn handle_client(
@@ -85,7 +83,6 @@ pub async fn handle_client(
     info!("Client {} handler finished", client_id);
 }
 
-
 /// Run the message bus daemon with idle timeout instead of VSCode PID monitoring
 /// Daemon will automatically shut down after idle_timeout seconds of no connected clients
 pub async fn run_daemon_with_idle_timeout(
@@ -103,20 +100,21 @@ pub async fn run_daemon_with_idle_timeout(
     let _listener = match UnixListener::bind(&socket_path) {
         Ok(listener) => {
             info!("✅ daemon: successfully claimed socket: {}", socket_path);
-            
+
             // Clear debug logs on successful bind (indicates fresh debug session)
             let log_path = crate::constants::dev_log_path();
             if std::path::Path::new(&log_path).exists() {
                 if let Err(e) = std::fs::OpenOptions::new()
                     .write(true)
                     .truncate(true)
-                    .open(&log_path) {
+                    .open(&log_path)
+                {
                     info!("⚠️  Could not clear previous debug log: {}", e);
                 } else {
                     info!("🧹 Cleared previous debug log for fresh session");
                 }
             }
-            
+
             listener
         }
         Err(e) => {
@@ -145,41 +143,37 @@ pub async fn run_daemon_with_idle_timeout(
 
     // Set up graceful shutdown handling
     let socket_path_for_cleanup = socket_path.clone();
-    
+
     // Create signal handlers
     let ctrl_c = signal::ctrl_c();
-    
-    #[cfg(unix)]
-    let sigterm = async {
-        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
-            Ok(mut sig) => sig.recv().await,
-            Err(_) => std::future::pending().await,
+
+    let mut sigterm = {
+        #[cfg(unix)]
+        {
+            signal::unix::signal(signal::unix::SignalKind::terminate())?
+        }
+
+        #[cfg(not(unix))]
+        {
+            compile_error!("TODO: non-unix support")
         }
     };
-    
-    #[cfg(not(unix))]
-    let sigterm = std::future::pending::<()>();
-    
-    // Create a channel for shutdown signals that can trigger reload broadcast
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-    
-    let shutdown_result = tokio::select! {
-        // Run the message bus loop with idle timeout and shutdown signal
-        result = run_message_bus_with_shutdown_signal(listener, idle_timeout_secs, ready_barrier, shutdown_rx) => {
-            result
-        }
-        // Handle SIGTERM/SIGINT for graceful shutdown
-        _ = ctrl_c => {
-            info!("🛑 Received SIGINT (Ctrl+C), shutting down gracefully...");
-            let _ = shutdown_tx.send(()); // Signal the message bus to send reload and shutdown
-            Ok(())
-        }
-        _ = sigterm => {
-            info!("🛑 Received SIGTERM, shutting down gracefully...");
-            let _ = shutdown_tx.send(()); // Signal the message bus to send reload and shutdown
-            Ok(())
+
+    let shutdown = async move {
+        tokio::select! {
+            // Handle SIGTERM/SIGINT for graceful shutdown
+            _ = ctrl_c => {
+                info!("🛑 Received SIGINT (Ctrl+C), shutting down gracefully...");
+            }
+            _ = sigterm.recv() => {
+                info!("🛑 Received SIGTERM, shutting down gracefully...");
+            }
         }
     };
+
+    let shutdown_result =
+        run_message_bus_with_shutdown_signal(listener, idle_timeout_secs, ready_barrier, shutdown)
+            .await;
 
     // Clean up socket file on exit
     if Path::new(&socket_path_for_cleanup).exists() {
@@ -188,7 +182,7 @@ pub async fn run_daemon_with_idle_timeout(
     }
 
     info!("🛑 Daemon shutdown complete");
-    
+
     // Return the shutdown result (could be an error from the message bus loop)
     shutdown_result
 }
@@ -199,7 +193,7 @@ async fn run_message_bus_with_shutdown_signal(
     listener: tokio::net::UnixListener,
     idle_timeout_secs: u64,
     ready_barrier: Option<std::sync::Arc<tokio::sync::Barrier>>,
-    mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    shutdown: impl Future<Output = ()>,
 ) -> Result<()> {
     use tokio::sync::broadcast;
     use tokio::time::interval;
@@ -225,6 +219,8 @@ async fn run_message_bus_with_shutdown_signal(
     // Idle check interval (check every 5 seconds)
     let mut idle_check_interval = interval(Duration::from_secs(5));
 
+    let mut shutdown = pin!(async move { shutdown.await });
+
     loop {
         tokio::select! {
             // Accept new client connections
@@ -235,7 +231,7 @@ async fn run_message_bus_with_shutdown_signal(
                         next_client_id += 1;
 
                         info!("daemon: client {} connected", client_id);
-                        
+
                         // Update activity timestamp
                         last_activity = Instant::now();
 
@@ -268,8 +264,8 @@ async fn run_message_bus_with_shutdown_signal(
                     let idle_duration = last_activity.elapsed();
                     if idle_duration >= idle_timeout {
                         info!(
-                            "daemon: No clients connected for {:.1}s (timeout: {}s), shutting down", 
-                            idle_duration.as_secs_f64(), 
+                            "daemon: No clients connected for {:.1}s (timeout: {}s), shutting down",
+                            idle_duration.as_secs_f64(),
                             idle_timeout_secs
                         );
                         break;
@@ -279,23 +275,23 @@ async fn run_message_bus_with_shutdown_signal(
                     last_activity = Instant::now();
                 }
             }
-            
+
             // Handle shutdown signal (SIGTERM/SIGINT)
-            _ = &mut shutdown_rx => {
+            () = &mut shutdown => {
                 info!("🔄 Daemon received shutdown signal, broadcasting reload_window to all clients");
-                
+
                 // Create reload_window message
                 use crate::types::{IPCMessage, IPCMessageType};
                 use serde_json::json;
                 use uuid::Uuid;
-                
+
                 let reload_message = IPCMessage {
                     shell_pid: 0, // Use 0 for broadcast messages
                     message_type: IPCMessageType::ReloadWindow,
                     payload: json!({}), // Empty payload
                     id: Uuid::new_v4().to_string(),
                 };
-                
+
                 // Broadcast reload message to all connected clients
                 if let Ok(message_json) = serde_json::to_string(&reload_message) {
                     if let Err(e) = tx.send(message_json) {
@@ -308,7 +304,7 @@ async fn run_message_bus_with_shutdown_signal(
                 } else {
                     error!("Failed to serialize reload_window message");
                 }
-                
+
                 break; // Exit the message bus loop
             }
         }
@@ -331,7 +327,7 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
     use tokio::net::UnixStream;
 
     let socket_path = crate::constants::global_daemon_socket_path();
-    
+
     // Try to connect to existing daemon
     let stream = match UnixStream::connect(&socket_path).await {
         Ok(stream) => {
@@ -340,37 +336,38 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
         }
         Err(_) if auto_start => {
             info!("No daemon found, attempting to start one...");
-            
+
             // Spawn independent daemon process
             let current_exe = std::env::current_exe()
                 .map_err(|e| anyhow::anyhow!("Failed to get current executable: {}", e))?;
-            
+
             let mut cmd = Command::new(&current_exe);
             cmd.args(&["daemon", "--prefix", crate::constants::DAEMON_SOCKET_PREFIX]);
-            
+
             // Make it truly independent
             #[cfg(unix)]
             {
                 use std::os::unix::process::CommandExt;
                 cmd.process_group(0); // Create new process group
             }
-            
+
             let child = cmd
                 .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null()) 
+                .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .spawn()
                 .map_err(|e| anyhow::anyhow!("Failed to spawn daemon: {}", e))?;
-                
+
             info!("Spawned daemon process (PID: {})", child.id());
-            
+
             // Wait for daemon to start and create socket
             let mut attempts = 0;
             let stream = loop {
-                if attempts >= 20 {  // 2 seconds timeout
+                if attempts >= 20 {
+                    // 2 seconds timeout
                     return Err(anyhow::anyhow!("Timeout waiting for daemon to start"));
                 }
-                
+
                 match UnixStream::connect(&socket_path).await {
                     Ok(stream) => {
                         info!("✅ Connected to newly started daemon");
@@ -385,24 +382,28 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
             stream
         }
         Err(e) => {
-            return Err(anyhow::anyhow!("Failed to connect to daemon at {}: {}", socket_path, e));
+            return Err(anyhow::anyhow!(
+                "Failed to connect to daemon at {}: {}",
+                socket_path,
+                e
+            ));
         }
     };
 
     // Split stream for reading and writing
     let (read_half, mut write_half) = stream.into_split();
     let mut read_stream = BufReader::new(read_half);
-    
-    // Split stdin/stdout for async handling  
+
+    // Split stdin/stdout for async handling
     let stdin = io::stdin();
     let mut stdout = io::stdout();
-    
+
     let mut stdin_reader = BufReader::new(stdin);
     let mut daemon_line = String::new();
     let mut stdin_line = String::new();
-    
+
     info!("🔌 Client bridge active - forwarding stdin/stdout to/from daemon");
-    
+
     loop {
         tokio::select! {
             // Read from daemon, write to stdout
@@ -423,7 +424,7 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
                     }
                 }
             }
-            
+
             // Read from stdin, write to daemon
             result = stdin_reader.read_line(&mut stdin_line) => {
                 match result {
@@ -443,7 +444,7 @@ pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
             }
         }
     }
-    
+
     info!("Client bridge shutting down");
     Ok(())
 }
