@@ -1,0 +1,392 @@
+{
+  "review_id": "7b7001bc-26a2-4138-bab3-061e2847cf22",
+  "title": "Add AI insight comments and payment module",
+  "description": {
+    "automated": true,
+    "summary": "Integration test for synthetic PR functionality"
+  },
+  "commit_range": "HEAD~1..HEAD",
+  "status": "Pending",
+  "files_changed": [
+    {
+      "path": "src/auth.rs",
+      "status": "Modified",
+      "additions": 28,
+      "deletions": 1,
+      "hunks": [
+        {
+          "header": "@@ -1,5 +1,32 @@",
+          "old_start": 1,
+          "old_lines": 5,
+          "new_start": 1,
+          "new_lines": 32,
+          "lines": [
+            {
+              "line_type": "Context",
+              "content": "",
+              "old_line_number": 1,
+              "new_line_number": 1
+            },
+            {
+              "line_type": "Removed",
+              "content": "// Initial authentication module",
+              "old_line_number": 2,
+              "new_line_number": null
+            },
+            {
+              "line_type": "Added",
+              "content": "// Updated authentication module with AI insights",
+              "old_line_number": null,
+              "new_line_number": 2
+            },
+            {
+              "line_type": "Context",
+              "content": "pub fn authenticate(token: &str) -> bool {",
+              "old_line_number": 3,
+              "new_line_number": 3
+            },
+            {
+              "line_type": "Added",
+              "content": "    // 💡 Using simple string comparison for demo - in production would use JWT validation",
+              "old_line_number": null,
+              "new_line_number": 4
+            },
+            {
+              "line_type": "Added",
+              "content": "    if token.is_empty() {",
+              "old_line_number": null,
+              "new_line_number": 5
+            },
+            {
+              "line_type": "Added",
+              "content": "        return false;",
+              "old_line_number": null,
+              "new_line_number": 6
+            },
+            {
+              "line_type": "Added",
+              "content": "    }",
+              "old_line_number": null,
+              "new_line_number": 7
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 8
+            },
+            {
+              "line_type": "Added",
+              "content": "    // ❓ Should we add rate limiting here to prevent brute force attacks?",
+              "old_line_number": null,
+              "new_line_number": 9
+            },
+            {
+              "line_type": "Context",
+              "content": "    token == \"valid\"",
+              "old_line_number": 4,
+              "new_line_number": 10
+            },
+            {
+              "line_type": "Context",
+              "content": "}",
+              "old_line_number": 5,
+              "new_line_number": 11
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 12
+            },
+            {
+              "line_type": "Added",
+              "content": "pub fn validate_session(session_id: &str) -> Result<User, AuthError> {",
+              "old_line_number": null,
+              "new_line_number": 13
+            },
+            {
+              "line_type": "Added",
+              "content": "    // TODO: Implement proper session validation with database lookup",
+              "old_line_number": null,
+              "new_line_number": 14
+            },
+            {
+              "line_type": "Added",
+              "content": "    // FIXME: This doesn't handle expired sessions correctly",
+              "old_line_number": null,
+              "new_line_number": 15
+            },
+            {
+              "line_type": "Added",
+              "content": "    if session_id.len() < 10 {",
+              "old_line_number": null,
+              "new_line_number": 16
+            },
+            {
+              "line_type": "Added",
+              "content": "        return Err(AuthError::InvalidSession);",
+              "old_line_number": null,
+              "new_line_number": 17
+            },
+            {
+              "line_type": "Added",
+              "content": "    }",
+              "old_line_number": null,
+              "new_line_number": 18
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 19
+            },
+            {
+              "line_type": "Added",
+              "content": "    Ok(User { id: 1, name: \"Test\".to_string() })",
+              "old_line_number": null,
+              "new_line_number": 20
+            },
+            {
+              "line_type": "Added",
+              "content": "}",
+              "old_line_number": null,
+              "new_line_number": 21
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 22
+            },
+            {
+              "line_type": "Added",
+              "content": "#[derive(Debug)]",
+              "old_line_number": null,
+              "new_line_number": 23
+            },
+            {
+              "line_type": "Added",
+              "content": "pub struct User {",
+              "old_line_number": null,
+              "new_line_number": 24
+            },
+            {
+              "line_type": "Added",
+              "content": "    pub id: u32,",
+              "old_line_number": null,
+              "new_line_number": 25
+            },
+            {
+              "line_type": "Added",
+              "content": "    pub name: String,",
+              "old_line_number": null,
+              "new_line_number": 26
+            },
+            {
+              "line_type": "Added",
+              "content": "}",
+              "old_line_number": null,
+              "new_line_number": 27
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 28
+            },
+            {
+              "line_type": "Added",
+              "content": "#[derive(Debug)]",
+              "old_line_number": null,
+              "new_line_number": 29
+            },
+            {
+              "line_type": "Added",
+              "content": "pub enum AuthError {",
+              "old_line_number": null,
+              "new_line_number": 30
+            },
+            {
+              "line_type": "Added",
+              "content": "    InvalidSession,",
+              "old_line_number": null,
+              "new_line_number": 31
+            },
+            {
+              "line_type": "Added",
+              "content": "}",
+              "old_line_number": null,
+              "new_line_number": 32
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "src/payment.rs",
+      "status": "Added",
+      "additions": 16,
+      "deletions": 0,
+      "hunks": [
+        {
+          "header": "@@ -0,0 +1,16 @@",
+          "old_start": 0,
+          "old_lines": 0,
+          "new_start": 1,
+          "new_lines": 16,
+          "lines": [
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 1
+            },
+            {
+              "line_type": "Added",
+              "content": "// Payment processing module",
+              "old_line_number": null,
+              "new_line_number": 2
+            },
+            {
+              "line_type": "Added",
+              "content": "pub fn process_payment(amount: f64) -> PaymentResult {",
+              "old_line_number": null,
+              "new_line_number": 3
+            },
+            {
+              "line_type": "Added",
+              "content": "    // 💡 Using Stripe API for PCI compliance instead of handling cards directly",
+              "old_line_number": null,
+              "new_line_number": 4
+            },
+            {
+              "line_type": "Added",
+              "content": "    if amount <= 0.0 {",
+              "old_line_number": null,
+              "new_line_number": 5
+            },
+            {
+              "line_type": "Added",
+              "content": "        return PaymentResult::Error(\"Invalid amount\".to_string());",
+              "old_line_number": null,
+              "new_line_number": 6
+            },
+            {
+              "line_type": "Added",
+              "content": "    }",
+              "old_line_number": null,
+              "new_line_number": 7
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 8
+            },
+            {
+              "line_type": "Added",
+              "content": "    // ❓ What should be the timeout for payment processing?",
+              "old_line_number": null,
+              "new_line_number": 9
+            },
+            {
+              "line_type": "Added",
+              "content": "    PaymentResult::Success",
+              "old_line_number": null,
+              "new_line_number": 10
+            },
+            {
+              "line_type": "Added",
+              "content": "}",
+              "old_line_number": null,
+              "new_line_number": 11
+            },
+            {
+              "line_type": "Added",
+              "content": "",
+              "old_line_number": null,
+              "new_line_number": 12
+            },
+            {
+              "line_type": "Added",
+              "content": "pub enum PaymentResult {",
+              "old_line_number": null,
+              "new_line_number": 13
+            },
+            {
+              "line_type": "Added",
+              "content": "    Success,",
+              "old_line_number": null,
+              "new_line_number": 14
+            },
+            {
+              "line_type": "Added",
+              "content": "    Error(String),",
+              "old_line_number": null,
+              "new_line_number": 15
+            },
+            {
+              "line_type": "Added",
+              "content": "}",
+              "old_line_number": null,
+              "new_line_number": 16
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "comment_threads": [
+    {
+      "thread_id": "src/auth.rs:4",
+      "file_path": "src/auth.rs",
+      "line_number": 4,
+      "comment_type": "Explanation",
+      "content": "Using simple string comparison for demo - in production would use JWT validation",
+      "responses": []
+    },
+    {
+      "thread_id": "src/auth.rs:9",
+      "file_path": "src/auth.rs",
+      "line_number": 9,
+      "comment_type": "Question",
+      "content": "Should we add rate limiting here to prevent brute force attacks?",
+      "responses": []
+    },
+    {
+      "thread_id": "src/auth.rs:14",
+      "file_path": "src/auth.rs",
+      "line_number": 14,
+      "comment_type": "Todo",
+      "content": "Implement proper session validation with database lookup",
+      "responses": []
+    },
+    {
+      "thread_id": "src/auth.rs:15",
+      "file_path": "src/auth.rs",
+      "line_number": 15,
+      "comment_type": "Fixme",
+      "content": "This doesn't handle expired sessions correctly",
+      "responses": []
+    },
+    {
+      "thread_id": "src/payment.rs:4",
+      "file_path": "src/payment.rs",
+      "line_number": 4,
+      "comment_type": "Explanation",
+      "content": "Using Stripe API for PCI compliance instead of handling cards directly",
+      "responses": []
+    },
+    {
+      "thread_id": "src/payment.rs:9",
+      "file_path": "src/payment.rs",
+      "line_number": 9,
+      "comment_type": "Question",
+      "content": "What should be the timeout for payment processing?",
+      "responses": []
+    }
+  ],
+  "created_at": "2025-09-01T19:44:30.087568Z",
+  "updated_at": "2025-09-01T19:44:30.087569Z"
+}

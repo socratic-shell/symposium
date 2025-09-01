@@ -11,6 +11,11 @@ async fn test_daemon_readiness_message() {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Use a unique test prefix based on the test name
+    let test_prefix = "symposium-mcp-test_daemon_readiness_message";
+    let socket_path = format!("/tmp/{}.sock", test_prefix);
+    
+    // Clean up any existing socket file before starting
+    let _ = std::fs::remove_file(&socket_path);
 
     // Spawn daemon as separate process with stdout captured
     let mut cmd = Command::new("cargo");
@@ -21,13 +26,14 @@ async fn test_daemon_readiness_message() {
         "--",
         "daemon",
         "--prefix",
-        "symposium-mcp-test_daemon_readiness_message",
+        test_prefix,
     ]);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::null());
 
     let mut child = ProcessCleanup {
         child: cmd.spawn().expect("Failed to spawn daemon process"),
+        socket_path,
     };
 
     println!("Spawned daemon process with PID: {}", child.id());
@@ -77,6 +83,7 @@ async fn test_daemon_readiness_message() {
 
 struct ProcessCleanup {
     child: Child,
+    socket_path: String,
 }
 
 impl Deref for ProcessCleanup {
@@ -98,5 +105,14 @@ impl Drop for ProcessCleanup {
         println!("Killing process with PID: {}", self.child.id());
         let _ = self.child.kill();
         let _ = self.child.wait();
+        
+        // Clean up socket file
+        if std::path::Path::new(&self.socket_path).exists() {
+            if let Err(e) = std::fs::remove_file(&self.socket_path) {
+                println!("Warning: Failed to clean up socket file {}: {}", self.socket_path, e);
+            } else {
+                println!("Cleaned up socket file: {}", self.socket_path);
+            }
+        }
     }
 }
