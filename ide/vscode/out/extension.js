@@ -559,55 +559,10 @@ class DaemonClient {
         return `/tmp/symposium-daemon.sock`;
     }
     async tryStartDaemon() {
-        return new Promise((resolve, reject) => {
-            // Check if daemon is already running by testing socket connection
-            const fs = require('fs');
-            const socketPath = this.getDaemonSocketPath();
-            if (fs.existsSync(socketPath)) {
-                this.outputChannel.appendLine('Daemon socket exists, assuming daemon is running');
-                resolve();
-                return;
-            }
-            this.outputChannel.appendLine('Attempting to start symposium daemon...');
-            // Try to find the symposium-mcp binary
-            const { spawn } = require('child_process');
-            // First try to find it in PATH, then try common development paths
-            let binaryPath = 'symposium-mcp';
-            try {
-                // If which doesn't find it, try common development paths
-                const which = require('which');
-                if (!which.sync(binaryPath, { nothrow: true })) {
-                    // Try workspace root + target/debug/symposium-mcp
-                    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-                    if (workspacePath) {
-                        const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
-                        if (require('fs').existsSync(devPath)) {
-                            binaryPath = devPath;
-                            this.outputChannel.appendLine(`Found development binary: ${binaryPath}`);
-                        }
-                    }
-                }
-            }
-            catch (e) {
-                // which failed, continue with original path
-                this.outputChannel.appendLine(`Warning: which command failed, trying PATH: ${e}`);
-            }
-            // Start the global daemon (using a dummy PID for now)
-            const daemon = spawn(binaryPath, ['daemon', '--dev-log', '1'], {
-                detached: true,
-                stdio: 'ignore'
-            });
-            daemon.unref(); // Allow extension to exit without waiting for daemon
-            daemon.on('spawn', () => {
-                this.outputChannel.appendLine(`✅ Daemon started successfully (PID: ${daemon.pid})`);
-                // Give the daemon a moment to create the socket
-                setTimeout(() => resolve(), 1000);
-            });
-            daemon.on('error', (error) => {
-                this.outputChannel.appendLine(`❌ Failed to start daemon: ${error.message}`);
-                reject(error);
-            });
-        });
+        // With the new client architecture, we don't need to manage daemons directly
+        // The client mode handles daemon startup automatically
+        this.outputChannel.appendLine('✅ Using client mode - daemon management handled automatically');
+        return Promise.resolve();
     }
     scheduleReconnect() {
         if (this.isDisposed)

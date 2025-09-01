@@ -40,6 +40,17 @@ enum Command {
         #[arg(long, default_value = "30")]
         idle_timeout: u64,
     },
+
+    /// Run as client - connects to daemon and bridges stdin/stdout
+    Client {
+        /// Optional socket prefix for testing
+        #[arg(long)]
+        prefix: Option<String>,
+        
+        /// Auto-start daemon if not running
+        #[arg(long, default_value = "true")]
+        auto_start: bool,
+    },
 }
 
 #[tokio::main]
@@ -101,6 +112,16 @@ async fn main() -> Result<()> {
                 "🚀 DAEMON MODE - Starting message bus daemon with prefix {prefix}, idle timeout {idle_timeout}s",
             );
             symposium_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
+        }
+        Some(Command::Client { prefix, auto_start }) => {
+            let prefix = match &prefix {
+                Some(s) => s,
+                None => "symposium-daemon",
+            };
+            info!(
+                "🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",
+            );
+            symposium_mcp::run_client(prefix, auto_start).await?;
         }
         None => {
             info!("Starting Symposium MCP Server (Rust)");
