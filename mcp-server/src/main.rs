@@ -17,7 +17,7 @@ use symposium_mcp::DialecticServer;
 #[command(name = "symposium-mcp")]
 #[command(about = "Symposium MCP Server for VSCode integration")]
 struct Args {
-    /// Enable development logging to /tmp/symposium-mcp.log
+    /// Enable development logging to the default log file
     #[arg(long, global = true)]
     dev_log: bool,
 
@@ -57,7 +57,7 @@ enum Command {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    // If we are logging to /tmp/symposium-mcp.log
+    // If we are logging to the dev log file
     // then when we drop this flush guard, any final messages
     // will be flushed for sure.
     let mut flush_guard = None;
@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("/tmp/symposium-mcp.log")
+            .open(symposium_mcp::constants::dev_log_path())
             .expect("Failed to open log file");
 
         let (file_writer, _guard) = non_blocking(file);
@@ -86,7 +86,8 @@ async fn main() -> Result<()> {
 
         // Also log to stderr for immediate feedback
         eprintln!(
-            "Development logging enabled - writing to /tmp/symposium-mcp.log (PID: {})",
+            "Development logging enabled - writing to {} (PID: {})",
+            symposium_mcp::constants::dev_log_path(),
             std::process::id()
         );
     } else {

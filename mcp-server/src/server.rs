@@ -68,8 +68,7 @@ impl DialecticServer {
 
         info!("Discovered VSCode PID: {vscode_pid} and shell PID: {shell_pid}");
 
-        // Ensure the message bus daemon is running
-        Self::ensure_daemon_running(vscode_pid).await?;
+        // Connect to the global message bus daemon (started by VSCode extension or other clients)
 
         // Create shared reference store
         let reference_store = Arc::new(ReferenceStore::new());
@@ -174,10 +173,6 @@ impl DialecticServer {
         }
     }
 
-    /// Ensure the message bus daemon is running for the given VSCode PID
-    async fn ensure_daemon_running(vscode_pid: u32) -> Result<()> {
-        crate::daemon::spawn_daemon_process(vscode_pid).await
-    }
 
     /// Creates a new DialecticServer in test mode
     /// In test mode, IPC operations are mocked and don't require a VSCode connection

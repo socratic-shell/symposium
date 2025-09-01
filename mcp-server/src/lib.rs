@@ -2,6 +2,7 @@
 //!
 //! Rust implementation of the Dialectic MCP server for code review integration.
 
+pub mod constants;
 mod daemon;
 mod dialect;
 mod ide;
@@ -13,7 +14,7 @@ mod server;
 mod types;
 pub mod synthetic_pr;
 
-pub use daemon::{run_daemon_with_prefix, run_daemon_with_idle_timeout, spawn_daemon_process, run_client};
+pub use daemon::{run_daemon_with_idle_timeout, run_client};
 pub use pid_discovery::find_vscode_pid_from_mcp;
 pub use reference_store::ReferenceStore;
 pub use server::DialecticServer;

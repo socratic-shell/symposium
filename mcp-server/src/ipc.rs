@@ -689,7 +689,7 @@ impl IPCCommunicatorInner {
         const MAX_RETRIES: u32 = 5;
         const BASE_DELAY_MS: u64 = 100;
 
-        let socket_path = format!("/tmp/symposium-daemon-{}.sock", self.vscode_pid);
+        let socket_path = crate::constants::global_daemon_socket_path();
         info!(
             "Attempting connection to message bus daemon: {}",
             socket_path
