@@ -459,7 +459,7 @@ fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
     let output = cmd.output().context("Failed to execute q mcp add")?;
 
     if output.status.success() {
-        println!("✅ MCP server 'dialectic' registered successfully with Q CLI!");
+        println!("✅ MCP server 'symposium' registered successfully with Q CLI!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -476,35 +476,91 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
         ClaudeScope::Project => "project",
     };
 
-    // Claude Code uses -- to separate command from its arguments
-    let mut cmd = Command::new("claude");
-    cmd.args([
-        "mcp",
-        "add",
-        "--scope",
-        scope_str,
-        "symposium",
-        &binary_path.to_string_lossy(),
-    ]);
-
-    println!("🔧 Registering Symposium MCP server with Claude Code...");
+    println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Scope: {}", scope_str);
 
-    let output = cmd.output().context("Failed to execute claude mcp add")?;
+    // First, check if symposium MCP server is already configured
+    println!("🔍 Checking existing MCP server configuration...");
+    let list_output = Command::new("claude")
+        .args(["mcp", "list"])
+        .output()
+        .context("Failed to execute claude mcp list")?;
 
-    if output.status.success() {
-        println!("✅ MCP server 'dialectic' registered successfully with Claude Code!");
+    if !list_output.status.success() {
+        let stderr = String::from_utf8_lossy(&list_output.stderr);
+        println!("❌ Failed to list MCP servers:");
+        println!("   Error: {}", stderr.trim());
+        return Ok(false);
+    }
+
+    let list_stdout = String::from_utf8_lossy(&list_output.stdout);
+    let desired_binary_str = binary_path.to_string_lossy();
+    let desired_binary_ref = desired_binary_str.as_ref();
+    
+    // Parse the output to check if symposium exists and with what binary path
+    let mut symposium_exists = false;
+    let mut symposium_has_correct_path = false;
+    
+    for line in list_stdout.lines() {
+        // Look for lines that mention symposium MCP server
+        // The exact format may vary, but we're looking for symposium name and the binary path
+        if line.contains("symposium") {
+            symposium_exists = true;
+            // Check if this line also contains our desired binary path
+            if line.contains(desired_binary_ref) {
+                symposium_has_correct_path = true;
+                break;
+            }
+        }
+    }
+
+    if symposium_exists && symposium_has_correct_path {
+        println!("✅ Symposium MCP server already configured with correct path - no action needed");
+        return Ok(true);
+    }
+
+    if symposium_exists && !symposium_has_correct_path {
+        println!("🔄 Symposium MCP server exists but with different path - updating...");
+        
+        // Remove the existing server
+        let remove_output = Command::new("claude")
+            .args(["mcp", "remove", "symposium"])
+            .output()
+            .context("Failed to execute claude mcp remove")?;
+
+        if !remove_output.status.success() {
+            let stderr = String::from_utf8_lossy(&remove_output.stderr);
+            println!("❌ Failed to remove existing MCP server:");
+            println!("   Error: {}", stderr.trim());
+            return Ok(false);
+        }
+        println!("✅ Removed existing symposium MCP server");
+    }
+
+    // Add the MCP server (either first time or after removal)
+    let action = if symposium_exists { "Re-adding" } else { "Adding" };
+    println!("➕ {} Symposium MCP server...", action);
+    
+    let add_output = Command::new("claude")
+        .args([
+            "mcp",
+            "add",
+            "--scope",
+            scope_str,
+            "symposium",
+            desired_binary_ref,
+        ])
+        .output()
+        .context("Failed to execute claude mcp add")?;
+
+    if add_output.status.success() {
+        println!("✅ Symposium MCP server registered successfully with Claude Code!");
         Ok(true)
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
         println!("❌ Failed to register MCP server with Claude Code:");
         println!("   Error: {}", stderr.trim());
-
-        if stderr.contains("already exists") {
-            println!("\n💡 Tip: Remove existing server with: claude mcp remove dialectic");
-        }
-
         Ok(false)
     }
 }
