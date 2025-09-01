@@ -6,118 +6,72 @@ The daemon message bus serves as the central communication hub that routes messa
 
 ```mermaid
 graph TB
-    subgraph "VSCode Window"
-        EXT[VSCode Extension]
-        TERM[Terminal Shell]
+    OSX[OS X App]
+    MCP[MCP Server<br/>with embedded client]
+    EXT[VSCode extension]
+    DAEMON[symposium-mcp daemon<br/>Auto-spawned if needed]
+    SOCKET[Unix Socket<br>/tmp/symposium-daemon.sock]
+    AGENT[Coding agent like<br>Claude Code or Q CLI]
+    
+    subgraph "Client Processes"
+        CLIENT2[symposium-mcp client<br/>spawned by OS X App]
+        CLIENT1[symposium-mcp client<br/>spawned by VSCode]
     end
     
-    subgraph "MCP Ecosystem" 
-        MCP[MCP Server]
-        CLIENT[Claude/Q CLI]
-    end
+    EXT -->|spawns| CLIENT1
+    OSX -->|spawns| CLIENT2
     
-    subgraph "Daemon Process"
-        DAEMON[Message Bus Daemon]
-        SOCKET[Unix Socket<br>/tmp/symposium-daemon.sock]
-    end
+    CLIENT1 <-->|stdin/stdout| SOCKET
+    CLIENT2 <-->|stdin/stdout| SOCKET
+    MCP <-->|stdin/stdout| SOCKET
+
+    AGENT -- starts --> MCP
     
-    EXT <-->|IPC Messages| SOCKET
-    MCP <-->|IPC Messages| SOCKET
-    CLIENT -->|Spawns| MCP
-    DAEMON -->|Broadcasts| SOCKET
+    DAEMON -->|broadcasts all messages<br/>to all clients| SOCKET
     
     style DAEMON fill:#e1f5fe
     style SOCKET fill:#f3e5f5
+    style CLIENT1 fill:#fff2cc
+    style CLIENT2 fill:#fff2cc
+    style AGENT fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
 ```
 
 ## Binary and Process Structure
 
-The [MCP server](./mcp-server.md) and daemon are packaged in the same binary (`symposium-mcp`). The daemon is started by running:
+The [MCP server](./mcp-server.md) and daemon are packaged in the same binary (`symposium-mcp`) with these subcommands:
 
 ```bash
-symposium-mcp daemon --prefix symposium-daemon
+# Start MCP server (default, no subcommand) - has embedded IPC client
+symposium-mcp
+
+# Start client process (spawned by VSCode extension, OS X app, etc.)
+# This will automatically launch a daemon if needed
+symposium-mcp client
+
+# Start daemon (usually auto-spawned by clients)  
+symposium-mcp daemon
+
+# Run PID discovery probe (for testing)
+symposium-mcp probe
 ```
 
-This creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC communication.
+The daemon creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC communication.
 
-## Lifecycle Management
+## Key Architecture Principles
 
-### Auto-Starting
-When an [MCP server](./mcp-server.md) starts, it:
-1. Identifies the PID of the IDE it is running inside of using process tree traversal
-2. Attempts to connect to the daemon socket
-3. If connection fails, spawns a new daemon process automatically
-4. Retries connection with exponential backoff
+**All logic in Rust**: The `symposium-mcp` binary contains all IPC, daemon, and client logic. Other components (VSCode extension, OS X app) spawn Rust processes rather than reimplementing communication logic.
+- See: `mcp-server/src/main.rs` - subcommands for `client`, `daemon` modes
+- See: `ide/vscode/src/extension.ts` - spawns `symposium-mcp client` process
 
-### Auto-Termination
-The daemon monitors the IDE PID and automatically terminates when:
-- The parent IDE process exits
-- It receives a SIGTERM or SIGINT signal
-- All client connections are closed and the daemon is idle
+**Simple broadcast model**: Daemon forwards every message to all connected clients. No parsing, filtering, or routing logic in the daemon itself.
+- See: `mcp-server/src/daemon.rs` - `broadcast_to_clients()` function
 
-### Graceful Shutdown
-When terminating, the daemon:
-1. Broadcasts a `reload_window` message to all connected VSCode extensions
-2. Waits 100ms for clients to process the message
-3. Closes all connections and exits cleanly
+**Message format**: One JSON document per line over Unix domain socket at `/tmp/symposium-daemon.sock`.
+- See: `mcp-server/src/daemon.rs` - socket creation and message handling
+- See: `mcp-server/src/constants.rs` - `DAEMON_SOCKET_PREFIX` constant
 
-This enables automatic VSCode window reloading during development workflows.
-
-## Structured Logging
-
-The daemon implements component-based structured logging with PID prefixes:
-
-```
-[DAEMON:12345] INFO Successfully bound to socket: /tmp/symposium-daemon.sock
-[MCP-SERVER:12346] INFO Connected to daemon via IPC  
-[EXTENSION:12347] INFO Received reload_window signal, reloading window...
-```
-
-Logging configuration:
-- **Development mode**: Logs to `/tmp/symposium-mcp.log` with `RUST_LOG=symposium_mcp=debug`
-- **Production mode**: Standard structured logging without file output
-- **Auto-cleanup**: Log file is truncated when daemon successfully binds to socket
-
-## IPC Communication Protocol
-
-### Socket Management
-- **Socket path**: `/tmp/symposium-daemon.sock` (Unix domain socket)
-- **Connection model**: Multiple clients can connect simultaneously
-- **Message format**: JSON objects, one per line
-- **Broadcasting**: All messages are rebroadcast to all connected clients
-
-### Message Routing
-Daemons are intentionally simple - they don't parse message content, just:
-1. Accept newline-delimited JSON messages from any client
-2. Rebroadcast each message to all other connected clients
-3. Let clients handle message filtering and routing logic
-
-### Connection Resilience
-- **Automatic reconnection**: Clients retry with exponential backoff on connection failure
-- **Clean disconnection**: Clients gracefully close connections on shutdown
-- **Process monitoring**: Daemon tracks client processes and cleans up stale connections
-
-## Development Integration
-
-### Setup Tool Integration
-The `cargo setup --dev` command:
-1. Builds the MCP server and VSCode extension
-2. **After building**, kills any existing daemon processes using `ps ux | grep 'symposium-mcp daemon'`
-3. Extracts PIDs and sends `SIGTERM` to each daemon process
-4. Daemon broadcasts `reload_window` before shutting down
-5. Sets up MCP server configuration to use the new binary
-
-### VSCode Extension Integration
-The VSCode extension:
-- Connects to daemon on activation via `DaemonClient.start()`
-- Listens for `reload_window` messages and executes `vscode.commands.executeCommand('workbench.action.reloadWindow')`
-- Maintains persistent connection for real-time message handling
-- Automatically reconnects if daemon restarts
-
-### Error Handling
-- **Socket binding failures**: Daemon retries with different socket paths if needed
-- **Permission issues**: Clear error messages with troubleshooting guidance  
-- **Connection timeouts**: Exponential backoff prevents resource exhaustion
-- **Process cleanup**: Stale socket files are automatically removed on startup
+**Automatic lifecycle**: Clients auto-spawn daemon if needed. Daemon auto-terminates after 30s idle. During development, `cargo setup --dev` kills daemon and sends `reload_window` to trigger VSCode reloads.
+- See: `mcp-server/src/daemon.rs` - `run_client()` spawns daemon if needed
+- See: `setup/src/dev_setup.rs` - kills existing daemons during development
 
 See [Communication Protocol](./protocol.md) for detailed message format specifications.
