@@ -10,7 +10,11 @@ use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing::{error, info};
 
-use symposium_mcp::{DialecticServer, structured_logging::{self, Component}};
+use symposium_mcp::{
+    DialecticServer,
+    constants::DAEMON_SOCKET_PREFIX,
+    structured_logging::{self, Component},
+};
 
 #[derive(Parser)]
 #[command(name = "symposium-mcp")]
@@ -34,7 +38,7 @@ enum Command {
         /// Optional filename prefix to use (for testing)
         #[arg(long)]
         prefix: Option<String>,
-        
+
         /// Idle timeout in seconds before auto-shutdown (default: 30)
         #[arg(long, default_value = "30")]
         idle_timeout: u64,
@@ -45,7 +49,7 @@ enum Command {
         /// Optional socket prefix for testing
         #[arg(long)]
         prefix: Option<String>,
-        
+
         /// Auto-start daemon if not running
         #[arg(long, default_value = "true")]
         auto_start: bool,
@@ -73,10 +77,13 @@ async fn main() -> Result<()> {
             run_pid_probe().await?;
             info!("🔍 PROBE MODE COMPLETE - Exiting");
         }
-        Some(Command::Daemon { prefix, idle_timeout }) => {
+        Some(Command::Daemon {
+            prefix,
+            idle_timeout,
+        }) => {
             let prefix = match &prefix {
                 Some(s) => s,
-                None => "symposium-daemon",
+                None => DAEMON_SOCKET_PREFIX,
             };
             info!(
                 "🚀 DAEMON MODE - Starting message bus daemon with prefix {prefix}, idle timeout {idle_timeout}s",
@@ -86,11 +93,9 @@ async fn main() -> Result<()> {
         Some(Command::Client { prefix, auto_start }) => {
             let prefix = match &prefix {
                 Some(s) => s,
-                None => "symposium-daemon",
+                None => DAEMON_SOCKET_PREFIX,
             };
-            info!(
-                "🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",
-            );
+            info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
             symposium_mcp::run_client(prefix, auto_start).await?;
         }
         None => {
