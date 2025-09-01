@@ -30,10 +30,9 @@ async fn test_daemon_ensure_running_separate_process() {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Test the daemon spawning logic in isolation using the library function
-    // Note: Current implementation uses global socket, not PID-specific
     let test_id = Uuid::new_v4();
     let socket_prefix = format!("symposium-integration-test-{}", test_id);
-    let socket_path = "/tmp/symposium-daemon.sock"; // Global socket path
+    let socket_path = format!("/tmp/{}.sock", socket_prefix);
 
     // Clean up any existing socket
     let _ = std::fs::remove_file(&socket_path);

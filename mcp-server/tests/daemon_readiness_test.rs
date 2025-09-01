@@ -10,7 +10,7 @@ async fn test_daemon_readiness_message() {
     // Initialize tracing for test output
     let _ = tracing_subscriber::fmt::try_init();
 
-    let test_pid = std::process::id(); // Use current process PID
+    // Use a unique test prefix based on the test name
 
     // Spawn daemon as separate process with stdout captured
     let mut cmd = Command::new("cargo");
@@ -22,7 +22,6 @@ async fn test_daemon_readiness_message() {
         "daemon",
         "--prefix",
         "symposium-mcp-test_daemon_readiness_message",
-        &test_pid.to_string(),
     ]);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::null());

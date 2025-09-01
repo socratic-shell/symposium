@@ -86,14 +86,14 @@ pub async fn handle_client(
 /// Run the message bus daemon with idle timeout instead of VSCode PID monitoring
 /// Daemon will automatically shut down after idle_timeout seconds of no connected clients
 pub async fn run_daemon_with_idle_timeout(
-    _socket_prefix: &str,
+    socket_prefix: &str,
     idle_timeout_secs: u64,
     ready_barrier: Option<std::sync::Arc<tokio::sync::Barrier>>,
 ) -> Result<()> {
     use std::os::unix::net::UnixListener;
     use std::path::Path;
 
-    let socket_path = crate::constants::global_daemon_socket_path();
+    let socket_path = crate::constants::daemon_socket_path(socket_prefix);
     info!("daemon: attempting to claim socket: {}", socket_path);
 
     // Try to bind to the socket first - this is our "claim" operation
@@ -321,12 +321,12 @@ async fn run_message_bus_with_shutdown_signal(
 
 /// Run as client - connects to daemon and bridges stdin/stdout
 /// If auto_start is true and daemon is not running, spawns an independent daemon process
-pub async fn run_client(_socket_prefix: &str, auto_start: bool) -> Result<()> {
+pub async fn run_client(socket_prefix: &str, auto_start: bool) -> Result<()> {
     use std::process::Command;
     use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
     use tokio::net::UnixStream;
 
-    let socket_path = crate::constants::global_daemon_socket_path();
+    let socket_path = crate::constants::daemon_socket_path(socket_prefix);
 
     // Try to connect to existing daemon
     let stream = match UnixStream::connect(&socket_path).await {

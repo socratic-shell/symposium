@@ -12,9 +12,14 @@ pub const DEV_LOG_FILENAME: &str = "symposium-mcp.log";
 /// Default idle timeout for daemon in seconds
 pub const DEFAULT_DAEMON_IDLE_TIMEOUT: u64 = 30;
 
+/// Daemon socket path with custom prefix
+pub fn daemon_socket_path(prefix: &str) -> String {
+    format!("{}/{}.sock", TEMP_DIR, prefix)
+}
+
 /// Global daemon socket path (used by all clients and servers)
 pub fn global_daemon_socket_path() -> String {
-    format!("{}/{}.sock", TEMP_DIR, DAEMON_SOCKET_PREFIX)
+    daemon_socket_path(DAEMON_SOCKET_PREFIX)
 }
 
 /// Development log file path
