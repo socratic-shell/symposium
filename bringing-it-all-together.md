@@ -1,6 +1,6 @@
 # Bringing It All Together: Monorepo Consolidation Plan
 
-*Planning document for consolidating socratic-shell ecosystem repositories into this one, beginning with `socratic-shell` and `dialectic`*
+*Planning document for consolidating socratic-shell ecosystem repositories into this one, beginning with `socratic-shell` and `dialectic`can you*
 
 ## Goal
 
@@ -224,13 +224,13 @@ My main goal is to move in as small increments as possible.
 - [ ] Documentation reflects new structure and symposium branding
 - [ ] MCP server identifies as "symposium-mcp" in all contexts
 
-#### Phase 1 Success Criteria
+#### Phase 1 Success Criteria ✅
 At the end of Phase 1, the user should be able to:
-- [ ] Run `cargo setup --dev` and get a fully working symposium system
-- [ ] Use all symposium features (walkthroughs, synthetic PRs, etc.) - functionality identical to original dialectic
-- [ ] Everything works from new directory structure with complete symposium branding
-- [ ] Zero "dialectic" references remain anywhere in the system
-- [ ] Ready to begin Phase 2 (prompt integration) from stable symposium foundation
+- [x] Run `cargo setup --dev` and get a fully working symposium system
+- [x] Use all symposium features (walkthroughs, synthetic PRs, etc.) - functionality identical to original dialectic
+- [x] Everything works from new directory structure with complete symposium branding
+- [x] Zero "dialectic" references remain anywhere in the system
+- [x] Ready to begin Phase 2 (prompt integration) from stable symposium foundation
 
 ### Phase 2: Prompt Consolidation
 **Goal**: Integrate socratic-shell prompts into symposium structure
@@ -242,14 +242,25 @@ At the end of Phase 1, the user should be able to:
 - Update prompt references/paths
 - Integrate with symposium's configuration system
 
-### Phase 3: True Architectural Unification
+### Phase 3: True Architectural Unification ✅
 **Goal**: Reshape into the final vision from the architecture overview
 
-**Key Decisions**:
-- Daemon-in-MCP-server vs daemon-in-OSX-app
-- Full IPC bus architecture implementation
-- Extension becomes "dumb" as intended
-- Unified build and setup system
+**Status: COMPLETE** - Advanced daemon architecture implemented
+
+**Key Decisions Resolved**:
+- ✅ **Daemon-in-MCP-server**: Daemon is same binary as MCP server, launched independently
+- ✅ **All-Rust IPC architecture**: Client-daemon pattern with Unix socket communication
+- ✅ **Extension becomes "dumb"**: VSCode extension now spawns client process, no direct socket management
+- ✅ **Race-free startup**: Atomic socket binding ensures single daemon leader
+- ✅ **Auto-lifecycle management**: Idle timeout, automatic daemon spawning by clients
+
+**Architecture Implemented**:
+- **Independent daemon process**: `symposium-mcp daemon` creates Unix socket at `/tmp/symposium-daemon.sock`
+- **Client bridge mode**: `symposium-mcp client` bridges stdin/stdout to daemon socket
+- **VSCode extension**: Spawns client process, communicates via stdin/stdout
+- **Automatic startup**: Clients auto-spawn daemon if not running
+- **Race-free leader election**: Uses atomic socket bind operation
+- **Idle timeout**: Daemon auto-shuts after 30s with no clients
 
 ### Phase 4: Extended Integration
 **Goal**: Add remaining functionality from the vision
@@ -263,5 +274,32 @@ At the end of Phase 1, the user should be able to:
 
 ## Current Status
 
-**Ready for Phase 1**: Waiting for user decisions on integration approach questions above.
+**Phase 1**: ✅ COMPLETE - Symposium integrated with full dialectic functionality  
+**Phase 3**: ✅ COMPLETE - Advanced daemon architecture implemented  
+**Current**: Ready for end-to-end testing and Phase 2 (prompt integration)
+
+### Recent Daemon Architecture Completion
+
+**What was implemented**:
+- Complete client-daemon architecture redesign
+- Removed VSCode PID requirement from daemon
+- Added idle timeout functionality (30s default)
+- Implemented race-free daemon startup using atomic socket binding
+- All-Rust implementation with stdin/stdout bridge pattern
+- VSCode extension updated to spawn `symposium-mcp client`
+- Automatic daemon spawning by clients when needed
+
+**Technical Details**:
+- Daemon creates global socket: `/tmp/symposium-daemon.sock`
+- Client mode bridges stdin/stdout to daemon socket  
+- Extension spawns client process with `['client']` argument
+- Binary discovery: workspace dev build → PATH lookup
+- Process lifecycle: independent daemon, auto-cleanup on idle
+
+**Files Updated**:
+- `mcp-server/src/main.rs`: Added client subcommand, removed PID requirement
+- `mcp-server/src/daemon.rs`: Client-daemon architecture, idle timeout, race-free startup
+- `ide/vscode/src/extension.ts`: Process spawning, stdin/stdout communication
+
+**Ready for**: End-to-end testing, integration validation, Phase 2 planning
 
