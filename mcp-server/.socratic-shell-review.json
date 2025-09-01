@@ -1,25 +1,24 @@
 {
-  "review_id": "7b7001bc-26a2-4138-bab3-061e2847cf22",
-  "title": "Add AI insight comments and payment module",
+  "review_id": "443e3ba2-abc8-4af8-a0a4-4c62ef81abba",
+  "title": "Multi-language AI comments test",
   "description": {
-    "automated": true,
-    "summary": "Integration test for synthetic PR functionality"
+    "test": "custom_spec"
   },
   "commit_range": "HEAD~1..HEAD",
   "status": "Pending",
   "files_changed": [
     {
-      "path": "src/auth.rs",
+      "path": "lib/utils.ts",
       "status": "Modified",
-      "additions": 28,
+      "additions": 6,
       "deletions": 1,
       "hunks": [
         {
-          "header": "@@ -1,5 +1,32 @@",
+          "header": "@@ -1,5 +1,5 @@",
           "old_start": 1,
           "old_lines": 5,
           "new_start": 1,
-          "new_lines": 32,
+          "new_lines": 5,
           "lines": [
             {
               "line_type": "Context",
@@ -29,68 +28,59 @@
             },
             {
               "line_type": "Removed",
-              "content": "// Initial authentication module",
+              "content": "// TypeScript utility functions",
               "old_line_number": 2,
               "new_line_number": null
             },
             {
               "line_type": "Added",
-              "content": "// Updated authentication module with AI insights",
+              "content": "// TypeScript utility functions - updated",
               "old_line_number": null,
               "new_line_number": 2
             },
             {
               "line_type": "Context",
-              "content": "pub fn authenticate(token: &str) -> bool {",
+              "content": "export function validateEmail(email: string): boolean {",
               "old_line_number": 3,
               "new_line_number": 3
             },
             {
-              "line_type": "Added",
-              "content": "    // 💡 Using simple string comparison for demo - in production would use JWT validation",
-              "old_line_number": null,
+              "line_type": "Context",
+              "content": "    // 💡 Using regex for basic validation - consider using a validation library",
+              "old_line_number": 4,
               "new_line_number": 4
             },
             {
-              "line_type": "Added",
-              "content": "    if token.is_empty() {",
-              "old_line_number": null,
+              "line_type": "Context",
+              "content": "    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);",
+              "old_line_number": 5,
               "new_line_number": 5
-            },
+            }
+          ]
+        },
+        {
+          "header": "@@ -9,3 +9,8 @@ export function formatCurrency(amount: number): string {",
+          "old_start": 9,
+          "old_lines": 3,
+          "new_start": 9,
+          "new_lines": 8,
+          "lines": [
             {
-              "line_type": "Added",
-              "content": "        return false;",
-              "old_line_number": null,
-              "new_line_number": 6
-            },
-            {
-              "line_type": "Added",
-              "content": "    }",
-              "old_line_number": null,
-              "new_line_number": 7
-            },
-            {
-              "line_type": "Added",
-              "content": "",
-              "old_line_number": null,
-              "new_line_number": 8
-            },
-            {
-              "line_type": "Added",
-              "content": "    // ❓ Should we add rate limiting here to prevent brute force attacks?",
-              "old_line_number": null,
+              "line_type": "Context",
+              "content": "    // ❓ Should we support different currencies and locales?",
+              "old_line_number": 9,
               "new_line_number": 9
             },
             {
               "line_type": "Context",
-              "content": "    token == \"valid\"",
-              "old_line_number": 4,
+              "content": "    return `$${amount.toFixed(2)}`;",
+              "old_line_number": 10,
               "new_line_number": 10
             },
             {
               "line_type": "Context",
               "content": "}",
-              "old_line_number": 5,
+              "old_line_number": 11,
               "new_line_number": 11
             },
             {
@@ -101,130 +91,34 @@
             },
             {
               "line_type": "Added",
-              "content": "pub fn validate_session(session_id: &str) -> Result<User, AuthError> {",
+              "content": "export function sanitizeInput(input: string): string {",
               "old_line_number": null,
               "new_line_number": 13
             },
             {
               "line_type": "Added",
-              "content": "    // TODO: Implement proper session validation with database lookup",
+              "content": "    // TODO: Implement proper input sanitization",
               "old_line_number": null,
               "new_line_number": 14
             },
             {
               "line_type": "Added",
-              "content": "    // FIXME: This doesn't handle expired sessions correctly",
+              "content": "    return input.trim();",
               "old_line_number": null,
               "new_line_number": 15
             },
             {
               "line_type": "Added",
-              "content": "    if session_id.len() < 10 {",
+              "content": "}",
               "old_line_number": null,
               "new_line_number": 16
-            },
-            {
-              "line_type": "Added",
-              "content": "        return Err(AuthError::InvalidSession);",
-              "old_line_number": null,
-              "new_line_number": 17
-            },
-            {
-              "line_type": "Added",
-              "content": "    }",
-              "old_line_number": null,
-              "new_line_number": 18
-            },
-            {
-              "line_type": "Added",
-              "content": "",
-              "old_line_number": null,
-              "new_line_number": 19
-            },
-            {
-              "line_type": "Added",
-              "content": "    Ok(User { id: 1, name: \"Test\".to_string() })",
-              "old_line_number": null,
-              "new_line_number": 20
-            },
-            {
-              "line_type": "Added",
-              "content": "}",
-              "old_line_number": null,
-              "new_line_number": 21
-            },
-            {
-              "line_type": "Added",
-              "content": "",
-              "old_line_number": null,
-              "new_line_number": 22
-            },
-            {
-              "line_type": "Added",
-              "content": "#[derive(Debug)]",
-              "old_line_number": null,
-              "new_line_number": 23
-            },
-            {
-              "line_type": "Added",
-              "content": "pub struct User {",
-              "old_line_number": null,
-              "new_line_number": 24
-            },
-            {
-              "line_type": "Added",
-              "content": "    pub id: u32,",
-              "old_line_number": null,
-              "new_line_number": 25
-            },
-            {
-              "line_type": "Added",
-              "content": "    pub name: String,",
-              "old_line_number": null,
-              "new_line_number": 26
-            },
-            {
-              "line_type": "Added",
-              "content": "}",
-              "old_line_number": null,
-              "new_line_number": 27
-            },
-            {
-              "line_type": "Added",
-              "content": "",
-              "old_line_number": null,
-              "new_line_number": 28
-            },
-            {
-              "line_type": "Added",
-              "content": "#[derive(Debug)]",
-              "old_line_number": null,
-              "new_line_number": 29
-            },
-            {
-              "line_type": "Added",
-              "content": "pub enum AuthError {",
-              "old_line_number": null,
-              "new_line_number": 30
-            },
-            {
-              "line_type": "Added",
-              "content": "    InvalidSession,",
-              "old_line_number": null,
-              "new_line_number": 31
-            },
-            {
-              "line_type": "Added",
-              "content": "}",
-              "old_line_number": null,
-              "new_line_number": 32
             }
           ]
         }
       ]
     },
     {
-      "path": "src/payment.rs",
+      "path": "scripts/process_data.py",
       "status": "Added",
       "additions": 16,
       "deletions": 0,
@@ -244,61 +138,61 @@
             },
             {
               "line_type": "Added",
-              "content": "// Payment processing module",
+              "content": "# Data processing utilities",
               "old_line_number": null,
               "new_line_number": 2
             },
             {
               "line_type": "Added",
-              "content": "pub fn process_payment(amount: f64) -> PaymentResult {",
+              "content": "def clean_data(raw_data):",
               "old_line_number": null,
               "new_line_number": 3
             },
             {
               "line_type": "Added",
-              "content": "    // 💡 Using Stripe API for PCI compliance instead of handling cards directly",
+              "content": "    # TODO: Add proper data validation and cleaning",
               "old_line_number": null,
               "new_line_number": 4
             },
             {
               "line_type": "Added",
-              "content": "    if amount <= 0.0 {",
+              "content": "    # FIXME: This doesn't handle missing values correctly",
               "old_line_number": null,
               "new_line_number": 5
             },
             {
               "line_type": "Added",
-              "content": "        return PaymentResult::Error(\"Invalid amount\".to_string());",
+              "content": "    return [item for item in raw_data if item is not None]",
               "old_line_number": null,
               "new_line_number": 6
             },
             {
               "line_type": "Added",
-              "content": "    }",
+              "content": "",
               "old_line_number": null,
               "new_line_number": 7
             },
             {
               "line_type": "Added",
-              "content": "",
+              "content": "def analyze_trends(data):",
               "old_line_number": null,
               "new_line_number": 8
             },
             {
               "line_type": "Added",
-              "content": "    // ❓ What should be the timeout for payment processing?",
+              "content": "    # 💡 Using simple statistical analysis - consider using pandas for complex operations",
               "old_line_number": null,
               "new_line_number": 9
             },
             {
               "line_type": "Added",
-              "content": "    PaymentResult::Success",
+              "content": "    if not data:",
               "old_line_number": null,
               "new_line_number": 10
             },
             {
               "line_type": "Added",
-              "content": "}",
+              "content": "        return {}",
               "old_line_number": null,
               "new_line_number": 11
             },
@@ -310,25 +204,25 @@
             },
             {
               "line_type": "Added",
-              "content": "pub enum PaymentResult {",
+              "content": "    return {",
               "old_line_number": null,
               "new_line_number": 13
             },
             {
               "line_type": "Added",
-              "content": "    Success,",
+              "content": "        'count': len(data),",
               "old_line_number": null,
               "new_line_number": 14
             },
             {
               "line_type": "Added",
-              "content": "    Error(String),",
+              "content": "        'average': sum(data) / len(data)",
               "old_line_number": null,
               "new_line_number": 15
             },
             {
               "line_type": "Added",
-              "content": "}",
+              "content": "    }",
               "old_line_number": null,
               "new_line_number": 16
             }
@@ -339,54 +233,54 @@
   ],
   "comment_threads": [
     {
-      "thread_id": "src/auth.rs:4",
-      "file_path": "src/auth.rs",
+      "thread_id": "lib/utils.ts:4",
+      "file_path": "lib/utils.ts",
       "line_number": 4,
       "comment_type": "Explanation",
-      "content": "Using simple string comparison for demo - in production would use JWT validation",
+      "content": "Using regex for basic validation - consider using a validation library",
       "responses": []
     },
     {
-      "thread_id": "src/auth.rs:9",
-      "file_path": "src/auth.rs",
+      "thread_id": "lib/utils.ts:9",
+      "file_path": "lib/utils.ts",
       "line_number": 9,
       "comment_type": "Question",
-      "content": "Should we add rate limiting here to prevent brute force attacks?",
+      "content": "Should we support different currencies and locales?",
       "responses": []
     },
     {
-      "thread_id": "src/auth.rs:14",
-      "file_path": "src/auth.rs",
+      "thread_id": "lib/utils.ts:14",
+      "file_path": "lib/utils.ts",
       "line_number": 14,
       "comment_type": "Todo",
-      "content": "Implement proper session validation with database lookup",
+      "content": "Implement proper input sanitization",
       "responses": []
     },
     {
-      "thread_id": "src/auth.rs:15",
-      "file_path": "src/auth.rs",
-      "line_number": 15,
-      "comment_type": "Fixme",
-      "content": "This doesn't handle expired sessions correctly",
-      "responses": []
-    },
-    {
-      "thread_id": "src/payment.rs:4",
-      "file_path": "src/payment.rs",
+      "thread_id": "scripts/process_data.py:4",
+      "file_path": "scripts/process_data.py",
       "line_number": 4,
-      "comment_type": "Explanation",
-      "content": "Using Stripe API for PCI compliance instead of handling cards directly",
+      "comment_type": "Todo",
+      "content": "Add proper data validation and cleaning",
       "responses": []
     },
     {
-      "thread_id": "src/payment.rs:9",
-      "file_path": "src/payment.rs",
+      "thread_id": "scripts/process_data.py:5",
+      "file_path": "scripts/process_data.py",
+      "line_number": 5,
+      "comment_type": "Fixme",
+      "content": "This doesn't handle missing values correctly",
+      "responses": []
+    },
+    {
+      "thread_id": "scripts/process_data.py:9",
+      "file_path": "scripts/process_data.py",
       "line_number": 9,
-      "comment_type": "Question",
-      "content": "What should be the timeout for payment processing?",
+      "comment_type": "Explanation",
+      "content": "Using simple statistical analysis - consider using pandas for complex operations",
       "responses": []
     }
   ],
-  "created_at": "2025-09-01T19:44:30.087568Z",
-  "updated_at": "2025-09-01T19:44:30.087569Z"
+  "created_at": "2025-09-01T20:10:19.238653Z",
+  "updated_at": "2025-09-01T20:10:19.238654Z"
 }
