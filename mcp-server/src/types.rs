@@ -226,13 +226,4 @@ pub enum ReviewMode {
     UpdateSection,
 }
 
-/// Context for reference storage
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ReferenceContext {
-    pub file: Option<String>,
-    pub line: Option<u32>,
-    pub selection: Option<String>,
-    pub user_comment: Option<String>,
-    pub metadata: std::collections::HashMap<String, serde_json::Value>,
-}
 

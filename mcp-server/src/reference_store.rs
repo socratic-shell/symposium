@@ -1,10 +1,8 @@
 use anyhow::Result;
-use crate::types::ReferenceContext;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 /// In-memory reference storage
 #[derive(Debug, Clone)]
@@ -20,20 +18,6 @@ impl ReferenceStore {
         }
     }
 
-    /// Store a reference context and return a unique ID
-    pub async fn store(&self, context: ReferenceContext) -> Result<String> {
-        let id = Uuid::new_v4().to_string();
-        self.store_with_id(&id, context).await?;
-        Ok(id)
-    }
-
-    /// Store a reference context with a specific ID
-    pub async fn store_with_id(&self, id: &str, context: ReferenceContext) -> Result<()> {
-        let mut refs = self.references.write().await;
-        let value = serde_json::to_value(context)?;
-        refs.insert(id.to_string(), value);
-        Ok(())
-    }
 
     /// Store arbitrary JSON value with a specific ID (for generic reference system)
     pub async fn store_json_with_id(&self, id: &str, value: serde_json::Value) -> Result<()> {
@@ -48,17 +32,6 @@ impl ReferenceStore {
         Ok(refs.get(id).cloned())
     }
 
-    /// Retrieve a reference context by ID
-    pub async fn get(&self, id: &str) -> Result<Option<ReferenceContext>> {
-        let refs = self.references.read().await;
-        match refs.get(id) {
-            Some(value) => {
-                let context: ReferenceContext = serde_json::from_value(value.clone())?;
-                Ok(Some(context))
-            }
-            None => Ok(None),
-        }
-    }
 
     /// Get the number of stored references
     pub async fn count(&self) -> usize {
@@ -76,62 +49,58 @@ impl Default for ReferenceStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid;
 
     #[tokio::test]
     async fn test_store_and_retrieve() {
         let store = ReferenceStore::new();
         
-        let context = ReferenceContext {
-            file: Some("src/main.rs".to_string()),
-            line: Some(42),
-            selection: Some("let x = foo();".to_string()),
-            user_comment: None,
-            metadata: HashMap::new(),
-        };
+        let test_value = serde_json::json!({
+            "file": "src/main.rs",
+            "line": 42,
+            "selection": "let x = foo();",
+            "custom_field": "arbitrary data"
+        });
 
-        let id = store.store(context.clone()).await.unwrap();
-        let retrieved = store.get(&id).await.unwrap().unwrap();
+        let id = uuid::Uuid::new_v4().to_string();
+        store.store_json_with_id(&id, test_value.clone()).await.unwrap();
+        let retrieved = store.get_json(&id).await.unwrap().unwrap();
         
-        assert_eq!(retrieved.file, context.file);
-        assert_eq!(retrieved.line, context.line);
-        assert_eq!(retrieved.selection, context.selection);
+        assert_eq!(retrieved["file"], "src/main.rs");
+        assert_eq!(retrieved["line"], 42);
+        assert_eq!(retrieved["selection"], "let x = foo();");
+        assert_eq!(retrieved["custom_field"], "arbitrary data");
     }
 
     #[tokio::test]
-    async fn test_store_with_id() {
+    async fn test_store_json_with_id() {
         let store = ReferenceStore::new();
         
-        let context = ReferenceContext {
-            file: Some("test.rs".to_string()),
-            line: None,
-            selection: None,
-            user_comment: Some("Test comment".to_string()),
-            metadata: HashMap::new(),
-        };
+        let test_value = serde_json::json!({
+            "file": "test.rs",
+            "user_comment": "Test comment",
+            "custom_data": 42
+        });
 
         let id = "test-id";
-        store.store_with_id(id, context.clone()).await.unwrap();
+        store.store_json_with_id(id, test_value.clone()).await.unwrap();
         
-        let retrieved = store.get(id).await.unwrap().unwrap();
-        assert_eq!(retrieved.user_comment, context.user_comment);
+        let retrieved = store.get_json(id).await.unwrap().unwrap();
+        assert_eq!(retrieved["user_comment"], "Test comment");
+        assert_eq!(retrieved["custom_data"], 42);
     }
 
     #[tokio::test]
     async fn test_count() {
         let store = ReferenceStore::new();
         
-        let context = ReferenceContext {
-            file: Some("test.rs".to_string()),
-            line: None,
-            selection: None,
-            user_comment: None,
-            metadata: HashMap::new(),
-        };
+        let test_value1 = serde_json::json!({"type": "test1"});
+        let test_value2 = serde_json::json!({"type": "test2"});
 
         assert_eq!(store.count().await, 0);
         
-        store.store(context.clone()).await.unwrap();
-        store.store(context.clone()).await.unwrap();
+        store.store_json_with_id("id1", test_value1).await.unwrap();
+        store.store_json_with_id("id2", test_value2).await.unwrap();
         
         assert_eq!(store.count().await, 2);
     }
