@@ -166,10 +166,9 @@ interface FileLocation {
 
 // 💡: Daemon client for connecting to message bus
 export class DaemonClient implements vscode.Disposable {
-    private socket: net.Socket | null = null;
+    private clientProcess: any = null;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private isDisposed = false;
-    private buffer = '';
     private readonly RECONNECT_INTERVAL_MS = 5000; // 5 seconds
 
     // Terminal registry: track active shell PIDs with MCP servers
@@ -187,77 +186,103 @@ export class DaemonClient implements vscode.Disposable {
     ) { }
 
     start(): void {
-        this.outputChannel.appendLine('Starting daemon client...');
-        this.connectToDaemon();
+        this.outputChannel.appendLine('Starting symposium client...');
+        this.startClientProcess();
     }
 
-    private connectToDaemon(): void {
+    private async startClientProcess(): Promise<void> {
         if (this.isDisposed) return;
 
-        const socketPath = this.getDaemonSocketPath();
-        this.outputChannel.appendLine(`Attempting to connect to daemon: ${socketPath}`);
+        // Find symposium-mcp binary
+        const binaryPath = await this.findSymposiumBinary();
+        if (!binaryPath) {
+            this.outputChannel.appendLine('❌ Failed to find symposium-mcp binary');
+            return;
+        }
 
-        this.socket = new net.Socket();
+        this.outputChannel.appendLine(`Using symposium binary: ${binaryPath}`);
 
-        // Set up all socket handlers immediately when socket is created
-        this.setupSocketHandlers();
-
-        this.socket.on('connect', () => {
-            this.outputChannel.appendLine('✅ Connected to message bus daemon');
-            this.clearReconnectTimer();
-
-            // Send Marco broadcast to discover existing MCP servers
-            this.sendMarco();
+        // Spawn symposium-mcp client process
+        const { spawn } = require('child_process');
+        
+        this.clientProcess = spawn(binaryPath, ['client'], {
+            stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
         });
 
-        this.socket.on('error', (error) => {
-            // Only log at debug level to avoid spam during normal startup
-            this.outputChannel.appendLine(`Daemon connection failed: ${error.message}`);
-            
-            // Try to start the daemon if it's not running
-            this.tryStartDaemon().then(() => {
-                this.scheduleReconnect();
-            }).catch(() => {
-                this.scheduleReconnect();
-            });
+        // Handle client process events
+        this.clientProcess.on('spawn', () => {
+            this.outputChannel.appendLine('✅ Symposium client process started');
+            this.setupClientCommunication();
         });
 
-        this.socket.on('close', () => {
-            this.outputChannel.appendLine('Daemon connection closed, reconnecting...');
+        this.clientProcess.on('error', (error: Error) => {
+            this.outputChannel.appendLine(`❌ Client process error: ${error.message}`);
             this.scheduleReconnect();
         });
 
-        this.socket.connect(socketPath);
+        this.clientProcess.on('exit', (code: number | null) => {
+            this.outputChannel.appendLine(`Client process exited with code: ${code}`);
+            this.scheduleReconnect();
+        });
     }
 
-    private setupSocketHandlers(): void {
-        if (!this.socket) return;
+    private async findSymposiumBinary(): Promise<string | null> {
+        const { which } = require('which');
+        
+        // Try PATH first
+        try {
+            const pathBinary = which.sync('symposium-mcp', { nothrow: true });
+            if (pathBinary) return pathBinary;
+        } catch (e) {
+            // Continue to workspace check
+        }
 
-        this.socket.on('data', (data) => {
-            this.buffer += data.toString();
+        // Try workspace development build
+        const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (workspacePath) {
+            const devPath = require('path').join(workspacePath, 'target', 'debug', 'symposium-mcp');
+            const fs = require('fs');
+            if (fs.existsSync(devPath)) {
+                this.outputChannel.appendLine(`Found development binary: ${devPath}`);
+                return devPath;
+            }
+        }
 
-            // Process all complete messages (ending with \n)
-            let lines = this.buffer.split('\n');
-            this.buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        return null;
+    }
 
+    private setupClientCommunication(): void {
+        if (!this.clientProcess) return;
+
+        // Set up stdout reader for daemon responses
+        this.clientProcess.stdout.on('data', (data: Buffer) => {
+            const text = data.toString();
+            // Process each line as a potential JSON message
+            const lines = text.split('\n');
             for (const line of lines) {
-                if (line.trim()) { // Skip empty lines
+                if (line.trim()) {
                     try {
                         const message: IPCMessage = JSON.parse(line);
                         this.outputChannel.appendLine(`Received message: ${message.type} (${message.id})`);
-                        // Handle message asynchronously for shell PID filtering
                         this.handleIncomingMessage(message).catch(error => {
                             this.outputChannel.appendLine(`Error handling message: ${error}`);
                         });
                     } catch (error) {
-                        const errorMsg = `Failed to parse message: ${error}`;
-                        this.outputChannel.appendLine(errorMsg);
-                        console.error(errorMsg);
+                        // Not JSON, might be daemon startup output - ignore
                     }
                 }
             }
         });
+
+        // Set up stderr reader for logging
+        this.clientProcess.stderr.on('data', (data: Buffer) => {
+            this.outputChannel.appendLine(`Client stderr: ${data.toString().trim()}`);
+        });
+
+        // Send initial Marco message to announce presence
+        this.sendMarco();
     }
+
 
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
         // First check: is this message for our window?
@@ -620,8 +645,8 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private sendResponse(messageId: string, response: ResponsePayload): void {
-        if (!this.socket || this.socket.destroyed) {
-            this.outputChannel.appendLine(`Cannot send response - socket not connected`);
+        if (!this.clientProcess || this.clientProcess.killed) {
+            this.outputChannel.appendLine(`Cannot send response - client process not available`);
             return;
         }
 
@@ -633,7 +658,7 @@ export class DaemonClient implements vscode.Disposable {
         };
 
         try {
-            this.socket.write(JSON.stringify(responseMessage) + '\n');
+            this.clientProcess.stdin.write(JSON.stringify(responseMessage) + '\n');
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send response: ${error}`);
         }
@@ -696,8 +721,8 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     public sendStoreReferenceToShell(shellPid: number, key: string, value: any): void {
-        if (!this.socket || this.socket.destroyed) {
-            this.outputChannel.appendLine(`Cannot send store_reference - socket not connected`);
+        if (!this.clientProcess || this.clientProcess.stdin?.destroyed) {
+            this.outputChannel.appendLine(`Cannot send store_reference - client not connected`);
             return;
         }
 
@@ -712,7 +737,7 @@ export class DaemonClient implements vscode.Disposable {
         };
 
         try {
-            this.socket.write(JSON.stringify(storeMessage) + '\n');
+            this.clientProcess.stdin?.write(JSON.stringify(storeMessage) + '\n');
             this.outputChannel.appendLine(`[REFERENCE] Stored reference ${key} for shell ${shellPid}`);
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send store_reference to shell ${shellPid}: ${error}`);
@@ -720,8 +745,8 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     public sendStoreReference(key: string, value: any): void {
-        if (!this.socket || this.socket.destroyed) {
-            this.outputChannel.appendLine(`Cannot send store_reference - socket not connected`);
+        if (!this.clientProcess || this.clientProcess.stdin?.destroyed) {
+            this.outputChannel.appendLine(`Cannot send store_reference - client not connected`);
             return;
         }
 
@@ -738,7 +763,7 @@ export class DaemonClient implements vscode.Disposable {
             };
 
             try {
-                this.socket.write(JSON.stringify(storeMessage) + '\n');
+                this.clientProcess.stdin?.write(JSON.stringify(storeMessage) + '\n');
                 this.outputChannel.appendLine(`[REFERENCE] Stored reference ${key} for shell ${shellPid}`);
             } catch (error) {
                 this.outputChannel.appendLine(`Failed to send store_reference to shell ${shellPid}: ${error}`);
@@ -747,8 +772,8 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private sendMarco(): void {
-        if (!this.socket || this.socket.destroyed) {
-            this.outputChannel.appendLine(`Cannot send Marco - socket not connected`);
+        if (!this.clientProcess || this.clientProcess.killed) {
+            this.outputChannel.appendLine(`Cannot send Marco - client process not available`);
             return;
         }
 
@@ -759,17 +784,13 @@ export class DaemonClient implements vscode.Disposable {
         };
 
         try {
-            this.socket.write(JSON.stringify(marcoMessage) + '\n');
+            this.clientProcess.stdin.write(JSON.stringify(marcoMessage) + '\n');
             this.outputChannel.appendLine('[DISCOVERY] Sent Marco broadcast to discover MCP servers');
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send Marco: ${error}`);
         }
     }
 
-    private getDaemonSocketPath(): string {
-        // 💡: Use a single global daemon socket for all Symposium instances
-        return `/tmp/symposium-daemon.sock`;
-    }
 
     private async tryStartDaemon(): Promise<void> {
         // With the new client architecture, we don't need to manage daemons directly
@@ -783,7 +804,7 @@ export class DaemonClient implements vscode.Disposable {
 
         this.clearReconnectTimer();
         this.reconnectTimer = setTimeout(() => {
-            this.connectToDaemon();
+            this.startClientProcess();
         }, this.RECONNECT_INTERVAL_MS);
     }
 
@@ -906,12 +927,12 @@ export class DaemonClient implements vscode.Disposable {
         this.isDisposed = true;
         this.clearReconnectTimer();
 
-        if (this.socket) {
-            this.socket.destroy();
-            this.socket = null;
+        if (this.clientProcess && !this.clientProcess.killed) {
+            this.clientProcess.kill();
+            this.clientProcess = null;
         }
 
-        this.outputChannel.appendLine('Daemon client disposed');
+        this.outputChannel.appendLine('Symposium client disposed');
     }
 
     /**
