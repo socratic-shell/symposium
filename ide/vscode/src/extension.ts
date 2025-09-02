@@ -1340,6 +1340,12 @@ function setupSelectionDetection(bus: Bus): void {
             outputChannel.appendLine(`Selected: "${selectedText}"`);
             outputChannel.appendLine(`Location: ${filePath}:${startLine}:${startColumn}-${endLine}:${endColumn}`);
 
+            // Check if we're in a taskspace for enhanced context
+            const taskspaceUuid = getCurrentTaskspaceUuid();
+            if (taskspaceUuid) {
+                outputChannel.appendLine(`Taskspace context: ${taskspaceUuid}`);
+            }
+
             // Use new consolidated sendToActiveTerminal method
             try {
                 const relativePath = vscode.workspace.asRelativePath(filePath);
