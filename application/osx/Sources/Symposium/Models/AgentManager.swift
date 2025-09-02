@@ -150,17 +150,28 @@ class AgentManager: ObservableObject {
         process.launchPath = path
         process.arguments = arguments
         
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
         
         do {
             try process.run()
             process.waitUntilExit()
             
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return output?.isEmpty == false ? output : nil
+            // Try stdout first
+            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let stdoutOutput = String(data: stdoutData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            if let stdout = stdoutOutput, !stdout.isEmpty {
+                return stdout
+            }
+            
+            // If stdout is empty, try stderr (Q CLI outputs to stderr)
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrOutput = String(data: stderrData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            return stderrOutput?.isEmpty == false ? stderrOutput : nil
         } catch {
             print("Error running command \(path): \(error)")
             return nil
