@@ -53,8 +53,7 @@ struct ProjectView: View {
                     do {
                         try projectManager.createTaskspace()
                     } catch {
-                        // TODO: Show error alert
-                        print("Failed to create taskspace: \(error)")
+                        Logger.shared.log("Failed to create taskspace: \(error)")
                     }
                 }
                 .disabled(projectManager.isLoading)
