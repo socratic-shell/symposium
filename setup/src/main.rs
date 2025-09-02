@@ -108,7 +108,9 @@ fn main() -> Result<()> {
 
     // Build components
     let binary_path = if args.dev {
-        build_rust_server()?
+        // In dev mode, build AND install so extension can find it
+        let _built_path = build_rust_server()?;
+        install_rust_server()?  // Also install to PATH for extension
     } else {
         install_rust_server()?
     };
