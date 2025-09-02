@@ -101,21 +101,28 @@ Define message types for daemon communication:
 - **Metadata generation**: Create initial `taskspace.json` with Hatchling state (for both UI and MCP creation)
 - **Note**: `spawn_taskspace` MCP tool (existing) creates taskspaces with specific name/description/prompt
 
-### 2.5c: VSCode Integration & Window Management
-- **VSCode launching**: Spawn VSCode process with taskspace directory as workspace
+### 2.5c: VSCode Extension Taskspace Detection & Agent Launch
+- **Taskspace detection**: Check if VSCode is running in `task-$UUID` directory with `../taskspace.json`
+- **Agent auto-launch**: Create terminal and start configured AI agent (Q CLI or Claude Code)
+- **Initial prompt handling**: If taskspace is Hatchling state, send initial prompt to agent
+- **State transition**: Send IPC message to change taskspace state from Hatchling to Resume
+- **Window registration**: Register VSCode window with Symposium app for this taskspace
+
+### 2.5d: VSCode Integration & Window Management
+- **VSCode launching**: Spawn VSCode process with taskspace directory as workspace (from app side)
 - **Window tracking**: Use Accessibility APIs to identify and track VSCode windows
 - **Window association**: Link VSCode windows to taskspace UUIDs via process tracking
 - **Focus management**: Implement "bring to front" when taskspace is selected in UI
 - **Process lifecycle**: Handle VSCode window creation/destruction events
 
-### 2.5d: Visual Taskspace Display
+### 2.5e: Visual Taskspace Display
 - **Taskspace cards**: Display active taskspaces in project view with metadata
 - **Screen capture system**: Periodic screenshots of VSCode windows (every 5-10 seconds)
 - **Thumbnail display**: Show current taskspace state via window screenshots
 - **Real-time updates**: Refresh taskspace display when windows change
 - **Empty state handling**: Graceful display when no taskspaces exist
 
-### 2.5e: Basic Taskspace Operations
+### 2.5f: Basic Taskspace Operations
 - **Taskspace selection**: Click to focus associated VSCode windows
 - **Taskspace status**: Visual indicators for active/inactive taskspaces
 - **Taskspace metadata**: Display name, description, creation time
