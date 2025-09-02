@@ -25,6 +25,49 @@ use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
 
+/// Extract project path and taskspace UUID from current working directory
+/// 
+/// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
+/// Traverses upward looking for `task-$UUID` directories and stops at `.symposium`.
+/// Uses the last UUID found during traversal.
+fn extract_project_info() -> Result<(String, String)> {
+    let current_dir = std::env::current_dir()
+        .map_err(|e| IPCError::Other(format!("Failed to get current working directory: {}", e)))?;
+    
+    let mut dir = current_dir.as_path();
+    let mut last_uuid = None;
+    
+    loop {
+        // Check if current directory name matches task-$UUID pattern
+        if let Some(dir_name) = dir.file_name().and_then(|name| name.to_str()) {
+            if let Some(uuid_part) = dir_name.strip_prefix("task-") {
+                // Try to parse as UUID
+                if let Ok(uuid) = Uuid::parse_str(uuid_part) {
+                    last_uuid = Some(uuid.to_string());
+                }
+            }
+            
+            // Check if we've reached a .symposium directory
+            if dir_name.ends_with(".symposium") {
+                let project_path = dir.to_string_lossy().to_string();
+                let taskspace_uuid = last_uuid.ok_or_else(|| {
+                    IPCError::Other("No task-$UUID directory found before reaching .symposium".to_string())
+                })?;
+                
+                return Ok((project_path, taskspace_uuid));
+            }
+        }
+        
+        // Move to parent directory
+        match dir.parent() {
+            Some(parent) => dir = parent,
+            None => break,
+        }
+    }
+    
+    Err(IPCError::Other("No .symposium directory found in directory tree".to_string()))
+}
+
 /// Errors that can occur during IPC communication
 #[derive(Error, Debug)]
 pub enum IPCError {
@@ -51,6 +94,9 @@ pub enum IPCError {
 
     #[error("Response channel closed")]
     ChannelClosed,
+
+    #[error("Other error: {0}")]
+    Other(String),
 }
 
 pub type Result<T> = std::result::Result<T, IPCError>;
@@ -484,6 +530,8 @@ impl IPCCommunicator {
     ) -> Result<()> {
         use crate::types::{SpawnTaskspacePayload, IPCMessageType};
         
+        let (project_path, taskspace_uuid) = extract_project_info()?;
+        
         let shell_pid = {
             let inner = self.inner.lock().await;
             inner.terminal_shell_pid
@@ -494,6 +542,8 @@ impl IPCCommunicator {
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SpawnTaskspace,
             payload: serde_json::to_value(SpawnTaskspacePayload {
+                project_path,
+                taskspace_uuid,
                 name,
                 task_description,
                 initial_prompt,
@@ -511,6 +561,8 @@ impl IPCCommunicator {
     ) -> Result<()> {
         use crate::types::{LogProgressPayload, IPCMessageType};
         
+        let (project_path, taskspace_uuid) = extract_project_info()?;
+        
         let shell_pid = {
             let inner = self.inner.lock().await;
             inner.terminal_shell_pid
@@ -521,6 +573,8 @@ impl IPCCommunicator {
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::LogProgress,
             payload: serde_json::to_value(LogProgressPayload {
+                project_path,
+                taskspace_uuid,
                 message,
                 category,
             })?,
@@ -533,6 +587,8 @@ impl IPCCommunicator {
     pub async fn signal_user(&self, message: String) -> Result<()> {
         use crate::types::{SignalUserPayload, IPCMessageType};
         
+        let (project_path, taskspace_uuid) = extract_project_info()?;
+        
         let shell_pid = {
             let inner = self.inner.lock().await;
             inner.terminal_shell_pid
@@ -542,7 +598,11 @@ impl IPCCommunicator {
             shell_pid,
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SignalUser,
-            payload: serde_json::to_value(SignalUserPayload { message })?,
+            payload: serde_json::to_value(SignalUserPayload { 
+                project_path,
+                taskspace_uuid,
+                message 
+            })?,
         };
 
         self.send_message_without_reply(ipc_message).await

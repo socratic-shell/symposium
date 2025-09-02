@@ -236,6 +236,8 @@ pub enum ReviewMode {
 // ANCHOR: spawn_taskspace_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SpawnTaskspacePayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
     pub name: String,
     pub task_description: String,
     pub initial_prompt: String,
@@ -246,6 +248,8 @@ pub struct SpawnTaskspacePayload {
 // ANCHOR: log_progress_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogProgressPayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
     pub message: String,
     pub category: ProgressCategory,
 }
@@ -268,6 +272,8 @@ pub enum ProgressCategory {
 // ANCHOR: signal_user_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SignalUserPayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
     pub message: String,
 }
 // ANCHOR_END: signal_user_payload

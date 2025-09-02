@@ -22,6 +22,8 @@ async fn test_taskspace_tools_integration() {
 #[test]
 fn test_spawn_taskspace_payload_serialization() {
     let payload = SpawnTaskspacePayload {
+        project_path: "/path/to/project".to_string(),
+        taskspace_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         name: "test-taskspace".to_string(),
         task_description: "Test task description".to_string(),
         initial_prompt: "Test initial prompt".to_string(),
@@ -31,6 +33,8 @@ fn test_spawn_taskspace_payload_serialization() {
     let json = serde_json::to_string(&payload).expect("Failed to serialize");
     let deserialized: SpawnTaskspacePayload = serde_json::from_str(&json).expect("Failed to deserialize");
     
+    assert_eq!(payload.project_path, deserialized.project_path);
+    assert_eq!(payload.taskspace_uuid, deserialized.taskspace_uuid);
     assert_eq!(payload.name, deserialized.name);
     assert_eq!(payload.task_description, deserialized.task_description);
     assert_eq!(payload.initial_prompt, deserialized.initial_prompt);
@@ -39,6 +43,8 @@ fn test_spawn_taskspace_payload_serialization() {
 #[test]
 fn test_log_progress_payload_serialization() {
     let payload = LogProgressPayload {
+        project_path: "/path/to/project".to_string(),
+        taskspace_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         message: "Test progress message".to_string(),
         category: ProgressCategory::Milestone,
     };
@@ -47,6 +53,8 @@ fn test_log_progress_payload_serialization() {
     let json = serde_json::to_string(&payload).expect("Failed to serialize");
     let deserialized: LogProgressPayload = serde_json::from_str(&json).expect("Failed to deserialize");
     
+    assert_eq!(payload.project_path, deserialized.project_path);
+    assert_eq!(payload.taskspace_uuid, deserialized.taskspace_uuid);
     assert_eq!(payload.message, deserialized.message);
     assert!(matches!(deserialized.category, ProgressCategory::Milestone));
 }
@@ -54,6 +62,8 @@ fn test_log_progress_payload_serialization() {
 #[test]
 fn test_signal_user_payload_serialization() {
     let payload = SignalUserPayload {
+        project_path: "/path/to/project".to_string(),
+        taskspace_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
         message: "Need assistance with this task".to_string(),
     };
 
@@ -61,6 +71,8 @@ fn test_signal_user_payload_serialization() {
     let json = serde_json::to_string(&payload).expect("Failed to serialize");
     let deserialized: SignalUserPayload = serde_json::from_str(&json).expect("Failed to deserialize");
     
+    assert_eq!(payload.project_path, deserialized.project_path);
+    assert_eq!(payload.taskspace_uuid, deserialized.taskspace_uuid);
     assert_eq!(payload.message, deserialized.message);
 }
 
