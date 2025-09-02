@@ -404,6 +404,11 @@ extension ProjectManager {
             var updatedProject = currentProject
             updatedProject.taskspaces[taskspaceIndex].logs.append(logEntry)
             
+            // Transition from Hatchling state if needed
+            if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
+                updatedProject.taskspaces[taskspaceIndex].state = .resume
+            }
+            
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
             
@@ -449,6 +454,11 @@ extension ProjectManager {
             let signalLog = TaskspaceLog(message: payload.message, category: .question)
             updatedProject.taskspaces[taskspaceIndex].logs.append(signalLog)
             
+            // Transition from Hatchling state if needed
+            if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
+                updatedProject.taskspaces[taskspaceIndex].state = .resume
+            }
+            
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
             
@@ -485,6 +495,11 @@ extension ProjectManager {
         updatedProject.taskspaces[taskspaceIndex].name = payload.name
         updatedProject.taskspaces[taskspaceIndex].description = payload.description
         
+        // Transition from Hatchling state if needed
+        if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
+            updatedProject.taskspaces[taskspaceIndex].state = .resume
+        }
+        
         // Update UI
         DispatchQueue.main.async {
             self.currentProject = updatedProject
@@ -492,5 +507,25 @@ extension ProjectManager {
         }
         
         return .handled(EmptyResponse())
+    }
+    
+    /// Transitions a taskspace from Hatchling to Resume state if needed
+    private func transitionFromHatchlingIfNeeded(taskspaceUuid: String) {
+        guard let project = currentProject else { return }
+        
+        guard let taskspaceIndex = project.taskspaces.firstIndex(where: { $0.id.uuidString.lowercased() == taskspaceUuid.lowercased() }) else {
+            return
+        }
+        
+        // Only transition if currently in Hatchling state
+        if case .hatchling = project.taskspaces[taskspaceIndex].state {
+            var updatedProject = project
+            updatedProject.taskspaces[taskspaceIndex].state = .resume
+            
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                Logger.shared.log("ProjectManager: Transitioned taskspace \(taskspaceUuid) from Hatchling to Resume")
+            }
+        }
     }
 }
