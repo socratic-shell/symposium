@@ -251,7 +251,7 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse get_taskspace_state payload: \(error)")
-                sendResponse(to: message.id, success: false, error: "Invalid payload")
+                sendResponse(to: message.id, success: false, data: nil as TaskspaceStateResponse?, error: "Invalid payload")
             }
         }
     }
@@ -277,7 +277,7 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
-                sendResponse(to: message.id, success: false, error: "Invalid payload")
+                sendResponse(to: message.id, success: false, data: nil as SpawnTaskspaceResponse?, error: "Invalid payload")
             }
         }
     }
@@ -303,7 +303,7 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse log_progress payload: \(error)")
-                sendResponse(to: message.id, success: false, error: "Invalid payload")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
     }
@@ -329,7 +329,7 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
-                sendResponse(to: message.id, success: false, error: "Invalid payload")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
     }

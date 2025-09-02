@@ -402,9 +402,12 @@ extension ProjectManager {
         Logger.shared.log("ProjectManager: Signaling user for taskspace \(payload.taskspaceUuid): \(payload.message)")
         
         do {
-            // Update taskspace attention flag
+            // Update taskspace with signal log entry
             var updatedProject = currentProject
-            updatedProject.taskspaces[taskspaceIndex].needsAttention = true
+            
+            // Add a log entry to indicate user attention is needed
+            let signalLog = TaskspaceLog(message: payload.message, category: .question)
+            updatedProject.taskspaces[taskspaceIndex].logs.append(signalLog)
             
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
@@ -416,7 +419,7 @@ extension ProjectManager {
                 // TODO: Update dock badge count
                 // TODO: Bring app to foreground or show notification
                 
-                Logger.shared.log("ProjectManager: Set attention flag for taskspace")
+                Logger.shared.log("ProjectManager: Added signal log for user attention")
             }
             
             return .handled(EmptyResponse())
