@@ -1,7 +1,7 @@
 import Foundation
 
 /// Manages project creation, loading, and operations
-class ProjectManager: ObservableObject {
+class ProjectManager: ObservableObject, IpcMessageDelegate {
     @Published var currentProject: Project?
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -232,5 +232,46 @@ enum ProjectError: LocalizedError {
         case .gitCloneFailed:
             return "Failed to clone git repository"
         }
+    }
+}
+
+// MARK: - IpcMessageDelegate
+
+extension ProjectManager {
+    
+    func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async -> MessageHandlingResult<TaskspaceStateResponse> {
+        // TODO: Look up taskspace by UUID in current project
+        // TODO: Determine agent command based on user preferences and taskspace state
+        // TODO: Check if taskspace exists and is not complete
+        
+        Logger.shared.log("ProjectManager: TODO - Handle get_taskspace_state for UUID: \(payload.taskspaceUuid)")
+        return .notForMe
+    }
+    
+    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
+        // TODO: Check if this project path matches our current project
+        // TODO: Create taskspace directory, clone repo, save metadata
+        // TODO: Update UI with new taskspace
+        
+        Logger.shared.log("ProjectManager: TODO - Handle spawn_taskspace: \(payload.name) in \(payload.projectPath)")
+        return .notForMe
+    }
+    
+    func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
+        // TODO: Find taskspace by UUID in current project
+        // TODO: Add log entry to taskspace and save to taskspace.json
+        // TODO: Update UI to show new log
+        
+        Logger.shared.log("ProjectManager: TODO - Handle log_progress for \(payload.taskspaceUuid): \(payload.message)")
+        return .notForMe
+    }
+    
+    func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
+        // TODO: Find taskspace by UUID in current project
+        // TODO: Set taskspace attention flag and update dock badge
+        // TODO: Update UI to highlight taskspace
+        
+        Logger.shared.log("ProjectManager: TODO - Handle signal_user for \(payload.taskspaceUuid): \(payload.message)")
+        return .notForMe
     }
 }
