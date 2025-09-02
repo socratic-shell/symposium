@@ -34,6 +34,14 @@ struct SpawnTaskspacePayload: Codable {
     let name: String
     let taskDescription: String
     let initialPrompt: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case projectPath = "project_path"
+        case taskspaceUuid = "taskspace_uuid"
+        case name
+        case taskDescription = "task_description"
+        case initialPrompt = "initial_prompt"
+    }
 }
 
 /// Response to spawn_taskspace with new taskspace UUID
@@ -61,6 +69,12 @@ struct LogProgressPayload: Codable {
     let taskspaceUuid: String
     let message: String
     let category: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case projectPath = "project_path"
+        case taskspaceUuid = "taskspace_uuid"
+        case message, category
+    }
 }
 
 /// Request from MCP tool for user attention (highlights taskspace, dock badge)
@@ -68,6 +82,12 @@ struct SignalUserPayload: Codable {
     let projectPath: String
     let taskspaceUuid: String
     let message: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case projectPath = "project_path"
+        case taskspaceUuid = "taskspace_uuid"
+        case message
+    }
 }
 
 // MARK: - IPC Message Handling Protocol
