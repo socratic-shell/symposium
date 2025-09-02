@@ -12,6 +12,18 @@
 
 **Use case**: Create new collaborative workspaces for specific tasks
 
+## `update_taskspace`
+
+```rust
+// --- Parameters -----------------------
+{{#include ../../../mcp-server/src/server.rs:update_taskspace_params}}
+
+// --- Tool definition ------------------
+{{#include ../../../mcp-server/src/server.rs:update_taskspace_tool}}
+```
+
+**Use case**: Update taskspace name and description based on user interaction
+
 ## `log_progress`
 
 ```rust

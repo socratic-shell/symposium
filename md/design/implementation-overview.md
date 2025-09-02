@@ -36,7 +36,7 @@ graph TB
 
 ### MCP Server (Node.js/TypeScript)  
 - **Agent Tool Integration**: Loaded and used by AI agent CLI tools (Claude Code, Q CLI)
-- **Tool Provider**: Provides MCP tools (`spawn_agentspace`, `log_progress`, `signal_user`)
+- **Tool Provider**: Provides MCP tools (`spawn_agentspace`, `update_taskspace`, `log_progress`, `signal_user`)
 - **Daemon Communication**: Connects to daemon to send commands and updates
 
 ### VSCode Extension (TypeScript)
@@ -187,6 +187,12 @@ sequenceDiagram
 - `name` (required): Display name for the agentspace
 - `task_description` (required): Brief description of work to be done  
 - `initial_prompt` (optional): Context/instructions for the new agent
+
+### update_taskspace
+**Purpose**: Update taskspace name and description based on user interaction
+**Parameters**:
+- `name` (required): New name for the taskspace
+- `description` (required): New description for the taskspace
 
 ### log_progress  
 **Purpose**: Report progress with visual categorization
