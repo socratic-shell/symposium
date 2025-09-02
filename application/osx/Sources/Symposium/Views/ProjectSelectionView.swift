@@ -2,16 +2,16 @@ import SwiftUI
 import AppKit
 
 struct ProjectSelectionView: View {
-    @ObservedObject var projectManager: ProjectManager
-    @ObservedObject var permissionManager: PermissionManager
-    @ObservedObject var agentManager: AgentManager
-    @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
+    @EnvironmentObject var permissionManager: PermissionManager
+    @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    let onProjectCreated: (ProjectManager) -> Void
     @State private var showingNewProjectDialog = false
     @State private var showingOpenProjectDialog = false
     
     private var hasValidAgent: Bool {
-        agentManager.availableAgents.first(where: { $0.id == selectedAgent })?.isInstalled == true &&
-        agentManager.availableAgents.first(where: { $0.id == selectedAgent })?.isMCPConfigured == true
+        agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent })?.isInstalled == true &&
+        agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent })?.isMCPConfigured == true
     }
     
     private var hasRequiredPermissions: Bool {
@@ -101,30 +101,26 @@ struct ProjectSelectionView: View {
                 .cornerRadius(8)
             }
             
-            // Error message
-            if let errorMessage = projectManager.errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-                    .padding()
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(8)
-            }
-            
             Spacer()
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(isPresented: $showingNewProjectDialog) {
-            NewProjectDialog(projectManager: projectManager)
+            NewProjectDialog(onProjectCreated: onProjectCreated)
         }
         .sheet(isPresented: $showingOpenProjectDialog) {
-            OpenProjectDialog(projectManager: projectManager)
+            OpenProjectDialog(onProjectCreated: onProjectCreated)
+        }
+        .onAppear {
+            agentManager.scanForAgents()
         }
     }
 }
 
 struct NewProjectDialog: View {
-    @ObservedObject var projectManager: ProjectManager
+    @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    let onProjectCreated: (ProjectManager) -> Void
     @Environment(\.dismiss) private var dismiss
     
     @State private var projectName = ""
@@ -191,23 +187,28 @@ struct NewProjectDialog: View {
                     selectedDirectory = url.path
                 }
             case .failure(let error):
-                projectManager.setError("Failed to select directory: \(error.localizedDescription)")
+                // Could show alert here
+                print("Failed to select directory: \(error.localizedDescription)")
             }
         }
     }
     
     private func createProject() {
+        let projectManager = ProjectManager(agentManager: agentManager, selectedAgent: settingsManager.selectedAgent)
         do {
             try projectManager.createProject(name: projectName, gitURL: gitURL, at: selectedDirectory)
+            onProjectCreated(projectManager)
             dismiss()
         } catch {
-            projectManager.setError(error.localizedDescription)
+            // Handle error - could show alert
         }
     }
 }
 
 struct OpenProjectDialog: View {
-    @ObservedObject var projectManager: ProjectManager
+    @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    let onProjectCreated: (ProjectManager) -> Void
     @Environment(\.dismiss) private var dismiss
     
     @State private var showingDirectoryPicker = false
@@ -250,17 +251,20 @@ struct OpenProjectDialog: View {
                     openProject(at: url.path)
                 }
             case .failure(let error):
-                projectManager.setError("Failed to select directory: \(error.localizedDescription)")
+                // Could show alert here
+                print("Failed to select directory: \(error.localizedDescription)")
             }
         }
     }
     
     private func openProject(at path: String) {
+        let projectManager = ProjectManager(agentManager: agentManager, selectedAgent: settingsManager.selectedAgent)
         do {
             try projectManager.openProject(at: path)
+            onProjectCreated(projectManager)
             dismiss()
         } catch {
-            projectManager.setError(error.localizedDescription)
+            // Handle error - could show alert
         }
     }
 }

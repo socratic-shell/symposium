@@ -1,9 +1,7 @@
 import SwiftUI
 
 struct MainView: View {
-    @StateObject private var permissionManager = PermissionManager()
-    @EnvironmentObject var agentManager: AgentManager
-    @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
+    @EnvironmentObject var permissionManager: PermissionManager
     @State private var showingSettings = false
     @State private var projectManager: ProjectManager?
     
@@ -31,9 +29,9 @@ struct MainView: View {
                     ProjectView(project: project, projectManager: projectManager)
                 } else {
                     ProjectSelectionView(
-                        projectManager: getOrCreateProjectManager(),
-                        permissionManager: permissionManager,
-                        agentManager: agentManager
+                        onProjectCreated: { projectManager in
+                            self.projectManager = projectManager
+                        }
                     )
                 }
             }
@@ -45,19 +43,7 @@ struct MainView: View {
         }
         .onAppear {
             permissionManager.checkAllPermissions()
-            agentManager.scanForAgents()
         }
-    }
-    
-    private func getOrCreateProjectManager() -> ProjectManager {
-        if let existing = projectManager {
-            return existing
-        }
-        
-        let manager = ProjectManager()
-        manager.configure(agentManager: agentManager, selectedAgent: selectedAgent)
-        projectManager = manager
-        return manager
     }
 }
 

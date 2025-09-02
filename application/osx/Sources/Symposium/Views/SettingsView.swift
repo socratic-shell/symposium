@@ -2,9 +2,9 @@ import SwiftUI
 import AppKit
 
 struct SettingsView: View {
-    @StateObject private var permissionManager = PermissionManager()
-    @StateObject private var agentManager = AgentManager()
-    @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
+    @EnvironmentObject var permissionManager: PermissionManager
+    @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
     @State private var showingDebugAlert = false
     
@@ -98,10 +98,10 @@ struct SettingsView: View {
                     ForEach(agentManager.availableAgents) { agent in
                         AgentRadioButton(
                             agent: agent,
-                            isSelected: selectedAgent == agent.id,
+                            isSelected: settingsManager.selectedAgent == agent.id,
                             action: { 
                                 if agent.isInstalled && agent.isMCPConfigured {
-                                    selectedAgent = agent.id 
+                                    settingsManager.selectedAgent = agent.id 
                                 }
                             }
                         )
@@ -166,7 +166,7 @@ struct SettingsView: View {
     }
     
     private var hasValidAgentSelected: Bool {
-        guard let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }) else {
+        guard let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent }) else {
             return false
         }
         return selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured
