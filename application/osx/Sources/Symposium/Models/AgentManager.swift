@@ -349,7 +349,7 @@ struct AgentInfo: Identifiable {
         
         switch id {
         case "qcli":
-            return ["q", "chat", "--prompt", initialPrompt]
+            return ["q", "chat", initialPrompt]
         case "claude-code":
             // TODO: Implement claude-code hatchling command
             return nil
