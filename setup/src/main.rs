@@ -244,82 +244,25 @@ fn build_and_install_rust_server() -> Result<PathBuf> {
     let repo_root = get_repo_root()?;
     let server_dir = repo_root.join("mcp-server");
 
-    println!("🔨 Building Rust MCP server...");
-    println!("   Building in: {}", server_dir.display());
+    println!("📦 Installing Rust MCP server...");
+    println!("   Installing from: {}", server_dir.display());
 
-    // Build the Rust server
+    // Use cargo install --force to always update the binary
     let output = Command::new("cargo")
-        .args(["build", "--release"])
+        .args(["install", "--path", ".", "--force"])
         .current_dir(&server_dir)
         .output()
-        .context("Failed to execute cargo build")?;
+        .context("Failed to execute cargo install")?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!(
-            "❌ Failed to build Rust server:\n   Error: {}",
+            "❌ Failed to install Rust server:\n   Error: {}",
             stderr.trim()
         ));
     }
 
-    // Use CARGO_TARGET_DIR if set, otherwise use workspace default
-    let target_dir = std::env::var("CARGO_TARGET_DIR")
-        .unwrap_or_else(|_| repo_root.join("target").to_string_lossy().to_string());
-
-    let built_binary = PathBuf::from(target_dir)
-        .join("release")
-        .join("symposium-mcp");
-
-    if !built_binary.exists() {
-        return Err(anyhow!(
-            "❌ Build verification failed: Built binary not found at {}",
-            built_binary.display()
-        ));
-    }
-
-    // Check if we need to install/update the binary in ~/.cargo/bin
-    let installed_binary = home::home_dir()
-        .ok_or_else(|| anyhow!("Could not determine home directory"))?
-        .join(".cargo")
-        .join("bin")
-        .join("symposium-mcp");
-
-    let needs_install = if installed_binary.exists() {
-        // Compare modification times or file sizes to see if update needed
-        let built_metadata = std::fs::metadata(&built_binary)?;
-        let installed_metadata = std::fs::metadata(&installed_binary)?;
-        
-        built_metadata.modified()? > installed_metadata.modified()?
-            || built_metadata.len() != installed_metadata.len()
-    } else {
-        true // Not installed yet
-    };
-
-    if needs_install {
-        println!("📦 Installing updated binary to ~/.cargo/bin...");
-        
-        // Ensure ~/.cargo/bin exists
-        if let Some(parent) = installed_binary.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        
-        // Copy the built binary
-        std::fs::copy(&built_binary, &installed_binary)?;
-        
-        // Make it executable
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(&installed_binary)?.permissions();
-            perms.set_mode(0o755);
-            std::fs::set_permissions(&installed_binary, perms)?;
-        }
-        
-        println!("✅ Binary installed successfully!");
-    } else {
-        println!("✅ Binary is already up to date!");
-    }
-
+    println!("✅ Rust server installed successfully!");
     Ok(PathBuf::from("symposium-mcp"))
 }
 
