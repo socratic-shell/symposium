@@ -33,7 +33,7 @@ struct MainView: View {
                         ProgressView()
                             .scaleEffect(1.2)
                         
-                        Text("Validating setup...")
+                        Text("Now, where was I again...")
                             .font(.headline)
                             .foregroundColor(.secondary)
                     }
