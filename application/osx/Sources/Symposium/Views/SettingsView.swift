@@ -99,7 +99,8 @@ struct SettingsView: View {
             }
         }
         .padding(24)
-        .frame(width: 500, height: 400)
+        .frame(minWidth: 600, idealWidth: 700, maxWidth: 800,
+               minHeight: 500, idealHeight: 600, maxHeight: 800)
         .onAppear {
             permissionManager.checkAllPermissions()
         }
