@@ -44,16 +44,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         try project.save()
         
         // Set as current project
-        DispatchQueue.main.async {
-            self.currentProject = project
-            self.errorMessage = nil
-            
-            // Register as IPC delegate for this project
-            self.ipcManager.addDelegate(self)
-            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
-            
-            self.startMCPClient()
-        }
+        setCurrentProject(project)
     }
     
     /// Open an existing Symposium project
@@ -74,14 +65,18 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         loadedProject.taskspaces = try loadTaskspaces(from: directoryPath)
         
         // Set as current project
+        setCurrentProject(loadedProject)
+    }
+    
+    /// Helper to set current project and register as IPC delegate
+    private func setCurrentProject(_ project: Project) {
         DispatchQueue.main.async {
-            self.currentProject = loadedProject
+            self.currentProject = project
             self.errorMessage = nil
-            Logger.shared.log("ProjectManager: Set currentProject to \(loadedProject.name)")
             
             // Register as IPC delegate for this project
             self.ipcManager.addDelegate(self)
-            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(loadedProject.name)")
+            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
             
             self.startMCPClient()
         }
