@@ -1048,61 +1048,73 @@ export class DaemonClient implements vscode.Disposable {
 }
 
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
-async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
+/**
+ * Investigate current workspace to determine if we're in a taskspace
+ * Returns taskspace UUID if valid, null otherwise
+ */
+function getCurrentTaskspaceUuid(): string | null {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
-        outputChannel.appendLine('No workspace folders found, skipping taskspace detection');
-        return;
+        return null;
     }
 
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    outputChannel.appendLine(`Checking for taskspace environment in: ${workspaceRoot}`);
-
+    
     // Check if we're in a task-UUID directory
     const workspaceName = path.basename(workspaceRoot);
-    const taskUuidPattern = /^task-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+    const match = workspaceName.match(taskUuidPattern);
     
-    if (!taskUuidPattern.test(workspaceName)) {
-        outputChannel.appendLine(`Directory name "${workspaceName}" does not match task-UUID pattern, not a taskspace`);
-        return;
+    if (!match) {
+        return null; // Not a task-UUID directory
     }
+    
+    const expectedUuid = match[1];
 
     // Check for ../taskspace.json
     const taskspaceJsonPath = path.join(workspaceRoot, '..', 'taskspace.json');
     if (!fs.existsSync(taskspaceJsonPath)) {
-        outputChannel.appendLine(`No taskspace.json found at ${taskspaceJsonPath}, not a taskspace`);
+        return null; // No taskspace.json found
+    }
+
+    try {
+        // Read and validate taskspace.json
+        const taskspaceJson = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
+        const actualUuid = taskspaceJson.uuid;
+        
+        if (!actualUuid || actualUuid !== expectedUuid) {
+            return null; // UUID mismatch or missing
+        }
+
+        return actualUuid; // Valid taskspace!
+        
+    } catch (error) {
+        return null; // Invalid JSON or read error
+    }
+}
+
+async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
+    outputChannel.appendLine('Checking for taskspace environment...');
+    
+    const taskspaceUuid = getCurrentTaskspaceUuid();
+    if (!taskspaceUuid) {
+        outputChannel.appendLine('Not in a taskspace environment');
         return;
     }
 
-    outputChannel.appendLine(`✅ Taskspace detected! Directory: ${workspaceName}, Metadata: ${taskspaceJsonPath}`);
+    outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
 
-    try {
-        // Read taskspace metadata - only need UUID
-        const taskspaceJson = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
-        const taskspaceUuid = taskspaceJson.uuid;
-        
-        if (!taskspaceUuid) {
-            outputChannel.appendLine('No UUID found in taskspace.json');
-            return;
-        }
-
-        outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
-
-        // Query app for taskspace state and agent command
-        const stateResponse = await bus.daemonClient.getTaskspaceState(taskspaceUuid);
-        if (stateResponse && stateResponse.shouldLaunch) {
-            outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand.join(' ')}`);
-            await launchAIAgent(outputChannel, bus, stateResponse.agentCommand, taskspaceUuid);
-        } else {
-            outputChannel.appendLine('App indicated agent should not be launched');
-        }
-
-        // Register this VSCode window with the Symposium app
-        await registerTaskspaceWindow(outputChannel, bus, taskspaceUuid);
-
-    } catch (error) {
-        outputChannel.appendLine(`Error reading taskspace metadata: ${error}`);
+    // Query app for taskspace state and agent command
+    const stateResponse = await bus.daemonClient.getTaskspaceState(taskspaceUuid);
+    if (stateResponse && stateResponse.shouldLaunch) {
+        outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand.join(' ')}`);
+        await launchAIAgent(outputChannel, bus, stateResponse.agentCommand, taskspaceUuid);
+    } else {
+        outputChannel.appendLine('App indicated agent should not be launched');
     }
+
+    // Register this VSCode window with the Symposium app
+    await registerTaskspaceWindow(outputChannel, bus, taskspaceUuid);
 }
 
 // 💡: Launch AI agent in terminal with provided command
