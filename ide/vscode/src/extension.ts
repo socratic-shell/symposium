@@ -966,7 +966,7 @@ export class DaemonClient implements vscode.Disposable {
     /**
      * Send an IPC request and wait for response
      */
-    private async sendRequest<T>(type: string, payload: any, timeoutMs: number = 5000): Promise<T | null> {
+    async sendRequest<T>(type: string, payload: any, timeoutMs: number = 5000): Promise<T | null> {
         try {
             const messageId = crypto.randomUUID();
             const message: IPCMessage = {
@@ -1114,7 +1114,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     }
 
     // Register this VSCode window with the Symposium app
-    await registerTaskspaceWindow(outputChannel, bus, taskspaceUuid);
+    await registerTaskspaceWindow(outputChannel, bus);
 }
 
 // 💡: Launch AI agent in terminal with provided command
@@ -1145,12 +1145,25 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
 }
 
 // 💡: Register this VSCode window with Symposium app
-async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceUuid: string): Promise<void> {
+async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
     try {
-        outputChannel.appendLine('Registering VSCode window with Symposium app...');
-        // TODO: Send IPC message to register window with taskspace UUID
-        // This will be implemented when we have the IPC infrastructure
-        outputChannel.appendLine('Window registration completed');
+        const taskspaceUuid = getCurrentTaskspaceUuid();
+        if (!taskspaceUuid) {
+            outputChannel.appendLine('Not in a taskspace, skipping window registration');
+            return;
+        }
+
+        outputChannel.appendLine(`Registering VSCode window with Symposium app for taskspace: ${taskspaceUuid}`);
+        
+        // Send IPC message to register window with taskspace UUID
+        const payload = { taskspaceUuid };
+        const response = await bus.daemonClient.sendRequest<any>('register_window', payload);
+        
+        if (response) {
+            outputChannel.appendLine('Window registration completed successfully');
+        } else {
+            outputChannel.appendLine('Window registration failed or timed out');
+        }
     } catch (error) {
         outputChannel.appendLine(`Error registering window: ${error}`);
     }
@@ -1339,12 +1352,6 @@ function setupSelectionDetection(bus: Bus): void {
             outputChannel.appendLine(`CHAT ICON CLICKED!`);
             outputChannel.appendLine(`Selected: "${selectedText}"`);
             outputChannel.appendLine(`Location: ${filePath}:${startLine}:${startColumn}-${endLine}:${endColumn}`);
-
-            // Check if we're in a taskspace for enhanced context
-            const taskspaceUuid = getCurrentTaskspaceUuid();
-            if (taskspaceUuid) {
-                outputChannel.appendLine(`Taskspace context: ${taskspaceUuid}`);
-            }
 
             // Use new consolidated sendToActiveTerminal method
             try {
