@@ -343,3 +343,24 @@ struct AgentInfo: Identifiable {
         }
     }
 }
+
+extension AgentManager {
+    
+    /// Get agent command for a taskspace based on its state and selected agent
+    func getAgentCommand(for taskspace: Taskspace, selectedAgent: String) -> [String]? {
+        guard let agentInfo = availableAgents.first(where: { $0.id == selectedAgent }),
+              agentInfo.isInstalled && agentInfo.isMCPConfigured else {
+            return nil
+        }
+        
+        switch taskspace.state {
+        case .hatchling(let initialPrompt):
+            // New taskspace - start with initial prompt
+            return ["q", "chat", "--prompt", initialPrompt]
+            
+        case .resume:
+            // Existing taskspace - resume from where it left off
+            return ["q", "chat", "--resume"]
+        }
+    }
+}

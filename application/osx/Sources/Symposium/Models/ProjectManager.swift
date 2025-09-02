@@ -262,12 +262,15 @@ extension ProjectManager {
         
         Logger.shared.log("ProjectManager: Found taskspace \(taskspace.name) for UUID: \(payload.taskspaceUuid)")
         
-        // Determine agent command based on user preferences
-        // TODO: Get actual agent command from user settings
-        let agentCommand = ["q", "chat", "--resume"]
+        // Get agent command based on taskspace state and selected agent
+        guard let agentCommand = agentManager.getAgentCommand(for: taskspace, selectedAgent: selectedAgent) else {
+            Logger.shared.log("ProjectManager: No valid agent command for taskspace \(taskspace.name)")
+            return .notForMe
+        }
         
         // Determine if agent should launch based on taskspace state
-        let shouldLaunch = taskspace.state != .complete
+        // For now, always launch since we don't have a complete state
+        let shouldLaunch = true
         
         let response = TaskspaceStateResponse(
             agentCommand: agentCommand,
