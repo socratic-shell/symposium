@@ -3,6 +3,7 @@ import Combine
 
 // MARK: - IPC Message Types
 
+/// Base IPC message structure for communication with VSCode extension via daemon
 struct IPCMessage: Codable {
     let type: String
     let payload: Data
@@ -15,15 +16,18 @@ struct IPCMessage: Codable {
     }
 }
 
+/// Request from VSCode extension to determine if agent should launch for a taskspace
 struct GetTaskspaceStatePayload: Codable {
     let taskspaceUuid: String
 }
 
+/// Response to get_taskspace_state with agent launch decision
 struct TaskspaceStateResponse: Codable {
     let agentCommand: [String]
     let shouldLaunch: Bool
 }
 
+/// Request from MCP tool to create a new taskspace
 struct SpawnTaskspacePayload: Codable {
     let projectPath: String
     let taskspaceUuid: String
@@ -32,6 +36,7 @@ struct SpawnTaskspacePayload: Codable {
     let initialPrompt: String
 }
 
+/// Progress update from MCP tool for taskspace activity logs
 struct LogProgressPayload: Codable {
     let projectPath: String
     let taskspaceUuid: String
@@ -39,12 +44,14 @@ struct LogProgressPayload: Codable {
     let category: String
 }
 
+/// Request from MCP tool for user attention (highlights taskspace, dock badge)
 struct SignalUserPayload: Codable {
     let projectPath: String
     let taskspaceUuid: String
     let message: String
 }
 
+/// Generic response payload for all IPC requests
 struct ResponsePayload: Codable {
     let success: Bool
     let error: String?
