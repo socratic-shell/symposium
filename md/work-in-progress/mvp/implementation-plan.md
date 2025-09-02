@@ -86,27 +86,27 @@ Define message types for daemon communication:
 
 ## Phase 2.5: Manual Taskspace Management
 
-### 2.5a: MCP Tool for Taskspace Updates
-- **Add `update_taskspace` MCP tool**: Allow AI agents to update taskspace name and description
-- **Tool parameters**: Accept name and description parameters
-- **Taskspace identification**: Detect taskspace from current working directory (same as other MCP tools)
-- **IPC message**: Send update message to daemon (similar to `log_progress`, `signal_user`)
-- **App-side handling**: Symposium app receives message, updates `taskspace.json` file, and refreshes UI
+### 2.5a: MCP Tool for Taskspace Updates ✅
+- **Add `update_taskspace` MCP tool**: ✅ Allow AI agents to update taskspace name and description
+- **Tool parameters**: ✅ Accept name and description parameters
+- **Taskspace identification**: ✅ Detect taskspace from current working directory (same as other MCP tools)
+- **IPC message**: ✅ Send update message to daemon (similar to `log_progress`, `signal_user`)
+- **App-side handling**: ✅ Symposium app receives message, updates taskspace in memory, and refreshes UI
 
-### 2.5b: Taskspace Creation UI
-- **New taskspace button**: Simple "New Taskspace" button in project view for manual creation
-- **Default taskspace creation**: Create taskspace with name "Unnamed taskspace", description "TBD", and standard initial prompt
-- **Directory structure creation**: Create `task-$UUID/` directory with proper naming (for both UI and MCP creation)
-- **Git repository cloning**: Clone project Git URL into taskspace directory (for both UI and MCP creation)
-- **Metadata generation**: Create initial `taskspace.json` with Hatchling state (for both UI and MCP creation)
+### 2.5b: Taskspace Creation UI ✅
+- **New taskspace button**: ✅ Simple "New Taskspace" button in project view for manual creation
+- **Default taskspace creation**: ✅ Create taskspace with name "Unnamed taskspace", description "TBD", and standard initial prompt
+- **Directory structure creation**: ✅ Create `task-$UUID/` directory with proper naming (for both UI and MCP creation)
+- **Git repository cloning**: ✅ Clone project Git URL into taskspace directory (for both UI and MCP creation)
+- **Metadata generation**: ✅ Create initial `taskspace.json` with Hatchling state (for both UI and MCP creation)
 - **Note**: `spawn_taskspace` MCP tool (existing) creates taskspaces with specific name/description/prompt
 
-### 2.5c: VSCode Extension Taskspace Detection & Agent Launch
-- **Taskspace detection**: Check if VSCode is running in `task-$UUID` directory with `../taskspace.json`
-- **Agent auto-launch**: Create terminal and start configured AI agent (Q CLI or Claude Code)
-- **Initial prompt handling**: If taskspace is Hatchling state, send initial prompt to agent
-- **State transition**: Send IPC message to change taskspace state from Hatchling to Resume
-- **Window registration**: Register VSCode window with Symposium app for this taskspace
+### 2.5c: VSCode Extension Taskspace Detection & Agent Launch ✅
+- **Taskspace detection**: ✅ Check if VSCode is running in `task-$UUID` directory with `../taskspace.json`
+- **Agent auto-launch**: ✅ Create terminal and start configured AI agent (Q CLI or Claude Code)
+- **Initial prompt handling**: ✅ If taskspace is Hatchling state, send initial prompt to agent
+- **State transition**: ✅ Send IPC message to change taskspace state from Hatchling to Resume
+- **Window registration**: ✅ Register VSCode window with Symposium app for this taskspace
 
 ### 2.5d: VSCode Integration & Window Management
 - **VSCode launching**: Spawn VSCode process with taskspace directory as workspace (from app side)
@@ -244,16 +244,17 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **UI Architecture**: Clean SwiftUI observation patterns, proper state management
 - **Debug Infrastructure**: Centralized logging system for troubleshooting
 
-### 🚧 In Progress - Phase 2.5: Manual Taskspace Management
-- Need to implement taskspace creation UI (Phase 2.5a)
-- Need to add taskspace display and management (Phase 2.5b)
-- Need to test VSCode integration without MCP communication yet
+### ✅ Completed - Phase 2.5: Manual Taskspace Management
+- **Taskspace creation UI**: ✅ Manual taskspace creation with "New Taskspace" button
+- **Agent auto-launch**: ✅ VSCode extension detects taskspaces and launches AI agents
+- **Taskspace updates**: ✅ AI agents can update taskspace name/description via MCP tools
+- **UI updates**: ✅ Symposium app reflects taskspace changes in real-time
 
-### 📋 Next Steps (Phase 2.5)
-1. **Taskspace Creation UI**: Add interface to manually create taskspaces
-2. **Taskspace Display**: Show existing taskspaces in project view
-3. **VSCode Integration**: Test opening taskspaces in VSCode
-4. **Manual Management**: Basic taskspace lifecycle without daemon communication
+### 📋 Next Steps (Phase 2.6: UI Polish)
+1. **Taskspace Display Improvements**: Better visual design for taskspace cards
+2. **Activity Logs**: Show agent activity and progress in taskspace cards  
+3. **State Indicators**: Visual indicators for taskspace states (Hatchling, Active, etc.)
+4. **Error Handling**: Better error messages and recovery flows
 
 Then move to Phase 3 for full daemon communication and orchestration.
 
