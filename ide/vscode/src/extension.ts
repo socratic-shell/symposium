@@ -987,7 +987,7 @@ export class DaemonClient implements vscode.Disposable {
             // Wait for response
             return new Promise<T | null>((resolve) => {
                 this.pendingRequestResolvers.set(messageId, resolve);
-                
+
                 // Timeout after specified time
                 setTimeout(() => {
                     if (this.pendingRequestResolvers.has(messageId)) {
@@ -1009,10 +1009,10 @@ export class DaemonClient implements vscode.Disposable {
      */
     async getTaskspaceState(taskspaceUuid: string): Promise<TaskspaceStateResponse | null> {
         this.logger.info('Querying Symposium app for taskspace state...');
-        
+
         const payload: GetTaskspaceStatePayload = { taskspaceUuid };
         const response = await this.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
-        
+
         if (response) {
             this.logger.info(`Received taskspace state: ${JSON.stringify(response)}`);
             return response;
@@ -1047,7 +1047,6 @@ export class DaemonClient implements vscode.Disposable {
     }
 }
 
-// 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
 /**
  * Investigate current workspace to determine if we're in a taskspace
  * Returns taskspace UUID if valid, null otherwise
@@ -1059,16 +1058,16 @@ function getCurrentTaskspaceUuid(): string | null {
     }
 
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    
+
     // Check if we're in a task-UUID directory
     const workspaceName = path.basename(workspaceRoot);
     const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
     const match = workspaceName.match(taskUuidPattern);
-    
+
     if (!match) {
         return null; // Not a task-UUID directory
     }
-    
+
     const expectedUuid = match[1];
 
     // Check for ../taskspace.json
@@ -1081,21 +1080,22 @@ function getCurrentTaskspaceUuid(): string | null {
         // Read and validate taskspace.json
         const taskspaceJson = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
         const actualUuid = taskspaceJson.uuid;
-        
+
         if (!actualUuid || actualUuid !== expectedUuid) {
             return null; // UUID mismatch or missing
         }
 
         return actualUuid; // Valid taskspace!
-        
+
     } catch (error) {
         return null; // Invalid JSON or read error
     }
 }
 
+// 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
 async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
     outputChannel.appendLine('Checking for taskspace environment...');
-    
+
     const taskspaceUuid = getCurrentTaskspaceUuid();
     if (!taskspaceUuid) {
         outputChannel.appendLine('Not in a taskspace environment');
@@ -1122,7 +1122,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
     try {
         // Use shell-quote library for proper escaping
         const escapedCommand = quote(agentCommand);
-        
+
         outputChannel.appendLine(`Launching agent with command: ${escapedCommand}`);
 
         // Create new terminal for the agent
