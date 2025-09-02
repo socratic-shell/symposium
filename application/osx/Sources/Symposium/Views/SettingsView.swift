@@ -6,7 +6,6 @@ struct SettingsView: View {
     @StateObject private var agentManager = AgentManager()
     @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @Environment(\.dismiss) private var dismiss
-    @State private var showingDebugAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -91,7 +90,7 @@ struct SettingsView: View {
                         AgentRadioButton(
                             agent: agent,
                             isSelected: selectedAgent == agent.id,
-                            showingDebugAlert: $showingDebugAlert,
+                            debugOutput: agentManager.debugOutput,
                             action: { 
                                 if agent.isInstalled && agent.isMCPConfigured {
                                     selectedAgent = agent.id 
@@ -142,15 +141,6 @@ struct SettingsView: View {
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
-        }
-        .alert("Debug Output", isPresented: $showingDebugAlert) {
-            Button("Copy") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(agentManager.debugOutput, forType: .string)
-            }
-            Button("OK") { }
-        } message: {
-            Text(agentManager.debugOutput)
         }
     }
     
@@ -267,8 +257,9 @@ struct RadioButton: View {
 struct AgentRadioButton: View {
     let agent: AgentInfo
     let isSelected: Bool
-    @Binding var showingDebugAlert: Bool
+    let debugOutput: String
     let action: () -> Void
+    @State private var showingDebugAlert = false
     
     var body: some View {
         Button(action: action) {
@@ -291,7 +282,8 @@ struct AgentRadioButton: View {
                             Button(agent.statusText) {
                                 showingDebugAlert = true
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                             .font(.caption)
                             .foregroundColor(Color(agent.statusColor))
                             .underline()
@@ -323,5 +315,14 @@ struct AgentRadioButton: View {
         .padding(8)
         .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(6)
+        .alert("Debug Output", isPresented: $showingDebugAlert) {
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(debugOutput, forType: .string)
+            }
+            Button("OK") { }
+        } message: {
+            Text(debugOutput)
+        }
     }
 }

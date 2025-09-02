@@ -12,23 +12,45 @@ class AgentManager: ObservableObject {
     
     func scanForAgents() {
         isScanning = true
+        debugOutput = "Starting agent scan...\n"
         
         DispatchQueue.global(qos: .userInitiated).async {
             var agents: [AgentInfo] = []
             
             // Check for Q CLI
+            DispatchQueue.main.async {
+                self.debugOutput += "Checking for Q CLI...\n"
+            }
             if let qcliInfo = self.detectQCLI() {
                 agents.append(qcliInfo)
+                DispatchQueue.main.async {
+                    self.debugOutput += "Q CLI detected: \(qcliInfo.statusText)\n"
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.debugOutput += "Q CLI not found\n"
+                }
             }
             
             // Check for Claude Code
+            DispatchQueue.main.async {
+                self.debugOutput += "Checking for Claude Code...\n"
+            }
             if let claudeInfo = self.detectClaudeCode() {
                 agents.append(claudeInfo)
+                DispatchQueue.main.async {
+                    self.debugOutput += "Claude Code detected: \(claudeInfo.statusText)\n"
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.debugOutput += "Claude Code not found\n"
+                }
             }
             
             DispatchQueue.main.async {
                 self.availableAgents = agents
                 self.isScanning = false
+                self.debugOutput += "Scan complete. Found \(agents.count) agents.\n"
             }
         }
     }
@@ -57,9 +79,19 @@ class AgentManager: ObservableObject {
     }
     
     private func detectClaudeCode() -> AgentInfo? {
+        DispatchQueue.main.async {
+            self.debugOutput += "Looking for Claude Code executable...\n"
+        }
+        
         // First try to find claude in PATH
         if let path = findExecutable(name: "claude") {
+            DispatchQueue.main.async {
+                self.debugOutput += "Found claude at: \(path)\n"
+            }
             let version = getClaudeCodeVersion(path: path)
+            DispatchQueue.main.async {
+                self.debugOutput += "Claude version: \(version ?? "unknown")\n"
+            }
             let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
             
             return AgentInfo(
@@ -74,6 +106,10 @@ class AgentManager: ObservableObject {
             )
         }
         
+        DispatchQueue.main.async {
+            self.debugOutput += "Claude not found in PATH, checking common locations...\n"
+        }
+        
         // If not found in PATH, check common installation paths
         let possiblePaths = [
             "/usr/local/bin/claude",
@@ -83,7 +119,13 @@ class AgentManager: ObservableObject {
         ].map { NSString(string: $0).expandingTildeInPath }
         
         for path in possiblePaths {
+            DispatchQueue.main.async {
+                self.debugOutput += "Checking: \(path)\n"
+            }
             if FileManager.default.isExecutableFile(atPath: path) {
+                DispatchQueue.main.async {
+                    self.debugOutput += "Found executable at: \(path)\n"
+                }
                 let version = getClaudeCodeVersion(path: path)
                 let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
                 
@@ -98,6 +140,10 @@ class AgentManager: ObservableObject {
                     mcpServerPath: mcpPath
                 )
             }
+        }
+        
+        DispatchQueue.main.async {
+            self.debugOutput += "Claude Code not found anywhere\n"
         }
         
         // Return not installed info
