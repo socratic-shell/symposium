@@ -38,15 +38,15 @@ enum ClaudeScope {
     long_about = r#"
 Build Symposium components and set up for development with AI assistants
 
-This tool builds both the Rust MCP server and VSCode extension, then configures
+This tool builds the Rust MCP server, VSCode extension, and macOS app, then configures
 them for use with Claude CLI or Q CLI.
 
 Examples:
-  cargo setup                           # Install to PATH and setup for production use
-  cargo setup --dev                     # Build in target/ for development
-  cargo setup --tool q                  # Setup for Q CLI only
-  cargo setup --tool claude             # Setup for Claude Code only
-  cargo setup --tool both               # Setup for both tools
+  cargo setup                           # Build everything and setup for development
+  cargo setup --open                   # Build everything, setup, and launch the app
+  cargo setup --tool q                 # Setup for Q CLI only
+  cargo setup --tool claude            # Setup for Claude Code only
+  cargo setup --tool both              # Setup for both tools
 
 Prerequisites:
   - Rust and Cargo (https://rustup.rs/)
@@ -72,9 +72,13 @@ struct Args {
     #[arg(long)]
     skip_extension: bool,
 
-    /// Use development mode (build in target/ directory instead of installing to PATH)
+    /// Skip macOS app build
     #[arg(long)]
-    dev: bool,
+    skip_app: bool,
+
+    /// Open the app after building everything
+    #[arg(long)]
+    open: bool,
 }
 
 fn main() -> Result<()> {
@@ -107,37 +111,33 @@ fn main() -> Result<()> {
     }
 
     // Build components
-    let binary_path = if args.dev {
-        // In dev mode, build AND install so extension can find it
-        let _built_path = build_rust_server()?;
-        install_rust_server()?  // Returns PathBuf::from("symposium-mcp") for PATH lookup
-    } else {
-        install_rust_server()?
-    };
+    let binary_path = build_and_install_rust_server()?;
 
     if !args.skip_extension {
-        build_and_install_extension(args.dev)?;
+        build_and_install_extension()?;
+    }
+
+    if !args.skip_app {
+        build_macos_app()?;
     }
 
     // Clean up any existing daemon (for clean dev environment)
     // Do this AFTER building so the old daemon can send reload signal
-    if args.dev {
-        cleanup_existing_daemon()?;
-    }
+    cleanup_existing_daemon()?;
 
     // Setup MCP server(s)
     let mut success = true;
     if !args.skip_mcp {
         match tool {
             CLITool::QCli => {
-                success = setup_q_cli_mcp(&binary_path, args.dev)?;
+                success = setup_q_cli_mcp(&binary_path)?;
             }
             CLITool::ClaudeCode => {
-                success = setup_claude_code_mcp(&binary_path, &args.claude_scope, args.dev)?;
+                success = setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
             }
             CLITool::Both => {
-                success = setup_q_cli_mcp(&binary_path, args.dev)?
-                    && setup_claude_code_mcp(&binary_path, &args.claude_scope, args.dev)?;
+                success = setup_q_cli_mcp(&binary_path)?
+                    && setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
             }
             CLITool::Auto => unreachable!("Auto should have been resolved earlier"),
         }
@@ -146,7 +146,11 @@ fn main() -> Result<()> {
     }
 
     if success {
-        print_next_steps(&tool, args.dev)?;
+        print_next_steps(&tool)?;
+        
+        if args.open {
+            open_macos_app()?;
+        }
     } else {
         println!("\n❌ Setup incomplete. Please fix the errors above and try again.");
         std::process::exit(1);
@@ -236,62 +240,11 @@ fn get_repo_root() -> Result<PathBuf> {
     Ok(manifest_path)
 }
 
-fn install_rust_server() -> Result<PathBuf> {
+fn build_and_install_rust_server() -> Result<PathBuf> {
     let repo_root = get_repo_root()?;
     let server_dir = repo_root.join("mcp-server");
 
-    println!("📦 Installing Rust MCP server to PATH...");
-    println!("   Installing from: {}", server_dir.display());
-
-    // Install the Rust server to ~/.cargo/bin
-    let output = Command::new("cargo")
-        .args(["install", "--path", ".", "--force"])
-        .current_dir(&server_dir)
-        .output()
-        .context("Failed to execute cargo install")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Failed to install Rust server:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    // The binary should now be available as 'symposium-mcp' in PATH
-    let binary_name = "symposium-mcp";
-
-    // Verify the binary is accessible
-    if which::which(binary_name).is_err() {
-        println!("⚠️  Warning: symposium-mcp not found in PATH after installation");
-
-        // Try to give helpful guidance about PATH
-        if let Some(home) = home::home_dir() {
-            let cargo_bin = home.join(".cargo").join("bin");
-            println!(
-                "   Make sure {} is in your PATH environment variable",
-                cargo_bin.display()
-            );
-
-            // Check if ~/.cargo/bin exists but isn't in PATH
-            if cargo_bin.exists() {
-                println!("   Add this to your shell profile (.bashrc, .zshrc, etc.):");
-                println!("   export PATH=\"$HOME/.cargo/bin:$PATH\"");
-            }
-        } else {
-            println!("   Make sure ~/.cargo/bin is in your PATH environment variable");
-        }
-    }
-
-    println!("✅ Rust server installed successfully!");
-    Ok(PathBuf::from(binary_name))
-}
-
-fn build_rust_server() -> Result<PathBuf> {
-    let repo_root = get_repo_root()?;
-    let server_dir = repo_root.join("mcp-server");
-
-    println!("🔨 Building Rust MCP server for development...");
+    println!("🔨 Building Rust MCP server...");
     println!("   Building in: {}", server_dir.display());
 
     // Build the Rust server
@@ -313,29 +266,123 @@ fn build_rust_server() -> Result<PathBuf> {
     let target_dir = std::env::var("CARGO_TARGET_DIR")
         .unwrap_or_else(|_| repo_root.join("target").to_string_lossy().to_string());
 
-    // Verify the binary exists
-    let binary_path = PathBuf::from(target_dir)
+    let built_binary = PathBuf::from(target_dir)
         .join("release")
         .join("symposium-mcp");
-    if !binary_path.exists() {
+
+    if !built_binary.exists() {
         return Err(anyhow!(
             "❌ Build verification failed: Built binary not found at {}",
-            binary_path.display()
+            built_binary.display()
         ));
     }
 
-    println!("✅ Rust server built successfully!");
-    Ok(binary_path)
+    // Check if we need to install/update the binary in ~/.cargo/bin
+    let installed_binary = home::home_dir()
+        .ok_or_else(|| anyhow!("Could not determine home directory"))?
+        .join(".cargo")
+        .join("bin")
+        .join("symposium-mcp");
+
+    let needs_install = if installed_binary.exists() {
+        // Compare modification times or file sizes to see if update needed
+        let built_metadata = std::fs::metadata(&built_binary)?;
+        let installed_metadata = std::fs::metadata(&installed_binary)?;
+        
+        built_metadata.modified()? > installed_metadata.modified()?
+            || built_metadata.len() != installed_metadata.len()
+    } else {
+        true // Not installed yet
+    };
+
+    if needs_install {
+        println!("📦 Installing updated binary to ~/.cargo/bin...");
+        
+        // Ensure ~/.cargo/bin exists
+        if let Some(parent) = installed_binary.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        
+        // Copy the built binary
+        std::fs::copy(&built_binary, &installed_binary)?;
+        
+        // Make it executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&installed_binary)?.permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&installed_binary, perms)?;
+        }
+        
+        println!("✅ Binary installed successfully!");
+    } else {
+        println!("✅ Binary is already up to date!");
+    }
+
+    Ok(PathBuf::from("symposium-mcp"))
 }
 
-fn build_and_install_extension(dev_mode: bool) -> Result<()> {
+fn build_macos_app() -> Result<()> {
+    let repo_root = get_repo_root()?;
+    let app_dir = repo_root.join("application").join("osx");
+
+    println!("\n🍎 Building macOS application...");
+    println!("   Building in: {}", app_dir.display());
+
+    let output = Command::new("./build-app.sh")
+        .current_dir(&app_dir)
+        .output()
+        .context("Failed to execute build-app.sh")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(anyhow!(
+            "❌ Failed to build macOS app:\n   stdout: {}\n   stderr: {}",
+            stdout.trim(),
+            stderr.trim()
+        ));
+    }
+
+    println!("✅ macOS application built successfully!");
+    Ok(())
+}
+
+fn open_macos_app() -> Result<()> {
+    let repo_root = get_repo_root()?;
+    let app_path = repo_root
+        .join("application")
+        .join("osx")
+        .join(".build")
+        .join("arm64-apple-macosx")
+        .join("release")
+        .join("Symposium.app");
+
+    println!("\n🚀 Opening Symposium app...");
+    
+    let output = Command::new("open")
+        .arg(&app_path)
+        .output()
+        .context("Failed to execute open command")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "❌ Failed to open app:\n   Error: {}",
+            stderr.trim()
+        ));
+    }
+
+    println!("✅ App launched successfully!");
+    Ok(())
+}
+
+fn build_and_install_extension() -> Result<()> {
     let repo_root = get_repo_root()?;
     let extension_dir = repo_root.join("ide/vscode");
 
-    println!(
-        "\n📦 Building VSCode extension{}...",
-        if dev_mode { " (development mode)" } else { "" }
-    );
+    println!("\n📦 Building VSCode extension...");
 
     // Install dependencies
     println!("📥 Installing extension dependencies...");
@@ -354,10 +401,9 @@ fn build_and_install_extension(dev_mode: bool) -> Result<()> {
     }
 
     // Build extension
-    let build_command = if dev_mode { "webpack-dev" } else { "webpack" };
-    println!("🔨 Building extension with {}...", build_command);
+    println!("🔨 Building extension...");
     let output = Command::new("npm")
-        .args(["run", build_command])
+        .args(["run", "webpack-dev"])
         .current_dir(&extension_dir)
         .output()
         .context("Failed to execute npm run build")?;
@@ -405,10 +451,7 @@ fn build_and_install_extension(dev_mode: bool) -> Result<()> {
     let vsix_file = vsix_file.ok_or_else(|| anyhow!("No .vsix file generated"))?;
 
     // Install extension
-    println!(
-        "📥 Installing VSCode extension{}...",
-        if dev_mode { " (dev build)" } else { "" }
-    );
+    println!("📥 Installing VSCode extension...");
     let output = Command::new("code")
         .args(["--install-extension", &vsix_file])
         .current_dir(&extension_dir)
@@ -427,42 +470,27 @@ fn build_and_install_extension(dev_mode: bool) -> Result<()> {
     Ok(())
 }
 
-fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
+fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
     let mut cmd = Command::new("q");
 
-    if dev_mode {
-        // In dev mode, register with --dev-log argument and debug logging
-        cmd.args([
-            "mcp",
-            "add",
-            "--name",
-            "symposium",
-            "--command",
-            &binary_path.to_string_lossy(),
-            "--args",
-            "--dev-log",
-            "--env",
-            "RUST_LOG=symposium_mcp=debug",
-            "--force", // Always overwrite existing configuration
-        ]);
-    } else {
-        // In production mode, register without arguments
-        cmd.args([
-            "mcp",
-            "add",
-            "--name",
-            "symposium",
-            "--command",
-            &binary_path.to_string_lossy(),
-            "--force", // Always overwrite existing configuration
-        ]);
-    }
+    // Always use dev-log and debug logging for development setup
+    cmd.args([
+        "mcp",
+        "add",
+        "--name",
+        "symposium",
+        "--command",
+        &binary_path.to_string_lossy(),
+        "--args",
+        "--dev-log",
+        "--env",
+        "RUST_LOG=symposium_mcp=debug",
+        "--force", // Always overwrite existing configuration
+    ]);
 
     println!("🔧 Registering Symposium MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
-    if dev_mode {
-        println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
-    }
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
 
     let output = cmd.output().context("Failed to execute q mcp add")?;
 
@@ -477,7 +505,7 @@ fn setup_q_cli_mcp(binary_path: &Path, dev_mode: bool) -> Result<bool> {
     }
 }
 
-fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope, dev_mode: bool) -> Result<bool> {
+fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool> {
     let scope_str = match scope {
         ClaudeScope::User => "user",
         ClaudeScope::Local => "local",
@@ -487,9 +515,7 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope, dev_mode: bool
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Scope: {}", scope_str);
-    if dev_mode {
-        println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
-    }
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
 
     // First, check if symposium MCP server is already configured
     println!("🔍 Checking existing MCP server configuration...");
@@ -555,31 +581,19 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope, dev_mode: bool
     
     let mut cmd = Command::new("claude");
     
-    if dev_mode {
-        // In dev mode, use add-json with --dev-log argument and debug logging
-        let config_json = format!(
-            r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
-            desired_binary_ref
-        );
-        cmd.args([
-            "mcp",
-            "add-json",
-            "--scope",
-            scope_str,
-            "symposium",
-            &config_json,
-        ]);
-    } else {
-        // In production mode, register without arguments
-        cmd.args([
-            "mcp",
-            "add",
-            "--scope",
-            scope_str,
-            "symposium",
-            desired_binary_ref,
-        ]);
-    }
+    // Always use dev mode with --dev-log argument and debug logging
+    let config_json = format!(
+        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
+        desired_binary_ref
+    );
+    cmd.args([
+        "mcp",
+        "add-json",
+        "--scope",
+        scope_str,
+        "symposium",
+        &config_json,
+    ]);
     
     let add_output = cmd.output().context("Failed to execute claude mcp add")?;
 
@@ -594,18 +608,12 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope, dev_mode: bool
     }
 }
 
-fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
-    if dev_mode {
-        println!("\n🎉 Development setup complete! Symposium is ready for development.");
-        println!(
-            "🔧 Running in development mode - server will use target/release/symposium-mcp"
-        );
-    } else {
-        println!("\n🎉 Production setup complete! Symposium is installed and ready.");
-        println!("📦 Server installed to PATH as 'symposium-mcp'");
-    }
-
+fn print_next_steps(tool: &CLITool) -> Result<()> {
+    println!("\n🎉 Development setup complete! Symposium is ready for development.");
+    println!("🔧 Running in development mode with debug logging enabled");
+    println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
     println!("📋 VSCode extension installed and ready to use");
+    println!("🍎 macOS application built and ready to launch");
 
     match tool {
         CLITool::QCli | CLITool::Both => {
@@ -628,13 +636,11 @@ fn print_next_steps(tool: &CLITool, dev_mode: bool) -> Result<()> {
     println!("2. Ask your AI assistant to present a code review");
     println!("3. Reviews will appear in the Symposium panel in VSCode");
 
-    if dev_mode {
-        println!("\n🔧 Development workflow:");
-        println!("- Run 'cargo setup --dev' to rebuild and restart cleanly");
-        println!("- For server changes: cd mcp-server && cargo build --release");
-        println!("- For extension changes: cd ide/vscode && npm run webpack-dev");
-        println!("- VSCode window reloading is handled automatically");
-    }
+    println!("\n🔧 Development workflow:");
+    println!("- Run 'cargo setup' to rebuild everything");
+    println!("- Run 'cargo setup --open' to rebuild and launch the app");
+    println!("- For quick server changes: cd mcp-server && cargo build --release && cargo setup");
+    println!("- VSCode window reloading is handled automatically");
 
     Ok(())
 }
