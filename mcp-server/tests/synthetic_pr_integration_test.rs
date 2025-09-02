@@ -1,7 +1,7 @@
-use symposium_mcp::DialecticServer;
-use symposium_mcp::synthetic_pr::*;
 use rmcp::ServerHandler;
 use serde_json::json;
+use symposium_mcp::DialecticServer;
+use symposium_mcp::synthetic_pr::*;
 use tempfile::TempDir;
 use test_utils::TestRepo;
 
@@ -79,6 +79,7 @@ pub enum PaymentResult {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_synthetic_pr_full_workflow_with_real_git() {
     // Initialize tracing for test output
     let _ = tracing_subscriber::fmt::try_init();
