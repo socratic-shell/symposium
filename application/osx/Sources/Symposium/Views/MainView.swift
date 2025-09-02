@@ -2,10 +2,15 @@ import SwiftUI
 
 struct MainView: View {
     @StateObject private var projectManager = ProjectManager()
+    @StateObject private var permissionManager = PermissionManager()
+    @State private var showingSettings = false
     
     var body: some View {
         Group {
-            if let project = projectManager.currentProject {
+            if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
+                // Show settings if required permissions are missing
+                SettingsView()
+            } else if let project = projectManager.currentProject {
                 ProjectView(project: project, projectManager: projectManager)
             } else {
                 ProjectSelectionView(projectManager: projectManager)
@@ -13,6 +18,19 @@ struct MainView: View {
         }
         .frame(minWidth: 1000, idealWidth: 1200, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        .onAppear {
+            permissionManager.checkAllPermissions()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Settings") {
+                    showingSettings = true
+                }
+            }
+        }
     }
 }
 

@@ -7,5 +7,9 @@ struct SymposiumApp: App {
         WindowGroup {
             MainView()
         }
+        
+        Settings {
+            SettingsView()
+        }
     }
 }
