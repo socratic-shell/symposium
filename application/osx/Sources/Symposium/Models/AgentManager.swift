@@ -40,8 +40,8 @@ class AgentManager: ObservableObject {
         // Verify it's actually Q CLI by checking version
         let version = getQCLIVersion(path: path)
         
-        // Check if MCP is configured
-        let mcpConfigured = checkQCLIMCPConfiguration(qPath: path)
+        // Check if MCP is configured and get the path
+        let (mcpConfigured, mcpPath) = checkQCLIMCPConfiguration(qPath: path)
         
         return AgentInfo(
             id: "qcli",
@@ -50,7 +50,8 @@ class AgentManager: ObservableObject {
             executablePath: path,
             version: version,
             isInstalled: true,
-            isMCPConfigured: mcpConfigured
+            isMCPConfigured: mcpConfigured,
+            mcpServerPath: mcpPath
         )
     }
     
@@ -67,7 +68,8 @@ class AgentManager: ObservableObject {
                 executablePath: path,
                 version: version,
                 isInstalled: true,
-                isMCPConfigured: mcpConfigured
+                isMCPConfigured: mcpConfigured,
+                mcpServerPath: nil // TODO: Implement Claude Code MCP path detection
             )
         }
         
@@ -91,7 +93,8 @@ class AgentManager: ObservableObject {
                     executablePath: path,
                     version: version,
                     isInstalled: true,
-                    isMCPConfigured: mcpConfigured
+                    isMCPConfigured: mcpConfigured,
+                    mcpServerPath: nil // TODO: Implement Claude Code MCP path detection
                 )
             }
         }
@@ -104,7 +107,8 @@ class AgentManager: ObservableObject {
             executablePath: nil,
             version: nil,
             isInstalled: false,
-            isMCPConfigured: false
+            isMCPConfigured: false,
+            mcpServerPath: nil
         )
     }
     
@@ -163,12 +167,29 @@ class AgentManager: ObservableObject {
         }
     }
     
-    private func checkQCLIMCPConfiguration(qPath: String) -> Bool {
+    private func checkQCLIMCPConfiguration(qPath: String) -> (Bool, String?) {
         // Use Q CLI's built-in MCP status command to check for symposium-mcp
         let output = runCommand(path: qPath, arguments: ["mcp", "status", "--name", "symposium"])
         
-        // If the command succeeds and returns output, symposium-mcp is configured
-        return output != nil && !output!.isEmpty
+        guard let output = output, !output.isEmpty else {
+            return (false, nil)
+        }
+        
+        // Parse the output to extract the Command path
+        // Look for lines like "Command : /path/to/symposium-mcp"
+        let lines = output.components(separatedBy: .newlines)
+        for line in lines {
+            if line.contains("Command :") {
+                let parts = line.components(separatedBy: ":")
+                if parts.count >= 2 {
+                    let path = parts[1].trimmingCharacters(in: .whitespaces)
+                    return (true, path)
+                }
+            }
+        }
+        
+        // Found output but couldn't parse path
+        return (true, nil)
     }
     
     private func checkClaudeCodeMCPConfiguration() -> Bool {
@@ -197,6 +218,7 @@ struct AgentInfo: Identifiable {
     let version: String?
     let isInstalled: Bool
     let isMCPConfigured: Bool
+    let mcpServerPath: String?
     
     var statusText: String {
         if !isInstalled {
