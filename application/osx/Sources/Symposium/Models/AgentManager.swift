@@ -342,25 +342,52 @@ struct AgentInfo: Identifiable {
             return "checkmark.circle.fill"
         }
     }
+    
+    /// Generate command for hatchling taskspace with initial prompt
+    func getHatchlingCommand(initialPrompt: String) -> [String]? {
+        guard isInstalled && isMCPConfigured else { return nil }
+        
+        switch id {
+        case "qcli":
+            return ["q", "chat", "--prompt", initialPrompt]
+        case "claude-code":
+            // TODO: Implement claude-code hatchling command
+            return nil
+        default:
+            return nil
+        }
+    }
+    
+    /// Generate command for resume taskspace
+    func getResumeCommand() -> [String]? {
+        guard isInstalled && isMCPConfigured else { return nil }
+        
+        switch id {
+        case "qcli":
+            return ["q", "chat", "--resume"]
+        case "claude-code":
+            // TODO: Implement claude-code resume command
+            return nil
+        default:
+            return nil
+        }
+    }
 }
 
 extension AgentManager {
     
     /// Get agent command for a taskspace based on its state and selected agent
     func getAgentCommand(for taskspace: Taskspace, selectedAgent: String) -> [String]? {
-        guard let agentInfo = availableAgents.first(where: { $0.id == selectedAgent }),
-              agentInfo.isInstalled && agentInfo.isMCPConfigured else {
+        guard let agentInfo = availableAgents.first(where: { $0.id == selectedAgent }) else {
             return nil
         }
         
         switch taskspace.state {
         case .hatchling(let initialPrompt):
-            // New taskspace - start with initial prompt
-            return ["q", "chat", "--prompt", initialPrompt]
+            return agentInfo.getHatchlingCommand(initialPrompt: initialPrompt)
             
         case .resume:
-            // Existing taskspace - resume from where it left off
-            return ["q", "chat", "--resume"]
+            return agentInfo.getResumeCommand()
         }
     }
 }
