@@ -947,6 +947,17 @@ export class DaemonClient implements vscode.Disposable {
         }
     }
 
+    /**
+     * Send an IPC message to the daemon
+     */
+    sendMessage(message: IPCMessage): boolean {
+        if (this.clientProcess && this.clientProcess.stdin) {
+            this.clientProcess.stdin.write(JSON.stringify(message) + '\n');
+            return true;
+        }
+        return false;
+    }
+
     dispose(): void {
         this.isDisposed = true;
         this.clearReconnectTimer();
@@ -1071,13 +1082,34 @@ async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, 
         }
         
         const projectPath = path.dirname(workspaceRoot);
-        const taskspaceUuid = taskspaceData.uuid;
         
-        // TODO: Send IPC message to query agent command
-        // For now, return default until IPC infrastructure is ready
-        const defaultCommand = 'q chat';
-        outputChannel.appendLine(`Using default agent command: ${defaultCommand}`);
-        return defaultCommand;
+        // Send IPC message to query agent command
+        const messageId = crypto.randomUUID();
+        const queryMessage: IPCMessage = {
+            shellPid: process.pid,
+            type: 'get_agent_command',
+            payload: {
+                projectPath: projectPath,
+                taskspaceUuid: taskspaceData.uuid
+            } as GetAgentCommandPayload,
+            id: messageId
+        };
+
+        // Send the message via daemon client
+        const daemonClient = bus.daemonClient;
+        const sent = daemonClient.sendMessage(queryMessage);
+        
+        if (sent) {
+            outputChannel.appendLine(`Sent agent command query with ID: ${messageId}`);
+            
+            // TODO: Wait for response and return the agent command
+            // For now, return default until response handling is implemented
+            const defaultCommand = 'q chat';
+            outputChannel.appendLine(`Using default agent command: ${defaultCommand}`);
+            return defaultCommand;
+        } else {
+            throw new Error('Failed to send message - daemon client not connected');
+        }
         
     } catch (error) {
         outputChannel.appendLine(`Error querying agent command: ${error}`);
