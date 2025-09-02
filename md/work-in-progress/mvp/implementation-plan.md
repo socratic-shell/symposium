@@ -21,33 +21,39 @@ Create Swift data structures for:
 - **Agent tool selection**: UI to choose between Q CLI and Claude Code
 - **Preferences persistence**: Store user choices in UserDefaults
 
-## Phase 2: MCP Server Tool Extensions
+## Phase 2: MCP Server Tool Extensions ✅
 
-### 2.1 Add Missing Taskspace Tools
+### 2.1 Add Missing Taskspace Tools ✅
 Extend the MCP server with the three tools needed for taskspace orchestration:
 
-- **`spawn_taskspace`**: Create new taskspace with name, description, initial_prompt
-  - Extract UUID from working directory path (hacky approach)
-  - Send IPC message to Symposium app with taskspace creation request
-  - Return success/failure status
+- ✅ **`spawn_taskspace`**: Create new taskspace with name, description, initial_prompt
+  - ✅ Extract project path and UUID from working directory path using robust traversal
+  - ✅ Send IPC message to Symposium app with taskspace creation request
+  - ✅ Return success/failure status
 
-- **`log_progress`**: Report progress with visual indicators
-  - Parameters: message (string), category (info/warn/error/milestone/question)
-  - Extract taskspace UUID from working directory
-  - Send IPC message to update taskspace logs
-  - Symposium app updates `taskspace.json` immediately
+- ✅ **`log_progress`**: Report progress with visual indicators
+  - ✅ Parameters: message (string), category (info/warn/error/milestone/question or emojis)
+  - ✅ Extract taskspace UUID and project path from working directory
+  - ✅ Send IPC message to update taskspace logs
+  - ✅ Symposium app updates `taskspace.json` immediately
 
-- **`signal_user`**: Request user attention for assistance
-  - Parameters: message (string) describing why attention is needed
-  - Extract taskspace UUID from working directory  
-  - Send IPC message to highlight taskspace and update dock badge
-  - Move taskspace to front of panel display
+- ✅ **`signal_user`**: Request user attention for assistance
+  - ✅ Parameters: message (string) describing why attention is needed
+  - ✅ Extract taskspace UUID and project path from working directory  
+  - ✅ Send IPC message to highlight taskspace and update dock badge
+  - ✅ Move taskspace to front of panel display
 
-### 2.2 IPC Message Protocol
+### 2.2 IPC Message Protocol ✅
 Define message types for daemon communication:
-- `SpawnTaskspaceRequest { uuid, name, description, initial_prompt }`
-- `LogProgressUpdate { taskspace_uuid, message, category, timestamp }`
-- `UserSignalRequest { taskspace_uuid, message, timestamp }`
+- ✅ `SpawnTaskspacePayload { project_path, taskspace_uuid, name, task_description, initial_prompt }`
+- ✅ `LogProgressPayload { project_path, taskspace_uuid, message, category }`
+- ✅ `SignalUserPayload { project_path, taskspace_uuid, message }`
+
+**Implementation completed**:
+- ✅ Added comprehensive integration tests
+- ✅ Updated documentation with anchor-based includes
+- ✅ Robust directory structure parsing
+- ✅ Support for both text and emoji category formats
 
 ## Phase 3: IPC Integration
 
@@ -105,8 +111,8 @@ Define message types for daemon communication:
 ## Implementation Order
 
 1. **Phase 1 - COMPLETE ✅**: Get basic project management working (create/open projects, no taskspaces yet)
-2. **Phase 2 - NEXT**: Implement missing MCP server tools for taskspace orchestration
-3. **Phase 3**: Establish daemon connection (can test with new MCP tools)
+2. **Phase 2 - COMPLETE ✅**: Implement missing MCP server tools for taskspace orchestration
+3. **Phase 3 - NEXT**: Establish daemon connection (can test with new MCP tools)
 4. **Phase 4**: Create taskspace display UI (can use mock data initially)
 5. **Phase 5**: Connect real IPC messages to UI (includes Git cloning on taskspace creation)
 6. **Phase 6**: Complete remaining phases: Window management, polish, testing
