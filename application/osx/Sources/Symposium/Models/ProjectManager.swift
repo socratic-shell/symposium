@@ -529,6 +529,32 @@ extension ProjectManager {
         }
     }
     
+    /// Check if VSCode 'code' command is available and return its path
+    private func getCodeCommandPath() -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        process.arguments = ["code"]
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            
+            if process.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                return output
+            }
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to check for code command: \(error)")
+        }
+        
+        return nil
+    }
+    
     /// Launch VSCode for a taskspace directory
     private func launchVSCode(for taskspace: Taskspace, in projectPath: String) {
         let taskspaceDir = taskspace.directoryPath(in: projectPath)
@@ -541,8 +567,18 @@ extension ProjectManager {
                 let cloneDir = "\(taskspaceDir)/\(repoDir)"
                 
                 let vscodeProcess = Process()
-                vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                vscodeProcess.arguments = ["-n", "-a", "Visual Studio Code", cloneDir]
+                
+                if let codePath = getCodeCommandPath() {
+                    // Use 'code' command - opens each directory in a new window by default
+                    vscodeProcess.executableURL = URL(fileURLWithPath: codePath)
+                    vscodeProcess.arguments = [cloneDir]
+                    Logger.shared.log("ProjectManager: Using code command at: \(codePath)")
+                } else {
+                    // Fallback to 'open' command
+                    vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                    vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
+                    Logger.shared.log("ProjectManager: Code command not found, using open")
+                }
                 
                 try vscodeProcess.run()
                 Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name) in \(repoDir)")
