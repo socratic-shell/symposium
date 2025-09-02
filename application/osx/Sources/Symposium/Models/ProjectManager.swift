@@ -542,7 +542,7 @@ extension ProjectManager {
                 
                 let vscodeProcess = Process()
                 vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
+                vscodeProcess.arguments = ["-n", "-a", "Visual Studio Code", cloneDir]
                 
                 try vscodeProcess.run()
                 Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name) in \(repoDir)")
