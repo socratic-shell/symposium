@@ -4,15 +4,52 @@ import Combine
 // MARK: - IPC Message Types
 
 /// Base IPC message structure for communication with VSCode extension via daemon
-struct IPCMessage: Codable {
+struct IPCMessage {
     let type: String
-    let payload: Data
+    let payload: [String: Any]
     let id: String
     let shellPid: Int?
     
-    private enum CodingKeys: String, CodingKey {
-        case type, payload, id
-        case shellPid = "shell_pid"
+    // Initializer for parsing received messages
+    init?(from jsonData: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            return nil
+        }
+        
+        guard let type = json["type"] as? String,
+              let id = json["id"] as? String else {
+            return nil
+        }
+        
+        self.type = type
+        self.id = id
+        self.payload = json["payload"] as? [String: Any] ?? [:]
+        self.shellPid = json["shellPid"] as? Int
+    }
+    
+    // Initializer for creating messages to send
+    init(type: String, payload: Data, id: String, shellPid: Int? = nil) throws {
+        self.type = type
+        self.id = id
+        self.shellPid = shellPid
+        
+        // Convert Data payload to dictionary for internal storage
+        if let payloadJson = try? JSONSerialization.jsonObject(with: payload) as? [String: Any] {
+            self.payload = payloadJson
+        } else {
+            self.payload = [:]
+        }
+    }
+    
+    // Convert back to JSON for sending
+    func toJSONData() throws -> Data {
+        let dict: [String: Any] = [
+            "type": type,
+            "payload": payload,
+            "id": id,
+            "shellPid": shellPid as Any
+        ]
+        return try JSONSerialization.data(withJSONObject: dict)
     }
 }
 
@@ -211,31 +248,30 @@ class IpcManager: ObservableObject {
             return
         }
         
-        do {
-            let message = try JSONDecoder().decode(IPCMessage.self, from: messageData)
-            
-            switch message.type {
-            case "get_taskspace_state":
-                handleGetTaskspaceState(message: message)
-            case "spawn_taskspace":
-                handleSpawnTaskspace(message: message)
-            case "log_progress":
-                handleLogProgress(message: message)
-            case "signal_user":
-                handleSignalUser(message: message)
-            default:
-                Logger.shared.log("IpcManager: Unknown message type: \(message.type)")
-            }
-            
-        } catch {
-            Logger.shared.log("IpcManager: Failed to parse message: \(error)")
+        guard let message = IPCMessage(from: messageData) else {
+            Logger.shared.log("IpcManager: Failed to parse message: invalid JSON structure")
+            return
+        }
+        
+        switch message.type {
+        case "get_taskspace_state":
+            handleGetTaskspaceState(message: message)
+        case "spawn_taskspace":
+            handleSpawnTaskspace(message: message)
+        case "log_progress":
+            handleLogProgress(message: message)
+        case "signal_user":
+            handleSignalUser(message: message)
+        default:
+            Logger.shared.log("IpcManager: Unknown message type: \(message.type)")
         }
     }
     
     private func handleGetTaskspaceState(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(GetTaskspaceStatePayload.self, from: message.payload)
+                let payloadData = try JSONSerialization.data(withJSONObject: message.payload)
+                let payload = try JSONDecoder().decode(GetTaskspaceStatePayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Get taskspace state for UUID: \(payload.taskspaceUuid)")
                 
                 // Try each delegate until one handles the message
@@ -261,7 +297,8 @@ class IpcManager: ObservableObject {
     private func handleSpawnTaskspace(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: message.payload)
+                let payloadData = try JSONSerialization.data(withJSONObject: message.payload)
+                let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
                 
                 // Try each delegate until one handles the message
@@ -287,7 +324,8 @@ class IpcManager: ObservableObject {
     private func handleLogProgress(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(LogProgressPayload.self, from: message.payload)
+                let payloadData = try JSONSerialization.data(withJSONObject: message.payload)
+                let payload = try JSONDecoder().decode(LogProgressPayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Log progress for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
@@ -313,7 +351,8 @@ class IpcManager: ObservableObject {
     private func handleSignalUser(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(SignalUserPayload.self, from: message.payload)
+                let payloadData = try JSONSerialization.data(withJSONObject: message.payload)
+                let payload = try JSONDecoder().decode(SignalUserPayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Signal user for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
@@ -353,18 +392,18 @@ class IpcManager: ObservableObject {
             }
             
             let responsePayload = ResponsePayload(success: success, error: error, data: responseData)
-            let responseMessage = IPCMessage(
+            let responseMessage = try IPCMessage(
                 type: "response",
                 payload: try JSONEncoder().encode(responsePayload),
                 id: messageId,
                 shellPid: nil
             )
             
-            let messageData = try JSONEncoder().encode(responseMessage)
+            let messageData = try responseMessage.toJSONData()
             var messageString = String(data: messageData, encoding: .utf8) ?? ""
             messageString += "\n"
             
-            if let stringData = messageString.data(using: .utf8) {
+            if let stringData = messageString.data(using: String.Encoding.utf8) {
                 inputPipe.fileHandleForWriting.write(stringData)
                 Logger.shared.log("IpcManager: Sent response to \(messageId)")
             }
