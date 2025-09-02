@@ -54,8 +54,14 @@ interface GetTaskspaceStatePayload {
     taskspaceUuid: string;
 }
 
+/**
+ * Response from Symposium app when querying taskspace state
+ * Used to determine if and how to launch an AI agent for a taskspace
+ */
 interface TaskspaceStateResponse {
+    /** Command and arguments to execute in terminal (e.g., ['q', 'chat', '--resume']) */
     agentCommand: string[];
+    /** Whether the agent should be launched (false for completed/unknown taskspaces) */
     shouldLaunch: boolean;
 }
 
