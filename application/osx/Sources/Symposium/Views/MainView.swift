@@ -50,9 +50,11 @@ struct MainView: View {
 
 struct ProjectView: View {
     @ObservedObject var projectManager: ProjectManager
+    @ObservedObject var daemonManager: DaemonManager
     
-    private var daemonManager: DaemonManager {
-        projectManager.mcpStatus
+    init(projectManager: ProjectManager) {
+        self.projectManager = projectManager
+        self.daemonManager = projectManager.mcpStatus
     }
     
     var body: some View {
@@ -140,6 +142,9 @@ struct ProjectView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onAppear {
+                    Logger.shared.log("ProjectView: Daemon connecting state appeared for project \(project.name)")
+                }
             }
         } else if projectManager.isLoading {
             VStack {

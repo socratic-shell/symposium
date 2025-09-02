@@ -49,6 +49,7 @@ class DaemonManager: ObservableObject {
             DispatchQueue.main.async {
                 self.isConnected = true
                 Logger.shared.log("DaemonManager: Client process started successfully")
+                Logger.shared.log("DaemonManager: isConnected set to \(self.isConnected)")
             }
             
             // Read output in background
