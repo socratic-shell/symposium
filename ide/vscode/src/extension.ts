@@ -261,8 +261,6 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private async findSymposiumBinary(): Promise<string | null> {
-        const { which } = require('which');
-
         // Try workspace development build first
         const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (workspacePath) {
@@ -274,16 +272,8 @@ export class DaemonClient implements vscode.Disposable {
             }
         }
 
-        // Consult PATH second
-        try {
-            const pathBinary = which.sync('symposium-mcp', { nothrow: true });
-            if (pathBinary) return pathBinary;
-        } catch (e) {
-            // Continue to workspace check
-        }
-
-
-        return null;
+        // Return binary name and let shell resolve PATH
+        return 'symposium-mcp';
     }
 
     private setupClientCommunication(): void {
