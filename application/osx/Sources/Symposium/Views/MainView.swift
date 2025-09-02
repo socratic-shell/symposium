@@ -11,57 +11,18 @@ struct MainView: View {
     
     var body: some View {
         VStack {
-            // Connection status bar - only show when project is loaded
-            if projectManager.currentProject != nil {
-                HStack {
-                    HStack(spacing: 4) {
-                        Image(systemName: daemonManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(daemonManager.isConnected ? .green : .red)
-                        
-                        Text(daemonManager.isConnected ? "MCP Connected" : "MCP Disconnected")
-                            .font(.caption)
-                            .foregroundColor(daemonManager.isConnected ? .green : .red)
-                    }
-                    
-                    if let error = daemonManager.error {
-                        Text("• \(error)")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    
-                    Spacer()
-                    
-                    if !daemonManager.debugOutput.isEmpty {
-                        Button("Debug") {
-                            showingDebug = true
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                    
-                    Button("Settings") {
-                        showingSettings = true
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+            // Simple header bar - Settings button only
+            HStack {
+                Spacer()
+                
+                Button("Settings") {
+                    showingSettings = true
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.gray.opacity(0.05))
-            } else {
-                // Simple header bar for project selection
-                HStack {
-                    Spacer()
-                    
-                    Button("Settings") {
-                        showingSettings = true
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             
             // Main content
             Group {
@@ -97,22 +58,12 @@ struct MainView: View {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
             
-            // Set up project loaded callback to start MCP client
-            projectManager.onProjectLoaded = {
-                self.startClientForProject()
-            }
-        }
-    }
-    
-    private func startClientForProject() {
-        // Stop any existing client first
-        daemonManager.stopClient()
-        
-        // Start client if we have a valid selected agent
-        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }),
-           selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
-           let mcpPath = selectedAgentInfo.mcpServerPath {
-            daemonManager.startClient(mcpServerPath: mcpPath)
+            // Configure ProjectManager with dependencies
+            projectManager.configure(
+                daemonManager: daemonManager,
+                agentManager: agentManager,
+                selectedAgent: selectedAgent
+            )
         }
     }
 }
@@ -120,6 +71,8 @@ struct MainView: View {
 struct ProjectView: View {
     let project: Project
     @ObservedObject var projectManager: ProjectManager
+    @EnvironmentObject var daemonManager: DaemonManager
+    @State private var showingDebug = false
     
     var body: some View {
         VStack {
@@ -136,6 +89,30 @@ struct ProjectView: View {
                 }
                 
                 Spacer()
+                
+                // MCP Status
+                HStack(spacing: 4) {
+                    Image(systemName: daemonManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundColor(daemonManager.isConnected ? .green : .red)
+                    
+                    Text(daemonManager.isConnected ? "MCP Connected" : "MCP Disconnected")
+                        .font(.caption)
+                        .foregroundColor(daemonManager.isConnected ? .green : .red)
+                }
+                
+                if let error = daemonManager.error {
+                    Text("• \(error)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                
+                if !daemonManager.debugOutput.isEmpty {
+                    Button("Debug") {
+                        showingDebug = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
                 
                 Button("Close Project") {
                     projectManager.closeProject()
@@ -171,6 +148,15 @@ struct ProjectView: View {
                     .padding()
                 }
             }
+        }
+        .alert("MCP Debug Output", isPresented: $showingDebug) {
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(daemonManager.debugOutput, forType: .string)
+            }
+            Button("OK") { }
+        } message: {
+            Text(daemonManager.debugOutput)
         }
     }
 }

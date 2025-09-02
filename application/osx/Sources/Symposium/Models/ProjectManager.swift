@@ -6,7 +6,15 @@ class ProjectManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    var onProjectLoaded: (() -> Void)?
+    private var daemonManager: DaemonManager?
+    private var agentManager: AgentManager?
+    private var selectedAgent: String = "qcli"
+    
+    func configure(daemonManager: DaemonManager, agentManager: AgentManager, selectedAgent: String) {
+        self.daemonManager = daemonManager
+        self.agentManager = agentManager
+        self.selectedAgent = selectedAgent
+    }
     
     /// Create a new Symposium project
     func createProject(name: String, gitURL: String, at directoryPath: String) throws {
@@ -38,7 +46,7 @@ class ProjectManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProject = project
             self.errorMessage = nil
-            self.onProjectLoaded?()
+            self.startMCPClient()
         }
     }
     
@@ -63,7 +71,7 @@ class ProjectManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProject = loadedProject
             self.errorMessage = nil
-            self.onProjectLoaded?()
+            self.startMCPClient()
         }
     }
     
@@ -94,10 +102,30 @@ class ProjectManager: ObservableObject {
     
     /// Close current project
     func closeProject() {
+        stopMCPClient()
         DispatchQueue.main.async {
             self.currentProject = nil
             self.errorMessage = nil
         }
+    }
+    
+    private func startMCPClient() {
+        guard let daemonManager = daemonManager,
+              let agentManager = agentManager else { return }
+        
+        // Stop any existing client first
+        daemonManager.stopClient()
+        
+        // Start client if we have a valid selected agent
+        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }),
+           selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
+           let mcpPath = selectedAgentInfo.mcpServerPath {
+            daemonManager.startClient(mcpServerPath: mcpPath)
+        }
+    }
+    
+    private func stopMCPClient() {
+        daemonManager?.stopClient()
     }
     
     /// Set error message
