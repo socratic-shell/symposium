@@ -1,7 +1,9 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @StateObject private var permissionManager = PermissionManager()
+    @StateObject private var agentManager = AgentManager()
     @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @Environment(\.dismiss) private var dismiss
     
@@ -18,7 +20,7 @@ struct SettingsView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .disabled(!allRequiredPermissionsGranted)
+                .disabled(!allRequiredPermissionsGranted || !hasValidAgentSelected)
             }
             
             Divider()
@@ -61,40 +63,74 @@ struct SettingsView: View {
             
             // Agent Selection Section
             VStack(alignment: .leading, spacing: 16) {
-                Text("AI Agent")
-                    .font(.headline)
+                HStack {
+                    Text("AI Agent")
+                        .font(.headline)
+                    
+                    if agentManager.isScanning {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                    
+                    Spacer()
+                    
+                    Button("Refresh") {
+                        agentManager.scanForAgents()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
                 
                 Text("Choose which AI agent to use for taskspaces:")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    RadioButton(
-                        title: "Q CLI",
-                        description: "Amazon Q Developer CLI",
-                        isSelected: selectedAgent == "qcli",
-                        action: { selectedAgent = "qcli" }
-                    )
+                    ForEach(agentManager.availableAgents) { agent in
+                        AgentRadioButton(
+                            agent: agent,
+                            isSelected: selectedAgent == agent.id,
+                            action: { 
+                                if agent.isInstalled && agent.isMCPConfigured {
+                                    selectedAgent = agent.id 
+                                }
+                            }
+                        )
+                    }
                     
-                    RadioButton(
-                        title: "Claude Code",
-                        description: "Anthropic Claude for coding",
-                        isSelected: selectedAgent == "claude",
-                        action: { selectedAgent = "claude" }
-                    )
+                    if agentManager.availableAgents.isEmpty && !agentManager.isScanning {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("No compatible AI agents found")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(8)
+                    }
                 }
             }
             
             Spacer()
             
             // Status message
-            if !allRequiredPermissionsGranted {
+            if !allRequiredPermissionsGranted || !hasValidAgentSelected {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text("Required permissions must be granted before using Symposium")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !allRequiredPermissionsGranted {
+                            Text("Required permissions must be granted")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        if !hasValidAgentSelected {
+                            Text("A properly configured AI agent must be selected")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
             }
         }
@@ -103,11 +139,19 @@ struct SettingsView: View {
                minHeight: 500, idealHeight: 600, maxHeight: 800)
         .onAppear {
             permissionManager.checkAllPermissions()
+            agentManager.scanForAgents()
         }
     }
     
     private var allRequiredPermissionsGranted: Bool {
         permissionManager.hasAccessibilityPermission && permissionManager.hasScreenRecordingPermission
+    }
+    
+    private var hasValidAgentSelected: Bool {
+        guard let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }) else {
+            return false
+        }
+        return selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured
     }
 }
 
@@ -203,6 +247,49 @@ struct RadioButton: View {
             }
         }
         .buttonStyle(.plain)
+        .padding(8)
+        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+        .cornerRadius(6)
+    }
+}
+
+struct AgentRadioButton: View {
+    let agent: AgentInfo
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(agent.name)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        
+                        Spacer()
+                        
+                        Image(systemName: agent.statusIcon)
+                            .foregroundColor(Color(agent.statusColor))
+                        
+                        Text(agent.statusText)
+                            .font(.caption)
+                            .foregroundColor(Color(agent.statusColor))
+                    }
+                    
+                    Text(agent.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(!agent.isInstalled || !agent.isMCPConfigured)
         .padding(8)
         .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(6)
