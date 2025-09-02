@@ -229,6 +229,19 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Save taskspace metadata
         try taskspace.save(in: project.directoryPath)
         
+        // Launch VSCode in the cloned repository directory
+        let vscodeProcess = Process()
+        vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
+        
+        do {
+            try vscodeProcess.run()
+            Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name)")
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to launch VSCode: \(error)")
+            // Don't throw - taskspace creation succeeded, VSCode launch is optional
+        }
+        
         // Add to current project
         DispatchQueue.main.async {
             var updatedProject = project
