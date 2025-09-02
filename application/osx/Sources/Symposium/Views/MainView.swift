@@ -46,7 +46,12 @@ struct MainView: View {
         }
         .onAppear {
             permissionManager.checkAllPermissions()
-            tryLoadRememberedProject()
+        }
+        .onChange(of: agentManager.isScanning) { isScanning in
+            // When agent scanning completes, try to load remembered project
+            if !isScanning && projectManager == nil {
+                tryLoadRememberedProject()
+            }
         }
     }
     
