@@ -3,33 +3,116 @@ import SwiftUI
 struct MainView: View {
     @StateObject private var projectManager = ProjectManager()
     @StateObject private var permissionManager = PermissionManager()
+    @EnvironmentObject var daemonManager: DaemonManager
+    @EnvironmentObject var agentManager: AgentManager
+    @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @State private var showingSettings = false
+    @State private var showingDebug = false
     
     var body: some View {
-        Group {
-            if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
-                // Show settings if required permissions are missing
-                SettingsView()
-            } else if let project = projectManager.currentProject {
-                ProjectView(project: project, projectManager: projectManager)
+        VStack {
+            // Connection status bar - only show when project is loaded
+            if projectManager.currentProject != nil {
+                HStack {
+                    HStack(spacing: 4) {
+                        Image(systemName: daemonManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(daemonManager.isConnected ? .green : .red)
+                        
+                        Text(daemonManager.isConnected ? "MCP Connected" : "MCP Disconnected")
+                            .font(.caption)
+                            .foregroundColor(daemonManager.isConnected ? .green : .red)
+                    }
+                    
+                    if let error = daemonManager.error {
+                        Text("• \(error)")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    
+                    Spacer()
+                    
+                    if !daemonManager.debugOutput.isEmpty {
+                        Button("Debug") {
+                            showingDebug = true
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    
+                    Button("Settings") {
+                        showingSettings = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.gray.opacity(0.05))
             } else {
-                ProjectSelectionView(projectManager: projectManager)
+                // Simple header bar for project selection
+                HStack {
+                    Spacer()
+                    
+                    Button("Settings") {
+                        showingSettings = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            
+            // Main content
+            Group {
+                if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
+                    // Show settings if required permissions are missing
+                    SettingsView()
+                } else if let project = projectManager.currentProject {
+                    ProjectView(project: project, projectManager: projectManager)
+                } else {
+                    ProjectSelectionView(
+                        projectManager: projectManager,
+                        permissionManager: permissionManager,
+                        agentManager: agentManager
+                    )
+                }
             }
         }
         .frame(minWidth: 1000, idealWidth: 1200, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
-        .onAppear {
-            permissionManager.checkAllPermissions()
-        }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Settings") {
-                    showingSettings = true
-                }
+        .alert("MCP Debug Output", isPresented: $showingDebug) {
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(daemonManager.debugOutput, forType: .string)
             }
+            Button("OK") { }
+        } message: {
+            Text(daemonManager.debugOutput)
+        }
+        .onAppear {
+            permissionManager.checkAllPermissions()
+            agentManager.scanForAgents()
+            
+            // Set up project loaded callback to start MCP client
+            projectManager.onProjectLoaded = {
+                self.startClientForProject()
+            }
+        }
+    }
+    
+    private func startClientForProject() {
+        // Stop any existing client first
+        daemonManager.stopClient()
+        
+        // Start client if we have a valid selected agent
+        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }),
+           selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
+           let mcpPath = selectedAgentInfo.mcpServerPath {
+            daemonManager.startClient(mcpServerPath: mcpPath)
         }
     }
 }

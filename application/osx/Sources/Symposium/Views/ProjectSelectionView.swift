@@ -3,8 +3,24 @@ import AppKit
 
 struct ProjectSelectionView: View {
     @ObservedObject var projectManager: ProjectManager
+    @ObservedObject var permissionManager: PermissionManager
+    @ObservedObject var agentManager: AgentManager
+    @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @State private var showingNewProjectDialog = false
     @State private var showingOpenProjectDialog = false
+    
+    private var hasValidAgent: Bool {
+        agentManager.availableAgents.first(where: { $0.id == selectedAgent })?.isInstalled == true &&
+        agentManager.availableAgents.first(where: { $0.id == selectedAgent })?.isMCPConfigured == true
+    }
+    
+    private var hasRequiredPermissions: Bool {
+        permissionManager.hasAccessibilityPermission && permissionManager.hasScreenRecordingPermission
+    }
+    
+    private var canCreateProjects: Bool {
+        hasValidAgent && hasRequiredPermissions
+    }
     
     var body: some View {
         VStack(spacing: 24) {
@@ -32,10 +48,11 @@ struct ProjectSelectionView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(canCreateProjects ? Color.blue : Color.gray)
                     .foregroundColor(.white)
                     .cornerRadius(8)
                 }
+                .disabled(!canCreateProjects)
                 
                 Button(action: { showingOpenProjectDialog = true }) {
                     HStack {
@@ -44,12 +61,45 @@ struct ProjectSelectionView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.gray.opacity(0.2))
-                    .foregroundColor(.primary)
+                    .background(canCreateProjects ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                    .foregroundColor(canCreateProjects ? .primary : .secondary)
                     .cornerRadius(8)
                 }
+                .disabled(!canCreateProjects)
             }
             .frame(maxWidth: 300)
+            
+            // Status message when not ready
+            if !canCreateProjects {
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Setup Required")
+                            .font(.headline)
+                            .foregroundColor(.orange)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        if !hasRequiredPermissions {
+                            Text("• Missing required permissions")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        if !hasValidAgent {
+                            Text("• No valid AI agent configured")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("Open Settings to complete setup")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            }
             
             // Error message
             if let errorMessage = projectManager.errorMessage {

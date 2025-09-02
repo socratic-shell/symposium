@@ -6,6 +6,8 @@ class ProjectManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
+    var onProjectLoaded: (() -> Void)?
+    
     /// Create a new Symposium project
     func createProject(name: String, gitURL: String, at directoryPath: String) throws {
         isLoading = true
@@ -36,6 +38,7 @@ class ProjectManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProject = project
             self.errorMessage = nil
+            self.onProjectLoaded?()
         }
     }
     
@@ -60,6 +63,7 @@ class ProjectManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProject = loadedProject
             self.errorMessage = nil
+            self.onProjectLoaded?()
         }
     }
     
