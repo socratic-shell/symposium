@@ -59,7 +59,7 @@ class AgentManager: ObservableObject {
         // First try to find claude in PATH
         if let path = findExecutable(name: "claude") {
             let version = getClaudeCodeVersion(path: path)
-            let mcpConfigured = checkClaudeCodeMCPConfiguration()
+            let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
             
             return AgentInfo(
                 id: "claude",
@@ -69,7 +69,7 @@ class AgentManager: ObservableObject {
                 version: version,
                 isInstalled: true,
                 isMCPConfigured: mcpConfigured,
-                mcpServerPath: nil // TODO: Implement Claude Code MCP path detection
+                mcpServerPath: mcpPath
             )
         }
         
@@ -84,7 +84,7 @@ class AgentManager: ObservableObject {
         for path in possiblePaths {
             if FileManager.default.isExecutableFile(atPath: path) {
                 let version = getClaudeCodeVersion(path: path)
-                let mcpConfigured = checkClaudeCodeMCPConfiguration()
+                let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
                 
                 return AgentInfo(
                     id: "claude",
@@ -94,7 +94,7 @@ class AgentManager: ObservableObject {
                     version: version,
                     isInstalled: true,
                     isMCPConfigured: mcpConfigured,
-                    mcpServerPath: nil // TODO: Implement Claude Code MCP path detection
+                    mcpServerPath: mcpPath
                 )
             }
         }
@@ -203,10 +203,40 @@ class AgentManager: ObservableObject {
         return (true, nil)
     }
     
-    private func checkClaudeCodeMCPConfiguration() -> Bool {
-        // For now, assume MCP is configured if Claude Code is installed  
-        // TODO: Implement proper MCP configuration checking
-        return true
+    private func checkClaudeCodeMCPConfiguration(claudePath: String) -> (Bool, String?) {
+        // Use Claude Code's built-in MCP list command to check for symposium-mcp
+        let output = runCommand(path: claudePath, arguments: ["mcp", "list"])
+        
+        guard let output = output, !output.isEmpty else {
+            return (false, nil)
+        }
+        
+        // Parse the output to find symposium entry
+        // Look for lines like "symposium: /path/to/symposium-mcp --dev-log - ✓ Connected"
+        let lines = output.components(separatedBy: .newlines)
+        for line in lines {
+            if line.contains("symposium:") && line.contains("✓ Connected") {
+                // Extract the path between "symposium: " and " --dev-log"
+                let parts = line.components(separatedBy: ":")
+                if parts.count >= 2 {
+                    let pathPart = parts[1].trimmingCharacters(in: .whitespaces)
+                    // Split by " --" to get just the path
+                    let pathComponents = pathPart.components(separatedBy: " --")
+                    if let path = pathComponents.first?.trimmingCharacters(in: .whitespaces) {
+                        return (true, path)
+                    }
+                }
+            }
+        }
+        
+        // Check if symposium is listed but not connected
+        for line in lines {
+            if line.contains("symposium:") {
+                return (false, nil) // Found but not connected
+            }
+        }
+        
+        return (false, nil)
     }
     
     private func readMCPConfig(path: String) -> String? {
