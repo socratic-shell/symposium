@@ -25,14 +25,13 @@ struct MainView: View {
                 if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
                     // Show settings if required permissions are missing
                     SettingsView()
-                } else if let projectManager = projectManager, let project = projectManager.currentProject {
-                    ProjectView(project: project, projectManager: projectManager)
+                } else if let projectManager = projectManager {
+                    ProjectView(projectManager: projectManager)
                 } else {
                     ProjectSelectionView(
-                        onProjectCreated: { projectManager in
+                        onProjectCreated: { newProjectManager in
                             Logger.shared.log("MainView received onProjectCreated callback")
-                            self.projectManager = projectManager
-                            Logger.shared.log("MainView set projectManager, current project: \(projectManager.currentProject?.name ?? "nil")")
+                            self.projectManager = newProjectManager
                         }
                     )
                 }
@@ -50,7 +49,6 @@ struct MainView: View {
 }
 
 struct ProjectView: View {
-    let project: Project
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDebug = false
     
@@ -59,16 +57,17 @@ struct ProjectView: View {
     }
     
     var body: some View {
-        VStack {
-            // Header with project info
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(project.name)
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    Text(project.gitURL)
-                        .font(.caption)
+        if let project = projectManager.currentProject {
+            VStack {
+                // Header with project info
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(project.name)
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text(project.gitURL)
+                            .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
@@ -141,6 +140,15 @@ struct ProjectView: View {
             Button("OK") { }
         } message: {
             Text(daemonManager.debugOutput)
+        }
+        } else if projectManager.isLoading {
+            VStack {
+                ProgressView()
+                Text("Loading project...")
+            }
+        } else {
+            Text("No project loaded")
+                .foregroundColor(.red)
         }
     }
 }

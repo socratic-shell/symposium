@@ -1,7 +1,9 @@
 import Foundation
+import SwiftUI
 
-class Logger {
+class Logger: ObservableObject {
     static let shared = Logger()
+    @Published var logs: [String] = []
     private let logFile: URL
     
     private init() {
@@ -9,26 +11,33 @@ class Logger {
         logFile = documentsPath.appendingPathComponent("symposium_debug.log")
         
         // Clear log on startup
-        let startMessage = "=== Symposium Debug Log Started at \(Date()) ===\n"
-        try? startMessage.write(to: logFile, atomically: true, encoding: .utf8)
+        let startMessage = "=== Symposium Debug Log Started at \(Date()) ==="
+        logs.append(startMessage)
+        try? (startMessage + "\n").write(to: logFile, atomically: true, encoding: .utf8)
         print("SYMPOSIUM Logger: Log file at \(logFile.path)")
     }
     
     func log(_ message: String) {
-        let logMessage = "[\(Date())] \(message)\n"
+        let logMessage = "[\(Date())] \(message)"
+        
+        // Add to in-memory logs
+        DispatchQueue.main.async {
+            self.logs.append(logMessage)
+        }
         
         // Also print to console immediately
         print("SYMPOSIUM: \(message)")
         
         // Write to file
         do {
+            let fileMessage = logMessage + "\n"
             if FileManager.default.fileExists(atPath: logFile.path) {
                 let fileHandle = try FileHandle(forWritingTo: logFile)
                 fileHandle.seekToEndOfFile()
-                fileHandle.write(logMessage.data(using: .utf8)!)
+                fileHandle.write(fileMessage.data(using: .utf8)!)
                 fileHandle.closeFile()
             } else {
-                try logMessage.write(to: logFile, atomically: true, encoding: .utf8)
+                try fileMessage.write(to: logFile, atomically: true, encoding: .utf8)
             }
         } catch {
             print("SYMPOSIUM Logger ERROR: \(error)")

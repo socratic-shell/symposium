@@ -72,6 +72,7 @@ class ProjectManager: ObservableObject {
         DispatchQueue.main.async {
             self.currentProject = loadedProject
             self.errorMessage = nil
+            Logger.shared.log("ProjectManager: Set currentProject to \(loadedProject.name)")
             self.startMCPClient()
         }
     }
