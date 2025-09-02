@@ -1007,25 +1007,6 @@ export class DaemonClient implements vscode.Disposable {
     /**
      * Query Symposium app for taskspace state and agent command
      */
-    async getTaskspaceState(taskspaceUuid: string): Promise<TaskspaceStateResponse | null> {
-        this.logger.info('Querying Symposium app for taskspace state...');
-
-        const payload: GetTaskspaceStatePayload = { taskspaceUuid };
-        const response = await this.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
-
-        if (response) {
-            this.logger.info(`Received taskspace state: ${JSON.stringify(response)}`);
-            return response;
-        } else {
-            // Fallback to default if no response
-            this.logger.info('No response received, using default');
-            return {
-                agentCommand: ['q', 'chat'],
-                shouldLaunch: true
-            };
-        }
-    }
-
     dispose(): void {
         this.isDisposed = true;
         this.clearReconnectTimer();
@@ -1104,11 +1085,13 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 
     outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
 
-    // Query app for taskspace state and agent command
-    const stateResponse = await bus.daemonClient.getTaskspaceState(taskspaceUuid);
-    if (stateResponse && stateResponse.shouldLaunch) {
-        outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand.join(' ')}`);
-        await launchAIAgent(outputChannel, bus, stateResponse.agentCommand, taskspaceUuid);
+    // Send get_taskspace_state message as documented in the flow
+    const payload: GetTaskspaceStatePayload = { taskspaceUuid };
+    const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
+    
+    if (response && response.shouldLaunch) {
+        outputChannel.appendLine(`Launching agent: ${response.agentCommand.join(' ')}`);
+        await launchAIAgent(outputChannel, bus, response.agentCommand, taskspaceUuid);
     } else {
         outputChannel.appendLine('App indicated agent should not be launched');
     }
