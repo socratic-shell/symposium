@@ -41,7 +41,7 @@ class AgentManager: ObservableObject {
         let version = getQCLIVersion(path: path)
         
         // Check if MCP is configured
-        let mcpConfigured = checkQCLIMCPConfiguration()
+        let mcpConfigured = checkQCLIMCPConfiguration(qPath: path)
         
         return AgentInfo(
             id: "qcli",
@@ -163,10 +163,12 @@ class AgentManager: ObservableObject {
         }
     }
     
-    private func checkQCLIMCPConfiguration() -> Bool {
-        // For now, assume MCP is configured if Q CLI is installed
-        // TODO: Implement proper MCP configuration checking
-        return true
+    private func checkQCLIMCPConfiguration(qPath: String) -> Bool {
+        // Use Q CLI's built-in MCP status command to check for symposium-mcp
+        let output = runCommand(path: qPath, arguments: ["mcp", "status", "--name", "symposium"])
+        
+        // If the command succeeds and returns output, symposium-mcp is configured
+        return output != nil && !output!.isEmpty
     }
     
     private func checkClaudeCodeMCPConfiguration() -> Bool {
