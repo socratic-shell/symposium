@@ -404,11 +404,6 @@ extension ProjectManager {
             var updatedProject = currentProject
             updatedProject.taskspaces[taskspaceIndex].logs.append(logEntry)
             
-            // Transition from Hatchling state if needed
-            if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
-                updatedProject.taskspaces[taskspaceIndex].state = .resume
-            }
-            
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
             
@@ -417,6 +412,9 @@ extension ProjectManager {
                 self.currentProject = updatedProject
                 Logger.shared.log("ProjectManager: Updated taskspace logs")
             }
+            
+            // Transition from Hatchling state if needed
+            transitionFromHatchlingIfNeeded(taskspaceUuid: payload.taskspaceUuid)
             
             return .handled(EmptyResponse())
             
@@ -454,11 +452,6 @@ extension ProjectManager {
             let signalLog = TaskspaceLog(message: payload.message, category: .question)
             updatedProject.taskspaces[taskspaceIndex].logs.append(signalLog)
             
-            // Transition from Hatchling state if needed
-            if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
-                updatedProject.taskspaces[taskspaceIndex].state = .resume
-            }
-            
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
             
@@ -471,6 +464,9 @@ extension ProjectManager {
                 
                 Logger.shared.log("ProjectManager: Added signal log for user attention")
             }
+            
+            // Transition from Hatchling state if needed
+            transitionFromHatchlingIfNeeded(taskspaceUuid: payload.taskspaceUuid)
             
             return .handled(EmptyResponse())
             
@@ -495,16 +491,14 @@ extension ProjectManager {
         updatedProject.taskspaces[taskspaceIndex].name = payload.name
         updatedProject.taskspaces[taskspaceIndex].description = payload.description
         
-        // Transition from Hatchling state if needed
-        if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
-            updatedProject.taskspaces[taskspaceIndex].state = .resume
-        }
-        
         // Update UI
         DispatchQueue.main.async {
             self.currentProject = updatedProject
             Logger.shared.log("ProjectManager: Updated taskspace: \(payload.name)")
         }
+        
+        // Transition from Hatchling state if needed
+        transitionFromHatchlingIfNeeded(taskspaceUuid: payload.taskspaceUuid)
         
         return .handled(EmptyResponse())
     }
