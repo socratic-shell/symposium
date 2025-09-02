@@ -55,7 +55,7 @@ interface GetTaskspaceStatePayload {
 }
 
 interface TaskspaceStateResponse {
-    agentCommand: string;
+    agentCommand: string[];
     shouldLaunch: boolean;
 }
 
@@ -968,7 +968,7 @@ export class DaemonClient implements vscode.Disposable {
                 // TODO: Wait for response and return the actual state
                 // For now, return default until response handling is implemented
                 const defaultResponse: TaskspaceStateResponse = {
-                    agentCommand: 'q chat',
+                    agentCommand: ['q', 'chat'],
                     shouldLaunch: true
                 };
                 this.logger.info(`Using default response: ${JSON.stringify(defaultResponse)}`);
@@ -1048,7 +1048,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
         // Query app for taskspace state and agent command
         const stateResponse = await bus.daemonClient.getTaskspaceState(taskspaceUuid);
         if (stateResponse && stateResponse.shouldLaunch) {
-            outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand}`);
+            outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand.join(' ')}`);
             await launchAIAgent(outputChannel, bus, stateResponse.agentCommand, taskspaceUuid);
         } else {
             outputChannel.appendLine('App indicated agent should not be launched');
@@ -1063,9 +1063,10 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 }
 
 // 💡: Launch AI agent in terminal with provided command
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string, taskspaceUuid: string): Promise<void> {
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
-        outputChannel.appendLine(`Launching agent with command: ${agentCommand}`);
+        const commandString = agentCommand.join(' ');
+        outputChannel.appendLine(`Launching agent with command: ${commandString}`);
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
@@ -1077,7 +1078,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         terminal.show();
 
         // Send the agent command
-        terminal.sendText(agentCommand);
+        terminal.sendText(commandString);
 
         outputChannel.appendLine('Agent launched successfully');
 
