@@ -30,10 +30,15 @@ struct TaskspaceStateResponse: Codable {
 /// Request from MCP tool to create a new taskspace
 struct SpawnTaskspacePayload: Codable {
     let projectPath: String
-    let taskspaceUuid: String
+    let taskspaceUuid: String  // UUID of parent taskspace requesting the spawn
     let name: String
     let taskDescription: String
     let initialPrompt: String
+}
+
+/// Response to spawn_taskspace with new taskspace UUID
+struct SpawnTaskspaceResponse: Codable {
+    let newTaskspaceUuid: String
 }
 
 /// Progress update from MCP tool for taskspace activity logs
@@ -69,7 +74,7 @@ enum MessageHandlingResult<T: Codable> {
 /// Protocol for objects that can handle IPC messages (typically one per active project)
 protocol IpcMessageDelegate: AnyObject {
     func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async -> MessageHandlingResult<TaskspaceStateResponse>
-    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
+    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<SpawnTaskspaceResponse>
     func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
     func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
 }
@@ -242,7 +247,7 @@ class IpcManager: ObservableObject {
                 
                 // No delegate handled the message
                 Logger.shared.log("IpcManager: No delegate handled get_taskspace_state for UUID: \(payload.taskspaceUuid)")
-                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse get_taskspace_state payload: \(error)")
@@ -268,7 +273,7 @@ class IpcManager: ObservableObject {
                 
                 // No delegate handled the message
                 Logger.shared.log("IpcManager: No delegate handled spawn_taskspace for project: \(payload.projectPath)")
-                sendResponse(to: message.id, success: false, error: "Project not found")
+                sendResponse(to: message.id, success: false, data: nil as SpawnTaskspaceResponse?, error: "Project not found")
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
@@ -294,7 +299,7 @@ class IpcManager: ObservableObject {
                 
                 // No delegate handled the message
                 Logger.shared.log("IpcManager: No delegate handled log_progress for UUID: \(payload.taskspaceUuid)")
-                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse log_progress payload: \(error)")
@@ -320,7 +325,7 @@ class IpcManager: ObservableObject {
                 
                 // No delegate handled the message
                 Logger.shared.log("IpcManager: No delegate handled signal_user for UUID: \(payload.taskspaceUuid)")
-                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")

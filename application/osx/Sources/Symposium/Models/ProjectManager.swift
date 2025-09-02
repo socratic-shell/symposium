@@ -281,7 +281,7 @@ extension ProjectManager {
         return .handled(response)
     }
     
-    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
+    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<SpawnTaskspaceResponse> {
         guard let currentProject = currentProject else {
             Logger.shared.log("ProjectManager: No current project for spawn_taskspace")
             return .notForMe
@@ -293,19 +293,17 @@ extension ProjectManager {
             return .notForMe
         }
         
-        Logger.shared.log("ProjectManager: Creating taskspace \(payload.name) with UUID: \(payload.taskspaceUuid)")
+        Logger.shared.log("ProjectManager: Creating taskspace \(payload.name) (parent UUID: \(payload.taskspaceUuid))")
         
         do {
-            // Create new taskspace
+            // Create new taskspace with fresh UUID
             let taskspace = Taskspace(
-                uuid: payload.taskspaceUuid,
                 name: payload.name,
                 description: payload.taskDescription,
-                initialPrompt: payload.initialPrompt,
-                state: .hatchling,
-                createdAt: Date(),
-                logs: []
+                initialPrompt: payload.initialPrompt
             )
+            
+            Logger.shared.log("ProjectManager: Created new taskspace with UUID: \(taskspace.id.uuidString)")
             
             // Create taskspace directory and clone repo
             // TODO: This should use the existing createTaskspace logic
@@ -327,7 +325,9 @@ extension ProjectManager {
                 Logger.shared.log("ProjectManager: Added taskspace \(taskspace.name) to project")
             }
             
-            return .handled(EmptyResponse())
+            // Return the new taskspace UUID in response
+            let response = SpawnTaskspaceResponse(newTaskspaceUuid: taskspace.id.uuidString)
+            return .handled(response)
             
         } catch {
             Logger.shared.log("ProjectManager: Failed to create taskspace: \(error)")
