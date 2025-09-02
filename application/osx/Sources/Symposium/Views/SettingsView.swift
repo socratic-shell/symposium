@@ -6,6 +6,7 @@ struct SettingsView: View {
     @StateObject private var agentManager = AgentManager()
     @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @Environment(\.dismiss) private var dismiss
+    @State private var showingDebugAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -79,6 +80,14 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    
+                    if !agentManager.debugOutput.isEmpty {
+                        Button("Debug") {
+                            showingDebugAlert = true
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
                 }
                 
                 Text("Choose which AI agent to use for taskspaces:")
@@ -90,7 +99,6 @@ struct SettingsView: View {
                         AgentRadioButton(
                             agent: agent,
                             isSelected: selectedAgent == agent.id,
-                            debugOutput: agentManager.debugOutput,
                             action: { 
                                 if agent.isInstalled && agent.isMCPConfigured {
                                     selectedAgent = agent.id 
@@ -141,6 +149,15 @@ struct SettingsView: View {
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
+        }
+        .alert("Debug Output", isPresented: $showingDebugAlert) {
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(agentManager.debugOutput, forType: .string)
+            }
+            Button("OK") { }
+        } message: {
+            Text(agentManager.debugOutput)
         }
     }
     
@@ -257,9 +274,7 @@ struct RadioButton: View {
 struct AgentRadioButton: View {
     let agent: AgentInfo
     let isSelected: Bool
-    let debugOutput: String
     let action: () -> Void
-    @State private var showingDebugAlert = false
     
     var body: some View {
         Button(action: action) {
@@ -278,20 +293,9 @@ struct AgentRadioButton: View {
                         Image(systemName: agent.statusIcon)
                             .foregroundColor(Color(agent.statusColor))
                         
-                        if !agent.isInstalled || !agent.isMCPConfigured {
-                            Button(agent.statusText) {
-                                showingDebugAlert = true
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        Text(agent.statusText)
                             .font(.caption)
                             .foregroundColor(Color(agent.statusColor))
-                            .underline()
-                        } else {
-                            Text(agent.statusText)
-                                .font(.caption)
-                                .foregroundColor(Color(agent.statusColor))
-                        }
                     }
                     
                     Text(agent.description)
@@ -315,14 +319,5 @@ struct AgentRadioButton: View {
         .padding(8)
         .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
         .cornerRadius(6)
-        .alert("Debug Output", isPresented: $showingDebugAlert) {
-            Button("Copy") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(debugOutput, forType: .string)
-            }
-            Button("OK") { }
-        } message: {
-            Text(debugOutput)
-        }
     }
 }
