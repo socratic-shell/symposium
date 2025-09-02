@@ -358,7 +358,7 @@ extension ProjectManager {
         do {
             // Create log entry
             let logCategory = LogCategory(rawValue: payload.category) ?? .info
-            let logEntry = LogEntry(message: payload.message, category: logCategory)
+            let logEntry = TaskspaceLog(message: payload.message, category: logCategory)
             
             // Update taskspace with new log
             var updatedProject = currentProject
