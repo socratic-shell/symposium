@@ -199,7 +199,7 @@ struct NewProjectDialog: View {
     }
     
     private func createProject() {
-        let projectManager = ProjectManager(agentManager: agentManager, selectedAgent: settingsManager.selectedAgent)
+        let projectManager = ProjectManager(agentManager: agentManager, settingsManager: settingsManager, selectedAgent: settingsManager.selectedAgent)
         do {
             try projectManager.createProject(name: projectName, gitURL: gitURL, at: selectedDirectory)
             onProjectCreated(projectManager)
@@ -274,7 +274,7 @@ struct OpenProjectDialog: View {
     
     private func openProject(at path: String) {
         Logger.shared.log("OpenProjectDialog.openProject called with path: \(path)")
-        let projectManager = ProjectManager(agentManager: agentManager, selectedAgent: settingsManager.selectedAgent)
+        let projectManager = ProjectManager(agentManager: agentManager, settingsManager: settingsManager, selectedAgent: settingsManager.selectedAgent)
         Logger.shared.log("Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
         do {
             Logger.shared.log("Attempting to open project at: \(path)")

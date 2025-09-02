@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var permissionManager: PermissionManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var agentManager: AgentManager
     @State private var showingSettings = false
     @State private var projectManager: ProjectManager?
     
@@ -44,6 +46,39 @@ struct MainView: View {
         }
         .onAppear {
             permissionManager.checkAllPermissions()
+            tryLoadRememberedProject()
+        }
+    }
+    
+    private func tryLoadRememberedProject() {
+        // Only try to load if we don't already have a project and there's a remembered path
+        guard projectManager == nil, !settingsManager.lastProjectPath.isEmpty else {
+            return
+        }
+        
+        // Check if the remembered project path still exists and is valid
+        guard FileManager.default.fileExists(atPath: settingsManager.lastProjectPath),
+              Project.isValidProjectDirectory(settingsManager.lastProjectPath) else {
+            Logger.shared.log("Remembered project path no longer valid, clearing: \(settingsManager.lastProjectPath)")
+            settingsManager.lastProjectPath = ""
+            return
+        }
+        
+        // Try to load the remembered project
+        let rememberedProjectManager = ProjectManager(
+            agentManager: agentManager,
+            settingsManager: settingsManager,
+            selectedAgent: settingsManager.selectedAgent
+        )
+        
+        do {
+            try rememberedProjectManager.openProject(at: settingsManager.lastProjectPath)
+            self.projectManager = rememberedProjectManager
+            Logger.shared.log("Successfully loaded remembered project from: \(settingsManager.lastProjectPath)")
+        } catch {
+            Logger.shared.log("Failed to load remembered project: \(error)")
+            // Clear the invalid path
+            settingsManager.lastProjectPath = ""
         }
     }
 }

@@ -8,12 +8,14 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     
     private let ipcManager = IpcManager()
     private let agentManager: AgentManager
+    private let settingsManager: SettingsManager
     private let selectedAgent: String
     
     var mcpStatus: IpcManager { ipcManager }
     
-    init(agentManager: AgentManager, selectedAgent: String) {
+    init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: String) {
         self.agentManager = agentManager
+        self.settingsManager = settingsManager
         self.selectedAgent = selectedAgent
     }
     
@@ -73,6 +75,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         DispatchQueue.main.async {
             self.currentProject = project
             self.errorMessage = nil
+            
+            // Save project path for next app launch
+            self.settingsManager.lastProjectPath = project.directoryPath
             
             // Register as IPC delegate for this project
             self.ipcManager.addDelegate(self)
