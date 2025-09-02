@@ -128,6 +128,13 @@ Define message types for daemon communication:
 - **Taskspace metadata**: Display name, description, creation time
 - **Error handling**: Graceful failures for VSCode launch issues, permission problems
 
+### 2.5g: Project Lifecycle Management
+- **Project opening**: When opening a project, launch VSCode for all existing taskspaces
+- **Project closing**: When closing/switching projects, close VSCode windows for all taskspaces
+- **Window coordination**: Track which VSCode windows belong to which project
+- **Clean shutdown**: Ensure no orphaned VSCode windows when switching between projects
+- **State preservation**: Maintain taskspace state across project open/close cycles
+
 ## Phase 3: IPC Integration
 
 ### 3.1 Daemon Connection
