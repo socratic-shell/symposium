@@ -255,7 +255,7 @@ extension ProjectManager {
         }
         
         // Look for taskspace with matching UUID in current project
-        guard let taskspace = currentProject.taskspaces.first(where: { $0.uuid == payload.taskspaceUuid }) else {
+        guard let taskspace = currentProject.findTaskspace(uuid: payload.taskspaceUuid) else {
             Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found in project \(currentProject.name)")
             return .notForMe
         }
@@ -345,7 +345,7 @@ extension ProjectManager {
         }
         
         // Find taskspace by UUID
-        guard let taskspaceIndex = currentProject.taskspaces.firstIndex(where: { $0.uuid == payload.taskspaceUuid }) else {
+        guard let taskspaceIndex = currentProject.findTaskspaceIndex(uuid: payload.taskspaceUuid) else {
             Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found for log_progress")
             return .notForMe
         }
@@ -391,7 +391,7 @@ extension ProjectManager {
         }
         
         // Find taskspace by UUID
-        guard let taskspaceIndex = currentProject.taskspaces.firstIndex(where: { $0.uuid == payload.taskspaceUuid }) else {
+        guard let taskspaceIndex = currentProject.findTaskspaceIndex(uuid: payload.taskspaceUuid) else {
             Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found for signal_user")
             return .notForMe
         }

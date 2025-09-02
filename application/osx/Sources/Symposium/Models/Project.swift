@@ -48,4 +48,14 @@ struct Project: Codable, Identifiable {
         let projectFilePath = "\(path)/project.json"
         return FileManager.default.fileExists(atPath: projectFilePath)
     }
+    
+    /// Find taskspace by UUID
+    func findTaskspace(uuid: String) -> Taskspace? {
+        return taskspaces.first { $0.uuid == uuid }
+    }
+    
+    /// Find taskspace index by UUID
+    func findTaskspaceIndex(uuid: String) -> Int? {
+        return taskspaces.firstIndex { $0.uuid == uuid }
+    }
 }
