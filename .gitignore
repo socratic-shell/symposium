@@ -3,6 +3,7 @@
 
 # Swift/Xcode
 /.build
+application/osx/.build/
 /Packages
 xcuserdata/
 DerivedData/
