@@ -135,8 +135,8 @@ struct SettingsView: View {
             }
         }
         .padding(24)
-        .frame(minWidth: 600, idealWidth: 700, maxWidth: 800,
-               minHeight: 500, idealHeight: 600, maxHeight: 800)
+        .frame(minWidth: 700, idealWidth: 800, maxWidth: 1000,
+               minHeight: 600, idealHeight: 700, maxHeight: 900)
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
