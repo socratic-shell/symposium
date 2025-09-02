@@ -86,28 +86,36 @@ Define message types for daemon communication:
 
 ## Phase 2.5: Manual Taskspace Management
 
-### 2.5a: Taskspace Creation UI
-- **New taskspace dialog**: Name input, description input, initial prompt input
-- **Directory structure creation**: Create `task-$UUID/` directory with proper naming
-- **Git repository cloning**: Clone project Git URL into taskspace directory
-- **Metadata generation**: Create initial `taskspace.json` with Hatchling state
-- **UI integration**: Add "New Taskspace" button to project view
+### 2.5a: MCP Tool for Taskspace Updates
+- **Add `update_taskspace` MCP tool**: Allow AI agents to update taskspace name and description
+- **Tool parameters**: Accept name and description parameters
+- **Taskspace identification**: Use PID to identify which taskspace to update
+- **Metadata persistence**: Update and save `taskspace.json` file
+- **UI notification**: Trigger UI refresh when taskspace metadata changes
 
-### 2.5b: VSCode Integration & Window Management
+### 2.5b: Taskspace Creation UI
+- **New taskspace button**: Simple "New Taskspace" button in project view for manual creation
+- **Default taskspace creation**: Create taskspace with name "Unnamed taskspace", description "TBD", and standard initial prompt
+- **Directory structure creation**: Create `task-$UUID/` directory with proper naming (for both UI and MCP creation)
+- **Git repository cloning**: Clone project Git URL into taskspace directory (for both UI and MCP creation)
+- **Metadata generation**: Create initial `taskspace.json` with Hatchling state (for both UI and MCP creation)
+- **Note**: `spawn_taskspace` MCP tool (existing) creates taskspaces with specific name/description/prompt
+
+### 2.5c: VSCode Integration & Window Management
 - **VSCode launching**: Spawn VSCode process with taskspace directory as workspace
 - **Window tracking**: Use Accessibility APIs to identify and track VSCode windows
 - **Window association**: Link VSCode windows to taskspace UUIDs via process tracking
 - **Focus management**: Implement "bring to front" when taskspace is selected in UI
 - **Process lifecycle**: Handle VSCode window creation/destruction events
 
-### 2.5c: Visual Taskspace Display
+### 2.5d: Visual Taskspace Display
 - **Taskspace cards**: Display active taskspaces in project view with metadata
 - **Screen capture system**: Periodic screenshots of VSCode windows (every 5-10 seconds)
 - **Thumbnail display**: Show current taskspace state via window screenshots
 - **Real-time updates**: Refresh taskspace display when windows change
 - **Empty state handling**: Graceful display when no taskspaces exist
 
-### 2.5d: Basic Taskspace Operations
+### 2.5e: Basic Taskspace Operations
 - **Taskspace selection**: Click to focus associated VSCode windows
 - **Taskspace status**: Visual indicators for active/inactive taskspaces
 - **Taskspace metadata**: Display name, description, creation time

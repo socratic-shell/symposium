@@ -96,9 +96,20 @@ The panel is divided into sections with:
 
 ### Starting a new taskspace
 
-* When starting a new taskspace, we are given a *name*, a *description*, and an *initial prompt*
-* We invoke the configured agent to decide on a good name for the task
-    * (e.g., `q chat --no-interative` or `claude`-p`)
+There are two ways to create taskspaces:
+
+**Manual creation via UI:**
+* When the user clicks "New Taskspace", we create a taskspace with default values:
+    * Name: "Unnamed taskspace"
+    * Description: "TBD" 
+    * Initial prompt: "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
+* The AI agent will use the `update_taskspace` MCP tool to set appropriate name/description based on user interaction
+
+**Programmatic creation via MCP:**
+* When an AI agent uses the `spawn_taskspace` MCP tool, it provides a specific name, description, and initial prompt
+* This allows agents to create focused taskspaces for specific tasks
+
+**Common flow for both:**
 * To start a new taskspace, we assign it a UUID and create a directory
 * We then clone the given git url into that directory
 * We create initial metadata, setting the state to Hatchling.
@@ -116,6 +127,7 @@ The panel is divided into sections with:
 
 * The Symposium app will connect to the daemon and monitor for updates. It will react to messages sent by the following MCP tools. It is able to identify the taskspace by looking at the PID in the message, which will include the PID of the VSCode window.
     * `spawn_taskspace`, starts a new taskspace
+    * `update_taskspace`, updates the name and description of the current taskspace
     * `log_progress`, adds the log to the taskspace metadata, saves the `taskspace.json` file, and updates the display
     * `signal_user`, adds the log to the taskspace metdata and adds a badge to the dock icon.
 
