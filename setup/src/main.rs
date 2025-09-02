@@ -44,6 +44,7 @@ them for use with Claude CLI or Q CLI.
 Examples:
   cargo setup                           # Build everything and setup for development
   cargo setup --open                   # Build everything, setup, and launch the app
+  cargo setup --restart                # Build everything and restart daemon processes
   cargo setup --tool q                 # Setup for Q CLI only
   cargo setup --tool claude            # Setup for Claude Code only
   cargo setup --tool both              # Setup for both tools
@@ -79,6 +80,10 @@ struct Args {
     /// Open the app after building everything
     #[arg(long)]
     open: bool,
+
+    /// Kill existing daemon processes and restart cleanly
+    #[arg(long)]
+    restart: bool,
 }
 
 fn main() -> Result<()> {
@@ -123,7 +128,9 @@ fn main() -> Result<()> {
 
     // Clean up any existing daemon (for clean dev environment)
     // Do this AFTER building so the old daemon can send reload signal
-    cleanup_existing_daemon()?;
+    if args.restart {
+        cleanup_existing_daemon()?;
+    }
 
     // Setup MCP server(s)
     let mut success = true;
@@ -580,10 +587,11 @@ fn print_next_steps(tool: &CLITool) -> Result<()> {
     println!("3. Reviews will appear in the Symposium panel in VSCode");
 
     println!("\n🔧 Development workflow:");
-    println!("- Run 'cargo setup' to rebuild everything");
+    println!("- Run 'cargo setup' to rebuild everything (keeps daemon running)");
+    println!("- Run 'cargo setup --restart' to rebuild and restart daemon");
     println!("- Run 'cargo setup --open' to rebuild and launch the app");
     println!("- For quick server changes: cd mcp-server && cargo build --release && cargo setup");
-    println!("- VSCode window reloading is handled automatically");
+    println!("- VSCode extension reloading requires --restart flag");
 
     Ok(())
 }
