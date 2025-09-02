@@ -4,43 +4,23 @@ import SwiftUI
 class Logger: ObservableObject {
     static let shared = Logger()
     @Published var logs: [String] = []
-    private let logFile: URL
+    private let maxLogLines = 1024
     
     private init() {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        logFile = documentsPath.appendingPathComponent("symposium_debug.log")
-        
-        // Clear log on startup
         let startMessage = "=== Symposium Debug Log Started at \(Date()) ==="
         logs.append(startMessage)
-        try? (startMessage + "\n").write(to: logFile, atomically: true, encoding: .utf8)
-        print("SYMPOSIUM Logger: Log file at \(logFile.path)")
     }
     
     func log(_ message: String) {
         let logMessage = "[\(Date())] \(message)"
         
-        // Add to in-memory logs
         DispatchQueue.main.async {
             self.logs.append(logMessage)
-        }
-        
-        // Also print to console immediately
-        print("SYMPOSIUM: \(message)")
-        
-        // Write to file
-        do {
-            let fileMessage = logMessage + "\n"
-            if FileManager.default.fileExists(atPath: logFile.path) {
-                let fileHandle = try FileHandle(forWritingTo: logFile)
-                fileHandle.seekToEndOfFile()
-                fileHandle.write(fileMessage.data(using: .utf8)!)
-                fileHandle.closeFile()
-            } else {
-                try fileMessage.write(to: logFile, atomically: true, encoding: .utf8)
+            
+            // Keep only the last 1024 lines
+            if self.logs.count > self.maxLogLines {
+                self.logs.removeFirst(self.logs.count - self.maxLogLines)
             }
-        } catch {
-            print("SYMPOSIUM Logger ERROR: \(error)")
         }
     }
 }
