@@ -44,6 +44,7 @@ struct IdeOperationParams {
 // ANCHOR_END: ide_operation_params
 
 /// Parameters for the spawn_taskspace tool
+// ANCHOR: spawn_taskspace_params
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 struct SpawnTaskspaceParams {
     /// Name for the new taskspace
@@ -53,8 +54,10 @@ struct SpawnTaskspaceParams {
     /// Initial prompt to provide to the agent when it starts
     initial_prompt: String,
 }
+// ANCHOR_END: spawn_taskspace_params
 
 /// Parameters for the log_progress tool
+// ANCHOR: log_progress_params
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 struct LogProgressParams {
     /// Progress message to display
@@ -62,13 +65,16 @@ struct LogProgressParams {
     /// Category for visual indicator (info, warn, error, milestone, question)
     category: String,
 }
+// ANCHOR_END: log_progress_params
 
 /// Parameters for the signal_user tool
+// ANCHOR: signal_user_params
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 struct SignalUserParams {
     /// Message describing why user attention is needed
     message: String,
 }
+// ANCHOR_END: signal_user_params
 
 /// Dialectic MCP Server
 ///
@@ -660,6 +666,7 @@ impl DialecticServer {
     ///
     /// This tool allows agents to spawn new taskspaces for collaborative work.
     /// The taskspace will be created with the specified name, description, and initial prompt.
+    // ANCHOR: spawn_taskspace_tool
     #[tool(
         description = "Create a new taskspace with name, description, and initial prompt. \
                        The new taskspace will be launched with VSCode and the configured agent tool."
@@ -668,6 +675,7 @@ impl DialecticServer {
         &self,
         Parameters(params): Parameters<SpawnTaskspaceParams>,
     ) -> Result<CallToolResult, McpError> {
+        // ANCHOR_END: spawn_taskspace_tool
         self.ipc
             .send_log(
                 LogLevel::Info,
@@ -717,6 +725,7 @@ impl DialecticServer {
     ///
     /// This tool allows agents to report their progress to the Symposium panel
     /// with different visual categories for better user awareness.
+    // ANCHOR: log_progress_tool
     #[tool(
         description = "Report progress with visual indicators. \
                        Categories: info (ℹ️), warn (⚠️), error (❌), milestone (✅), question (❓)"
@@ -725,6 +734,7 @@ impl DialecticServer {
         &self,
         Parameters(params): Parameters<LogProgressParams>,
     ) -> Result<CallToolResult, McpError> {
+        // ANCHOR_END: log_progress_tool
         // Parse category string to enum
         let category = match params.category.to_lowercase().as_str() {
             "info" => crate::types::ProgressCategory::Info,
@@ -780,6 +790,7 @@ impl DialecticServer {
     ///
     /// This tool allows agents to signal when they need user attention,
     /// causing the taskspace to move toward the front of the Symposium panel.
+    // ANCHOR: signal_user_tool
     #[tool(
         description = "Request user attention for assistance. \
                        The taskspace will be highlighted and moved toward the front of the panel."
@@ -788,6 +799,7 @@ impl DialecticServer {
         &self,
         Parameters(params): Parameters<SignalUserParams>,
     ) -> Result<CallToolResult, McpError> {
+        // ANCHOR_END: signal_user_tool
         self.ipc
             .send_log(
                 LogLevel::Info,

@@ -17,6 +17,12 @@
 # Design and implementation
 
 - [Implementation Overview](./design/implementation-overview.md)
+- [MCP Server Tools](./design/mcp-server.md)
+    - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
+    - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
+    - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
+    - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
+    - [Reference System Tools](./design/mcp-tools/reference-system.md)
 - [Symposium Reference System](./design/symposium-ref-system.md)
 - [Ask Socratic Shell](./design/ask-socratic-shell.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)

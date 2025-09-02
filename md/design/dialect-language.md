@@ -98,13 +98,13 @@ The parser is implemented in `dialect/parser.rs`. The interpreter in `dialect.rs
 Functions implement the `DialectFunction` trait with parameter order specification:
 
 ```rust
-{{#include ../../server/src/dialect.rs:dialect_function_trait}}
+{{#include ../../mcp-server/src/dialect.rs:dialect_function_trait}}
 ```
 
 Functions that represent values can implement `DialectValue` instead:
 
 ```rust
-{{#include ../../server/src/dialect.rs:dialect_value_trait}}
+{{#include ../../mcp-server/src/dialect.rs:dialect_value_trait}}
 ```
 
 ## Error Handling

@@ -233,21 +233,26 @@ pub enum ReviewMode {
 }
 
 /// Payload for spawn_taskspace messages
+// ANCHOR: spawn_taskspace_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SpawnTaskspacePayload {
     pub name: String,
     pub task_description: String,
     pub initial_prompt: String,
 }
+// ANCHOR_END: spawn_taskspace_payload
 
 /// Payload for log_progress messages
+// ANCHOR: log_progress_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogProgressPayload {
     pub message: String,
     pub category: ProgressCategory,
 }
+// ANCHOR_END: log_progress_payload
 
 /// Progress categories for visual indicators
+// ANCHOR: progress_category
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProgressCategory {
@@ -257,11 +262,14 @@ pub enum ProgressCategory {
     Milestone,
     Question,
 }
+// ANCHOR_END: progress_category
 
 /// Payload for signal_user messages
+// ANCHOR: signal_user_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SignalUserPayload {
     pub message: String,
 }
+// ANCHOR_END: signal_user_payload
 
 
