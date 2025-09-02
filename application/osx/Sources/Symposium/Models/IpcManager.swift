@@ -60,7 +60,7 @@ struct SignalUserPayload: Codable {
 struct ResponsePayload: Codable {
     let success: Bool
     let error: String?
-    let data: Data?
+    let data: JsonBlob?
 }
 
 // MARK: - IPC Message Handling Protocol
@@ -349,9 +349,10 @@ class IpcManager: ObservableObject {
         }
         
         do {
-            let responseData: Data?
+            let responseData: JsonBlob?
             if let data = data {
-                responseData = try JSONEncoder().encode(data)
+                let encodedData = try JSONEncoder().encode(data)
+                responseData = try JSONDecoder().decode(JsonBlob.self, from: encodedData)
             } else {
                 responseData = nil
             }
