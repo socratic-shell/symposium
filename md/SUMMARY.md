@@ -23,22 +23,7 @@
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
 - [Dialect language](./design/dialect-language.md)
 
-# Dialectic Integration Documentation
 
-- [Development and contribution guide]()
-    - [Building and testing](./design/build-and-test.md)
-    - [System overview](./design/overview.md)
-        - [Communication protocol](./design/protocol.md)
-        - [Security considerations](./design/security.md)
-        - [AI Guidance design considerations](./design/ai-guidance.md)
-        - [Codebase structure](./design/codebase-structure.md)
-    - [How each feature works]()
-        - [Synthetic Pull Requests](./design/synthetic-pr.md)
-        - [IDE Capabilities](./design/ide-capabilities.md)
-    - [MCP server](./design/mcp-server.md)
-        - [MCP Tool interface](./design/mcp-tool-interface.md)
-    - [VSCode extension](./design/extension.md)
-    
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
