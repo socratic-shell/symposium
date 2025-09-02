@@ -728,20 +728,20 @@ impl DialecticServer {
     // ANCHOR: log_progress_tool
     #[tool(
         description = "Report progress with visual indicators. \
-                       Categories: info (ℹ️), warn (⚠️), error (❌), milestone (✅), question (❓)"
+                       Categories: 'info' or ℹ️, 'warn' or ⚠️, 'error' or ❌, 'milestone' or ✅, 'question' or ❓"
     )]
     async fn log_progress(
         &self,
         Parameters(params): Parameters<LogProgressParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: log_progress_tool
-        // Parse category string to enum
+        // Parse category string to enum (accept both text and emoji forms)
         let category = match params.category.to_lowercase().as_str() {
-            "info" => crate::types::ProgressCategory::Info,
-            "warn" => crate::types::ProgressCategory::Warn,
-            "error" => crate::types::ProgressCategory::Error,
-            "milestone" => crate::types::ProgressCategory::Milestone,
-            "question" => crate::types::ProgressCategory::Question,
+            "info" | "ℹ️" => crate::types::ProgressCategory::Info,
+            "warn" | "⚠️" => crate::types::ProgressCategory::Warn,
+            "error" | "❌" => crate::types::ProgressCategory::Error,
+            "milestone" | "✅" => crate::types::ProgressCategory::Milestone,
+            "question" | "❓" => crate::types::ProgressCategory::Question,
             _ => crate::types::ProgressCategory::Info, // Default to info for unknown categories
         };
 

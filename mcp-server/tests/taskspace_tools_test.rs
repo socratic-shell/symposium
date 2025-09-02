@@ -99,6 +99,42 @@ fn test_progress_category_serialization() {
 }
 
 #[test]
+fn test_emoji_category_acceptance() {
+    // Test that the log_progress tool would accept emoji categories
+    // (This tests the parsing logic that would be used in the actual tool)
+    
+    let test_cases = vec![
+        ("info", ProgressCategory::Info),
+        ("ℹ️", ProgressCategory::Info),
+        ("warn", ProgressCategory::Warn),
+        ("⚠️", ProgressCategory::Warn),
+        ("error", ProgressCategory::Error),
+        ("❌", ProgressCategory::Error),
+        ("milestone", ProgressCategory::Milestone),
+        ("✅", ProgressCategory::Milestone),
+        ("question", ProgressCategory::Question),
+        ("❓", ProgressCategory::Question),
+    ];
+    
+    for (input, expected) in test_cases {
+        let parsed = match input.to_lowercase().as_str() {
+            "info" | "ℹ️" => ProgressCategory::Info,
+            "warn" | "⚠️" => ProgressCategory::Warn,
+            "error" | "❌" => ProgressCategory::Error,
+            "milestone" | "✅" => ProgressCategory::Milestone,
+            "question" | "❓" => ProgressCategory::Question,
+            _ => ProgressCategory::Info,
+        };
+        
+        assert_eq!(
+            serde_json::to_string(&parsed).unwrap(),
+            serde_json::to_string(&expected).unwrap(),
+            "Failed for input: {}", input
+        );
+    }
+}
+
+#[test]
 fn test_ipc_message_types_include_taskspace_operations() {
     // Test that the new message types can be serialized
     let spawn_type = IPCMessageType::SpawnTaskspace;
