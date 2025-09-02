@@ -1123,10 +1123,6 @@ impl IPCCommunicator {
             _ => {
                 // Every message (including the ones we send...) gets rebroadcast to everyone,
                 // so we can just ignore anything else.
-                debug!(
-                    "Received unhandled message type: {:?}",
-                    message.message_type
-                );
             }
         }
     }
