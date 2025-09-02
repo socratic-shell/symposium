@@ -43,6 +43,33 @@ struct IdeOperationParams {
 }
 // ANCHOR_END: ide_operation_params
 
+/// Parameters for the spawn_taskspace tool
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct SpawnTaskspaceParams {
+    /// Name for the new taskspace
+    name: String,
+    /// Description of the task to be performed
+    task_description: String,
+    /// Initial prompt to provide to the agent when it starts
+    initial_prompt: String,
+}
+
+/// Parameters for the log_progress tool
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct LogProgressParams {
+    /// Progress message to display
+    message: String,
+    /// Category for visual indicator (info, warn, error, milestone, question)
+    category: String,
+}
+
+/// Parameters for the signal_user tool
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct SignalUserParams {
+    /// Message describing why user attention is needed
+    message: String,
+}
+
 /// Dialectic MCP Server
 ///
 /// Implements the MCP server protocol and bridges to VSCode extension via IPC.
@@ -628,6 +655,179 @@ impl DialecticServer {
             }
         }
     }
+
+    /// Create a new taskspace with initial prompt
+    ///
+    /// This tool allows agents to spawn new taskspaces for collaborative work.
+    /// The taskspace will be created with the specified name, description, and initial prompt.
+    #[tool(
+        description = "Create a new taskspace with name, description, and initial prompt. \
+                       The new taskspace will be launched with VSCode and the configured agent tool."
+    )]
+    async fn spawn_taskspace(
+        &self,
+        Parameters(params): Parameters<SpawnTaskspaceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.ipc
+            .send_log(
+                LogLevel::Info,
+                format!("Creating new taskspace: {}", params.name),
+            )
+            .await;
+
+        // Send spawn_taskspace message to Symposium app via daemon
+        match self
+            .ipc
+            .spawn_taskspace(params.name.clone(), params.task_description, params.initial_prompt)
+            .await
+        {
+            Ok(()) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Info,
+                        format!("Taskspace '{}' created successfully", params.name),
+                    )
+                    .await;
+
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "Taskspace '{}' created successfully",
+                    params.name
+                ))]))
+            }
+            Err(e) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Error,
+                        format!("Failed to create taskspace '{}': {}", params.name, e),
+                    )
+                    .await;
+
+                Err(McpError::internal_error(
+                    "Failed to create taskspace",
+                    Some(serde_json::json!({
+                        "error": e.to_string(),
+                        "taskspace_name": params.name
+                    })),
+                ))
+            }
+        }
+    }
+
+    /// Report progress from agent with visual indicators
+    ///
+    /// This tool allows agents to report their progress to the Symposium panel
+    /// with different visual categories for better user awareness.
+    #[tool(
+        description = "Report progress with visual indicators. \
+                       Categories: info (ℹ️), warn (⚠️), error (❌), milestone (✅), question (❓)"
+    )]
+    async fn log_progress(
+        &self,
+        Parameters(params): Parameters<LogProgressParams>,
+    ) -> Result<CallToolResult, McpError> {
+        // Parse category string to enum
+        let category = match params.category.to_lowercase().as_str() {
+            "info" => crate::types::ProgressCategory::Info,
+            "warn" => crate::types::ProgressCategory::Warn,
+            "error" => crate::types::ProgressCategory::Error,
+            "milestone" => crate::types::ProgressCategory::Milestone,
+            "question" => crate::types::ProgressCategory::Question,
+            _ => crate::types::ProgressCategory::Info, // Default to info for unknown categories
+        };
+
+        self.ipc
+            .send_log(
+                LogLevel::Debug,
+                format!("Logging progress: {} ({})", params.message, params.category),
+            )
+            .await;
+
+        // Send log_progress message to Symposium app via daemon
+        match self.ipc.log_progress(params.message.clone(), category).await {
+            Ok(()) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Info,
+                        "Progress logged successfully".to_string(),
+                    )
+                    .await;
+
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "Progress logged: {}",
+                    params.message
+                ))]))
+            }
+            Err(e) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Error,
+                        format!("Failed to log progress: {}", e),
+                    )
+                    .await;
+
+                Err(McpError::internal_error(
+                    "Failed to log progress",
+                    Some(serde_json::json!({
+                        "error": e.to_string(),
+                        "message": params.message
+                    })),
+                ))
+            }
+        }
+    }
+
+    /// Request user attention for assistance
+    ///
+    /// This tool allows agents to signal when they need user attention,
+    /// causing the taskspace to move toward the front of the Symposium panel.
+    #[tool(
+        description = "Request user attention for assistance. \
+                       The taskspace will be highlighted and moved toward the front of the panel."
+    )]
+    async fn signal_user(
+        &self,
+        Parameters(params): Parameters<SignalUserParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.ipc
+            .send_log(
+                LogLevel::Info,
+                format!("Requesting user attention: {}", params.message),
+            )
+            .await;
+
+        // Send signal_user message to Symposium app via daemon
+        match self.ipc.signal_user(params.message.clone()).await {
+            Ok(()) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Info,
+                        "User attention requested successfully".to_string(),
+                    )
+                    .await;
+
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "User attention requested: {}",
+                    params.message
+                ))]))
+            }
+            Err(e) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Error,
+                        format!("Failed to request user attention: {}", e),
+                    )
+                    .await;
+
+                Err(McpError::internal_error(
+                    "Failed to request user attention",
+                    Some(serde_json::json!({
+                        "error": e.to_string(),
+                        "message": params.message
+                    })),
+                ))
+            }
+        }
+    }
 }
 
 #[tool_handler]
@@ -647,7 +847,10 @@ impl ServerHandler for DialecticServer {
                 'present_walkthrough' to display structured code walkthroughs with interactive elements, \
                 'request_review' to create synthetic pull requests from Git commit ranges with AI insight comments, \
                 'update_review' to manage review workflows and wait for user feedback, \
-                and 'get_review_status' to check the current synthetic PR status."
+                'get_review_status' to check the current synthetic PR status, \
+                'spawn_taskspace' to create new taskspaces for collaborative work, \
+                'log_progress' to report agent progress with visual indicators, \
+                and 'signal_user' to request user attention when assistance is needed."
                     .to_string(),
             ),
         }

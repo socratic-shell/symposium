@@ -171,6 +171,12 @@ pub enum IPCMessageType {
     StoreReference,
     /// Signal VSCode extension to reload window (sent by daemon on shutdown)
     ReloadWindow,
+    /// Create new taskspace with initial prompt
+    SpawnTaskspace,
+    /// Report progress from agent with visual indicators
+    LogProgress,
+    /// Request user attention for assistance
+    SignalUser,
 }
 
 // ANCHOR: store_reference_payload
@@ -224,6 +230,38 @@ pub enum ReviewMode {
     Replace,
     Append,
     UpdateSection,
+}
+
+/// Payload for spawn_taskspace messages
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SpawnTaskspacePayload {
+    pub name: String,
+    pub task_description: String,
+    pub initial_prompt: String,
+}
+
+/// Payload for log_progress messages
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LogProgressPayload {
+    pub message: String,
+    pub category: ProgressCategory,
+}
+
+/// Progress categories for visual indicators
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProgressCategory {
+    Info,
+    Warn,
+    Error,
+    Milestone,
+    Question,
+}
+
+/// Payload for signal_user messages
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SignalUserPayload {
+    pub message: String,
 }
 
 

@@ -475,6 +475,79 @@ impl IPCCommunicator {
         Ok(response)
     }
 
+    /// Send spawn_taskspace message to create new taskspace
+    pub async fn spawn_taskspace(
+        &self,
+        name: String,
+        task_description: String,
+        initial_prompt: String,
+    ) -> Result<()> {
+        use crate::types::{SpawnTaskspacePayload, IPCMessageType};
+        
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        let message = IPCMessage {
+            shell_pid,
+            id: Uuid::new_v4().to_string(),
+            message_type: IPCMessageType::SpawnTaskspace,
+            payload: serde_json::to_value(SpawnTaskspacePayload {
+                name,
+                task_description,
+                initial_prompt,
+            })?,
+        };
+
+        self.send_message_without_reply(message).await
+    }
+
+    /// Send log_progress message to report agent progress
+    pub async fn log_progress(
+        &self,
+        message: String,
+        category: crate::types::ProgressCategory,
+    ) -> Result<()> {
+        use crate::types::{LogProgressPayload, IPCMessageType};
+        
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        let ipc_message = IPCMessage {
+            shell_pid,
+            id: Uuid::new_v4().to_string(),
+            message_type: IPCMessageType::LogProgress,
+            payload: serde_json::to_value(LogProgressPayload {
+                message,
+                category,
+            })?,
+        };
+
+        self.send_message_without_reply(ipc_message).await
+    }
+
+    /// Send signal_user message to request user attention
+    pub async fn signal_user(&self, message: String) -> Result<()> {
+        use crate::types::{SignalUserPayload, IPCMessageType};
+        
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        let ipc_message = IPCMessage {
+            shell_pid,
+            id: Uuid::new_v4().to_string(),
+            message_type: IPCMessageType::SignalUser,
+            payload: serde_json::to_value(SignalUserPayload { message })?,
+        };
+
+        self.send_message_without_reply(ipc_message).await
+    }
+
     /// Gracefully shutdown the IPC communicator, sending Goodbye discovery message
     pub async fn shutdown(&self) -> Result<()> {
         if self.test_mode {
