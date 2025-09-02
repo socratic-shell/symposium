@@ -238,7 +238,8 @@ export class DaemonClient implements vscode.Disposable {
         // Spawn symposium-mcp client process
         const { spawn } = require('child_process');
 
-        this.clientProcess = spawn(binaryPath, ['client'], {
+        // Use shell to handle PATH resolution, same as macOS app
+        this.clientProcess = spawn('/bin/sh', ['-c', `${binaryPath} client`], {
             stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
         });
 
