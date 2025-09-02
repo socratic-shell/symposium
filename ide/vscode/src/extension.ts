@@ -14,8 +14,8 @@ import { StructuredLogger } from './structuredLogger';
 // 💡: Types for IPC communication with MCP server
 interface IPCMessage {
     shellPid: number;
-    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_agent_command' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetAgentCommandPayload | unknown; // unknown allows any payload
+    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | string; // string allows unknown types
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | unknown; // unknown allows any payload
     id: string;
 }
 
@@ -50,17 +50,13 @@ interface ResponsePayload {
     data?: any;
 }
 
-interface GetAgentCommandPayload {
+interface GetTaskspaceStatePayload {
     taskspaceUuid: string;
 }
 
-interface TaskspaceData {
-    uuid: string;
-    name: string;
-    description: string;
-    state: 'Hatchling' | 'Resume' | 'Complete';
-    initialPrompt?: string;
-    createdAt: string;
+interface TaskspaceStateResponse {
+    agentCommand: string;
+    shouldLaunch: boolean;
 }
 
 interface SyntheticPRPayload {
@@ -947,39 +943,42 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     /**
-     * Query Symposium app for which AI agent command to use for a taskspace
+     * Query Symposium app for taskspace state and agent command
      */
-    async queryAgentCommand(taskspaceUuid: string): Promise<string | null> {
+    async getTaskspaceState(taskspaceUuid: string): Promise<TaskspaceStateResponse | null> {
         try {
-            this.logger.info('Querying Symposium app for agent command...');
+            this.logger.info('Querying Symposium app for taskspace state...');
             
-            // Send IPC message to query agent command
+            // Send IPC message to get taskspace state
             const messageId = crypto.randomUUID();
             const queryMessage: IPCMessage = {
                 shellPid: process.pid,
-                type: 'get_agent_command',
+                type: 'get_taskspace_state',
                 payload: {
                     taskspaceUuid: taskspaceUuid
-                } as GetAgentCommandPayload,
+                } as GetTaskspaceStatePayload,
                 id: messageId
             };
 
             // Send the message
             if (this.clientProcess && this.clientProcess.stdin) {
                 this.clientProcess.stdin.write(JSON.stringify(queryMessage) + '\n');
-                this.logger.info(`Sent agent command query with ID: ${messageId}`);
+                this.logger.info(`Sent taskspace state query with ID: ${messageId}`);
                 
-                // TODO: Wait for response and return the agent command
+                // TODO: Wait for response and return the actual state
                 // For now, return default until response handling is implemented
-                const defaultCommand = 'q chat';
-                this.logger.info(`Using default agent command: ${defaultCommand}`);
-                return defaultCommand;
+                const defaultResponse: TaskspaceStateResponse = {
+                    agentCommand: 'q chat',
+                    shouldLaunch: true
+                };
+                this.logger.info(`Using default response: ${JSON.stringify(defaultResponse)}`);
+                return defaultResponse;
             } else {
                 throw new Error('Daemon client not connected');
             }
             
         } catch (error) {
-            this.logger.error(`Error querying agent command: ${error}`);
+            this.logger.error(`Error querying taskspace state: ${error}`);
             return null;
         }
     }
@@ -1035,42 +1034,42 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     outputChannel.appendLine(`✅ Taskspace detected! Directory: ${workspaceName}, Metadata: ${taskspaceJsonPath}`);
 
     try {
-        // Read taskspace metadata
-        const taskspaceData: TaskspaceData = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
-        outputChannel.appendLine(`Taskspace: ${taskspaceData.name} - ${taskspaceData.description}`);
-        outputChannel.appendLine(`State: ${taskspaceData.state}`);
+        // Read taskspace metadata - only need UUID
+        const taskspaceJson = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
+        const taskspaceUuid = taskspaceJson.uuid;
+        
+        if (!taskspaceUuid) {
+            outputChannel.appendLine('No UUID found in taskspace.json');
+            return;
+        }
 
-        // If taskspace is in Hatchling state, auto-launch agent
-        if (taskspaceData.state === 'Hatchling') {
-            outputChannel.appendLine('Taskspace is in Hatchling state, launching AI agent...');
-            await launchAIAgent(outputChannel, bus, taskspaceData);
+        outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
+
+        // Query app for taskspace state and agent command
+        const stateResponse = await bus.daemonClient.getTaskspaceState(taskspaceUuid);
+        if (stateResponse && stateResponse.shouldLaunch) {
+            outputChannel.appendLine(`Launching agent: ${stateResponse.agentCommand}`);
+            await launchAIAgent(outputChannel, bus, stateResponse.agentCommand, taskspaceUuid);
         } else {
-            outputChannel.appendLine(`Taskspace is in ${taskspaceData.state} state, no auto-launch needed`);
+            outputChannel.appendLine('App indicated agent should not be launched');
         }
 
         // Register this VSCode window with the Symposium app
-        await registerTaskspaceWindow(outputChannel, bus, taskspaceData);
+        await registerTaskspaceWindow(outputChannel, bus, taskspaceUuid);
 
     } catch (error) {
         outputChannel.appendLine(`Error reading taskspace metadata: ${error}`);
     }
 }
 
-// 💡: Launch AI agent in terminal with initial prompt
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<void> {
+// 💡: Launch AI agent in terminal with provided command
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string, taskspaceUuid: string): Promise<void> {
     try {
-        // Query the Symposium app for which agent command to use
-        const agentCommand = await bus.daemonClient.queryAgentCommand(taskspaceData.uuid);
-        if (!agentCommand) {
-            outputChannel.appendLine('No agent command received, skipping agent launch');
-            return;
-        }
-        
         outputChannel.appendLine(`Launching agent with command: ${agentCommand}`);
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
-            name: `AI Agent - ${taskspaceData.name}`,
+            name: `AI Agent - ${taskspaceUuid.substring(0, 8)}`,
             cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
         });
 
@@ -1080,16 +1079,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
         // Send the agent command
         terminal.sendText(agentCommand);
 
-        // Wait a moment for the agent to start, then send initial prompt
-        setTimeout(() => {
-            if (taskspaceData.initialPrompt) {
-                outputChannel.appendLine('Sending initial prompt to agent...');
-                terminal.sendText(taskspaceData.initialPrompt);
-            }
-        }, 2000);
-
-        // Update taskspace state from Hatchling to Resume
-        await updateTaskspaceState(outputChannel, bus, taskspaceData, 'Resume');
+        outputChannel.appendLine('Agent launched successfully');
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
@@ -1097,26 +1087,14 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
 }
 
 // 💡: Register this VSCode window with Symposium app
-async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<void> {
+async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceUuid: string): Promise<void> {
     try {
         outputChannel.appendLine('Registering VSCode window with Symposium app...');
-        // TODO: Send IPC message to register window
+        // TODO: Send IPC message to register window with taskspace UUID
         // This will be implemented when we have the IPC infrastructure
         outputChannel.appendLine('Window registration completed');
     } catch (error) {
         outputChannel.appendLine(`Error registering window: ${error}`);
-    }
-}
-
-// 💡: Update taskspace state via IPC
-async function updateTaskspaceState(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData, newState: string): Promise<void> {
-    try {
-        outputChannel.appendLine(`Updating taskspace state from ${taskspaceData.state} to ${newState}...`);
-        // TODO: Send IPC message to update state
-        // This will be implemented when we have the IPC infrastructure
-        outputChannel.appendLine('State update completed');
-    } catch (error) {
-        outputChannel.appendLine(`Error updating taskspace state: ${error}`);
     }
 }
 
