@@ -56,13 +56,6 @@ struct SignalUserPayload: Codable {
     let message: String
 }
 
-/// Generic response payload for all IPC requests
-struct ResponsePayload: Codable {
-    let success: Bool
-    let error: String?
-    let data: JsonBlob?
-}
-
 // MARK: - IPC Message Handling Protocol
 
 /// Result of attempting to handle an IPC message
@@ -357,11 +350,22 @@ class IpcManager: ObservableObject {
                 responseData = nil
             }
             
-            let responsePayload = ResponsePayload(success: success, error: error, data: responseData)
-            let encodedResponseData = try JSONEncoder().encode(responsePayload)
+            // Build response payload as JsonBlob directly
+            var responseFields: [JsonBlob.PropertyKey: JsonBlob] = [
+                JsonBlob.PropertyKey(stringValue: "success"): .boolean(success)
+            ]
+            
+            if let error = error {
+                responseFields[JsonBlob.PropertyKey(stringValue: "error")] = .string(error)
+            }
+            
+            if let responseData = responseData {
+                responseFields[JsonBlob.PropertyKey(stringValue: "data")] = responseData
+            }
+            
             let responseMessage = IPCMessage(
                 type: "response",
-                payload: try JSONDecoder().decode(JsonBlob.self, from: encodedResponseData),
+                payload: .object(responseFields),
                 id: messageId,
                 shellPid: nil
             )
