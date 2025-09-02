@@ -1008,14 +1008,14 @@ function getCurrentTaskspaceUuid(): string | null {
     while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
         const dirName = path.basename(currentDir);
         const match = dirName.match(taskUuidPattern);
-        
+
         if (match) {
             const taskspaceJsonPath = path.join(currentDir, 'taskspace.json');
             if (fs.existsSync(taskspaceJsonPath)) {
                 return match[1]; // Return the UUID
             }
         }
-        
+
         currentDir = path.dirname(currentDir);
     }
 
@@ -1044,9 +1044,6 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     } else {
         outputChannel.appendLine('App indicated agent should not be launched');
     }
-
-    // Register this VSCode window with the Symposium app
-    await registerTaskspaceWindow(outputChannel, bus);
 }
 
 // 💡: Launch AI agent in terminal with provided command
@@ -1073,31 +1070,6 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
-    }
-}
-
-// 💡: Register this VSCode window with Symposium app
-async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
-    try {
-        const taskspaceUuid = getCurrentTaskspaceUuid();
-        if (!taskspaceUuid) {
-            outputChannel.appendLine('Not in a taskspace, skipping window registration');
-            return;
-        }
-
-        outputChannel.appendLine(`Registering VSCode window with Symposium app for taskspace: ${taskspaceUuid}`);
-
-        // Send IPC message to register window with taskspace UUID
-        const payload = { taskspaceUuid };
-        const response = await bus.daemonClient.sendRequest<any>('register_window', payload);
-
-        if (response) {
-            outputChannel.appendLine('Window registration completed successfully');
-        } else {
-            outputChannel.appendLine('Window registration failed or timed out');
-        }
-    } catch (error) {
-        outputChannel.appendLine(`Error registering window: ${error}`);
     }
 }
 
