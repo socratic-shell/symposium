@@ -3,6 +3,10 @@ import SwiftUI
 import AppKit
 
 // MARK: - CGS Window Manager for Testing
+//
+// NOTE: This code is from the original window management testing interface.
+// It's not currently used by the new project management UI (Phase 1),
+// but will be integrated in Phase 4 for taskspace window tiling and management.
 
 class CGSWindowManager: ObservableObject {
     

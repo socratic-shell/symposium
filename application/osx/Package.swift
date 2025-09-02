@@ -10,10 +10,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Symposium",
-            dependencies: [],
-            resources: [
-                .copy("../Info.plist")
-            ]
+            dependencies: []
         )
     ]
 )
