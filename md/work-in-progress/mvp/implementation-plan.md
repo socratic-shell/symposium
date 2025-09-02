@@ -89,9 +89,9 @@ Define message types for daemon communication:
 ### 2.5a: MCP Tool for Taskspace Updates
 - **Add `update_taskspace` MCP tool**: Allow AI agents to update taskspace name and description
 - **Tool parameters**: Accept name and description parameters
-- **Taskspace identification**: Use PID to identify which taskspace to update
-- **Metadata persistence**: Update and save `taskspace.json` file
-- **UI notification**: Trigger UI refresh when taskspace metadata changes
+- **Taskspace identification**: Detect taskspace from current working directory (same as other MCP tools)
+- **IPC message**: Send update message to daemon (similar to `log_progress`, `signal_user`)
+- **App-side handling**: Symposium app receives message, updates `taskspace.json` file, and refreshes UI
 
 ### 2.5b: Taskspace Creation UI
 - **New taskspace button**: Simple "New Taskspace" button in project view for manual creation
