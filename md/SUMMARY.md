@@ -9,21 +9,24 @@
 
 - [Introduction](./introduction.md)
 
+<!--
+    AGENTS: "Research Reports" are in-depth documents you can read to learn more
+    about a particular topic
+-->
+
 # Design and implementation
 
-- [Interface plan](./interface-plan.md)
-- [Implementation Overview](./implementation-overview.md)
+- [Interface plan](./design/interface-plan.md)
+- [Implementation Overview](./design/implementation-overview.md)
 - [Symposium Reference System](./design/symposium-ref-system.md)
 - [Ask Socratic Shell](./design/ask-socratic-shell.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
 - [Code walkthroughs](./design/walkthroughs.md)
     - [Walkthrough format](./design/walkthrough-format.md)
     - [Comment Interactions](./design/walkthrough-comment-interactions.md)
-- [Window Stacking Design](./window-stacking-design.md)
-- [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
+- [Window Stacking Design](./design/window-stacking-design.md)
+- [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 - [Dialect language](./design/dialect-language.md)
-
-
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
