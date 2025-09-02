@@ -130,20 +130,37 @@ class IpcManager: ObservableObject {
     private func launchClient(mcpServerPath: String) {
         let process = Process()
         
-        // Resolve full path if it's just a binary name
+        // Resolve full path using 'which' if it's just a binary name
         let resolvedPath: String
-        if mcpServerPath == "symposium-mcp" {
-            // Use full path to ~/.cargo/bin/symposium-mcp
-            if let homeDir = FileManager.default.homeDirectoryForCurrentUser.path as String? {
-                resolvedPath = "\(homeDir)/.cargo/bin/symposium-mcp"
-            } else {
+        if !mcpServerPath.contains("/") {
+            // It's just a binary name, use 'which' to find it
+            let whichProcess = Process()
+            whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+            whichProcess.arguments = [mcpServerPath]
+            
+            let pipe = Pipe()
+            whichProcess.standardOutput = pipe
+            whichProcess.standardError = Pipe() // Suppress errors
+            
+            do {
+                try whichProcess.run()
+                whichProcess.waitUntilExit()
+                
+                if whichProcess.terminationStatus == 0 {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    resolvedPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? mcpServerPath
+                } else {
+                    resolvedPath = mcpServerPath
+                }
+            } catch {
+                Logger.shared.log("IpcManager: Failed to resolve path with 'which': \(error)")
                 resolvedPath = mcpServerPath
             }
         } else {
             resolvedPath = mcpServerPath
         }
         
-        process.launchPath = resolvedPath
+        process.executableURL = URL(fileURLWithPath: resolvedPath)
         process.arguments = ["client"]
         
         // Set up pipes for stdin/stdout/stderr
