@@ -55,6 +55,15 @@ interface GetAgentCommandPayload {
     taskspaceUuid: string;
 }
 
+interface TaskspaceData {
+    uuid: string;
+    name: string;
+    description: string;
+    state: 'Hatchling' | 'Resume' | 'Complete';
+    initialPrompt?: string;
+    createdAt: string;
+}
+
 interface SyntheticPRPayload {
     review_id: string;
     title: string;
@@ -990,7 +999,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 
     try {
         // Read taskspace metadata
-        const taskspaceData = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
+        const taskspaceData: TaskspaceData = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
         outputChannel.appendLine(`Taskspace: ${taskspaceData.name} - ${taskspaceData.description}`);
         outputChannel.appendLine(`State: ${taskspaceData.state}`);
 
@@ -1011,7 +1020,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 }
 
 // 💡: Launch AI agent in terminal with initial prompt
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<void> {
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<void> {
     try {
         // Query the Symposium app for which agent command to use
         const agentCommand = await queryAgentCommand(outputChannel, bus, taskspaceData);
@@ -1051,7 +1060,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
 }
 
 // 💡: Query Symposium app for agent command to use
-async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<string | null> {
+async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<string | null> {
     try {
         outputChannel.appendLine('Querying Symposium app for agent command...');
         
@@ -1077,7 +1086,7 @@ async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, 
 }
 
 // 💡: Register this VSCode window with Symposium app
-async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<void> {
+async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<void> {
     try {
         outputChannel.appendLine('Registering VSCode window with Symposium app...');
         // TODO: Send IPC message to register window
@@ -1089,7 +1098,7 @@ async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus:
 }
 
 // 💡: Update taskspace state via IPC
-async function updateTaskspaceState(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any, newState: string): Promise<void> {
+async function updateTaskspaceState(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData, newState: string): Promise<void> {
     try {
         outputChannel.appendLine(`Updating taskspace state from ${taskspaceData.state} to ${newState}...`);
         // TODO: Send IPC message to update state
