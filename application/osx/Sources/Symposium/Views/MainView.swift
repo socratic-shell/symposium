@@ -58,7 +58,9 @@ struct ProjectView: View {
     
     var body: some View {
         if let project = projectManager.currentProject {
-            VStack {
+            if daemonManager.isConnected {
+                // Show full project interface when daemon is connected
+                VStack {
                 // Header with project info
                 HStack {
                     VStack(alignment: .leading) {
@@ -141,6 +143,22 @@ struct ProjectView: View {
         } message: {
             Text(daemonManager.debugOutput)
         }
+            } else {
+                // Connecting to daemon
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    
+                    Text("Connecting to daemon...")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Project: \(project.name)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         } else if projectManager.isLoading {
             VStack {
                 ProgressView()
