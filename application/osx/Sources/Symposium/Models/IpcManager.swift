@@ -262,7 +262,8 @@ class IpcManager: ObservableObject {
     private func handleSpawnTaskspace(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: message.payload)
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
                 
                 // Try each delegate until one handles the message
@@ -288,7 +289,8 @@ class IpcManager: ObservableObject {
     private func handleLogProgress(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(LogProgressPayload.self, from: message.payload)
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(LogProgressPayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Log progress for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
@@ -314,7 +316,8 @@ class IpcManager: ObservableObject {
     private func handleSignalUser(message: IPCMessage) {
         Task {
             do {
-                let payload = try JSONDecoder().decode(SignalUserPayload.self, from: message.payload)
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(SignalUserPayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Signal user for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
@@ -354,9 +357,10 @@ class IpcManager: ObservableObject {
             }
             
             let responsePayload = ResponsePayload(success: success, error: error, data: responseData)
+            let encodedResponseData = try JSONEncoder().encode(responsePayload)
             let responseMessage = IPCMessage(
                 type: "response",
-                payload: try JSONEncoder().encode(responsePayload),
+                payload: try JSONDecoder().decode(JsonBlob.self, from: encodedResponseData),
                 id: messageId,
                 shellPid: nil
             )
@@ -365,7 +369,7 @@ class IpcManager: ObservableObject {
             var messageString = String(data: messageData, encoding: .utf8) ?? ""
             messageString += "\n"
             
-            if let stringData = messageString.data(using: .utf8) {
+            if let stringData = messageString.data(using: String.Encoding.utf8) {
                 inputPipe.fileHandleForWriting.write(stringData)
                 Logger.shared.log("IpcManager: Sent response to \(messageId)")
             }
