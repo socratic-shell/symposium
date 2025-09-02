@@ -1037,7 +1037,18 @@ function getCurrentTaskspaceUuid(): string | null {
     // Check if we're in a task-UUID directory
     const workspaceName = path.basename(workspaceRoot);
     const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-    const match = workspaceName.match(taskUuidPattern);
+    let match = workspaceName.match(taskUuidPattern);
+    let taskspaceDir = workspaceRoot;
+
+    // If not found, check parent directory (for when VSCode opens the cloned repo)
+    if (!match) {
+        const parentDir = path.dirname(workspaceRoot);
+        const parentName = path.basename(parentDir);
+        match = parentName.match(taskUuidPattern);
+        if (match) {
+            taskspaceDir = parentDir;
+        }
+    }
 
     if (!match) {
         return null; // Not a task-UUID directory
@@ -1045,8 +1056,8 @@ function getCurrentTaskspaceUuid(): string | null {
 
     const expectedUuid = match[1];
 
-    // Check for ../taskspace.json
-    const taskspaceJsonPath = path.join(workspaceRoot, '..', 'taskspace.json');
+    // Check for taskspace.json in the taskspace directory
+    const taskspaceJsonPath = path.join(taskspaceDir, 'taskspace.json');
     if (!fs.existsSync(taskspaceJsonPath)) {
         return null; // No taskspace.json found
     }
