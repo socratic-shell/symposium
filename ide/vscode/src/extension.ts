@@ -51,7 +51,6 @@ interface ResponsePayload {
 }
 
 interface GetAgentCommandPayload {
-    projectPath: string;
     taskspaceUuid: string;
 }
 
@@ -948,14 +947,41 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     /**
-     * Send an IPC message to the daemon
+     * Query Symposium app for which AI agent command to use for a taskspace
      */
-    sendMessage(message: IPCMessage): boolean {
-        if (this.clientProcess && this.clientProcess.stdin) {
-            this.clientProcess.stdin.write(JSON.stringify(message) + '\n');
-            return true;
+    async queryAgentCommand(taskspaceUuid: string): Promise<string | null> {
+        try {
+            this.logger.info('Querying Symposium app for agent command...');
+            
+            // Send IPC message to query agent command
+            const messageId = crypto.randomUUID();
+            const queryMessage: IPCMessage = {
+                shellPid: process.pid,
+                type: 'get_agent_command',
+                payload: {
+                    taskspaceUuid: taskspaceUuid
+                } as GetAgentCommandPayload,
+                id: messageId
+            };
+
+            // Send the message
+            if (this.clientProcess && this.clientProcess.stdin) {
+                this.clientProcess.stdin.write(JSON.stringify(queryMessage) + '\n');
+                this.logger.info(`Sent agent command query with ID: ${messageId}`);
+                
+                // TODO: Wait for response and return the agent command
+                // For now, return default until response handling is implemented
+                const defaultCommand = 'q chat';
+                this.logger.info(`Using default agent command: ${defaultCommand}`);
+                return defaultCommand;
+            } else {
+                throw new Error('Daemon client not connected');
+            }
+            
+        } catch (error) {
+            this.logger.error(`Error querying agent command: ${error}`);
+            return null;
         }
-        return false;
     }
 
     dispose(): void {
@@ -1034,7 +1060,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<void> {
     try {
         // Query the Symposium app for which agent command to use
-        const agentCommand = await queryAgentCommand(outputChannel, bus, taskspaceData);
+        const agentCommand = await bus.daemonClient.queryAgentCommand(taskspaceData.uuid);
         if (!agentCommand) {
             outputChannel.appendLine('No agent command received, skipping agent launch');
             return;
@@ -1067,53 +1093,6 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
-    }
-}
-
-// 💡: Query Symposium app for agent command to use
-async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: TaskspaceData): Promise<string | null> {
-    try {
-        outputChannel.appendLine('Querying Symposium app for agent command...');
-        
-        // Extract project path and taskspace UUID from current environment
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-        if (!workspaceRoot) {
-            throw new Error('No workspace root found');
-        }
-        
-        const projectPath = path.dirname(workspaceRoot);
-        
-        // Send IPC message to query agent command
-        const messageId = crypto.randomUUID();
-        const queryMessage: IPCMessage = {
-            shellPid: process.pid,
-            type: 'get_agent_command',
-            payload: {
-                projectPath: projectPath,
-                taskspaceUuid: taskspaceData.uuid
-            } as GetAgentCommandPayload,
-            id: messageId
-        };
-
-        // Send the message via daemon client
-        const daemonClient = bus.daemonClient;
-        const sent = daemonClient.sendMessage(queryMessage);
-        
-        if (sent) {
-            outputChannel.appendLine(`Sent agent command query with ID: ${messageId}`);
-            
-            // TODO: Wait for response and return the agent command
-            // For now, return default until response handling is implemented
-            const defaultCommand = 'q chat';
-            outputChannel.appendLine(`Using default agent command: ${defaultCommand}`);
-            return defaultCommand;
-        } else {
-            throw new Error('Failed to send message - daemon client not connected');
-        }
-        
-    } catch (error) {
-        outputChannel.appendLine(`Error querying agent command: ${error}`);
-        return null;
     }
 }
 
