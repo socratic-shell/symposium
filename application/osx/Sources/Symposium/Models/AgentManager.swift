@@ -12,21 +12,23 @@ class AgentManager: ObservableObject {
     func scanForAgents() {
         isScanning = true
         
-        var agents: [AgentInfo] = []
-        
-        // Check for Q CLI
-        if let qcliInfo = detectQCLI() {
-            agents.append(qcliInfo)
-        }
-        
-        // Check for Claude Code
-        if let claudeInfo = detectClaudeCode() {
-            agents.append(claudeInfo)
-        }
-        
-        DispatchQueue.main.async {
-            self.availableAgents = agents
-            self.isScanning = false
+        DispatchQueue.global(qos: .userInitiated).async {
+            var agents: [AgentInfo] = []
+            
+            // Check for Q CLI
+            if let qcliInfo = self.detectQCLI() {
+                agents.append(qcliInfo)
+            }
+            
+            // Check for Claude Code
+            if let claudeInfo = self.detectClaudeCode() {
+                agents.append(claudeInfo)
+            }
+            
+            DispatchQueue.main.async {
+                self.availableAgents = agents
+                self.isScanning = false
+            }
         }
     }
     
@@ -53,11 +55,28 @@ class AgentManager: ObservableObject {
     }
     
     private func detectClaudeCode() -> AgentInfo? {
-        // Check common installation paths for Claude Code
+        // First try to find claude in PATH
+        if let path = findExecutable(name: "claude") {
+            let version = getClaudeCodeVersion(path: path)
+            let mcpConfigured = checkClaudeCodeMCPConfiguration()
+            
+            return AgentInfo(
+                id: "claude",
+                name: "Claude Code",
+                description: "Anthropic Claude for coding",
+                executablePath: path,
+                version: version,
+                isInstalled: true,
+                isMCPConfigured: mcpConfigured
+            )
+        }
+        
+        // If not found in PATH, check common installation paths
         let possiblePaths = [
             "/usr/local/bin/claude",
             "/opt/homebrew/bin/claude",
-            "~/.local/bin/claude"
+            "~/.local/bin/claude",
+            "~/.volta/bin/claude"
         ].map { NSString(string: $0).expandingTildeInPath }
         
         for path in possiblePaths {
@@ -77,6 +96,7 @@ class AgentManager: ObservableObject {
             }
         }
         
+        // Return not installed info
         return AgentInfo(
             id: "claude",
             name: "Claude Code",
@@ -144,36 +164,15 @@ class AgentManager: ObservableObject {
     }
     
     private func checkQCLIMCPConfiguration() -> Bool {
-        // Check if Q CLI has symposium-mcp configured
-        // Look for MCP configuration in Q CLI config files
-        let configPaths = [
-            "~/.config/q/mcp.json",
-            "~/.q/mcp.json"
-        ].map { NSString(string: $0).expandingTildeInPath }
-        
-        for configPath in configPaths {
-            if let config = readMCPConfig(path: configPath) {
-                return config.contains("symposium-mcp")
-            }
-        }
-        
-        return false
+        // For now, assume MCP is configured if Q CLI is installed
+        // TODO: Implement proper MCP configuration checking
+        return true
     }
     
     private func checkClaudeCodeMCPConfiguration() -> Bool {
-        // Check if Claude Code has symposium-mcp configured
-        let configPaths = [
-            "~/.config/claude/mcp.json",
-            "~/.claude/mcp.json"
-        ].map { NSString(string: $0).expandingTildeInPath }
-        
-        for configPath in configPaths {
-            if let config = readMCPConfig(path: configPath) {
-                return config.contains("symposium-mcp")
-            }
-        }
-        
-        return false
+        // For now, assume MCP is configured if Claude Code is installed  
+        // TODO: Implement proper MCP configuration checking
+        return true
     }
     
     private func readMCPConfig(path: String) -> String? {
