@@ -1111,11 +1111,6 @@ export function activate(context: vscode.ExtensionContext) {
     // Create the central bus
     const bus = new Bus(context, outputChannel);
 
-    // 💡: Check for taskspace environment and auto-launch agent if needed
-    checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
-        outputChannel.appendLine(`Error in taskspace detection: ${error}`);
-    });
-
     // 💡: PID Discovery Testing - Log VSCode and terminal PIDs
     logPIDDiscovery(outputChannel).catch(error => {
         outputChannel.appendLine(`Error in PID discovery: ${error}`);
@@ -1177,6 +1172,12 @@ export function activate(context: vscode.ExtensionContext) {
     bus.setDaemonClient(daemonClient);
 
     daemonClient.start();
+
+    // 💡: Check for taskspace environment and auto-launch agent if needed
+    // (Must be after DaemonClient is initialized)
+    checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
+        outputChannel.appendLine(`Error in taskspace detection: ${error}`);
+    });
 
     // Set up comment callback to send comments as feedback
     syntheticPRProvider.setCommentCallback((comment: string, filePath: string, lineNumber: number) => {
