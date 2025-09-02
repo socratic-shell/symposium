@@ -50,7 +50,6 @@ struct MainView: View {
 
 struct ProjectView: View {
     @ObservedObject var projectManager: ProjectManager
-    @State private var showingDebug = false
     
     private var daemonManager: DaemonManager {
         projectManager.mcpStatus
@@ -91,14 +90,6 @@ struct ProjectView: View {
                         .foregroundColor(.red)
                 }
                 
-                if !daemonManager.debugOutput.isEmpty {
-                    Button("Debug") {
-                        showingDebug = true
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-                
                 Button("Close Project") {
                     projectManager.closeProject()
                 }
@@ -133,15 +124,6 @@ struct ProjectView: View {
                     .padding()
                 }
             }
-        }
-        .alert("Daemon Debug Output", isPresented: $showingDebug) {
-            Button("Copy") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(daemonManager.debugOutput, forType: .string)
-            }
-            Button("OK") { }
-        } message: {
-            Text(daemonManager.debugOutput)
         }
             } else {
                 // Connecting to daemon
