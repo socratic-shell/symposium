@@ -61,18 +61,21 @@ struct ResponsePayload: Codable {
 // MARK: - IPC Message Handling Protocol
 
 /// Result of attempting to handle an IPC message
-enum MessageHandlingResult {
-    case handled
+enum MessageHandlingResult<T: Codable> {
+    case handled(T?)
     case notForMe
 }
 
 /// Protocol for objects that can handle IPC messages (typically one per active project)
 protocol IpcMessageDelegate: AnyObject {
-    func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) -> MessageHandlingResult
-    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) -> MessageHandlingResult
-    func handleLogProgress(_ payload: LogProgressPayload, messageId: String) -> MessageHandlingResult
-    func handleSignalUser(_ payload: SignalUserPayload, messageId: String) -> MessageHandlingResult
+    func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async -> MessageHandlingResult<TaskspaceStateResponse>
+    func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
+    func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
+    func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
 }
+
+/// Empty response type for messages that don't return data
+struct EmptyResponse: Codable {}
 
 // MARK: - IPC Manager
 
@@ -223,90 +226,106 @@ class IpcManager: ObservableObject {
     }
     
     private func handleGetTaskspaceState(message: IPCMessage) {
-        do {
-            let payload = try JSONDecoder().decode(GetTaskspaceStatePayload.self, from: message.payload)
-            Logger.shared.log("IpcManager: Get taskspace state for UUID: \(payload.taskspaceUuid)")
-            
-            // Try each delegate until one handles the message
-            for delegate in delegates {
-                if delegate.handleGetTaskspaceState(payload, messageId: message.id) == .handled {
-                    return
+        Task {
+            do {
+                let payload = try JSONDecoder().decode(GetTaskspaceStatePayload.self, from: message.payload)
+                Logger.shared.log("IpcManager: Get taskspace state for UUID: \(payload.taskspaceUuid)")
+                
+                // Try each delegate until one handles the message
+                for delegate in delegates {
+                    let result = await delegate.handleGetTaskspaceState(payload, messageId: message.id)
+                    if case .handled(let responseData) = result {
+                        sendResponse(to: message.id, success: true, data: responseData)
+                        return
+                    }
                 }
+                
+                // No delegate handled the message
+                Logger.shared.log("IpcManager: No delegate handled get_taskspace_state for UUID: \(payload.taskspaceUuid)")
+                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse get_taskspace_state payload: \(error)")
+                sendResponse(to: message.id, success: false, error: "Invalid payload")
             }
-            
-            // No delegate handled the message
-            Logger.shared.log("IpcManager: No delegate handled get_taskspace_state for UUID: \(payload.taskspaceUuid)")
-            sendResponse(to: message.id, success: false, error: "Taskspace not found")
-            
-        } catch {
-            Logger.shared.log("IpcManager: Failed to parse get_taskspace_state payload: \(error)")
-            sendResponse(to: message.id, success: false, error: "Invalid payload")
         }
     }
     
     private func handleSpawnTaskspace(message: IPCMessage) {
-        do {
-            let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: message.payload)
-            Logger.shared.log("IpcManager: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
-            
-            // Try each delegate until one handles the message
-            for delegate in delegates {
-                if delegate.handleSpawnTaskspace(payload, messageId: message.id) == .handled {
-                    return
+        Task {
+            do {
+                let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: message.payload)
+                Logger.shared.log("IpcManager: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
+                
+                // Try each delegate until one handles the message
+                for delegate in delegates {
+                    let result = await delegate.handleSpawnTaskspace(payload, messageId: message.id)
+                    if case .handled(let responseData) = result {
+                        sendResponse(to: message.id, success: true, data: responseData)
+                        return
+                    }
                 }
+                
+                // No delegate handled the message
+                Logger.shared.log("IpcManager: No delegate handled spawn_taskspace for project: \(payload.projectPath)")
+                sendResponse(to: message.id, success: false, error: "Project not found")
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
+                sendResponse(to: message.id, success: false, error: "Invalid payload")
             }
-            
-            // No delegate handled the message
-            Logger.shared.log("IpcManager: No delegate handled spawn_taskspace for project: \(payload.projectPath)")
-            sendResponse(to: message.id, success: false, error: "Project not found")
-            
-        } catch {
-            Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
-            sendResponse(to: message.id, success: false, error: "Invalid payload")
         }
     }
     
     private func handleLogProgress(message: IPCMessage) {
-        do {
-            let payload = try JSONDecoder().decode(LogProgressPayload.self, from: message.payload)
-            Logger.shared.log("IpcManager: Log progress for \(payload.taskspaceUuid): \(payload.message)")
-            
-            // Try each delegate until one handles the message
-            for delegate in delegates {
-                if delegate.handleLogProgress(payload, messageId: message.id) == .handled {
-                    return
+        Task {
+            do {
+                let payload = try JSONDecoder().decode(LogProgressPayload.self, from: message.payload)
+                Logger.shared.log("IpcManager: Log progress for \(payload.taskspaceUuid): \(payload.message)")
+                
+                // Try each delegate until one handles the message
+                for delegate in delegates {
+                    let result = await delegate.handleLogProgress(payload, messageId: message.id)
+                    if case .handled(let responseData) = result {
+                        sendResponse(to: message.id, success: true, data: responseData)
+                        return
+                    }
                 }
+                
+                // No delegate handled the message
+                Logger.shared.log("IpcManager: No delegate handled log_progress for UUID: \(payload.taskspaceUuid)")
+                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse log_progress payload: \(error)")
+                sendResponse(to: message.id, success: false, error: "Invalid payload")
             }
-            
-            // No delegate handled the message
-            Logger.shared.log("IpcManager: No delegate handled log_progress for UUID: \(payload.taskspaceUuid)")
-            sendResponse(to: message.id, success: false, error: "Taskspace not found")
-            
-        } catch {
-            Logger.shared.log("IpcManager: Failed to parse log_progress payload: \(error)")
-            sendResponse(to: message.id, success: false, error: "Invalid payload")
         }
     }
     
     private func handleSignalUser(message: IPCMessage) {
-        do {
-            let payload = try JSONDecoder().decode(SignalUserPayload.self, from: message.payload)
-            Logger.shared.log("IpcManager: Signal user for \(payload.taskspaceUuid): \(payload.message)")
-            
-            // Try each delegate until one handles the message
-            for delegate in delegates {
-                if delegate.handleSignalUser(payload, messageId: message.id) == .handled {
-                    return
+        Task {
+            do {
+                let payload = try JSONDecoder().decode(SignalUserPayload.self, from: message.payload)
+                Logger.shared.log("IpcManager: Signal user for \(payload.taskspaceUuid): \(payload.message)")
+                
+                // Try each delegate until one handles the message
+                for delegate in delegates {
+                    let result = await delegate.handleSignalUser(payload, messageId: message.id)
+                    if case .handled(let responseData) = result {
+                        sendResponse(to: message.id, success: true, data: responseData)
+                        return
+                    }
                 }
+                
+                // No delegate handled the message
+                Logger.shared.log("IpcManager: No delegate handled signal_user for UUID: \(payload.taskspaceUuid)")
+                sendResponse(to: message.id, success: false, error: "Taskspace not found")
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
+                sendResponse(to: message.id, success: false, error: "Invalid payload")
             }
-            
-            // No delegate handled the message
-            Logger.shared.log("IpcManager: No delegate handled signal_user for UUID: \(payload.taskspaceUuid)")
-            sendResponse(to: message.id, success: false, error: "Taskspace not found")
-            
-        } catch {
-            Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
-            sendResponse(to: message.id, success: false, error: "Invalid payload")
         }
     }
     
