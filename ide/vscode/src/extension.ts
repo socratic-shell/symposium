@@ -14,8 +14,8 @@ import { StructuredLogger } from './structuredLogger';
 // 💡: Types for IPC communication with MCP server
 interface IPCMessage {
     shellPid: number;
-    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | unknown; // unknown allows any payload
+    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_agent_command' | string; // string allows unknown types
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetAgentCommandPayload | unknown; // unknown allows any payload
     id: string;
 }
 
@@ -48,6 +48,11 @@ interface ResponsePayload {
     success: boolean;
     error?: string;
     data?: any;
+}
+
+interface GetAgentCommandPayload {
+    projectPath: string;
+    taskspaceUuid: string;
 }
 
 interface SyntheticPRPayload {
@@ -1008,9 +1013,12 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 // 💡: Launch AI agent in terminal with initial prompt
 async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<void> {
     try {
-        // Get configured agent from settings (default to 'q')
-        const config = vscode.workspace.getConfiguration('symposium');
-        const agentCommand = config.get<string>('agentCommand', 'q chat');
+        // Query the Symposium app for which agent command to use
+        const agentCommand = await queryAgentCommand(outputChannel, bus, taskspaceData);
+        if (!agentCommand) {
+            outputChannel.appendLine('No agent command received, skipping agent launch');
+            return;
+        }
         
         outputChannel.appendLine(`Launching agent with command: ${agentCommand}`);
 
@@ -1039,6 +1047,32 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
+    }
+}
+
+// 💡: Query Symposium app for agent command to use
+async function queryAgentCommand(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<string | null> {
+    try {
+        outputChannel.appendLine('Querying Symposium app for agent command...');
+        
+        // Extract project path and taskspace UUID from current environment
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        if (!workspaceRoot) {
+            throw new Error('No workspace root found');
+        }
+        
+        const projectPath = path.dirname(workspaceRoot);
+        const taskspaceUuid = taskspaceData.uuid;
+        
+        // TODO: Send IPC message to query agent command
+        // For now, return default until IPC infrastructure is ready
+        const defaultCommand = 'q chat';
+        outputChannel.appendLine(`Using default agent command: ${defaultCommand}`);
+        return defaultCommand;
+        
+    } catch (error) {
+        outputChannel.appendLine(`Error querying agent command: ${error}`);
+        return null;
     }
 }
 
