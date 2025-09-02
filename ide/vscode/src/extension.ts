@@ -1107,8 +1107,17 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 // 💡: Launch AI agent in terminal with provided command
 async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
-        const commandString = agentCommand.join(' ');
-        outputChannel.appendLine(`Launching agent with command: ${commandString}`);
+        // Properly escape command arguments for shell execution
+        const escapedCommand = agentCommand.map(arg => {
+            // If argument contains spaces, quotes, or special characters, quote it
+            if (/[\s"'\\$`|&;()<>]/.test(arg)) {
+                // Escape any existing single quotes and wrap in single quotes
+                return `'${arg.replace(/'/g, "'\"'\"'")}'`;
+            }
+            return arg;
+        }).join(' ');
+        
+        outputChannel.appendLine(`Launching agent with command: ${escapedCommand}`);
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
@@ -1120,7 +1129,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         terminal.show();
 
         // Send the agent command
-        terminal.sendText(commandString);
+        terminal.sendText(escapedCommand);
 
         outputChannel.appendLine('Agent launched successfully');
 
