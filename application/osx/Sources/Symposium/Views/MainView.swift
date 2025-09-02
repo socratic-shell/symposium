@@ -27,6 +27,17 @@ struct MainView: View {
                 if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
                     // Show settings if required permissions are missing
                     SettingsView()
+                } else if agentManager.isScanning || (projectManager == nil && !settingsManager.lastProjectPath.isEmpty) {
+                    // Show loading while scanning agents or validating remembered project
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        
+                        Text("Validating setup...")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let projectManager = projectManager {
                     ProjectView(projectManager: projectManager)
                 } else {
