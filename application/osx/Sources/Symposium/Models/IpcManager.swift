@@ -129,7 +129,21 @@ class IpcManager: ObservableObject {
     
     private func launchClient(mcpServerPath: String) {
         let process = Process()
-        process.launchPath = mcpServerPath
+        
+        // Resolve full path if it's just a binary name
+        let resolvedPath: String
+        if mcpServerPath == "symposium-mcp" {
+            // Use full path to ~/.cargo/bin/symposium-mcp
+            if let homeDir = FileManager.default.homeDirectoryForCurrentUser.path as String? {
+                resolvedPath = "\(homeDir)/.cargo/bin/symposium-mcp"
+            } else {
+                resolvedPath = mcpServerPath
+            }
+        } else {
+            resolvedPath = mcpServerPath
+        }
+        
+        process.launchPath = resolvedPath
         process.arguments = ["client"]
         
         // Set up pipes for stdin/stdout/stderr
