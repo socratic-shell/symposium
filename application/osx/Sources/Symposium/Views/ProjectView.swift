@@ -82,7 +82,7 @@ struct ProjectView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(project.taskspaces) { taskspace in
-                            TaskspaceCard(taskspace: taskspace)
+                            TaskspaceCard(taskspace: taskspace, projectManager: projectManager)
                         }
                     }
                     .padding()
@@ -122,6 +122,8 @@ struct ProjectView: View {
 
 struct TaskspaceCard: View {
     let taskspace: Taskspace
+    let projectManager: ProjectManager
+    @State private var showingDeleteConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -135,6 +137,15 @@ struct TaskspaceCard: View {
                     Image(systemName: "exclamationmark.circle.fill")
                         .foregroundColor(.orange)
                 }
+                
+                Button(action: {
+                    showingDeleteConfirmation = true
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.plain)
+                .help("Delete taskspace")
             }
             
             Text(taskspace.description)
@@ -158,6 +169,18 @@ struct TaskspaceCard: View {
         .padding()
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
+        .alert("Delete Taskspace", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                do {
+                    try projectManager.deleteTaskspace(taskspace)
+                } catch {
+                    Logger.shared.log("Failed to delete taskspace: \(error)")
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(taskspace.name)'? This will permanently remove all files and cannot be undone.")
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(taskspace.needsAttention ? Color.orange : Color.clear, lineWidth: 2)

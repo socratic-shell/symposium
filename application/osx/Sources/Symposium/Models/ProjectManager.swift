@@ -165,6 +165,28 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
     
+    /// Delete a taskspace and its directory
+    func deleteTaskspace(_ taskspace: Taskspace) throws {
+        guard let project = currentProject else {
+            throw ProjectError.noCurrentProject
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        // Delete the taskspace directory recursively
+        let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        try FileManager.default.removeItem(atPath: taskspaceDir)
+        
+        // Remove from current project
+        DispatchQueue.main.async {
+            var updatedProject = project
+            updatedProject.taskspaces.removeAll { $0.id == taskspace.id }
+            self.currentProject = updatedProject
+            Logger.shared.log("ProjectManager: Deleted taskspace \(taskspace.name)")
+        }
+    }
+    
     /// Create a new taskspace with default values
     func createTaskspace() throws {
         guard let project = currentProject else {
