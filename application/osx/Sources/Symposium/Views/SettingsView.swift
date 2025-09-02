@@ -283,6 +283,14 @@ struct AgentRadioButton: View {
                     Text(agent.description)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    
+                    if let mcpPath = agent.mcpServerPath {
+                        Text("MCP Server: \(mcpPath)")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
                 }
                 
                 Spacer()
