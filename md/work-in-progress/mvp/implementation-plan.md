@@ -217,20 +217,23 @@ The following approaches are deliberately hacky for the MVP and will need proper
 ### ✅ Completed
 - **Phase 1**: Complete foundation with working project management
 - **Phase 2**: MCP server tools implemented and tested
-- **IPC Integration**: Daemon connection working, real-time status updates
+- **Phase 2.3**: Settings & permissions UI complete
+- **Phase 2.4**: IPC daemon connection working, real-time status updates
 - **UI Architecture**: Clean SwiftUI observation patterns, proper state management
 - **Debug Infrastructure**: Centralized logging system for troubleshooting
 
-### 🚧 In Progress
-- **Phase 3**: Taskspace orchestration UI (next priority)
-- Need to implement taskspace creation/management interface
-- Need to test end-to-end taskspace spawning with VSCode integration
+### 🚧 In Progress - Phase 2.5: Manual Taskspace Management
+- Need to implement taskspace creation UI (Phase 2.5a)
+- Need to add taskspace display and management (Phase 2.5b)
+- Need to test VSCode integration without MCP communication yet
 
-### 📋 Next Steps
-1. **Taskspace Management UI**: Add interface to create/manage taskspaces from the app
-2. **End-to-end Testing**: Verify taskspace spawning works with VSCode extension
-3. **Error Handling**: Improve error states and user feedback
-4. **Polish**: Refine UI/UX based on testing
+### 📋 Next Steps (Phase 2.5)
+1. **Taskspace Creation UI**: Add interface to manually create taskspaces
+2. **Taskspace Display**: Show existing taskspaces in project view
+3. **VSCode Integration**: Test opening taskspaces in VSCode
+4. **Manual Management**: Basic taskspace lifecycle without daemon communication
+
+Then move to Phase 3 for full daemon communication and orchestration.
 
 **Current approach**: MCP server extracts UUID from its working directory path  
 **Problem**: Fragile, assumes specific directory structure, breaks if paths change  
