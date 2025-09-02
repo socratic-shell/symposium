@@ -6,12 +6,13 @@ class ProjectManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private var daemonManager: DaemonManager?
+    private let daemonManager = DaemonManager()
     private var agentManager: AgentManager?
     private var selectedAgent: String = "qcli"
     
-    func configure(daemonManager: DaemonManager, agentManager: AgentManager, selectedAgent: String) {
-        self.daemonManager = daemonManager
+    var mcpStatus: DaemonManager { daemonManager }
+    
+    func configure(agentManager: AgentManager, selectedAgent: String) {
         self.agentManager = agentManager
         self.selectedAgent = selectedAgent
     }
@@ -110,8 +111,7 @@ class ProjectManager: ObservableObject {
     }
     
     private func startMCPClient() {
-        guard let daemonManager = daemonManager,
-              let agentManager = agentManager else { return }
+        guard let agentManager = agentManager else { return }
         
         // Stop any existing client first
         daemonManager.stopClient()
@@ -125,7 +125,7 @@ class ProjectManager: ObservableObject {
     }
     
     private func stopMCPClient() {
-        daemonManager?.stopClient()
+        daemonManager.stopClient()
     }
     
     /// Set error message

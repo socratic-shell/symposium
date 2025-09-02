@@ -1,13 +1,11 @@
 import SwiftUI
 
 struct MainView: View {
-    @StateObject private var projectManager = ProjectManager()
     @StateObject private var permissionManager = PermissionManager()
-    @EnvironmentObject var daemonManager: DaemonManager
     @EnvironmentObject var agentManager: AgentManager
     @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @State private var showingSettings = false
-    @State private var showingDebug = false
+    @State private var projectManager: ProjectManager?
     
     var body: some View {
         VStack {
@@ -29,11 +27,11 @@ struct MainView: View {
                 if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
                     // Show settings if required permissions are missing
                     SettingsView()
-                } else if let project = projectManager.currentProject {
+                } else if let projectManager = projectManager, let project = projectManager.currentProject {
                     ProjectView(project: project, projectManager: projectManager)
                 } else {
                     ProjectSelectionView(
-                        projectManager: projectManager,
+                        projectManager: getOrCreateProjectManager(),
                         permissionManager: permissionManager,
                         agentManager: agentManager
                     )
@@ -45,34 +43,32 @@ struct MainView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .alert("MCP Debug Output", isPresented: $showingDebug) {
-            Button("Copy") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(daemonManager.debugOutput, forType: .string)
-            }
-            Button("OK") { }
-        } message: {
-            Text(daemonManager.debugOutput)
-        }
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
-            
-            // Configure ProjectManager with dependencies
-            projectManager.configure(
-                daemonManager: daemonManager,
-                agentManager: agentManager,
-                selectedAgent: selectedAgent
-            )
         }
+    }
+    
+    private func getOrCreateProjectManager() -> ProjectManager {
+        if let existing = projectManager {
+            return existing
+        }
+        
+        let manager = ProjectManager()
+        manager.configure(agentManager: agentManager, selectedAgent: selectedAgent)
+        projectManager = manager
+        return manager
     }
 }
 
 struct ProjectView: View {
     let project: Project
     @ObservedObject var projectManager: ProjectManager
-    @EnvironmentObject var daemonManager: DaemonManager
     @State private var showingDebug = false
+    
+    private var daemonManager: DaemonManager {
+        projectManager.mcpStatus
+    }
     
     var body: some View {
         VStack {
