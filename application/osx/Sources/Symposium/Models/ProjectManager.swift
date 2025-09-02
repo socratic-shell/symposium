@@ -249,38 +249,178 @@ enum ProjectError: LocalizedError {
 extension ProjectManager {
     
     func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async -> MessageHandlingResult<TaskspaceStateResponse> {
-        // TODO: Look up taskspace by UUID in current project
-        // TODO: Determine agent command based on user preferences and taskspace state
-        // TODO: Check if taskspace exists and is not complete
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: No current project for get_taskspace_state")
+            return .notForMe
+        }
         
-        Logger.shared.log("ProjectManager: TODO - Handle get_taskspace_state for UUID: \(payload.taskspaceUuid)")
-        return .notForMe
+        // Look for taskspace with matching UUID in current project
+        guard let taskspace = currentProject.taskspaces.first(where: { $0.uuid == payload.taskspaceUuid }) else {
+            Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found in project \(currentProject.name)")
+            return .notForMe
+        }
+        
+        Logger.shared.log("ProjectManager: Found taskspace \(taskspace.name) for UUID: \(payload.taskspaceUuid)")
+        
+        // Determine agent command based on user preferences
+        // TODO: Get actual agent command from user settings
+        let agentCommand = ["q", "chat", "--resume"]
+        
+        // Determine if agent should launch based on taskspace state
+        let shouldLaunch = taskspace.state != .complete
+        
+        let response = TaskspaceStateResponse(
+            agentCommand: agentCommand,
+            shouldLaunch: shouldLaunch
+        )
+        
+        Logger.shared.log("ProjectManager: Responding with shouldLaunch=\(shouldLaunch), command=\(agentCommand)")
+        return .handled(response)
     }
     
     func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
-        // TODO: Check if this project path matches our current project
-        // TODO: Create taskspace directory, clone repo, save metadata
-        // TODO: Update UI with new taskspace
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: No current project for spawn_taskspace")
+            return .notForMe
+        }
         
-        Logger.shared.log("ProjectManager: TODO - Handle spawn_taskspace: \(payload.name) in \(payload.projectPath)")
-        return .notForMe
+        // Check if this project path matches our current project
+        guard currentProject.directoryPath == payload.projectPath else {
+            Logger.shared.log("ProjectManager: Project path mismatch: \(payload.projectPath) != \(currentProject.directoryPath)")
+            return .notForMe
+        }
+        
+        Logger.shared.log("ProjectManager: Creating taskspace \(payload.name) with UUID: \(payload.taskspaceUuid)")
+        
+        do {
+            // Create new taskspace
+            let taskspace = Taskspace(
+                uuid: payload.taskspaceUuid,
+                name: payload.name,
+                description: payload.taskDescription,
+                initialPrompt: payload.initialPrompt,
+                state: .hatchling,
+                createdAt: Date(),
+                logs: []
+            )
+            
+            // Create taskspace directory and clone repo
+            // TODO: This should use the existing createTaskspace logic
+            let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
+            try FileManager.default.createDirectory(
+                atPath: taskspaceDir,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+            
+            // Save taskspace metadata
+            try taskspace.save(in: currentProject.directoryPath)
+            
+            // Update current project with new taskspace
+            DispatchQueue.main.async {
+                var updatedProject = currentProject
+                updatedProject.taskspaces.append(taskspace)
+                self.currentProject = updatedProject
+                Logger.shared.log("ProjectManager: Added taskspace \(taskspace.name) to project")
+            }
+            
+            return .handled(EmptyResponse())
+            
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to create taskspace: \(error)")
+            return .notForMe
+        }
     }
     
     func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
-        // TODO: Find taskspace by UUID in current project
-        // TODO: Add log entry to taskspace and save to taskspace.json
-        // TODO: Update UI to show new log
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: No current project for log_progress")
+            return .notForMe
+        }
         
-        Logger.shared.log("ProjectManager: TODO - Handle log_progress for \(payload.taskspaceUuid): \(payload.message)")
-        return .notForMe
+        // Check if this project path matches our current project
+        guard currentProject.directoryPath == payload.projectPath else {
+            Logger.shared.log("ProjectManager: Project path mismatch for log_progress: \(payload.projectPath) != \(currentProject.directoryPath)")
+            return .notForMe
+        }
+        
+        // Find taskspace by UUID
+        guard let taskspaceIndex = currentProject.taskspaces.firstIndex(where: { $0.uuid == payload.taskspaceUuid }) else {
+            Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found for log_progress")
+            return .notForMe
+        }
+        
+        Logger.shared.log("ProjectManager: Adding log to taskspace \(payload.taskspaceUuid): \(payload.message)")
+        
+        do {
+            // Create log entry
+            let logCategory = LogCategory(rawValue: payload.category) ?? .info
+            let logEntry = LogEntry(message: payload.message, category: logCategory)
+            
+            // Update taskspace with new log
+            var updatedProject = currentProject
+            updatedProject.taskspaces[taskspaceIndex].logs.append(logEntry)
+            
+            // Save updated taskspace
+            try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
+            
+            // Update UI
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                Logger.shared.log("ProjectManager: Updated taskspace logs")
+            }
+            
+            return .handled(EmptyResponse())
+            
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to save log entry: \(error)")
+            return .notForMe
+        }
     }
     
     func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
-        // TODO: Find taskspace by UUID in current project
-        // TODO: Set taskspace attention flag and update dock badge
-        // TODO: Update UI to highlight taskspace
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: No current project for signal_user")
+            return .notForMe
+        }
         
-        Logger.shared.log("ProjectManager: TODO - Handle signal_user for \(payload.taskspaceUuid): \(payload.message)")
-        return .notForMe
+        // Check if this project path matches our current project
+        guard currentProject.directoryPath == payload.projectPath else {
+            Logger.shared.log("ProjectManager: Project path mismatch for signal_user: \(payload.projectPath) != \(currentProject.directoryPath)")
+            return .notForMe
+        }
+        
+        // Find taskspace by UUID
+        guard let taskspaceIndex = currentProject.taskspaces.firstIndex(where: { $0.uuid == payload.taskspaceUuid }) else {
+            Logger.shared.log("ProjectManager: Taskspace \(payload.taskspaceUuid) not found for signal_user")
+            return .notForMe
+        }
+        
+        Logger.shared.log("ProjectManager: Signaling user for taskspace \(payload.taskspaceUuid): \(payload.message)")
+        
+        do {
+            // Update taskspace attention flag
+            var updatedProject = currentProject
+            updatedProject.taskspaces[taskspaceIndex].needsAttention = true
+            
+            // Save updated taskspace
+            try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
+            
+            // Update UI and dock badge
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                
+                // TODO: Update dock badge count
+                // TODO: Bring app to foreground or show notification
+                
+                Logger.shared.log("ProjectManager: Set attention flag for taskspace")
+            }
+            
+            return .handled(EmptyResponse())
+            
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to update taskspace attention: \(error)")
+            return .notForMe
+        }
     }
 }
