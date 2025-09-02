@@ -130,38 +130,9 @@ class IpcManager: ObservableObject {
     private func launchClient(mcpServerPath: String) {
         let process = Process()
         
-        // Resolve full path using 'which' if it's just a binary name
-        let resolvedPath: String
-        if !mcpServerPath.contains("/") {
-            // It's just a binary name, use 'which' to find it
-            let whichProcess = Process()
-            whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-            whichProcess.arguments = [mcpServerPath]
-            
-            let pipe = Pipe()
-            whichProcess.standardOutput = pipe
-            whichProcess.standardError = Pipe() // Suppress errors
-            
-            do {
-                try whichProcess.run()
-                whichProcess.waitUntilExit()
-                
-                if whichProcess.terminationStatus == 0 {
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    resolvedPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? mcpServerPath
-                } else {
-                    resolvedPath = mcpServerPath
-                }
-            } catch {
-                Logger.shared.log("IpcManager: Failed to resolve path with 'which': \(error)")
-                resolvedPath = mcpServerPath
-            }
-        } else {
-            resolvedPath = mcpServerPath
-        }
-        
-        process.executableURL = URL(fileURLWithPath: resolvedPath)
-        process.arguments = ["client"]
+        // Use shell to handle PATH resolution automatically
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "\(mcpServerPath) client"]
         
         // Set up pipes for stdin/stdout/stderr
         let inputPipe = Pipe()
