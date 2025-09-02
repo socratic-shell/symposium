@@ -36,10 +36,11 @@
 # Work in Progress
 
 - [MVP](./work-in-progress/mvp/README.md)
-    - [Interface plan](./work-in-progress/mvp/interface-plan.md)
-    - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
     - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)
     - [Taskspace Bootup Flow](./work-in-progress/mvp/taskspace-bootup-flow.md)
+- [Older material]()
+    - [Interface plan](./work-in-progress/mvp/interface-plan.md)
+    - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more

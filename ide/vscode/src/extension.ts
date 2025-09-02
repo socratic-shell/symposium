@@ -524,9 +524,6 @@ export class DaemonClient implements vscode.Disposable {
         } else {
             // Forward compatibility: silently ignore unknown message types for our window
             // Only log if this was actually meant for us (not a broadcast)
-            if (message.shellPid !== 0) {
-                this.outputChannel.appendLine(`Received unknown message type: ${message.type} (ignoring for forward compatibility)`);
-            }
         }
     }
 
@@ -1004,9 +1001,6 @@ export class DaemonClient implements vscode.Disposable {
         }
     }
 
-    /**
-     * Query Symposium app for taskspace state and agent command
-     */
     dispose(): void {
         this.isDisposed = true;
         this.clearReconnectTimer();
@@ -1088,7 +1082,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     // Send get_taskspace_state message as documented in the flow
     const payload: GetTaskspaceStatePayload = { taskspaceUuid };
     const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
-    
+
     if (response && response.shouldLaunch) {
         outputChannel.appendLine(`Launching agent: ${response.agentCommand.join(' ')}`);
         await launchAIAgent(outputChannel, bus, response.agentCommand, taskspaceUuid);
@@ -1137,11 +1131,11 @@ async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus:
         }
 
         outputChannel.appendLine(`Registering VSCode window with Symposium app for taskspace: ${taskspaceUuid}`);
-        
+
         // Send IPC message to register window with taskspace UUID
         const payload = { taskspaceUuid };
         const response = await bus.daemonClient.sendRequest<any>('register_window', payload);
-        
+
         if (response) {
             outputChannel.appendLine('Window registration completed successfully');
         } else {
