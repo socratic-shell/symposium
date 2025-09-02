@@ -73,12 +73,12 @@ struct ProjectView: View {
                 
                 Spacer()
                 
-                // MCP Status
+                // IPC Daemon Status
                 HStack(spacing: 4) {
                     Image(systemName: daemonManager.isConnected ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundColor(daemonManager.isConnected ? .green : .red)
                     
-                    Text(daemonManager.isConnected ? "MCP Connected" : "MCP Disconnected")
+                    Text(daemonManager.isConnected ? "Daemon Connected" : "Daemon Disconnected")
                         .font(.caption)
                         .foregroundColor(daemonManager.isConnected ? .green : .red)
                 }
@@ -132,7 +132,7 @@ struct ProjectView: View {
                 }
             }
         }
-        .alert("MCP Debug Output", isPresented: $showingDebug) {
+        .alert("Daemon Debug Output", isPresented: $showingDebug) {
             Button("Copy") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(daemonManager.debugOutput, forType: .string)

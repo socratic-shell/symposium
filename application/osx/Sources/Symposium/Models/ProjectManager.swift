@@ -112,14 +112,24 @@ class ProjectManager: ObservableObject {
     }
     
     private func startMCPClient() {
+        Logger.shared.log("ProjectManager: Starting daemon client")
         // Stop any existing client first
         daemonManager.stopClient()
         
         // Start client if we have a valid selected agent
-        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }),
-           selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
-           let mcpPath = selectedAgentInfo.mcpServerPath {
-            daemonManager.startClient(mcpServerPath: mcpPath)
+        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }) {
+            Logger.shared.log("ProjectManager: Found agent \(selectedAgent): installed=\(selectedAgentInfo.isInstalled), mcpConfigured=\(selectedAgentInfo.isMCPConfigured)")
+            
+            if selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
+               let mcpPath = selectedAgentInfo.mcpServerPath {
+                Logger.shared.log("ProjectManager: Starting daemon with path: \(mcpPath)")
+                daemonManager.startClient(mcpServerPath: mcpPath)
+            } else {
+                Logger.shared.log("ProjectManager: Agent not ready - installed: \(selectedAgentInfo.isInstalled), mcpConfigured: \(selectedAgentInfo.isMCPConfigured), mcpPath: \(selectedAgentInfo.mcpServerPath ?? "nil")")
+            }
+        } else {
+            Logger.shared.log("ProjectManager: No agent found with id: \(selectedAgent)")
+            Logger.shared.log("ProjectManager: Available agents: \(agentManager.availableAgents.map { $0.id })")
         }
     }
     

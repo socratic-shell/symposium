@@ -35,10 +35,13 @@ class DaemonManager: ObservableObject {
         process.launchPath = mcpServerPath
         process.arguments = ["client"]
         
-        // Capture output for debugging
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
+        // Set up pipes for stdin/stdout/stderr
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = outputPipe
         
         do {
             try process.run()
@@ -51,7 +54,7 @@ class DaemonManager: ObservableObject {
             
             // Read output in background
             DispatchQueue.global(qos: .background).async {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""
                 
                 DispatchQueue.main.async {
