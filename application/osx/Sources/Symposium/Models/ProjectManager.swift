@@ -229,10 +229,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Save taskspace metadata
         try taskspace.save(in: project.directoryPath)
         
-        // Launch VSCode in the taskspace directory (not the nested repo)
+        // Launch VSCode in the cloned repository directory
         let vscodeProcess = Process()
         vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        vscodeProcess.arguments = ["-a", "Visual Studio Code", taskspaceDir]
+        vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
         
         do {
             try vscodeProcess.run()
