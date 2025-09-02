@@ -13,6 +13,9 @@ struct SymposiumApp: App {
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
+                .onAppear {
+                    Logger.shared.log("App started")
+                }
         }
         
         Settings {

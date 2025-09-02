@@ -30,7 +30,9 @@ struct MainView: View {
                 } else {
                     ProjectSelectionView(
                         onProjectCreated: { projectManager in
+                            Logger.shared.log("MainView received onProjectCreated callback")
                             self.projectManager = projectManager
+                            Logger.shared.log("MainView set projectManager, current project: \(projectManager.currentProject?.name ?? "nil")")
                         }
                     )
                 }

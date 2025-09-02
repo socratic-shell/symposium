@@ -54,7 +54,11 @@ struct ProjectSelectionView: View {
                 }
                 .disabled(!canCreateProjects)
                 
-                Button(action: { showingOpenProjectDialog = true }) {
+                Button(action: { 
+                    Logger.shared.log("Open Existing Project button clicked")
+                    showingOpenProjectDialog = true 
+                    Logger.shared.log("Set showingOpenProjectDialog to true")
+                }) {
                     HStack {
                         Image(systemName: "folder.circle")
                         Text("Open Existing Project")
@@ -112,6 +116,7 @@ struct ProjectSelectionView: View {
             OpenProjectDialog(onProjectCreated: onProjectCreated)
         }
         .onAppear {
+            Logger.shared.log("ProjectSelectionView appeared")
             agentManager.scanForAgents()
         }
     }
@@ -222,7 +227,9 @@ struct OpenProjectDialog: View {
                 .foregroundColor(.secondary)
             
             Button("Browse for Project Directory") {
+                Logger.shared.log("Browse for Project Directory button clicked")
                 showingDirectoryPicker = true
+                Logger.shared.log("Set showingDirectoryPicker to true")
             }
             .frame(maxWidth: .infinity)
             .padding()
@@ -240,6 +247,9 @@ struct OpenProjectDialog: View {
         }
         .padding()
         .frame(width: 400)
+        .onAppear {
+            Logger.shared.log("OpenProjectDialog appeared")
+        }
         .fileImporter(
             isPresented: $showingDirectoryPicker,
             allowedContentTypes: [.folder],
@@ -247,10 +257,15 @@ struct OpenProjectDialog: View {
         ) { result in
             switch result {
             case .success(let urls):
+                Logger.shared.log("File picker succeeded with URLs: \(urls)")
                 if let url = urls.first {
+                    Logger.shared.log("Selected URL: \(url.path)")
                     openProject(at: url.path)
+                } else {
+                    Logger.shared.log("ERROR: No URL selected from file picker")
                 }
             case .failure(let error):
+                Logger.shared.log("ERROR: File picker failed: \(error)")
                 // Could show alert here
                 print("Failed to select directory: \(error.localizedDescription)")
             }
@@ -258,12 +273,18 @@ struct OpenProjectDialog: View {
     }
     
     private func openProject(at path: String) {
+        Logger.shared.log("OpenProjectDialog.openProject called with path: \(path)")
         let projectManager = ProjectManager(agentManager: agentManager, selectedAgent: settingsManager.selectedAgent)
+        Logger.shared.log("Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
         do {
+            Logger.shared.log("Attempting to open project at: \(path)")
             try projectManager.openProject(at: path)
+            Logger.shared.log("Successfully opened project, calling onProjectCreated callback")
             onProjectCreated(projectManager)
+            Logger.shared.log("Called onProjectCreated, dismissing dialog")
             dismiss()
         } catch {
+            Logger.shared.log("ERROR: Failed to open project: \(error)")
             // Handle error - could show alert
         }
     }
