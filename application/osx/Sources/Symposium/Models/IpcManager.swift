@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-class DaemonManager: ObservableObject {
+class IpcManager: ObservableObject {
     @Published var isConnected = false
     @Published var error: String?
     
@@ -11,9 +11,9 @@ class DaemonManager: ObservableObject {
         guard clientProcess == nil else { return }
         
         error = nil
-        Logger.shared.log("DaemonManager: Starting symposium-mcp client...")
-        Logger.shared.log("DaemonManager: Path: \(mcpServerPath)")
-        Logger.shared.log("DaemonManager: Command: \(mcpServerPath) client")
+        Logger.shared.log("IpcManager: Starting symposium-mcp client...")
+        Logger.shared.log("IpcManager: Path: \(mcpServerPath)")
+        Logger.shared.log("IpcManager: Command: \(mcpServerPath) client")
         
         DispatchQueue.global(qos: .userInitiated).async {
             self.launchClient(mcpServerPath: mcpServerPath)
@@ -48,8 +48,8 @@ class DaemonManager: ObservableObject {
             
             DispatchQueue.main.async {
                 self.isConnected = true
-                Logger.shared.log("DaemonManager: Client process started successfully")
-                Logger.shared.log("DaemonManager: isConnected set to \(self.isConnected)")
+                Logger.shared.log("IpcManager: Client process started successfully")
+                Logger.shared.log("IpcManager: isConnected set to \(self.isConnected)")
             }
             
             // Read output in background
@@ -58,7 +58,7 @@ class DaemonManager: ObservableObject {
                 let output = String(data: data, encoding: .utf8) ?? ""
                 
                 DispatchQueue.main.async {
-                    Logger.shared.log("DaemonManager: Client output: \(output)")
+                    Logger.shared.log("IpcManager: Client output: \(output)")
                 }
             }
             
@@ -67,7 +67,7 @@ class DaemonManager: ObservableObject {
             
             DispatchQueue.main.async {
                 self.isConnected = false
-                Logger.shared.log("DaemonManager: Client process exited with status \(process.terminationStatus)")
+                Logger.shared.log("IpcManager: Client process exited with status \(process.terminationStatus)")
                 if process.terminationStatus != 0 {
                     self.error = "Client exited with status \(process.terminationStatus)"
                 }
@@ -76,7 +76,7 @@ class DaemonManager: ObservableObject {
         } catch {
             DispatchQueue.main.async {
                 self.error = "Failed to start client: \(error.localizedDescription)"
-                Logger.shared.log("DaemonManager: Error starting client: \(error.localizedDescription)")
+                Logger.shared.log("IpcManager: Error starting client: \(error.localizedDescription)")
             }
         }
     }

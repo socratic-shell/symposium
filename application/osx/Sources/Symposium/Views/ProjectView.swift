@@ -3,16 +3,16 @@ import AppKit
 
 struct ProjectView: View {
     @ObservedObject var projectManager: ProjectManager
-    @ObservedObject var daemonManager: DaemonManager
+    @ObservedObject var ipcManager: IpcManager
     
     init(projectManager: ProjectManager) {
         self.projectManager = projectManager
-        self.daemonManager = projectManager.mcpStatus
+        self.ipcManager = projectManager.mcpStatus
     }
     
     var body: some View {
         if let project = projectManager.currentProject {
-            if daemonManager.isConnected {
+            if ipcManager.isConnected {
                 // Show full project interface when daemon is connected
                 VStack {
                 // Header with project info
@@ -39,7 +39,7 @@ struct ProjectView: View {
                         .foregroundColor(.green)
                 }
                 
-                if let error = daemonManager.error {
+                if let error = ipcManager.error {
                     Text("• \(error)")
                         .font(.caption)
                         .foregroundColor(.red)

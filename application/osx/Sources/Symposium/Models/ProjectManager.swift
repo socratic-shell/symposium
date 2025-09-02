@@ -6,11 +6,11 @@ class ProjectManager: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private let daemonManager = DaemonManager()
+    private let ipcManager = IpcManager()
     private let agentManager: AgentManager
     private let selectedAgent: String
     
-    var mcpStatus: DaemonManager { daemonManager }
+    var mcpStatus: IpcManager { ipcManager }
     
     init(agentManager: AgentManager, selectedAgent: String) {
         self.agentManager = agentManager
@@ -114,7 +114,7 @@ class ProjectManager: ObservableObject {
     private func startMCPClient() {
         Logger.shared.log("ProjectManager: Starting daemon client")
         // Stop any existing client first
-        daemonManager.stopClient()
+        ipcManager.stopClient()
         
         // Start client if we have a valid selected agent
         if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }) {
@@ -123,7 +123,7 @@ class ProjectManager: ObservableObject {
             if selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
                let mcpPath = selectedAgentInfo.mcpServerPath {
                 Logger.shared.log("ProjectManager: Starting daemon with path: \(mcpPath)")
-                daemonManager.startClient(mcpServerPath: mcpPath)
+                ipcManager.startClient(mcpServerPath: mcpPath)
             } else {
                 Logger.shared.log("ProjectManager: Agent not ready - installed: \(selectedAgentInfo.isInstalled), mcpConfigured: \(selectedAgentInfo.isMCPConfigured), mcpPath: \(selectedAgentInfo.mcpServerPath ?? "nil")")
             }
@@ -134,7 +134,7 @@ class ProjectManager: ObservableObject {
     }
     
     private func stopMCPClient() {
-        daemonManager.stopClient()
+        ipcManager.stopClient()
     }
     
     /// Set error message
