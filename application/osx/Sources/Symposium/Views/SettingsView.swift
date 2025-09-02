@@ -6,6 +6,7 @@ struct SettingsView: View {
     @StateObject private var agentManager = AgentManager()
     @AppStorage("selectedAgent") private var selectedAgent: String = "qcli"
     @Environment(\.dismiss) private var dismiss
+    @State private var showingDebugAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -90,6 +91,7 @@ struct SettingsView: View {
                         AgentRadioButton(
                             agent: agent,
                             isSelected: selectedAgent == agent.id,
+                            showingDebugAlert: $showingDebugAlert,
                             action: { 
                                 if agent.isInstalled && agent.isMCPConfigured {
                                     selectedAgent = agent.id 
@@ -140,6 +142,15 @@ struct SettingsView: View {
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
+        }
+        .alert("Debug Output", isPresented: $showingDebugAlert) {
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(agentManager.debugOutput, forType: .string)
+            }
+            Button("OK") { }
+        } message: {
+            Text(agentManager.debugOutput)
         }
     }
     
@@ -256,6 +267,7 @@ struct RadioButton: View {
 struct AgentRadioButton: View {
     let agent: AgentInfo
     let isSelected: Bool
+    @Binding var showingDebugAlert: Bool
     let action: () -> Void
     
     var body: some View {
@@ -275,9 +287,19 @@ struct AgentRadioButton: View {
                         Image(systemName: agent.statusIcon)
                             .foregroundColor(Color(agent.statusColor))
                         
-                        Text(agent.statusText)
+                        if !agent.isInstalled || !agent.isMCPConfigured {
+                            Button(agent.statusText) {
+                                showingDebugAlert = true
+                            }
+                            .buttonStyle(.plain)
                             .font(.caption)
                             .foregroundColor(Color(agent.statusColor))
+                            .underline()
+                        } else {
+                            Text(agent.statusText)
+                                .font(.caption)
+                                .foregroundColor(Color(agent.statusColor))
+                        }
                     }
                     
                     Text(agent.description)

@@ -4,6 +4,7 @@ import AppKit
 class AgentManager: ObservableObject {
     @Published var availableAgents: [AgentInfo] = []
     @Published var isScanning = false
+    @Published var debugOutput: String = ""
     
     init() {
         scanForAgents()
@@ -206,6 +207,11 @@ class AgentManager: ObservableObject {
     private func checkClaudeCodeMCPConfiguration(claudePath: String) -> (Bool, String?) {
         // Use Claude Code's built-in MCP list command to check for symposium-mcp
         let output = runCommand(path: claudePath, arguments: ["mcp", "list"])
+        
+        DispatchQueue.main.async {
+            self.debugOutput += "Claude MCP command: \(claudePath) mcp list\n"
+            self.debugOutput += "Claude MCP output: \(output ?? "nil")\n\n"
+        }
         
         guard let output = output, !output.isEmpty else {
             return (false, nil)
