@@ -8,46 +8,22 @@
 -->
 
 - [Introduction](./introduction.md)
+
+# Design and implementation
+
 - [Interface plan](./interface-plan.md)
 - [Implementation Overview](./implementation-overview.md)
-
-# Design
-
 - [Symposium Reference System](./design/symposium-ref-system.md)
 - [Ask Socratic Shell](./design/ask-socratic-shell.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
+- [Code walkthroughs](./design/walkthroughs.md)
+    - [Walkthrough format](./design/walkthrough-format.md)
+    - [Comment Interactions](./design/walkthrough-comment-interactions.md)
 - [Window Stacking Design](./window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./window-stacking-scenario.md)
-- [Code walkthroughs](./design/walkthroughs.md)
-    - [Comment Interactions](./design/walkthrough-comment-interactions.md)
-
-# Research reports
-
-- [Taskspace Implementation Guide](./research/taskspace-implementation-guide.md)
-- [macOS Sequoia 15.6 Accessibility Permission Research Report](./research/macos_accessibility_research_report.md)
-- [AeroSpace's Approach to Window Following](./research/aerospace-approach-to-window-following.md)
-- [Reliable identification of windows (a surprisingly hard topic)]()
-    - [Developer-focused window identification](./research/developer_focused_window_identification.md)
-    - [Mac OS Window identification research by Claude](./research/macos_window_identification_research_claude.md)
-    - [Mac OS Window identification research by Gemini](./research/macos_window_identification_research_gemini.md)
-- [Why We Rejected Core Graphics Services APIs](./research/why-we-rejected-cgs-apis.md)
-    - [Core Graphics Window APIs](./research/cg-window-apis.md)
-    - [How macOS Applications Respond to CG APIs](./research/how-mac-os-applications-respond-to-cg-apis.md)
-    - [CGS API Security Restrictions Research Report](./research/cgs-api-security-restrictions.md)
+- [Dialect language](./design/dialect-language.md)
 
 # Dialectic Integration Documentation
-
-<!-- Research and design docs from dialectic integration -->
-
-- [User Guide]() <!-- From dialectic -->
-    - [Installation](./installation.md) 
-    - [Quick start](./quick-start.md)
-    - [Features]()
-        - [Code walkthroughs and Ask Socratic Shell](./walkthroughs.md)
-        - [Synthetic Pull Requests](./synthetic-pr.md)
-        - [IDE Capabilities](./ide-capabilities.md)
-        - [Review format](./review-format.md)
-    - [Frequently asked questions](./faq.md)
 
 - [Development and contribution guide]()
     - [Building and testing](./design/build-and-test.md)
@@ -62,28 +38,44 @@
     - [MCP server](./design/mcp-server.md)
         - [MCP Tool interface](./design/mcp-tool-interface.md)
     - [VSCode extension](./design/extension.md)
-    - [Walkthrough format](./design/walkthrough-format.md)
-    - [Dialect language](./design/dialect-language.md)
+    
 
-- [Research reports from dialectic]()
-    - [Markdown to HTML in VSCode Extensions](./references/markdown-to-html-in-vscode.md)
-    - [VSCode Extension Communication Patterns](./references/cli-extension-communication-guide.md)
-    - [VSCode Sidebar Panel Research](./references/vscode-extensions-sidebar-panel-research-report.md)
-    - [Language Server Protocol Overview](./references/lsp-overview/README.md)
-        - [Base Protocol](./references/lsp-overview/base-protocol.md)
-        - [Language Features](./references/lsp-overview/language-features.md)
-        - [Implementation Guide](./references/lsp-overview/implementation-guide.md)
-        - [Message Reference](./references/lsp-overview/message-reference.md)
-    - [Unix IPC Message Bus Implementation Guide](./references/unix-message-bus-architecture.md)
-    - [VSCode PR Extension Research](./references/vscode-extensions-dev-pattern.md)
-    - [VSCode File System Watching APIs](./references/VS-Code-file-system-watching.md)
-    - [Synthetic PRs in VSCode](./references/Synthetic-PRs-in-vscode.md)
-    - [VSCode Git Extension API Capabilities](./references/VSCode-Git-Extension-API-capabilities.md)
-    - [Comment System Architecture for PR Reviews](./references/comment-system-on-pr.md)
-    - [Diff Visualization Strategies](./references/diff-visualization.md)
-    - [Cumulative Diff Visualization Analysis](./references/diff-visualization-cumulative.md)
-    - [Copilot Integration Guide](./references/copilot-guide.md)
-    - [Copilot Integration Guide 2](./references/copilot-guide-2.md)
-    - [Copilot Integration Guide 3](./references/copilot-guide-3.md)
-    - [VSCode Comments API Reply Button Implementation](./references/VSCode-Comments-API-Reply-Button.md)
-    - [VSCode WebviewView State Persistence](./references/vscode-webview-state-persistence.md)
+<!--
+    AGENTS: "Research Reports" are in-depth documents you can read to learn more
+    about a particular topic
+-->
+
+# Research reports
+
+- [Taskspace Implementation Guide](./research/taskspace-implementation-guide.md)
+- [macOS Sequoia 15.6 Accessibility Permission Research Report](./research/macos_accessibility_research_report.md)
+- [AeroSpace's Approach to Window Following](./research/aerospace-approach-to-window-following.md)
+- [Reliable identification of windows (a surprisingly hard topic)]()
+    - [Developer-focused window identification](./research/developer_focused_window_identification.md)
+    - [Mac OS Window identification research by Claude](./research/macos_window_identification_research_claude.md)
+    - [Mac OS Window identification research by Gemini](./research/macos_window_identification_research_gemini.md)
+- [Why We Rejected Core Graphics Services APIs](./research/why-we-rejected-cgs-apis.md)
+    - [Core Graphics Window APIs](./research/cg-window-apis.md)
+    - [How macOS Applications Respond to CG APIs](./research/how-mac-os-applications-respond-to-cg-apis.md)
+    - [CGS API Security Restrictions Research Report](./research/cgs-api-security-restrictions.md)
+- [Markdown to HTML in VSCode Extensions](./research/markdown-to-html-in-vscode.md)
+- [VSCode Extension Communication Patterns](./research/cli-extension-communication-guide.md)
+- [VSCode Sidebar Panel Research](./research/vscode-extensions-sidebar-panel-research-report.md)
+- [Language Server Protocol Overview](./research/lsp-overview/README.md)
+    - [Base Protocol](./research/lsp-overview/base-protocol.md)
+    - [Language Features](./research/lsp-overview/language-features.md)
+    - [Implementation Guide](./research/lsp-overview/implementation-guide.md)
+    - [Message Reference](./research/lsp-overview/message-reference.md)
+- [Unix IPC Message Bus Implementation Guide](./research/unix-message-bus-architecture.md)
+- [VSCode PR Extension Research](./research/vscode-extensions-dev-pattern.md)
+- [VSCode File System Watching APIs](./research/VS-Code-file-system-watching.md)
+- [Synthetic PRs in VSCode](./research/Synthetic-PRs-in-vscode.md)
+- [VSCode Git Extension API Capabilities](./research/VSCode-Git-Extension-API-capabilities.md)
+- [Comment System Architecture for PR Reviews](./research/comment-system-on-pr.md)
+- [Diff Visualization Strategies](./research/diff-visualization.md)
+- [Cumulative Diff Visualization Analysis](./research/diff-visualization-cumulative.md)
+- [Copilot Integration Guide](./research/copilot-guide.md)
+- [Copilot Integration Guide 2](./research/copilot-guide-2.md)
+- [Copilot Integration Guide 3](./research/copilot-guide-3.md)
+- [VSCode Comments API Reply Button Implementation](./research/VSCode-Comments-API-Reply-Button.md)
+- [VSCode WebviewView State Persistence](./research/vscode-webview-state-persistence.md)
