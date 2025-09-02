@@ -3,8 +3,8 @@ import Foundation
 /// Represents a taskspace within a project
 struct Taskspace: Codable, Identifiable {
     let id: UUID
-    let name: String
-    let description: String
+    var name: String
+    var description: String
     var state: TaskspaceState
     var logs: [TaskspaceLog] = []
     var vscodeWindowID: Int? = nil

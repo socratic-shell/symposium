@@ -41,6 +41,20 @@ struct SpawnTaskspaceResponse: Codable {
     let newTaskspaceUuid: String
 }
 
+/// Request to update taskspace name and description
+struct UpdateTaskspacePayload: Codable {
+    let taskspaceUuid: String
+    let name: String
+    let description: String
+    let projectPath: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case taskspaceUuid = "taskspace_uuid"
+        case name, description
+        case projectPath = "project_path"
+    }
+}
+
 /// Progress update from MCP tool for taskspace activity logs
 struct LogProgressPayload: Codable {
     let projectPath: String
@@ -68,6 +82,7 @@ enum MessageHandlingResult<T: Codable> {
 protocol IpcMessageDelegate: AnyObject {
     func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async -> MessageHandlingResult<TaskspaceStateResponse>
     func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async -> MessageHandlingResult<SpawnTaskspaceResponse>
+    func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
     func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
     func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async -> MessageHandlingResult<EmptyResponse>
 }
@@ -212,6 +227,8 @@ class IpcManager: ObservableObject {
                 handleGetTaskspaceState(message: message)
             case "spawn_taskspace":
                 handleSpawnTaskspace(message: message)
+            case "update_taskspace":
+                handleUpdateTaskspace(message: message)
             case "log_progress":
                 handleLogProgress(message: message)
             case "signal_user":
@@ -275,6 +292,33 @@ class IpcManager: ObservableObject {
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as SpawnTaskspaceResponse?, error: "Invalid payload")
+            }
+        }
+    }
+    
+    private func handleUpdateTaskspace(message: IPCMessage) {
+        Task {
+            do {
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(UpdateTaskspacePayload.self, from: payloadData)
+                Logger.shared.log("IpcManager: Update taskspace \(payload.taskspaceUuid): \(payload.name)")
+                
+                // Try each delegate until one handles the message
+                for delegate in delegates {
+                    let result = await delegate.handleUpdateTaskspace(payload, messageId: message.id)
+                    if case .handled(let responseData) = result {
+                        sendResponse(to: message.id, success: true, data: responseData)
+                        return
+                    }
+                }
+                
+                // No delegate handled the message
+                Logger.shared.log("IpcManager: No delegate handled update_taskspace message")
+                sendResponse(to: message.id, success: false, data: nil as String?, error: "No handler available")
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse update_taskspace payload: \(error)")
+                sendResponse(to: message.id, success: false, data: nil as String?, error: "Invalid payload")
             }
         }
     }

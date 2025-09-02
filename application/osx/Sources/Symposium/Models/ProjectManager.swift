@@ -469,4 +469,28 @@ extension ProjectManager {
             return .notForMe
         }
     }
+    
+    func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async -> MessageHandlingResult<EmptyResponse> {
+        guard let project = currentProject else {
+            return .notForMe
+        }
+        
+        // Find the taskspace by UUID
+        guard let taskspaceIndex = project.taskspaces.firstIndex(where: { $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased() }) else {
+            Logger.shared.log("ProjectManager: Taskspace not found for UUID: \(payload.taskspaceUuid)")
+            return .notForMe
+        }
+        
+        var updatedProject = project
+        updatedProject.taskspaces[taskspaceIndex].name = payload.name
+        updatedProject.taskspaces[taskspaceIndex].description = payload.description
+        
+        // Update UI
+        DispatchQueue.main.async {
+            self.currentProject = updatedProject
+            Logger.shared.log("ProjectManager: Updated taskspace: \(payload.name)")
+        }
+        
+        return .handled(EmptyResponse())
+    }
 }
