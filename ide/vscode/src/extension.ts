@@ -226,20 +226,13 @@ export class DaemonClient implements vscode.Disposable {
     private async startClientProcess(): Promise<void> {
         if (this.isDisposed) return;
 
-        // Find symposium-mcp binary
-        const binaryPath = await this.findSymposiumBinary();
-        if (!binaryPath) {
-            this.outputChannel.appendLine('❌ Failed to find symposium-mcp binary');
-            return;
-        }
-
-        this.logger.info(`Using symposium binary: ${binaryPath}`);
+        this.logger.info(`Starting symposium-mcp client via shell`);
 
         // Spawn symposium-mcp client process
         const { spawn } = require('child_process');
 
         // Use shell to handle PATH resolution, same as macOS app
-        this.clientProcess = spawn('/bin/sh', ['-c', `${binaryPath} client`], {
+        this.clientProcess = spawn('/bin/sh', ['-c', 'symposium-mcp client'], {
             stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
         });
 
@@ -258,22 +251,6 @@ export class DaemonClient implements vscode.Disposable {
             this.logger.info(`Client process exited with code: ${code}`);
             this.scheduleReconnect();
         });
-    }
-
-    private async findSymposiumBinary(): Promise<string | null> {
-        // Try workspace development build first
-        const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        if (workspacePath) {
-            const devPath = require('path').join(workspacePath, 'target', 'release', 'symposium-mcp');
-            const fs = require('fs');
-            if (fs.existsSync(devPath)) {
-                this.logger.info(`Found development binary: ${devPath}`);
-                return devPath;
-            }
-        }
-
-        // Return binary name and let shell resolve PATH
-        return 'symposium-mcp';
     }
 
     private setupClientCommunication(): void {
