@@ -760,10 +760,11 @@ More markdown here.
             expect![[r#"
                 <h1>My Walkthrough</h1>
                 <p>This is some markdown content.</p>
-                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;column&quot;:0,&quot;content&quot;:&quot;struct User {&quot;,&quot;end_column&quot;:4,&quot;end_line&quot;:10,&quot;file&quot;:&quot;src/models.rs&quot;,&quot;kind&quot;:&quot;struct&quot;,&quot;line&quot;:10,&quot;name&quot;:&quot;User&quot;,&quot;path&quot;:&quot;src/models.rs&quot;}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="display: flex; align-items: flex-start;">
                                     <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
                                     <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
                                         <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
                                         <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the User struct</div>
                                     </div>
