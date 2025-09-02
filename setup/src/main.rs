@@ -110,7 +110,7 @@ fn main() -> Result<()> {
     let binary_path = if args.dev {
         // In dev mode, build AND install so extension can find it
         let _built_path = build_rust_server()?;
-        install_rust_server()?  // Also install to PATH for extension
+        install_rust_server()?  // Returns PathBuf::from("symposium-mcp") for PATH lookup
     } else {
         install_rust_server()?
     };
