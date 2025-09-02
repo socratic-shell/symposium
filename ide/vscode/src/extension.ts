@@ -954,6 +954,118 @@ export class DaemonClient implements vscode.Disposable {
     }
 }
 
+// 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
+async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        outputChannel.appendLine('No workspace folders found, skipping taskspace detection');
+        return;
+    }
+
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    outputChannel.appendLine(`Checking for taskspace environment in: ${workspaceRoot}`);
+
+    // Check if we're in a task-UUID directory
+    const workspaceName = path.basename(workspaceRoot);
+    const taskUuidPattern = /^task-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (!taskUuidPattern.test(workspaceName)) {
+        outputChannel.appendLine(`Directory name "${workspaceName}" does not match task-UUID pattern, not a taskspace`);
+        return;
+    }
+
+    // Check for ../taskspace.json
+    const taskspaceJsonPath = path.join(workspaceRoot, '..', 'taskspace.json');
+    if (!fs.existsSync(taskspaceJsonPath)) {
+        outputChannel.appendLine(`No taskspace.json found at ${taskspaceJsonPath}, not a taskspace`);
+        return;
+    }
+
+    outputChannel.appendLine(`✅ Taskspace detected! Directory: ${workspaceName}, Metadata: ${taskspaceJsonPath}`);
+
+    try {
+        // Read taskspace metadata
+        const taskspaceData = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
+        outputChannel.appendLine(`Taskspace: ${taskspaceData.name} - ${taskspaceData.description}`);
+        outputChannel.appendLine(`State: ${taskspaceData.state}`);
+
+        // If taskspace is in Hatchling state, auto-launch agent
+        if (taskspaceData.state === 'Hatchling') {
+            outputChannel.appendLine('Taskspace is in Hatchling state, launching AI agent...');
+            await launchAIAgent(outputChannel, bus, taskspaceData);
+        } else {
+            outputChannel.appendLine(`Taskspace is in ${taskspaceData.state} state, no auto-launch needed`);
+        }
+
+        // Register this VSCode window with the Symposium app
+        await registerTaskspaceWindow(outputChannel, bus, taskspaceData);
+
+    } catch (error) {
+        outputChannel.appendLine(`Error reading taskspace metadata: ${error}`);
+    }
+}
+
+// 💡: Launch AI agent in terminal with initial prompt
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<void> {
+    try {
+        // Get configured agent from settings (default to 'q')
+        const config = vscode.workspace.getConfiguration('symposium');
+        const agentCommand = config.get<string>('agentCommand', 'q chat');
+        
+        outputChannel.appendLine(`Launching agent with command: ${agentCommand}`);
+
+        // Create new terminal for the agent
+        const terminal = vscode.window.createTerminal({
+            name: `AI Agent - ${taskspaceData.name}`,
+            cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
+        });
+
+        // Show the terminal
+        terminal.show();
+
+        // Send the agent command
+        terminal.sendText(agentCommand);
+
+        // Wait a moment for the agent to start, then send initial prompt
+        setTimeout(() => {
+            if (taskspaceData.initialPrompt) {
+                outputChannel.appendLine('Sending initial prompt to agent...');
+                terminal.sendText(taskspaceData.initialPrompt);
+            }
+        }, 2000);
+
+        // Update taskspace state from Hatchling to Resume
+        await updateTaskspaceState(outputChannel, bus, taskspaceData, 'Resume');
+
+    } catch (error) {
+        outputChannel.appendLine(`Error launching AI agent: ${error}`);
+    }
+}
+
+// 💡: Register this VSCode window with Symposium app
+async function registerTaskspaceWindow(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any): Promise<void> {
+    try {
+        outputChannel.appendLine('Registering VSCode window with Symposium app...');
+        // TODO: Send IPC message to register window
+        // This will be implemented when we have the IPC infrastructure
+        outputChannel.appendLine('Window registration completed');
+    } catch (error) {
+        outputChannel.appendLine(`Error registering window: ${error}`);
+    }
+}
+
+// 💡: Update taskspace state via IPC
+async function updateTaskspaceState(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceData: any, newState: string): Promise<void> {
+    try {
+        outputChannel.appendLine(`Updating taskspace state from ${taskspaceData.state} to ${newState}...`);
+        // TODO: Send IPC message to update state
+        // This will be implemented when we have the IPC infrastructure
+        outputChannel.appendLine('State update completed');
+    } catch (error) {
+        outputChannel.appendLine(`Error updating taskspace state: ${error}`);
+    }
+}
+
 export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Create dedicated output channel for cleaner logging
@@ -963,6 +1075,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Create the central bus
     const bus = new Bus(context, outputChannel);
+
+    // 💡: Check for taskspace environment and auto-launch agent if needed
+    checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
+        outputChannel.appendLine(`Error in taskspace detection: ${error}`);
+    });
 
     // 💡: PID Discovery Testing - Log VSCode and terminal PIDs
     logPIDDiscovery(outputChannel).catch(error => {

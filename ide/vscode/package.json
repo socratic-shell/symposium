@@ -107,6 +107,16 @@
           "when": "commentController == dialectic-walkthrough"
         }
       ]
+    },
+    "configuration": {
+      "title": "Symposium",
+      "properties": {
+        "symposium.agentCommand": {
+          "type": "string",
+          "default": "q chat",
+          "description": "Command to launch AI agent in taskspace terminals. Common options: 'q chat' for Amazon Q, 'claude-code' for Claude Code."
+        }
+      }
     }
   },
   "scripts": {
