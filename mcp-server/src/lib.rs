@@ -12,7 +12,7 @@ mod reference_store;
 pub mod structured_logging;
 mod walkthrough_parser;
 mod server;
-mod types;
+pub mod types;
 pub mod synthetic_pr;
 
 pub use daemon::{run_daemon_with_idle_timeout, run_client};
