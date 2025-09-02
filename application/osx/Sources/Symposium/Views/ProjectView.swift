@@ -48,6 +48,16 @@ struct ProjectView: View {
                 Button("Close Project") {
                     projectManager.closeProject()
                 }
+                
+                Button("New Taskspace") {
+                    do {
+                        try projectManager.createTaskspace()
+                    } catch {
+                        // TODO: Show error alert
+                        print("Failed to create taskspace: \(error)")
+                    }
+                }
+                .disabled(projectManager.isLoading)
             }
             .padding()
             .background(Color.gray.opacity(0.1))
@@ -64,7 +74,7 @@ struct ProjectView: View {
                         .font(.headline)
                         .foregroundColor(.secondary)
                     
-                    Text("Taskspaces will appear here when created by AI agents")
+                    Text("Create a new taskspace to get started")
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

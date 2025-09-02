@@ -150,6 +150,62 @@ class ProjectManager: ObservableObject {
             self.errorMessage = nil
         }
     }
+    
+    /// Create a new taskspace with default values
+    func createTaskspace() throws {
+        guard let project = currentProject else {
+            throw ProjectError.noCurrentProject
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        // Create taskspace with default values
+        let taskspace = Taskspace(
+            name: "Unnamed taskspace",
+            description: "TBD",
+            initialPrompt: "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
+        )
+        
+        // Create taskspace directory
+        let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        try FileManager.default.createDirectory(
+            atPath: taskspaceDir,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        // Clone repository into taskspace directory
+        let repoName = extractRepoName(from: project.gitURL)
+        let cloneDir = "\(taskspaceDir)/\(repoName)"
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["clone", project.gitURL, cloneDir]
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus != 0 {
+            throw ProjectError.gitCloneFailed
+        }
+        
+        // Save taskspace metadata
+        try taskspace.save(in: project.directoryPath)
+        
+        // Add to current project
+        DispatchQueue.main.async {
+            var updatedProject = project
+            updatedProject.taskspaces.append(taskspace)
+            self.currentProject = updatedProject
+        }
+    }
+    
+    /// Extract repository name from git URL
+    private func extractRepoName(from gitURL: String) -> String {
+        let url = gitURL.replacingOccurrences(of: ".git", with: "")
+        return URL(string: url)?.lastPathComponent ?? "repo"
+    }
 }
 
 /// Errors that can occur during project operations
@@ -158,6 +214,8 @@ enum ProjectError: LocalizedError {
     case invalidProjectDirectory
     case failedToCreateDirectory
     case failedToSaveProject
+    case noCurrentProject
+    case gitCloneFailed
     
     var errorDescription: String? {
         switch self {
@@ -169,6 +227,10 @@ enum ProjectError: LocalizedError {
             return "Failed to create project directory"
         case .failedToSaveProject:
             return "Failed to save project metadata"
+        case .noCurrentProject:
+            return "No project is currently loaded"
+        case .gitCloneFailed:
+            return "Failed to clone git repository"
         }
     }
 }
