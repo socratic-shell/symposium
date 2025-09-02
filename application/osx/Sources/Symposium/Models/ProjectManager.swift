@@ -511,13 +511,22 @@ extension ProjectManager {
             updatedProject.taskspaces[taskspaceIndex].state = .resume
         }
         
-        // Update UI
-        DispatchQueue.main.async {
-            self.currentProject = updatedProject
-            Logger.shared.log("ProjectManager: Updated taskspace: \(payload.name)")
+        do {
+            // Save updated taskspace to disk
+            try updatedProject.taskspaces[taskspaceIndex].save(in: project.directoryPath)
+            
+            // Update UI
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                Logger.shared.log("ProjectManager: Updated taskspace: \(payload.name)")
+            }
+            
+            return .handled(EmptyResponse())
+            
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to save taskspace update: \(error)")
+            return .notForMe
         }
-        
-        return .handled(EmptyResponse())
     }
     
     /// Launch VSCode for a taskspace directory
