@@ -16,7 +16,6 @@
 
 # Design and implementation
 
-- [Interface plan](./design/interface-plan.md)
 - [Implementation Overview](./design/implementation-overview.md)
 - [Symposium Reference System](./design/symposium-ref-system.md)
 - [Ask Socratic Shell](./design/ask-socratic-shell.md)
@@ -30,7 +29,10 @@
 
 # Work in Progress
 
-- [Symposium Panel Prototype](./work-in-progress/symposium-panel-prototype.md)
+- [MVP]()
+    - [Interface plan](./work-in-progress/mvp/interface-plan.md)
+    - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
+    - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
