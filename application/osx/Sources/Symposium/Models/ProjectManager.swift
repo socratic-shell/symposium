@@ -538,13 +538,22 @@ extension ProjectManager {
     private func launchVSCode(for taskspace: Taskspace, in projectPath: String) {
         let taskspaceDir = taskspace.directoryPath(in: projectPath)
         
-        let vscodeProcess = Process()
-        vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        vscodeProcess.arguments = ["-a", "Visual Studio Code", taskspaceDir]
-        
+        // Find the cloned repository directory within the taskspace
         do {
-            try vscodeProcess.run()
-            Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name)")
+            let contents = try FileManager.default.contentsOfDirectory(atPath: taskspaceDir)
+            // Look for a directory that's not taskspace.json
+            if let repoDir = contents.first(where: { $0 != "taskspace.json" }) {
+                let cloneDir = "\(taskspaceDir)/\(repoDir)"
+                
+                let vscodeProcess = Process()
+                vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
+                
+                try vscodeProcess.run()
+                Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name) in \(repoDir)")
+            } else {
+                Logger.shared.log("ProjectManager: No repository directory found for taskspace: \(taskspace.name)")
+            }
         } catch {
             Logger.shared.log("ProjectManager: Failed to launch VSCode for \(taskspace.name): \(error)")
         }
