@@ -83,7 +83,28 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             self.ipcManager.addDelegate(self)
             Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
             
+            // Launch VSCode for active taskspaces
+            self.launchVSCodeForActiveTaskspaces(in: project)
+            
             self.startMCPClient()
+        }
+    }
+    
+    /// Launch VSCode for all active (resume state) taskspaces
+    private func launchVSCodeForActiveTaskspaces(in project: Project) {
+        let activeTaskspaces = project.taskspaces.filter { taskspace in
+            if case .resume = taskspace.state {
+                return true
+            }
+            return false
+        }
+        
+        for taskspace in activeTaskspaces {
+            launchVSCode(for: taskspace, in: project.directoryPath)
+        }
+        
+        if !activeTaskspaces.isEmpty {
+            Logger.shared.log("ProjectManager: Launched VSCode for \(activeTaskspaces.count) active taskspaces")
         }
     }
     
@@ -230,17 +251,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         try taskspace.save(in: project.directoryPath)
         
         // Launch VSCode in the cloned repository directory
-        let vscodeProcess = Process()
-        vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        vscodeProcess.arguments = ["-a", "Visual Studio Code", cloneDir]
-        
-        do {
-            try vscodeProcess.run()
-            Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name)")
-        } catch {
-            Logger.shared.log("ProjectManager: Failed to launch VSCode: \(error)")
-            // Don't throw - taskspace creation succeeded, VSCode launch is optional
-        }
+        launchVSCode(for: taskspace, in: project.directoryPath)
         
         // Add to current project
         DispatchQueue.main.async {
@@ -520,6 +531,22 @@ extension ProjectManager {
                 self.currentProject = updatedProject
                 Logger.shared.log("ProjectManager: Transitioned taskspace \(taskspaceUuid) from Hatchling to Resume")
             }
+        }
+    }
+    
+    /// Launch VSCode for a taskspace directory
+    private func launchVSCode(for taskspace: Taskspace, in projectPath: String) {
+        let taskspaceDir = taskspace.directoryPath(in: projectPath)
+        
+        let vscodeProcess = Process()
+        vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        vscodeProcess.arguments = ["-a", "Visual Studio Code", taskspaceDir]
+        
+        do {
+            try vscodeProcess.run()
+            Logger.shared.log("ProjectManager: Launched VSCode for taskspace: \(taskspace.name)")
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to launch VSCode for \(taskspace.name): \(error)")
         }
     }
 }
