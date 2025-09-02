@@ -55,6 +55,56 @@ Define message types for daemon communication:
 - ✅ Robust directory structure parsing
 - ✅ Support for both text and emoji category formats
 
+## Phase 2.3: Settings Dialog & Permissions
+
+### 2.3a: Permission Management
+- **Accessibility permission checking**: Detect current accessibility permissions status
+- **Screen recording permission checking**: Detect screen capture permissions (required for screenshots)
+- **Permission request UI**: Guide user through granting required permissions in System Preferences
+- **Permission status display**: Visual indicators (✅ granted, ❌ denied, ⚠️ required)
+- **Debug options**: Reset permissions button for testing (`tccutil reset`)
+
+### 2.3b: Agent Tool Selection
+- **Agent detection**: Scan system for installed Q CLI and Claude Code
+- **Agent selection UI**: Radio buttons or dropdown to choose preferred agent
+- **Agent validation**: Verify selected agent is properly configured with MCP
+- **Preferences persistence**: Store agent choice in UserDefaults
+
+### 2.3c: Settings Dialog Integration
+- **Settings window**: Dedicated settings dialog accessible from main menu
+- **Startup flow**: Show settings on first launch or when permissions missing
+- **Settings validation**: Prevent proceeding without required permissions
+- **Help text**: Clear instructions for each permission type and why it's needed
+
+## Phase 2.5: Manual Taskspace Management
+
+### 2.5a: Taskspace Creation UI
+- **New taskspace dialog**: Name input, description input, initial prompt input
+- **Directory structure creation**: Create `task-$UUID/` directory with proper naming
+- **Git repository cloning**: Clone project Git URL into taskspace directory
+- **Metadata generation**: Create initial `taskspace.json` with Hatchling state
+- **UI integration**: Add "New Taskspace" button to project view
+
+### 2.5b: VSCode Integration & Window Management
+- **VSCode launching**: Spawn VSCode process with taskspace directory as workspace
+- **Window tracking**: Use Accessibility APIs to identify and track VSCode windows
+- **Window association**: Link VSCode windows to taskspace UUIDs via process tracking
+- **Focus management**: Implement "bring to front" when taskspace is selected in UI
+- **Process lifecycle**: Handle VSCode window creation/destruction events
+
+### 2.5c: Visual Taskspace Display
+- **Taskspace cards**: Display active taskspaces in project view with metadata
+- **Screen capture system**: Periodic screenshots of VSCode windows (every 5-10 seconds)
+- **Thumbnail display**: Show current taskspace state via window screenshots
+- **Real-time updates**: Refresh taskspace display when windows change
+- **Empty state handling**: Graceful display when no taskspaces exist
+
+### 2.5d: Basic Taskspace Operations
+- **Taskspace selection**: Click to focus associated VSCode windows
+- **Taskspace status**: Visual indicators for active/inactive taskspaces
+- **Taskspace metadata**: Display name, description, creation time
+- **Error handling**: Graceful failures for VSCode launch issues, permission problems
+
 ## Phase 3: IPC Integration
 
 ### 3.1 Daemon Connection
@@ -112,22 +162,28 @@ Define message types for daemon communication:
 
 1. **Phase 1 - COMPLETE ✅**: Get basic project management working (create/open projects, no taskspaces yet)
 2. **Phase 2 - COMPLETE ✅**: Implement missing MCP server tools for taskspace orchestration
-3. **Phase 3 - NEXT**: Establish daemon connection (can test with new MCP tools)
-4. **Phase 4**: Create taskspace display UI (can use mock data initially)
-5. **Phase 5**: Connect real IPC messages to UI (includes Git cloning on taskspace creation)
-6. **Phase 6**: Complete remaining phases: Window management, polish, testing
+3. **Phase 2.3 - NEXT**: Settings dialog with permissions and agent selection
+4. **Phase 2.5**: Manual taskspace creation and VSCode integration (no MCP communication yet)
+5. **Phase 3**: Establish daemon connection (can test with new MCP tools)
+6. **Phase 4**: Create taskspace display UI (can use mock data initially)
+7. **Phase 5**: Connect real IPC messages to UI (includes Git cloning on taskspace creation)
+8. **Phase 6**: Complete remaining phases: Window management, polish, testing
 
 ## Success Criteria
 
 The MVP is complete when:
 - [x] User can create/open Symposium projects
-- [ ] VSCode taskspaces launch automatically with agent tools
-- [ ] Real-time progress logs appear in Symposium panel
+- [ ] User can manually create new taskspaces with name/description/prompt
+- [ ] VSCode launches automatically for new taskspaces
+- [ ] Taskspaces appear in project view with screenshots
 - [ ] User can focus taskspace windows by clicking in panel
+- [ ] VSCode taskspaces launch automatically with agent tools (via MCP)
+- [ ] Real-time progress logs appear in Symposium panel (via MCP)
 - [ ] `spawn_taskspace` MCP tool creates new taskspaces visible in panel
 - [ ] Basic window tiling works for active taskspaces
 
 **Phase 1 Status**: ✅ COMPLETE - Users can create and open .symposium projects with native macOS UI
+**Phase 2.3 Status**: 🔄 NEXT - Settings dialog with permissions and agent selection
 
 ## Technical Risks & Mitigations
 
