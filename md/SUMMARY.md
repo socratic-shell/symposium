@@ -8,6 +8,7 @@
 -->
 
 - [Introduction](./introduction.md)
+- [Installation and setup](./setup.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
