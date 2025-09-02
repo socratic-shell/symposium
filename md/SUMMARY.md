@@ -28,6 +28,10 @@
 - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 - [Dialect language](./design/dialect-language.md)
 
+# Work in Progress
+
+- [Symposium Panel Prototype](./work-in-progress/symposium-panel-prototype.md)
+
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
     about a particular topic

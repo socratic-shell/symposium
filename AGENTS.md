@@ -10,9 +10,13 @@ Design documentation is tracked in the mdbook:
 
 @md/SUMMARY.md
 
-Proper use of github tracking issues is described here:
+The implementation overview chapter is particularly useful for highlighting the major components:
 
-@.socratic-shell/github-tracking-issues.md
+@md/design/implementation-overview.md
+
+## Work Tracking
+
+We track all pending work in GitHub issues on the socratic-shell/symposium repository. When starting work on an issue that is complex enough to merit a new chapter in the documentation, create design documents initially in the `md/work-in-progress/` section of the mdbook. These documents are refined as work progresses and eventually moved to the main book sections once the work is complete. Post updates on tracking issues when checkpointing work.
 
 ## Instructions
 
@@ -22,5 +26,5 @@ Agent MUST follow the following guidance:
 * **Auto-commit completed work**: After completing a series of related changes, automatically commit them with a descriptive message. This makes it easier for the user to review progress.
 * **Co-authorship**: Include "Co-authored-by: Claude <claude@anthropic.com>" in commit messages to indicate AI collaboration.
 * **Design documentation updates**: Update the design documentation as appropriate so that it is kept current. This will help both you and future agents to remember how things work.
-* **Update the tracking issue**: If there is a tracking issue, post a command and consider updating the OP.
+* **Update tracking**: For major initiatives, update WIP documentation. For smaller work, update GitHub issues as appropriate.
 
