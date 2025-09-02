@@ -90,13 +90,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
     
-    /// Launch VSCode for all active (resume state) taskspaces
+    /// Launch VSCode for all active taskspaces (both hatchling and resume states)
     private func launchVSCodeForActiveTaskspaces(in project: Project) {
         let activeTaskspaces = project.taskspaces.filter { taskspace in
-            if case .resume = taskspace.state {
+            switch taskspace.state {
+            case .hatchling, .resume:
                 return true
             }
-            return false
         }
         
         for taskspace in activeTaskspaces {
