@@ -1037,6 +1037,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     // Send get_taskspace_state message as documented in the flow
     const payload: GetTaskspaceStatePayload = { taskspaceUuid };
     const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
+    outputChannel.appendLine(`App responded with ${JSON.stringify(response)}`);
 
     if (response && response.shouldLaunch) {
         outputChannel.appendLine(`Launching agent: ${response.agentCommand.join(' ')}`);
