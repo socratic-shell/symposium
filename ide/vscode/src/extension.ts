@@ -3,6 +3,7 @@ import * as net from 'net';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { quote } from 'shell-quote';
 import { SyntheticPRProvider } from './syntheticPRProvider';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { Bus } from './bus';
@@ -1107,15 +1108,8 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 // 💡: Launch AI agent in terminal with provided command
 async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
-        // Properly escape command arguments for shell execution
-        const escapedCommand = agentCommand.map(arg => {
-            // If argument contains spaces, quotes, or special characters, quote it
-            if (/[\s"'\\$`|&;()<>]/.test(arg)) {
-                // Escape any existing single quotes and wrap in single quotes
-                return `'${arg.replace(/'/g, "'\"'\"'")}'`;
-            }
-            return arg;
-        }).join(' ');
+        // Use shell-quote library for proper escaping
+        const escapedCommand = quote(agentCommand);
         
         outputChannel.appendLine(`Launching agent with command: ${escapedCommand}`);
 
