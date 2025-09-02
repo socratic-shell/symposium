@@ -29,7 +29,7 @@
 
 # Work in Progress
 
-- [MVP]()
+- [MVP](./work-in-progress/mvp/README.md)
     - [Interface plan](./work-in-progress/mvp/interface-plan.md)
     - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
     - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)

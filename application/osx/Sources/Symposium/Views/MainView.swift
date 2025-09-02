@@ -8,8 +8,7 @@ struct MainView: View {
             if let project = projectManager.currentProject {
                 ProjectView(project: project, projectManager: projectManager)
             } else {
-                ProjectSelectionView()
-                    .environmentObject(projectManager)
+                ProjectSelectionView(projectManager: projectManager)
             }
         }
         .frame(minWidth: 1000, idealWidth: 1200, maxWidth: .infinity,

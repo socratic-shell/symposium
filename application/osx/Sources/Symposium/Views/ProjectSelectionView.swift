@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct ProjectSelectionView: View {
-    @StateObject private var projectManager = ProjectManager()
+    @ObservedObject var projectManager: ProjectManager
     @State private var showingNewProjectDialog = false
     @State private var showingOpenProjectDialog = false
     
