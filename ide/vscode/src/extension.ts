@@ -203,6 +203,9 @@ export class DaemonClient implements vscode.Disposable {
     private pendingFeedbackResolvers: Map<string, (feedback: UserFeedback) => void> = new Map();
     private currentReviewId?: string;
 
+    // General request-response handling
+    private pendingRequestResolvers: Map<string, (response: any) => void> = new Map();
+
     private logger: StructuredLogger;
 
     constructor(
@@ -505,7 +508,18 @@ export class DaemonClient implements vscode.Disposable {
             this.logger.info('Received reload_window signal from daemon, reloading window...');
             vscode.commands.executeCommand('workbench.action.reloadWindow');
         } else if (message.type === 'response') {
-            // Ignore this, response messages are messages that WE send to clients.
+            // Handle responses to our requests
+            const resolver = this.pendingRequestResolvers.get(message.id);
+            if (resolver) {
+                this.pendingRequestResolvers.delete(message.id);
+                const responsePayload = message.payload as ResponsePayload;
+                if (responsePayload.success) {
+                    resolver(responsePayload.data);
+                } else {
+                    this.logger.error(`Request ${message.id} failed: ${responsePayload.error}`);
+                    resolver(null);
+                }
+            }
         } else {
             // Forward compatibility: silently ignore unknown message types for our window
             // Only log if this was actually meant for us (not a broadcast)
@@ -949,43 +963,65 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     /**
-     * Query Symposium app for taskspace state and agent command
+     * Send an IPC request and wait for response
      */
-    async getTaskspaceState(taskspaceUuid: string): Promise<TaskspaceStateResponse | null> {
+    private async sendRequest<T>(type: string, payload: any, timeoutMs: number = 5000): Promise<T | null> {
         try {
-            this.logger.info('Querying Symposium app for taskspace state...');
-            
-            // Send IPC message to get taskspace state
             const messageId = crypto.randomUUID();
-            const queryMessage: IPCMessage = {
+            const message: IPCMessage = {
                 shellPid: process.pid,
-                type: 'get_taskspace_state',
-                payload: {
-                    taskspaceUuid: taskspaceUuid
-                } as GetTaskspaceStatePayload,
+                type: type,
+                payload: payload,
                 id: messageId
             };
 
             // Send the message
-            if (this.clientProcess && this.clientProcess.stdin) {
-                this.clientProcess.stdin.write(JSON.stringify(queryMessage) + '\n');
-                this.logger.info(`Sent taskspace state query with ID: ${messageId}`);
-                
-                // TODO: Wait for response and return the actual state
-                // For now, return default until response handling is implemented
-                const defaultResponse: TaskspaceStateResponse = {
-                    agentCommand: ['q', 'chat'],
-                    shouldLaunch: true
-                };
-                this.logger.info(`Using default response: ${JSON.stringify(defaultResponse)}`);
-                return defaultResponse;
-            } else {
+            if (!this.clientProcess || !this.clientProcess.stdin) {
                 throw new Error('Daemon client not connected');
             }
-            
+
+            this.clientProcess.stdin.write(JSON.stringify(message) + '\n');
+            this.logger.info(`Sent ${type} request with ID: ${messageId}`);
+
+            // Wait for response
+            return new Promise<T | null>((resolve) => {
+                this.pendingRequestResolvers.set(messageId, resolve);
+                
+                // Timeout after specified time
+                setTimeout(() => {
+                    if (this.pendingRequestResolvers.has(messageId)) {
+                        this.pendingRequestResolvers.delete(messageId);
+                        this.logger.error(`Request ${messageId} timed out after ${timeoutMs}ms`);
+                        resolve(null);
+                    }
+                }, timeoutMs);
+            });
+
         } catch (error) {
-            this.logger.error(`Error querying taskspace state: ${error}`);
+            this.logger.error(`Error sending ${type} request: ${error}`);
             return null;
+        }
+    }
+
+    /**
+     * Query Symposium app for taskspace state and agent command
+     */
+    async getTaskspaceState(taskspaceUuid: string): Promise<TaskspaceStateResponse | null> {
+        this.logger.info('Querying Symposium app for taskspace state...');
+        
+        const payload: GetTaskspaceStatePayload = { taskspaceUuid };
+        const response = await this.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
+        
+        if (response) {
+            this.logger.info(`Received taskspace state: ${JSON.stringify(response)}`);
+            return response;
+        } else {
+            // Fallback to default if no response
+            this.logger.info('No response received, using default');
+            return {
+                agentCommand: ['q', 'chat'],
+                shouldLaunch: true
+            };
         }
     }
 
