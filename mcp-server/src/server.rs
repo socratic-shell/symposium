@@ -76,6 +76,17 @@ struct SignalUserParams {
 }
 // ANCHOR_END: signal_user_params
 
+/// Parameters for the update_taskspace tool
+// ANCHOR: update_taskspace_params
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct UpdateTaskspaceParams {
+    /// New name for the taskspace
+    name: String,
+    /// New description for the taskspace
+    description: String,
+}
+// ANCHOR_END: update_taskspace_params
+
 /// Dialectic MCP Server
 ///
 /// Implements the MCP server protocol and bridges to VSCode extension via IPC.
@@ -840,6 +851,58 @@ impl DialecticServer {
             }
         }
     }
+
+    // ANCHOR: update_taskspace_tool
+    #[tool(
+        description = "Update the name and description of the current taskspace. \
+                       Use this to set meaningful names and descriptions based on user interaction."
+    )]
+    async fn update_taskspace(
+        &self,
+        Parameters(params): Parameters<UpdateTaskspaceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        // ANCHOR_END: update_taskspace_tool
+        self.ipc
+            .send_log(
+                LogLevel::Info,
+                format!("Updating taskspace: {} - {}", params.name, params.description),
+            )
+            .await;
+
+        // Send update_taskspace message to Symposium app via daemon
+        match self.ipc.update_taskspace(params.name.clone(), params.description.clone()).await {
+            Ok(()) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Info,
+                        "Taskspace updated successfully".to_string(),
+                    )
+                    .await;
+
+                Ok(CallToolResult::success(vec![Content::text(format!(
+                    "Taskspace updated: {} - {}",
+                    params.name, params.description
+                ))]))
+            }
+            Err(e) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Error,
+                        format!("Failed to update taskspace: {}", e),
+                    )
+                    .await;
+
+                Err(McpError::internal_error(
+                    "Failed to update taskspace",
+                    Some(serde_json::json!({
+                        "error": e.to_string(),
+                        "name": params.name,
+                        "description": params.description
+                    })),
+                ))
+            }
+        }
+    }
 }
 
 #[tool_handler]
@@ -862,7 +925,8 @@ impl ServerHandler for DialecticServer {
                 'get_review_status' to check the current synthetic PR status, \
                 'spawn_taskspace' to create new taskspaces for collaborative work, \
                 'log_progress' to report agent progress with visual indicators, \
-                and 'signal_user' to request user attention when assistance is needed."
+                'signal_user' to request user attention when assistance is needed, \
+                and 'update_taskspace' to update taskspace names and descriptions."
                     .to_string(),
             ),
         }

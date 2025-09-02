@@ -608,6 +608,32 @@ impl IPCCommunicator {
         self.send_message_without_reply(ipc_message).await
     }
 
+    /// Send update_taskspace message to update taskspace metadata
+    pub async fn update_taskspace(&self, name: String, description: String) -> Result<()> {
+        use crate::types::{UpdateTaskspacePayload, IPCMessageType};
+        
+        let (project_path, taskspace_uuid) = extract_project_info()?;
+        
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        let ipc_message = IPCMessage {
+            shell_pid,
+            id: Uuid::new_v4().to_string(),
+            message_type: IPCMessageType::UpdateTaskspace,
+            payload: serde_json::to_value(UpdateTaskspacePayload {
+                project_path,
+                taskspace_uuid,
+                name,
+                description,
+            })?,
+        };
+
+        self.send_message_without_reply(ipc_message).await
+    }
+
     /// Gracefully shutdown the IPC communicator, sending Goodbye discovery message
     pub async fn shutdown(&self) -> Result<()> {
         if self.test_mode {

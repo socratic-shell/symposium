@@ -177,6 +177,8 @@ pub enum IPCMessageType {
     LogProgress,
     /// Request user attention for assistance
     SignalUser,
+    /// Update taskspace name and description
+    UpdateTaskspace,
 }
 
 // ANCHOR: store_reference_payload
@@ -277,5 +279,16 @@ pub struct SignalUserPayload {
     pub message: String,
 }
 // ANCHOR_END: signal_user_payload
+
+/// Payload for update_taskspace messages
+// ANCHOR: update_taskspace_payload
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpdateTaskspacePayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
+    pub name: String,
+    pub description: String,
+}
+// ANCHOR_END: update_taskspace_payload
 
 
