@@ -1033,49 +1033,25 @@ function getCurrentTaskspaceUuid(): string | null {
     }
 
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-
-    // Check if we're in a task-UUID directory
-    const workspaceName = path.basename(workspaceRoot);
     const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-    let match = workspaceName.match(taskUuidPattern);
-    let taskspaceDir = workspaceRoot;
 
-    // If not found, check parent directory (for when VSCode opens the cloned repo)
-    if (!match) {
-        const parentDir = path.dirname(workspaceRoot);
-        const parentName = path.basename(parentDir);
-        match = parentName.match(taskUuidPattern);
+    // Walk up the directory tree looking for task-UUID directory with taskspace.json
+    let currentDir = workspaceRoot;
+    while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
+        const dirName = path.basename(currentDir);
+        const match = dirName.match(taskUuidPattern);
+        
         if (match) {
-            taskspaceDir = parentDir;
+            const taskspaceJsonPath = path.join(currentDir, 'taskspace.json');
+            if (fs.existsSync(taskspaceJsonPath)) {
+                return match[1]; // Return the UUID
+            }
         }
+        
+        currentDir = path.dirname(currentDir);
     }
 
-    if (!match) {
-        return null; // Not a task-UUID directory
-    }
-
-    const expectedUuid = match[1];
-
-    // Check for taskspace.json in the taskspace directory
-    const taskspaceJsonPath = path.join(taskspaceDir, 'taskspace.json');
-    if (!fs.existsSync(taskspaceJsonPath)) {
-        return null; // No taskspace.json found
-    }
-
-    try {
-        // Read and validate taskspace.json
-        const taskspaceJson = JSON.parse(fs.readFileSync(taskspaceJsonPath, 'utf8'));
-        const actualUuid = taskspaceJson.uuid;
-
-        if (!actualUuid || actualUuid !== expectedUuid) {
-            return null; // UUID mismatch or missing
-        }
-
-        return actualUuid; // Valid taskspace!
-
-    } catch (error) {
-        return null; // Invalid JSON or read error
-    }
+    return null; // No taskspace found in directory tree
 }
 
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
