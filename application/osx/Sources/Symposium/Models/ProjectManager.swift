@@ -47,6 +47,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         DispatchQueue.main.async {
             self.currentProject = project
             self.errorMessage = nil
+            
+            // Register as IPC delegate for this project
+            self.ipcManager.addDelegate(self)
+            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
+            
             self.startMCPClient()
         }
     }
@@ -73,6 +78,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             self.currentProject = loadedProject
             self.errorMessage = nil
             Logger.shared.log("ProjectManager: Set currentProject to \(loadedProject.name)")
+            
+            // Register as IPC delegate for this project
+            self.ipcManager.addDelegate(self)
+            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(loadedProject.name)")
+            
             self.startMCPClient()
         }
     }
@@ -104,6 +114,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     
     /// Close current project
     func closeProject() {
+        // Unregister as IPC delegate
+        ipcManager.removeDelegate(self)
+        Logger.shared.log("ProjectManager: Unregistered as IPC delegate")
+        
         stopMCPClient()
         DispatchQueue.main.async {
             self.currentProject = nil
