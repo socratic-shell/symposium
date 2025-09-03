@@ -49,13 +49,16 @@ struct ProjectView: View {
                     projectManager.closeProject()
                 }
                 
-                Button("New Taskspace") {
+                Button(action: {
                     do {
                         try projectManager.createTaskspace()
                     } catch {
                         Logger.shared.log("Failed to create taskspace: \(error)")
                     }
+                }) {
+                    Image(systemName: "plus")
                 }
+                .help("New Taskspace")
                 .disabled(projectManager.isLoading)
                 
                 Button(action: {
