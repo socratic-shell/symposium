@@ -4,6 +4,8 @@ struct SplashView: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var agentManager: AgentManager
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
     @State private var showingSettings = false
     
     var body: some View {
@@ -40,8 +42,11 @@ struct SplashView: View {
                 } else {
                     ProjectSelectionView(
                         onProjectCreated: { projectManager in
-                            Logger.shared.log("SplashView: Project created, should open project window")
-                            // TODO: Open project window and close splash
+                            Logger.shared.log("SplashView: Project created, opening project window")
+                            if let projectPath = projectManager.currentProject?.directoryPath {
+                                openWindow(id: "project", value: projectPath)
+                                dismiss()
+                            }
                         }
                     )
                 }
@@ -53,6 +58,20 @@ struct SplashView: View {
         }
         .onAppear {
             Logger.shared.log("SplashView appeared")
+            checkForLastProject()
+        }
+    }
+    
+    private func checkForLastProject() {
+        // If we have a valid last project and permissions are OK, open it directly
+        if !settingsManager.lastProjectPath.isEmpty,
+           permissionManager.hasAccessibilityPermission,
+           permissionManager.hasScreenRecordingPermission,
+           !agentManager.isScanning {
+            
+            Logger.shared.log("SplashView: Found last project, opening directly: \(settingsManager.lastProjectPath)")
+            openWindow(id: "project", value: settingsManager.lastProjectPath)
+            dismiss()
         }
     }
 }

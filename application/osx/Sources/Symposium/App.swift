@@ -8,7 +8,7 @@ struct SymposiumApp: App {
     @StateObject private var permissionManager = PermissionManager()
     
     var body: some Scene {
-        // Splash/Setup window
+        // Splash/Setup window - only shows when needed
         WindowGroup("splash") {
             SplashView()
                 .environmentObject(agentManager)
@@ -19,6 +19,7 @@ struct SymposiumApp: App {
                 }
         }
         .windowResizability(.contentSize)
+        .defaultAppStorage(.standard)
         
         // Project windows (can have multiple)
         WindowGroup("project", for: String.self) { $projectPath in
@@ -33,6 +34,7 @@ struct SymposiumApp: App {
             }
         }
         .windowResizability(.contentMinSize)
+        .defaultAppStorage(.standard)
         .commands {
             CommandGroup(after: .help) {
                 Button("Copy Debug Logs") {
