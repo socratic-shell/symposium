@@ -152,6 +152,10 @@ struct TaskspaceCard: View {
     let projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
     
+    private var hasRegisteredWindow: Bool {
+        projectManager.getWindow(for: taskspace.id) != nil
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -178,6 +182,21 @@ struct TaskspaceCard: View {
             Text(taskspace.description)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+            
+            // Screenshot placeholder
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.gray.opacity(0.1))
+                .frame(height: 120)
+                .overlay(
+                    VStack(spacing: 4) {
+                        Image(systemName: hasRegisteredWindow ? "display" : "arrow.clockwise")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                        Text(hasRegisteredWindow ? "VSCode" : "Disconnected")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                )
             
             // Recent logs
             if !taskspace.logs.isEmpty {
