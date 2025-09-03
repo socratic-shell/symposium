@@ -423,14 +423,14 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(RegisterTaskspaceWindowPayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Register window '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager: Register window containing '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
                 
-                if let windowID = findWindowByExactTitle(payload.windowTitle) {
+                if let windowID = findWindowBySubstring(payload.windowTitle) {
                     Logger.shared.log("IpcManager: Found window \(windowID) for taskspace \(payload.taskspaceUuid)")
                     // TODO: Store taskspace-window association
                     sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
                 } else {
-                    Logger.shared.log("IpcManager: Window not found with title: \(payload.windowTitle)")
+                    Logger.shared.log("IpcManager: Window not found containing: \(payload.windowTitle)")
                     sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Window not found")
                 }
                 
@@ -441,7 +441,7 @@ class IpcManager: ObservableObject {
         }
     }
     
-    private func findWindowByExactTitle(_ targetTitle: String) -> CGWindowID? {
+    private func findWindowBySubstring(_ targetSubstring: String) -> CGWindowID? {
         let options = CGWindowListOption([.optionOnScreenOnly, .excludeDesktopElements])
         let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
         
@@ -455,7 +455,7 @@ class IpcManager: ObservableObject {
             // Get window title from CGWindow info
             let title = dict[kCGWindowName as String] as? String ?? ""
             
-            if title == targetTitle {
+            if title.contains(targetSubstring) {
                 return windowID
             }
         }

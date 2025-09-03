@@ -648,14 +648,15 @@ export class DaemonClient implements vscode.Disposable {
             const originalTitle = config.get<string>('window.title') || '';
 
             // Set temporary title with unique identifier
-            const tempTitle = `[SYMPOSIUM:${windowUUID}] ${originalTitle}`;
+            const uniqueIdentifier = `[SYMPOSIUM:${windowUUID}]`;
+            const tempTitle = `${uniqueIdentifier} ${originalTitle}`;
             await config.update('window.title', tempTitle, vscode.ConfigurationTarget.Workspace);
 
             this.outputChannel.appendLine(`[WINDOW REG] Set temporary title: ${tempTitle}`);
 
             // Send registration message to Swift app using existing helper
             const payload: RegisterTaskspaceWindowPayload = {
-                window_title: tempTitle,
+                window_title: uniqueIdentifier,  // Send just the unique part for substring matching
                 taskspace_uuid: taskspaceUuid
             };
 
