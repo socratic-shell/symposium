@@ -51,11 +51,11 @@ struct Project: Codable, Identifiable {
     
     /// Find taskspace by UUID
     func findTaskspace(uuid: String) -> Taskspace? {
-        return taskspaces.first { $0.id.uuidString == uuid }
+        return taskspaces.first { $0.id.uuidString.lowercased() == uuid.lowercased() }
     }
     
     /// Find taskspace index by UUID
     func findTaskspaceIndex(uuid: String) -> Int? {
-        return taskspaces.firstIndex { $0.id.uuidString == uuid }
+        return taskspaces.firstIndex { $0.id.uuidString.lowercased() == uuid.lowercased() }
     }
 }
