@@ -76,22 +76,20 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     
     /// Helper to set current project and register as IPC delegate
     private func setCurrentProject(_ project: Project) {
-        DispatchQueue.main.async {
-            self.currentProject = project
-            self.errorMessage = nil
-            
-            // Save project path for next app launch
-            self.settingsManager.lastProjectPath = project.directoryPath
-            
-            // Register as IPC delegate for this project
-            self.ipcManager.addDelegate(self)
-            Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
-            
-            // Launch VSCode for active taskspaces
-            self.launchVSCodeForActiveTaskspaces(in: project)
-            
-            self.startMCPClient()
-        }
+        self.currentProject = project
+        self.errorMessage = nil
+        
+        // Save project path for next app launch
+        self.settingsManager.lastProjectPath = project.directoryPath
+        
+        // Register as IPC delegate for this project
+        self.ipcManager.addDelegate(self)
+        Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
+        
+        // Launch VSCode for active taskspaces
+        self.launchVSCodeForActiveTaskspaces(in: project)
+        
+        self.startMCPClient()
     }
     
     /// Launch VSCode for all active taskspaces (both hatchling and resume states)

@@ -54,9 +54,14 @@ struct SplashView: View {
                     ProjectSelectionView(
                         onProjectCreated: { projectManager in
                             Logger.shared.log("SplashView: Project created, opening project window")
+                            Logger.shared.log("SplashView: ProjectManager currentProject: \(projectManager.currentProject?.name ?? "nil")")
                             if let projectPath = projectManager.currentProject?.directoryPath {
+                                Logger.shared.log("SplashView: Opening project window with path: \(projectPath)")
                                 openWindow(id: "project", value: projectPath)
+                                Logger.shared.log("SplashView: Called openWindow, now dismissing splash")
                                 dismiss()
+                            } else {
+                                Logger.shared.log("SplashView: ERROR - No project path available!")
                             }
                         }
                     )
