@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /// Manages project creation, loading, and operations
 class ProjectManager: ObservableObject, IpcMessageDelegate {
@@ -10,6 +11,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let agentManager: AgentManager
     private let settingsManager: SettingsManager
     private let selectedAgent: String
+    
+    // Window associations for current project
+    private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
     var mcpStatus: IpcManager { ipcManager }
     
@@ -292,6 +296,34 @@ enum ProjectError: LocalizedError {
         case .gitCloneFailed:
             return "Failed to clone git repository"
         }
+    }
+}
+
+// MARK: - Window Management
+
+extension ProjectManager {
+    /// Associate a window with a taskspace
+    func associateWindow(_ windowID: CGWindowID, with taskspaceUuid: String) -> Bool {
+        guard let uuid = UUID(uuidString: taskspaceUuid) else {
+            Logger.shared.log("ProjectManager: Invalid UUID format: \(taskspaceUuid)")
+            return false
+        }
+        
+        // Verify taskspace exists in current project
+        guard let project = currentProject,
+              project.findTaskspace(uuid: taskspaceUuid) != nil else {
+            Logger.shared.log("ProjectManager: Taskspace not found for UUID: \(taskspaceUuid)")
+            return false
+        }
+        
+        taskspaceWindows[uuid] = windowID
+        Logger.shared.log("ProjectManager: Associated window \(windowID) with taskspace \(uuid)")
+        return true
+    }
+    
+    /// Get window ID for a taskspace
+    func getWindow(for taskspaceUuid: UUID) -> CGWindowID? {
+        return taskspaceWindows[taskspaceUuid]
     }
 }
 

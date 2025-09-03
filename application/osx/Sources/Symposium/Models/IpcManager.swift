@@ -427,8 +427,22 @@ class IpcManager: ObservableObject {
                 
                 if let windowID = findWindowBySubstring(payload.windowTitle) {
                     Logger.shared.log("IpcManager: Found window \(windowID) for taskspace \(payload.taskspaceUuid)")
-                    // TODO: Store taskspace-window association
-                    sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                    
+                    // Store association via delegate
+                    var success = false
+                    for delegate in delegates {
+                        if let projectManager = delegate as? ProjectManager,
+                           projectManager.associateWindow(windowID, with: payload.taskspaceUuid) {
+                            success = true
+                            break
+                        }
+                    }
+                    
+                    if success {
+                        sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                    } else {
+                        sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Failed to associate window")
+                    }
                 } else {
                     Logger.shared.log("IpcManager: Window not found containing: \(payload.windowTitle)")
                     sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Window not found")

@@ -291,6 +291,10 @@ The following approaches are deliberately hacky for the MVP and will need proper
 4. **Dock Integration**: Badge counts and notifications for user attention requests
 5. **Multi-project Support**: Handle multiple projects simultaneously
 
+### 🧹 Future Cleanup Items
+- **TaskspaceId wrapper type**: Replace `UUID` with `TaskspaceId` wrapper for better type safety and clear intent in function signatures
+- **Window association persistence**: Consider persisting taskspace-window associations across app restarts
+
 Then move to Phase 3 for full daemon communication and orchestration.
 
 **Current approach**: MCP server extracts UUID from its working directory path  
