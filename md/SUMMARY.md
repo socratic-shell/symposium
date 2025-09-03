@@ -33,7 +33,7 @@
 - [Window Stacking Design](./design/window-stacking-design.md)
 - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 - [Dialect language](./design/dialect-language.md)
-g
+
 # Work in Progress
 
 - [MVP](./work-in-progress/mvp/README.md)
