@@ -8,15 +8,31 @@ struct SymposiumApp: App {
     @StateObject private var permissionManager = PermissionManager()
     
     var body: some Scene {
-        WindowGroup {
-            MainView()
+        // Splash/Setup window
+        WindowGroup("splash") {
+            SplashView()
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
                 .onAppear {
-                    Logger.shared.log("App started")
+                    Logger.shared.log("Splash window started")
                 }
         }
+        .windowResizability(.contentSize)
+        
+        // Project windows (can have multiple)
+        WindowGroup("project", for: String.self) { $projectPath in
+            if let projectPath = projectPath {
+                ProjectWindow(projectPath: projectPath)
+                    .environmentObject(agentManager)
+                    .environmentObject(settingsManager)
+                    .environmentObject(permissionManager)
+            } else {
+                Text("No project path provided")
+                    .foregroundColor(.red)
+            }
+        }
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .help) {
                 Button("Copy Debug Logs") {
