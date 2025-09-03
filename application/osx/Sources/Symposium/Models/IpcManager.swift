@@ -271,8 +271,6 @@ class IpcManager: ObservableObject {
                 handleLogProgress(message: message)
             case "signal_user":
                 handleSignalUser(message: message)
-            case "taskspace_roll_call":
-                handleTaskspaceRollCall(message: message)
             case "register_taskspace_window":
                 handleRegisterTaskspaceWindow(message: message)
             default:
@@ -414,23 +412,6 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
-                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
-            }
-        }
-    }
-    
-    private func handleTaskspaceRollCall(message: IPCMessage) {
-        Task {
-            do {
-                let payloadData = try JSONEncoder().encode(message.payload)
-                let payload = try JSONDecoder().decode(TaskspaceRollCallPayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Taskspace roll call for \(payload.taskspaceUuid)")
-                
-                // TODO: Implement taskspace roll call logic
-                sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
-                
-            } catch {
-                Logger.shared.log("IpcManager: Failed to parse taskspace_roll_call payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
