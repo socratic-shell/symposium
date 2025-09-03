@@ -192,12 +192,13 @@ Define message types for daemon communication:
 
 1. **Phase 1 - COMPLETE ✅**: Get basic project management working (create/open projects, no taskspaces yet)
 2. **Phase 2 - COMPLETE ✅**: Implement missing MCP server tools for taskspace orchestration
-3. **Phase 2.3 - NEXT**: Settings dialog with permissions and agent selection
-4. **Phase 2.5**: Manual taskspace creation and VSCode integration (no MCP communication yet)
-5. **Phase 3**: Establish daemon connection (can test with new MCP tools)
-6. **Phase 4**: Create taskspace display UI (can use mock data initially)
-7. **Phase 5**: Connect real IPC messages to UI (includes Git cloning on taskspace creation)
-8. **Phase 6**: Complete remaining phases: Window management, polish, testing
+3. **Phase 2.3 - COMPLETE ✅**: Settings dialog with permissions and agent selection
+4. **Phase 2.5 - COMPLETE ✅**: Manual taskspace creation and VSCode integration
+5. **Phase 2.7 - COMPLETE ✅**: Activity logs display with real-time updates
+6. **Phase 2.8 - NEXT**: Window registration system for reliable window-taskspace association
+7. **Phase 3**: Enhanced features (state indicators, lifecycle management, dock integration)
+8. **Phase 4**: Advanced UI (enhanced logs, multi-project support, visual polish)
+9. **Phase 5**: Integration testing and deployment preparation
 
 ## Success Criteria
 
@@ -267,6 +268,15 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Activity logs UI**: ✅ TaskspaceCard already displays last 3 logs with icons and messages
 - **Real-time log updates**: ✅ log_progress MCP tool now works correctly with UI updates
 - **Visual indicators**: ✅ Emoji icons for different log categories (info, warn, error, milestone, question)
+
+### 📋 Phase 2.8: Window Registration System
+- **Window title handshake**: Implement temporary title modification for reliable window correlation
+- **Extend update_taskspace MCP tool**: Add optional `window_uuid` field for window registration
+- **Window enumeration in Swift app**: Use CGWindowListCopyWindowInfo to find windows by title pattern
+- **Taskspace roll-call broadcasts**: Periodic broadcasts for unregistered taskspaces to trigger re-registration
+- **IPC reply enhancement**: Extend existing reply mechanism with `window_registered` flag
+- **Extension window detection**: Implement title setting and restoration in VSCode extension
+- **Automatic recovery**: Timer-based roll-call system for self-healing window associations
 
 ### 📋 Next Steps (Phase 3: Advanced Features)
 1. **Enhanced Activity Logs**: Expand log display, add timestamps, log history view
