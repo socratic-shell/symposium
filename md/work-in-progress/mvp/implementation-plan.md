@@ -195,10 +195,14 @@ Define message types for daemon communication:
 3. **Phase 2.3 - COMPLETE ✅**: Settings dialog with permissions and agent selection
 4. **Phase 2.5 - COMPLETE ✅**: Manual taskspace creation and VSCode integration
 5. **Phase 2.7 - COMPLETE ✅**: Activity logs display with real-time updates
-6. **Phase 2.8 - IN PROGRESS 🚧**: Window registration system for reliable window-taskspace association
-7. **Phase 3**: Enhanced features (state indicators, lifecycle management, dock integration)
-8. **Phase 4**: Advanced UI (enhanced logs, multi-project support, visual polish)
-9. **Phase 5**: Integration testing and deployment preparation
+6. **Phase 2.8 - Window Registration - COMPLETE ✅**: Window registration system for reliable window-taskspace association
+7. **Phase 2.9 - Window Screenshots - NEXT**: Visual taskspace previews using captured window screenshots
+8. **Phase 2.10 - Window Focus**: Click taskspace to bring associated windows to front
+9. **Phase 2.11 - Window Tiling**: Optional tile mode with taskspace preview anchored left, IDE window taking remaining space
+10. **Phase 2.12 - Window Cleanup**: Close associated IDE windows when app closes
+11. **Phase 3 - Enhanced Features**: State indicators, lifecycle management, dock integration
+12. **Phase 4 - Advanced UI**: Enhanced logs, multi-project support, visual polish
+13. **Phase 5 - Integration Testing**: Integration testing and deployment preparation
 
 ## Success Criteria
 
@@ -269,22 +273,51 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Real-time log updates**: ✅ log_progress MCP tool now works correctly with UI updates
 - **Visual indicators**: ✅ Emoji icons for different log categories (info, warn, error, milestone, question)
 
-### 🚧 Phase 2.8: Window Registration System (In Progress)
+### 🚧 Phase 2.8: Window Registration System (Nearly Complete)
 - **IPC protocol foundation**: ✅ Added TaskspaceRollCall and RegisterTaskspaceWindow message types across all codebases
 - **VSCode extension implementation**: ✅ Complete window registration flow with title handshake and roll-call handling
 - **Swift app broadcasting**: ✅ Re-register Windows button sends taskspace_roll_call for all taskspaces
 - **Swift message handling**: ✅ Basic register_taskspace_window message parsing and response structure
-- **Window scanning logic**: 🚧 Need to implement findWindowByExactTitle() using CGWindowListCopyWindowInfo
-- **Taskspace-window association storage**: 🚧 Need data structure to store taskspaceUuid -> windowID mappings
-- **End-to-end testing**: 🚧 Verify complete registration flow works
+- **Window scanning logic**: ✅ Implemented findWindowBySubstring() using CGWindowListCopyWindowInfo with substring matching
+- **Taskspace-window association storage**: ✅ Added [UUID: CGWindowID] dictionary in ProjectManager with validation
+- **Manual registration testing**: ✅ Complete registration flow verified working with successful window associations
+- **Automatic registration on extension startup**: 🚧 Extension should auto-register when it activates, not just on roll-call
 
-**Immediate Next Steps:**
-1. Implement `findWindowByExactTitle()` function in IpcManager using existing CGWindow patterns
-2. Add taskspace-window association storage (likely in ProjectManager or new WindowRegistry)
-3. Complete `handleRegisterTaskspaceWindow()` implementation to use window scanning
-4. Test complete flow: Re-register button → roll call → extension response → window found → association stored
+### 📋 Phase 2.9 - Window Screenshots: Visual Taskspace Previews
+- **Window screenshot capture**: Use CGWindowID to capture screenshots of registered VSCode windows
+- **Placeholder for disconnected taskspaces**: Show reload icon when no window is registered or window not found
+- **TaskspaceCard UI updates**: Integrate screenshots into existing card layout, possibly replacing or supplementing text preview
+- **Screenshot caching**: Cache screenshots to avoid excessive capture calls, refresh on window focus/activity
+- **Error handling**: Graceful fallback when screenshot capture fails (permissions, window minimized, etc.)
+- **Performance optimization**: Async screenshot capture to avoid blocking UI updates
 
-### 📋 Next Steps (Phase 3: Advanced Features)
+**Success Criteria:**
+- Connected taskspaces show live screenshots of their VSCode windows
+- Disconnected taskspaces show clear reload indicator
+- UI remains responsive during screenshot operations
+- Screenshots update appropriately when windows change
+
+### 📋 Phase 2.10 - Window Focus: Click to Bring Windows Forward
+- **TaskspaceCard click handler**: Add click action to bring associated windows to front
+- **Window focus implementation**: Use CGWindowID to focus/raise VSCode windows via CGS APIs
+- **Multi-window support**: Handle cases where taskspace has multiple associated windows
+- **Error handling**: Graceful fallback when window no longer exists or focus fails
+- **Visual feedback**: Show loading/focusing state during window operations
+
+### 📋 Phase 2.11 - Window Tiling: Optional Tile Mode
+- **Tile mode toggle**: Add UI control to enable/disable tiling for taskspaces
+- **Layout calculation**: Position taskspace preview on left, IDE window taking remaining screen space
+- **Window positioning**: Use existing CGS window management APIs for precise positioning
+- **Screen awareness**: Handle multiple monitors and screen resolution changes
+- **Persistence**: Remember tile mode preferences per taskspace
+
+### 📋 Phase 2.12 - Window Cleanup: Close IDE Windows on App Exit
+- **App termination handler**: Detect when Symposium app is closing
+- **Associated window cleanup**: Close all registered VSCode windows before app exit
+- **Graceful shutdown**: Allow VSCode to save work before forced closure
+- **User preference**: Optional setting to disable automatic window cleanup
+
+### 📋 Phase 3 - Enhanced Features: Advanced Functionality
 1. **Enhanced Activity Logs**: Expand log display, add timestamps, log history view
 2. **State Indicators**: Visual indicators for taskspace states (Hatchling, Resume, etc.)
 3. **Taskspace Lifecycle**: Add archived/paused/completed states
@@ -294,6 +327,7 @@ The following approaches are deliberately hacky for the MVP and will need proper
 ### 🧹 Future Cleanup Items
 - **TaskspaceId wrapper type**: Replace `UUID` with `TaskspaceId` wrapper for better type safety and clear intent in function signatures
 - **Window association persistence**: Consider persisting taskspace-window associations across app restarts
+- **Generalize Re-register Windows to Reload button**: Expand functionality to launch VSCode/agents for taskspaces that aren't running, not just re-register existing windows
 
 Then move to Phase 3 for full daemon communication and orchestration.
 

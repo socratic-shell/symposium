@@ -213,6 +213,23 @@ export class DaemonClient implements vscode.Disposable {
 
         // Send initial Marco message to announce presence
         this.sendMarco();
+
+        // Automatically register window if we're in a taskspace
+        this.attemptAutoRegistration();
+    }
+
+    private async attemptAutoRegistration(): Promise<void> {
+        try {
+            const taskspaceUuid = await this.detectTaskspaceUUID();
+            if (taskspaceUuid) {
+                this.outputChannel.appendLine(`[WINDOW REG] Auto-registering window for taskspace: ${taskspaceUuid}`);
+                await this.registerWindow(taskspaceUuid);
+            } else {
+                this.outputChannel.appendLine(`[WINDOW REG] Not in a taskspace, skipping auto-registration`);
+            }
+        } catch (error) {
+            this.outputChannel.appendLine(`[WINDOW REG] Auto-registration failed: ${error}`);
+        }
     }
 
 
