@@ -203,17 +203,17 @@ Define message types for daemon communication:
 
 The MVP is complete when:
 - [x] User can create/open Symposium projects
-- [ ] User can manually create new taskspaces with name/description/prompt
-- [ ] VSCode launches automatically for new taskspaces
+- [x] User can manually create new taskspaces with name/description/prompt
+- [x] VSCode launches automatically for new taskspaces
 - [ ] Taskspaces appear in project view with screenshots
 - [ ] User can focus taskspace windows by clicking in panel
-- [ ] VSCode taskspaces launch automatically with agent tools (via MCP)
-- [ ] Real-time progress logs appear in Symposium panel (via MCP)
+- [x] VSCode taskspaces launch automatically with agent tools (via MCP)
+- [x] Real-time progress logs appear in Symposium panel (via MCP)
 - [ ] `spawn_taskspace` MCP tool creates new taskspaces visible in panel
 - [ ] Basic window tiling works for active taskspaces
 
 **Phase 1 Status**: ✅ COMPLETE - Users can create and open .symposium projects with native macOS UI
-**Phase 2.3 Status**: 🔄 NEXT - Settings dialog with permissions and agent selection
+**Phase 2.7 Status**: ✅ COMPLETE - Activity logs now display in real-time via fixed UUID case sensitivity
 
 ## Technical Risks & Mitigations
 
@@ -262,8 +262,14 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **VSCode window isolation**: ✅ Each taskspace opens in separate VSCode window using 'code' command
 - **Error handling**: ✅ Proper error handling and logging for all IPC message types
 
+### ✅ Completed - Phase 2.7: Activity Logs Display
+- **UUID case sensitivity fix**: ✅ Fixed case-insensitive UUID comparisons for taskspace lookup
+- **Activity logs UI**: ✅ TaskspaceCard already displays last 3 logs with icons and messages
+- **Real-time log updates**: ✅ log_progress MCP tool now works correctly with UI updates
+- **Visual indicators**: ✅ Emoji icons for different log categories (info, warn, error, milestone, question)
+
 ### 📋 Next Steps (Phase 3: Advanced Features)
-1. **Activity Logs Display**: Show agent progress logs in taskspace cards UI
+1. **Enhanced Activity Logs**: Expand log display, add timestamps, log history view
 2. **State Indicators**: Visual indicators for taskspace states (Hatchling, Resume, etc.)
 3. **Taskspace Lifecycle**: Add archived/paused/completed states
 4. **Dock Integration**: Badge counts and notifications for user attention requests
