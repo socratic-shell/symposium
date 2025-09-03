@@ -67,7 +67,7 @@ struct SettingsView: View {
                     Text("AI Agent")
                         .font(.headline)
                     
-                    if agentManager.isScanning {
+                    if agentManager.scanningInProgress {
                         ProgressView()
                             .scaleEffect(0.7)
                     }
@@ -98,7 +98,7 @@ struct SettingsView: View {
                         )
                     }
                     
-                    if agentManager.availableAgents.isEmpty && !agentManager.isScanning {
+                    if agentManager.availableAgents.isEmpty && !agentManager.scanningInProgress {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)

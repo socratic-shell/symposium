@@ -11,7 +11,8 @@ struct ProjectView: View {
     }
     
     var body: some View {
-        if let project = projectManager.currentProject {
+        Group {
+            if let project = projectManager.currentProject {
             if ipcManager.isConnected {
                 // Show full project interface when daemon is connected
                 VStack {
@@ -128,6 +129,9 @@ struct ProjectView: View {
             Text("No project loaded")
                 .foregroundColor(.red)
         }
+        }
+        .frame(minWidth: 300, idealWidth: 400, maxWidth: 500)
+        .frame(minHeight: 400)
     }
     
     private func reregisterWindows() {
@@ -154,6 +158,13 @@ struct TaskspaceCard: View {
     
     private var hasRegisteredWindow: Bool {
         projectManager.getWindow(for: taskspace.id) != nil
+    }
+    
+    private var screenshotHeight: CGFloat {
+        guard let screen = NSScreen.main else { return 120 }
+        let screenAspectRatio = screen.frame.width / screen.frame.height
+        let baseWidth: CGFloat = 200 // Approximate width available for screenshot
+        return baseWidth / screenAspectRatio
     }
     
     var body: some View {
@@ -186,7 +197,7 @@ struct TaskspaceCard: View {
             // Screenshot placeholder
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.gray.opacity(0.1))
-                .frame(height: 120)
+                .frame(height: screenshotHeight)
                 .overlay(
                     VStack(spacing: 4) {
                         Image(systemName: hasRegisteredWindow ? "display" : "arrow.clockwise")
