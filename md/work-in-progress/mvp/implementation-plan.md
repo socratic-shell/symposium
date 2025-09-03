@@ -273,7 +273,7 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Real-time log updates**: ✅ log_progress MCP tool now works correctly with UI updates
 - **Visual indicators**: ✅ Emoji icons for different log categories (info, warn, error, milestone, question)
 
-### 🚧 Phase 2.8: Window Registration System (Nearly Complete)
+### ✅ Completed - Phase 2.8: Window Registration System
 - **IPC protocol foundation**: ✅ Added TaskspaceRollCall and RegisterTaskspaceWindow message types across all codebases
 - **VSCode extension implementation**: ✅ Complete window registration flow with title handshake and roll-call handling
 - **Swift app broadcasting**: ✅ Re-register Windows button sends taskspace_roll_call for all taskspaces
@@ -281,7 +281,7 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Window scanning logic**: ✅ Implemented findWindowBySubstring() using CGWindowListCopyWindowInfo with substring matching
 - **Taskspace-window association storage**: ✅ Added [UUID: CGWindowID] dictionary in ProjectManager with validation
 - **Manual registration testing**: ✅ Complete registration flow verified working with successful window associations
-- **Automatic registration on extension startup**: 🚧 Extension should auto-register when it activates, not just on roll-call
+- **Automatic registration on extension startup**: ✅ Extension auto-registers when it starts up if in taskspace
 
 ### 📋 Phase 2.9 - Window Screenshots: Visual Taskspace Previews
 - **Window screenshot capture**: Use CGWindowID to capture screenshots of registered VSCode windows

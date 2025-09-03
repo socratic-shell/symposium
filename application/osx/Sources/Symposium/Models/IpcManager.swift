@@ -439,7 +439,7 @@ class IpcManager: ObservableObject {
                     }
                     
                     if success {
-                        sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                        sendResponse(to: message.id, success: true, data: ["success": true])
                     } else {
                         sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Failed to associate window")
                     }
