@@ -195,7 +195,7 @@ Define message types for daemon communication:
 3. **Phase 2.3 - COMPLETE ✅**: Settings dialog with permissions and agent selection
 4. **Phase 2.5 - COMPLETE ✅**: Manual taskspace creation and VSCode integration
 5. **Phase 2.7 - COMPLETE ✅**: Activity logs display with real-time updates
-6. **Phase 2.8 - NEXT**: Window registration system for reliable window-taskspace association
+6. **Phase 2.8 - IN PROGRESS 🚧**: Window registration system for reliable window-taskspace association
 7. **Phase 3**: Enhanced features (state indicators, lifecycle management, dock integration)
 8. **Phase 4**: Advanced UI (enhanced logs, multi-project support, visual polish)
 9. **Phase 5**: Integration testing and deployment preparation
@@ -269,14 +269,20 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Real-time log updates**: ✅ log_progress MCP tool now works correctly with UI updates
 - **Visual indicators**: ✅ Emoji icons for different log categories (info, warn, error, milestone, question)
 
-### 📋 Phase 2.8: Window Registration System
-- **Window title handshake**: Implement temporary title modification for reliable window correlation
-- **Extend update_taskspace MCP tool**: Add optional `window_uuid` field for window registration
-- **Window enumeration in Swift app**: Use CGWindowListCopyWindowInfo to find windows by title pattern
-- **Taskspace roll-call broadcasts**: Periodic broadcasts for unregistered taskspaces to trigger re-registration
-- **IPC reply enhancement**: Extend existing reply mechanism with `window_registered` flag
-- **Extension window detection**: Implement title setting and restoration in VSCode extension
-- **Automatic recovery**: Timer-based roll-call system for self-healing window associations
+### 🚧 Phase 2.8: Window Registration System (In Progress)
+- **IPC protocol foundation**: ✅ Added TaskspaceRollCall and RegisterTaskspaceWindow message types across all codebases
+- **VSCode extension implementation**: ✅ Complete window registration flow with title handshake and roll-call handling
+- **Swift app broadcasting**: ✅ Re-register Windows button sends taskspace_roll_call for all taskspaces
+- **Swift message handling**: ✅ Basic register_taskspace_window message parsing and response structure
+- **Window scanning logic**: 🚧 Need to implement findWindowByExactTitle() using CGWindowListCopyWindowInfo
+- **Taskspace-window association storage**: 🚧 Need data structure to store taskspaceUuid -> windowID mappings
+- **End-to-end testing**: 🚧 Verify complete registration flow works
+
+**Immediate Next Steps:**
+1. Implement `findWindowByExactTitle()` function in IpcManager using existing CGWindow patterns
+2. Add taskspace-window association storage (likely in ProjectManager or new WindowRegistry)
+3. Complete `handleRegisterTaskspaceWindow()` implementation to use window scanning
+4. Test complete flow: Re-register button → roll call → extension response → window found → association stored
 
 ### 📋 Next Steps (Phase 3: Advanced Features)
 1. **Enhanced Activity Logs**: Expand log display, add timestamps, log history view

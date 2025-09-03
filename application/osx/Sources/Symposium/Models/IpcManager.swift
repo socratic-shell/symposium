@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreGraphics
 
 // MARK: - IPC Message Types
 
@@ -424,14 +425,42 @@ class IpcManager: ObservableObject {
                 let payload = try JSONDecoder().decode(RegisterTaskspaceWindowPayload.self, from: payloadData)
                 Logger.shared.log("IpcManager: Register window '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
                 
-                // TODO: Implement window registration logic
-                sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                if let windowID = findWindowByExactTitle(payload.windowTitle) {
+                    Logger.shared.log("IpcManager: Found window \(windowID) for taskspace \(payload.taskspaceUuid)")
+                    // TODO: Store taskspace-window association
+                    sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                } else {
+                    Logger.shared.log("IpcManager: Window not found with title: \(payload.windowTitle)")
+                    sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Window not found")
+                }
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse register_taskspace_window payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
+    }
+    
+    private func findWindowByExactTitle(_ targetTitle: String) -> CGWindowID? {
+        let options = CGWindowListOption([.optionOnScreenOnly, .excludeDesktopElements])
+        let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] ?? []
+        
+        for dict in windowList {
+            guard let windowID = dict[kCGWindowNumber as String] as? CGWindowID,
+                  dict[kCGWindowLayer as String] as? Int == 0  // Normal windows only
+            else {
+                continue
+            }
+            
+            // Get window title from CGWindow info
+            let title = dict[kCGWindowName as String] as? String ?? ""
+            
+            if title == targetTitle {
+                return windowID
+            }
+        }
+        
+        return nil
     }
     
     // MARK: - Response Sending (for delegates)
