@@ -57,6 +57,14 @@ struct ProjectView: View {
                     }
                 }
                 .disabled(projectManager.isLoading)
+                
+                Button(action: {
+                    reregisterWindows()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Re-register Windows")
+                .disabled(projectManager.isLoading)
             }
             .padding()
             .background(Color.gray.opacity(0.1))
@@ -116,6 +124,22 @@ struct ProjectView: View {
         } else {
             Text("No project loaded")
                 .foregroundColor(.red)
+        }
+    }
+    
+    private func reregisterWindows() {
+        guard let project = projectManager.currentProject else {
+            Logger.shared.log("ProjectView: No current project for window re-registration")
+            return
+        }
+        
+        Logger.shared.log("ProjectView: Re-registering windows for \(project.taskspaces.count) taskspaces")
+        
+        for taskspace in project.taskspaces {
+            // Send taskspace roll call message
+            let payload = TaskspaceRollCallPayload(taskspaceUuid: taskspace.id.uuidString)
+            ipcManager.sendBroadcastMessage(type: "taskspace_roll_call", payload: payload)
+            Logger.shared.log("ProjectView: Sent roll call for taskspace: \(taskspace.name)")
         }
     }
 }

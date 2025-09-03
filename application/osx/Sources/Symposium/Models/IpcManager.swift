@@ -484,4 +484,36 @@ class IpcManager: ObservableObject {
             Logger.shared.log("IpcManager: Failed to send response: \(error)")
         }
     }
+    
+    func sendBroadcastMessage<T: Codable>(type: String, payload: T) {
+        guard let inputPipe = self.inputPipe else {
+            Logger.shared.log("IpcManager: Cannot send broadcast message - no input pipe")
+            return
+        }
+        
+        do {
+            // Convert payload to JsonBlob
+            let encodedPayload = try JSONEncoder().encode(payload)
+            let jsonBlobPayload = try JSONDecoder().decode(JsonBlob.self, from: encodedPayload)
+            
+            let message = IPCMessage(
+                type: type,
+                payload: jsonBlobPayload,
+                id: UUID().uuidString,
+                shellPid: nil
+            )
+            
+            let messageData = try JSONEncoder().encode(message)
+            var messageString = String(data: messageData, encoding: .utf8) ?? ""
+            messageString += "\n"
+            
+            if let stringData = messageString.data(using: String.Encoding.utf8) {
+                inputPipe.fileHandleForWriting.write(stringData)
+                Logger.shared.log("IpcManager: Sent broadcast message: \(type)")
+            }
+            
+        } catch {
+            Logger.shared.log("IpcManager: Failed to send broadcast message: \(error)")
+        }
+    }
 }
