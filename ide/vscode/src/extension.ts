@@ -498,6 +498,23 @@ export class DaemonClient implements vscode.Disposable {
                     resolver(null);
                 }
             }
+        } else if (message.type === 'taskspace_roll_call') {
+            // Handle taskspace roll call - check if this is our taskspace and register window
+            try {
+                const rollCallPayload = message.payload as TaskspaceRollCallPayload;
+                this.outputChannel.appendLine(`[WINDOW REG] Received roll call for taskspace: ${rollCallPayload.taskspace_uuid}`);
+                
+                // Check if this roll call is for our taskspace
+                const currentTaskspaceUuid = await this.detectTaskspaceUUID();
+                if (currentTaskspaceUuid === rollCallPayload.taskspace_uuid) {
+                    this.outputChannel.appendLine(`[WINDOW REG] Roll call matches our taskspace, registering window`);
+                    await this.registerWindow(rollCallPayload.taskspace_uuid);
+                } else {
+                    this.outputChannel.appendLine(`[WINDOW REG] Roll call not for us (ours: ${currentTaskspaceUuid}, theirs: ${rollCallPayload.taskspace_uuid})`);
+                }
+            } catch (error) {
+                this.outputChannel.appendLine(`Error handling taskspace_roll_call: ${error}`);
+            }
         } else {
             // Forward compatibility: silently ignore unknown message types for our window
             // Only log if this was actually meant for us (not a broadcast)
@@ -699,6 +716,62 @@ export class DaemonClient implements vscode.Disposable {
             this.clientProcess.stdin.write(JSON.stringify(responseMessage) + '\n');
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send response: ${error}`);
+        }
+    }
+
+    private async detectTaskspaceUUID(): Promise<string | null> {
+        return getCurrentTaskspaceUuid();
+    }
+
+    private async registerWindow(taskspaceUuid: string): Promise<void> {
+        try {
+            // Generate unique window identifier
+            const windowUUID = crypto.randomUUID();
+            
+            // Get current window title
+            const config = vscode.workspace.getConfiguration();
+            const originalTitle = config.get<string>('window.title') || '';
+            
+            // Set temporary title with unique identifier
+            const tempTitle = `[SYMPOSIUM:${windowUUID}] ${originalTitle}`;
+            await config.update('window.title', tempTitle, vscode.ConfigurationTarget.Workspace);
+            
+            this.outputChannel.appendLine(`[WINDOW REG] Set temporary title: ${tempTitle}`);
+            
+            // Send registration message to Swift app
+            const payload: RegisterTaskspaceWindowPayload = {
+                window_title: tempTitle,
+                taskspace_uuid: taskspaceUuid
+            };
+            
+            const registrationMessage: IPCMessage = {
+                type: 'register_taskspace_window',
+                payload: payload,
+                id: crypto.randomUUID(),
+                shellPid: 0
+            };
+            
+            if (this.clientProcess && !this.clientProcess.killed) {
+                this.clientProcess.stdin.write(JSON.stringify(registrationMessage) + '\n');
+                this.outputChannel.appendLine(`[WINDOW REG] Sent registration message for taskspace: ${taskspaceUuid}`);
+                
+                // Set timeout to restore title after 5 seconds
+                setTimeout(async () => {
+                    try {
+                        await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
+                        this.outputChannel.appendLine(`[WINDOW REG] Restored original title after timeout`);
+                    } catch (error) {
+                        this.outputChannel.appendLine(`[WINDOW REG] Error restoring title: ${error}`);
+                    }
+                }, 5000);
+            } else {
+                this.outputChannel.appendLine(`[WINDOW REG] Cannot send registration - client process not available`);
+                // Restore title immediately if we can't send the message
+                await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
+            }
+            
+        } catch (error) {
+            this.outputChannel.appendLine(`[WINDOW REG] Error during window registration: ${error}`);
         }
     }
 
