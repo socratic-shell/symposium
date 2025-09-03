@@ -42,10 +42,10 @@ sequenceDiagram
     V->>E: Extension activates
     E->>E: Generate windowUUID
     E->>V: Set title "[SYMPOSIUM:windowUUID] originalTitle"
-    E->>S: IPC: update_taskspace {name, description, window_uuid}
-    S->>S: Scan windows for "[SYMPOSIUM:windowUUID]"
+    E->>S: IPC: register_taskspace_window {window_title, taskspace_uuid}
+    S->>S: Scan windows for exact title match
     S->>S: Associate found window with taskspaceUUID
-    S->>E: IPC Reply: {success: true, window_registered: true}
+    S->>E: IPC Reply: {success: true}
     E->>V: Restore original title
 ```
 
@@ -61,44 +61,41 @@ sequenceDiagram
     E->>E: Receive broadcast, check if our taskspace
     E->>E: Generate windowUUID
     E->>V: Set title "[SYMPOSIUM:windowUUID] originalTitle"
-    E->>S: IPC: update_taskspace {name, description, window_uuid}
+    E->>S: IPC: register_taskspace_window {window_title, taskspace_uuid}
     S->>V: Launch `code` (brings window to front)
-    S->>S: Scan windows for "[SYMPOSIUM:windowUUID]"
+    S->>S: Scan windows for exact title match
     S->>S: Associate found window with taskspaceUUID
-    S->>E: IPC Reply: {success: true, window_registered: true}
+    S->>E: IPC Reply: {success: true}
     E->>V: Restore original title
 ```
 
 ## IPC Message Protocol
 
-### Leverage Existing Message Types
+### Dedicated Window Registration Message
 
-Rather than creating new message types, window registration piggybacks on existing IPC messages using the established request/response pattern.
+Window registration uses a dedicated message type to maintain clean separation of concerns.
 
 ```typescript
-// Extend existing message with window registration
-UpdateTaskspacePayload {
-  name: string,
-  description: string,
-  window_uuid?: string  // Optional field for window registration
+// New message type for window registration
+RegisterTaskspaceWindowPayload {
+  window_title: string,      // Full window title including unique identifier
+  taskspace_uuid: string     // UUID of the taskspace to associate
 }
 
-// Use existing IPC reply mechanism
+// Standard IPC reply mechanism
 IpcReply {
   success: boolean,
-  error?: string,
-  window_registered?: boolean  // Indicates window was found and associated
+  error?: string
 }
 ```
 
-### Message Flow Integration
+### Message Flow
 
-Window registration uses the existing `update_taskspace` message flow:
-
-1. **Extension**: Generate `windowUUID`, set title, send `update_taskspace` with `window_uuid` field
-2. **Swift App**: Process taskspace update AND search for window with title containing `windowUUID`
-3. **Swift App**: Reply using existing IPC reply mechanism with `window_registered: true`
-4. **Extension**: Receive reply via existing callback, restore title
+1. **Extension**: Generate `windowUUID`, set title to `[SYMPOSIUM:${windowUUID}] ${originalTitle}`
+2. **Extension**: Send `register_taskspace_window` with full window title and taskspace UUID
+3. **Swift App**: Search for window with exact title match
+4. **Swift App**: Reply with success/failure using standard IPC reply mechanism
+5. **Extension**: Receive reply, restore original title
 
 ## Implementation Details
 
@@ -118,14 +115,14 @@ class WindowRegistration {
     this.originalTitle = config.get<string>('window.title') || '';
     
     // Set temporary title
-    await config.update('window.title', 
-      `[SYMPOSIUM:${windowUUID}] ${this.originalTitle}`, 
+    const tempTitle = `[SYMPOSIUM:${windowUUID}] ${this.originalTitle}`;
+    await config.update('window.title', tempTitle, 
       vscode.ConfigurationTarget.Workspace);
     
     // Send registration message
     this.sendIPC({
-      type: 'register-window',
-      window_uuid: windowUUID,
+      type: 'register_taskspace_window',
+      window_title: tempTitle,
       taskspace_uuid: taskspaceUUID
     });
     
@@ -135,7 +132,7 @@ class WindowRegistration {
     }, 5000);
   }
 
-  onWindowRegistered(response: WindowRegisteredPayload) {
+  onWindowRegistered(response: IpcReply) {
     clearTimeout(this.registrationTimeout);
     this.restoreTitle();
   }
@@ -151,19 +148,17 @@ class WindowRegistration {
 ### Swift App Side
 
 ```swift
-func handleRegisterWindow(_ payload: RegisterWindowPayload) {
-    let windowTitle = "[SYMPOSIUM:\(payload.windowUuid)]"
-    
-    // Scan all windows for the title
-    if let window = findWindowByTitle(containing: windowTitle) {
+func handleRegisterTaskspaceWindow(_ payload: RegisterTaskspaceWindowPayload) {
+    // Search for window with exact title match
+    if let window = findWindowByTitle(exact: payload.windowTitle) {
         // Associate window with taskspace
         taskspaceWindows[payload.taskspaceUuid] = window
         
         // Respond with success
-        sendIPC(WindowRegisteredPayload(success: true))
+        sendIPC(IpcReply(success: true))
     } else {
-        // Window not found - could retry or fail
-        sendIPC(WindowRegisteredPayload(success: false, error: "Window not found"))
+        // Window not found
+        sendIPC(IpcReply(success: false, error: "Window not found"))
     }
 }
 
@@ -217,9 +212,9 @@ func startPeriodicWindowRecovery() {
 
 ### Required Changes
 
-1. **MCP Server**: Add IPC message types for window registration
+1. **MCP Server**: Add `register_taskspace_window` message type to IPC protocol
 2. **VSCode Extension**: Implement window registration logic and broadcast listening
-3. **Swift App**: Add window scanning and association logic
+3. **Swift App**: Add window scanning with exact title matching and association logic
 4. **UI**: Add "Re-register windows" button for manual recovery
 
 ### Backward Compatibility
