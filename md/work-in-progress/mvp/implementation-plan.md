@@ -249,12 +249,25 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Agent auto-launch**: ✅ VSCode extension detects taskspaces and launches AI agents
 - **Taskspace updates**: ✅ AI agents can update taskspace name/description via MCP tools
 - **UI updates**: ✅ Symposium app reflects taskspace changes in real-time
+- **Auto-launch on load**: ✅ VSCode windows open automatically for active taskspaces when loading projects
+- **State transitions**: ✅ Taskspaces automatically transition from Hatchling to Resume on first agent activity
+- **Persistence**: ✅ All taskspace changes (name, description, state) persist to disk in taskspace.json
+- **MCP communication**: ✅ Fixed JSON payload parsing for snake_case/camelCase mismatch
+- **VSCode launching**: ✅ Improved to use 'code' command with fallback, separate windows per taskspace
 
-### 📋 Next Steps (Phase 2.6: UI Polish)
-1. **Taskspace Display Improvements**: Better visual design for taskspace cards
-2. **Activity Logs**: Show agent activity and progress in taskspace cards  
-3. **State Indicators**: Visual indicators for taskspace states (Hatchling, Active, etc.)
-4. **Error Handling**: Better error messages and recovery flows
+### ✅ Completed - Phase 2.6: Core Bug Fixes & Polish
+- **JSON payload parsing**: ✅ Fixed snake_case/camelCase mismatch between MCP server and Swift app
+- **State transition timing**: ✅ Fixed Hatchling→Resume transitions to happen in same update cycle
+- **Taskspace persistence**: ✅ Added missing save() calls to persist update_taskspace changes
+- **VSCode window isolation**: ✅ Each taskspace opens in separate VSCode window using 'code' command
+- **Error handling**: ✅ Proper error handling and logging for all IPC message types
+
+### 📋 Next Steps (Phase 3: Advanced Features)
+1. **Activity Logs Display**: Show agent progress logs in taskspace cards UI
+2. **State Indicators**: Visual indicators for taskspace states (Hatchling, Resume, etc.)
+3. **Taskspace Lifecycle**: Add archived/paused/completed states
+4. **Dock Integration**: Badge counts and notifications for user attention requests
+5. **Multi-project Support**: Handle multiple projects simultaneously
 
 Then move to Phase 3 for full daemon communication and orchestration.
 
