@@ -738,40 +738,42 @@ export class DaemonClient implements vscode.Disposable {
             
             this.outputChannel.appendLine(`[WINDOW REG] Set temporary title: ${tempTitle}`);
             
-            // Send registration message to Swift app
+            // Send registration message to Swift app using existing helper
             const payload: RegisterTaskspaceWindowPayload = {
                 window_title: tempTitle,
                 taskspace_uuid: taskspaceUuid
             };
             
-            const registrationMessage: IPCMessage = {
-                type: 'register_taskspace_window',
-                payload: payload,
-                id: crypto.randomUUID(),
-                shellPid: 0
-            };
+            // Use existing sendRequest helper with timeout
+            const response = await this.sendRequest<{success: boolean}>('register_taskspace_window', payload, 5000);
             
-            if (this.clientProcess && !this.clientProcess.killed) {
-                this.clientProcess.stdin.write(JSON.stringify(registrationMessage) + '\n');
-                this.outputChannel.appendLine(`[WINDOW REG] Sent registration message for taskspace: ${taskspaceUuid}`);
-                
-                // Set timeout to restore title after 5 seconds
-                setTimeout(async () => {
-                    try {
-                        await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
-                        this.outputChannel.appendLine(`[WINDOW REG] Restored original title after timeout`);
-                    } catch (error) {
-                        this.outputChannel.appendLine(`[WINDOW REG] Error restoring title: ${error}`);
-                    }
-                }, 5000);
+            if (response?.success) {
+                this.outputChannel.appendLine(`[WINDOW REG] Successfully registered window for taskspace: ${taskspaceUuid}`);
             } else {
-                this.outputChannel.appendLine(`[WINDOW REG] Cannot send registration - client process not available`);
-                // Restore title immediately if we can't send the message
-                await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
+                this.outputChannel.appendLine(`[WINDOW REG] Failed to register window for taskspace: ${taskspaceUuid}`);
             }
+            
+            // Restore original title
+            await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
+            this.outputChannel.appendLine(`[WINDOW REG] Restored original title`);
             
         } catch (error) {
             this.outputChannel.appendLine(`[WINDOW REG] Error during window registration: ${error}`);
+            
+            // Ensure title is restored even on error
+            try {
+                const config = vscode.workspace.getConfiguration();
+                const originalTitle = config.get<string>('window.title') || '';
+                if (originalTitle.includes('[SYMPOSIUM:')) {
+                    // Extract original title from temporary title
+                    const match = originalTitle.match(/^\[SYMPOSIUM:[^\]]+\] (.*)$/);
+                    if (match) {
+                        await config.update('window.title', match[1], vscode.ConfigurationTarget.Workspace);
+                    }
+                }
+            } catch (restoreError) {
+                this.outputChannel.appendLine(`[WINDOW REG] Error restoring title: ${restoreError}`);
+            }
         }
     }
 
