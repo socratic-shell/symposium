@@ -90,6 +90,24 @@ struct SignalUserPayload: Codable {
     }
 }
 
+struct TaskspaceRollCallPayload: Codable {
+    let taskspaceUuid: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case taskspaceUuid = "taskspace_uuid"
+    }
+}
+
+struct RegisterTaskspaceWindowPayload: Codable {
+    let windowTitle: String
+    let taskspaceUuid: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case windowTitle = "window_title"
+        case taskspaceUuid = "taskspace_uuid"
+    }
+}
+
 // MARK: - IPC Message Handling Protocol
 
 /// Result of attempting to handle an IPC message
@@ -253,6 +271,10 @@ class IpcManager: ObservableObject {
                 handleLogProgress(message: message)
             case "signal_user":
                 handleSignalUser(message: message)
+            case "taskspace_roll_call":
+                handleTaskspaceRollCall(message: message)
+            case "register_taskspace_window":
+                handleRegisterTaskspaceWindow(message: message)
             default:
                 Logger.shared.log("IpcManager: Unknown message type: \(message.type)")
             }
@@ -392,6 +414,40 @@ class IpcManager: ObservableObject {
                 
             } catch {
                 Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
+            }
+        }
+    }
+    
+    private func handleTaskspaceRollCall(message: IPCMessage) {
+        Task {
+            do {
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(TaskspaceRollCallPayload.self, from: payloadData)
+                Logger.shared.log("IpcManager: Taskspace roll call for \(payload.taskspaceUuid)")
+                
+                // TODO: Implement taskspace roll call logic
+                sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse taskspace_roll_call payload: \(error)")
+                sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
+            }
+        }
+    }
+    
+    private func handleRegisterTaskspaceWindow(message: IPCMessage) {
+        Task {
+            do {
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(RegisterTaskspaceWindowPayload.self, from: payloadData)
+                Logger.shared.log("IpcManager: Register window '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
+                
+                // TODO: Implement window registration logic
+                sendResponse(to: message.id, success: true, data: nil as EmptyResponse?)
+                
+            } catch {
+                Logger.shared.log("IpcManager: Failed to parse register_taskspace_window payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }

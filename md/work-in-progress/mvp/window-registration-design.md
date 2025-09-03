@@ -71,18 +71,18 @@ sequenceDiagram
 
 ## IPC Message Protocol
 
-### Dedicated Window Registration Message
+### Direct Extension-to-Swift App Communication
 
-Window registration uses a dedicated message type to maintain clean separation of concerns.
+Window registration uses direct IPC between the VSCode extension and Swift app, bypassing the MCP server entirely.
 
 ```typescript
-// New message type for window registration
+// Message sent by VSCode extension to Swift app
 RegisterTaskspaceWindowPayload {
   window_title: string,      // Full window title including unique identifier
   taskspace_uuid: string     // UUID of the taskspace to associate
 }
 
-// Standard IPC reply mechanism
+// Reply sent by Swift app back to extension
 IpcReply {
   success: boolean,
   error?: string
@@ -92,9 +92,9 @@ IpcReply {
 ### Message Flow
 
 1. **Extension**: Generate `windowUUID`, set title to `[SYMPOSIUM:${windowUUID}] ${originalTitle}`
-2. **Extension**: Send `register_taskspace_window` with full window title and taskspace UUID
+2. **Extension**: Send `register_taskspace_window` message directly to Swift app
 3. **Swift App**: Search for window with exact title match
-4. **Swift App**: Reply with success/failure using standard IPC reply mechanism
+4. **Swift App**: Reply directly to extension with success/failure
 5. **Extension**: Receive reply, restore original title
 
 ## Implementation Details
@@ -212,10 +212,9 @@ func startPeriodicWindowRecovery() {
 
 ### Required Changes
 
-1. **MCP Server**: Add `register_taskspace_window` message type to IPC protocol
-2. **VSCode Extension**: Implement window registration logic and broadcast listening
-3. **Swift App**: Add window scanning with exact title matching and association logic
-4. **UI**: Add "Re-register windows" button for manual recovery
+1. **VSCode Extension**: Implement window registration logic and broadcast listening
+2. **Swift App**: Add `register_taskspace_window` message handling, window scanning with exact title matching, and association logic
+3. **UI**: Add "Re-register windows" button for manual recovery
 
 ### Backward Compatibility
 - Existing taskspaces continue to work without window association

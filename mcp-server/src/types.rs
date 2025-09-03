@@ -179,6 +179,10 @@ pub enum IPCMessageType {
     SignalUser,
     /// Update taskspace name and description
     UpdateTaskspace,
+    /// Broadcast to discover active taskspaces for window registration
+    TaskspaceRollCall,
+    /// Register VSCode window with taskspace
+    RegisterTaskspaceWindow,
 }
 
 // ANCHOR: store_reference_payload

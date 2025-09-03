@@ -15,8 +15,8 @@ import { StructuredLogger } from './structuredLogger';
 // 💡: Types for IPC communication with MCP server
 interface IPCMessage {
     shellPid: number;
-    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | unknown; // unknown allows any payload
+    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | 'taskspace_roll_call' | 'register_taskspace_window' | string; // string allows unknown types
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
     id: string;
 }
 
@@ -88,6 +88,15 @@ interface StoreReferencePayload {
 interface PresentWalkthroughPayload {
     content: string;  // HTML content with resolved XML elements
     base_uri: string;
+}
+
+interface TaskspaceRollCallPayload {
+    taskspace_uuid: string;
+}
+
+interface RegisterTaskspaceWindowPayload {
+    window_title: string;
+    taskspace_uuid: string;
 }
 
 type WalkthroughElement =
