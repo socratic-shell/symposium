@@ -62,6 +62,11 @@
         "title": "Toggle Comments",
         "category": "Symposium",
         "icon": "$(comment)"
+      },
+      {
+        "command": "symposium.toggleWindowTitle",
+        "title": "Toggle Window Title",
+        "category": "Symposium"
       }
     ],
     "viewsContainers": {

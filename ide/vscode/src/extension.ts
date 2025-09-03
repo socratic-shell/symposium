@@ -1183,7 +1183,25 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('PID information logged to Symposium output channel');
     });
 
-    context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, syntheticPRProvider, daemonClient);
+    // Window title toggle command for POC
+    const toggleWindowTitleCommand = vscode.commands.registerCommand('symposium.toggleWindowTitle', async () => {
+        const config = vscode.workspace.getConfiguration();
+        const currentTitle = config.get<string>('window.title') || '';
+        
+        if (currentTitle.startsWith('[symposium] ')) {
+            // Remove the prefix
+            const newTitle = currentTitle.replace('[symposium] ', '');
+            await config.update('window.title', newTitle, vscode.ConfigurationTarget.Workspace);
+            vscode.window.showInformationMessage('Removed [symposium] from window title');
+        } else {
+            // Add the prefix
+            const newTitle = `[symposium] ${currentTitle}`;
+            await config.update('window.title', newTitle, vscode.ConfigurationTarget.Workspace);
+            vscode.window.showInformationMessage('Added [symposium] to window title');
+        }
+    });
+
+    context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, syntheticPRProvider, daemonClient, toggleWindowTitleCommand);
 
     // Return API for Ask Socratic Shell integration
     return {
