@@ -37,15 +37,15 @@ sequenceDiagram
     participant V as VSCode (New)
     participant E as Extension
 
-    S->>S: Broadcast will-open-taskspace
+    S->>S: Broadcast taskspace-roll-call
     S->>V: Launch `code /taskspace/path`
     V->>E: Extension activates
     E->>E: Generate windowUUID
     E->>V: Set title "[SYMPOSIUM:windowUUID] originalTitle"
-    E->>S: IPC: register-window {windowUUID, taskspaceUUID}
+    E->>S: IPC: update_taskspace {name, description, window_uuid}
     S->>S: Scan windows for "[SYMPOSIUM:windowUUID]"
     S->>S: Associate found window with taskspaceUUID
-    S->>E: IPC: window-registered {success: true}
+    S->>E: IPC Reply: {success: true, window_registered: true}
     E->>V: Restore original title
 ```
 
@@ -57,45 +57,48 @@ sequenceDiagram
     participant V as VSCode (Existing)
     participant E as Extension
 
-    S->>S: Broadcast will-open-taskspace {taskspaceUUID}
+    S->>S: Broadcast taskspace-roll-call {taskspaceUUID}
     E->>E: Receive broadcast, check if our taskspace
     E->>E: Generate windowUUID
     E->>V: Set title "[SYMPOSIUM:windowUUID] originalTitle"
-    E->>S: IPC: register-window {windowUUID, taskspaceUUID}
+    E->>S: IPC: update_taskspace {name, description, window_uuid}
     S->>V: Launch `code` (brings window to front)
     S->>S: Scan windows for "[SYMPOSIUM:windowUUID]"
     S->>S: Associate found window with taskspaceUUID
-    S->>E: IPC: window-registered {success: true}
+    S->>E: IPC Reply: {success: true, window_registered: true}
     E->>V: Restore original title
 ```
 
 ## IPC Message Protocol
 
-### New Message Types
+### Leverage Existing Message Types
+
+Rather than creating new message types, window registration piggybacks on existing IPC messages using the established request/response pattern.
 
 ```typescript
-// Broadcast message (fire-and-forget)
-WillOpenTaskspacePayload {
-  taskspace_uuid: string
+// Extend existing message with window registration
+UpdateTaskspacePayload {
+  name: string,
+  description: string,
+  window_uuid?: string  // Optional field for window registration
 }
 
-// Request/response pair
-RegisterWindowPayload {
-  window_uuid: string,
-  taskspace_uuid: string
-}
-
-WindowRegisteredPayload {
+// Use existing IPC reply mechanism
+IpcReply {
   success: boolean,
-  error?: string
+  error?: string,
+  window_registered?: boolean  // Indicates window was found and associated
 }
 ```
 
-### Message Routing
+### Message Flow Integration
 
-- **will-open-taskspace**: Broadcast to all listening extensions
-- **register-window**: Sent from extension to Swift app
-- **window-registered**: Response from Swift app to extension
+Window registration uses the existing `update_taskspace` message flow:
+
+1. **Extension**: Generate `windowUUID`, set title, send `update_taskspace` with `window_uuid` field
+2. **Swift App**: Process taskspace update AND search for window with title containing `windowUUID`
+3. **Swift App**: Reply using existing IPC reply mechanism with `window_registered: true`
+4. **Extension**: Receive reply via existing callback, restore title
 
 ## Implementation Details
 
@@ -171,6 +174,18 @@ func openTaskspace(_ taskspace: Taskspace) {
     // Launch VSCode
     launchCode(taskspace.directoryPath)
 }
+
+// Periodic recovery for unregistered taskspaces
+func startPeriodicWindowRecovery() {
+    Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { _ in
+        for taskspace in currentProject?.taskspaces ?? [] {
+            if taskspaceWindows[taskspace.uuid] == nil {
+                // No window registered - broadcast to trigger re-registration
+                broadcastIPC(WillOpenTaskspacePayload(taskspaceUuid: taskspace.uuid))
+            }
+        }
+    }
+}
 ```
 
 ## Edge Cases and Error Handling
@@ -181,15 +196,16 @@ func openTaskspace(_ taskspace: Taskspace) {
 
 ### Duplicate Registration
 - **Harmless duplicates**: Multiple registrations for same taskspace are safe
-- **Extension triggers**: Both activation and will-open-taskspace can trigger registration
+- **Extension triggers**: Both activation and taskspace-roll-call can trigger registration
 
-### Window Not Found
-- **Retry logic**: Swift app could retry window scanning after brief delay
-- **Fallback**: Extension restores title and logs error
+### Automatic Recovery
+- **Periodic broadcasts**: Swift app periodically (every 30 seconds) sends `taskspace-roll-call` for taskspaces with no associated windows
+- **Self-healing**: Extensions automatically re-register when they receive broadcasts for their taskspace
+- **Robust to failures**: System recovers from VSCode crashes, extension reloads, or missed registrations
 
 ### Re-registration Support
 - **Manual trigger**: "Re-register windows" button in Swift app
-- **Broadcast approach**: Send will-open-taskspace for each active taskspace
+- **Broadcast approach**: Send taskspace-roll-call for each active taskspace
 - **Bulk operation**: All listening extensions re-register simultaneously
 
 ## Integration with Existing MVP
