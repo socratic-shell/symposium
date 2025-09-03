@@ -34,7 +34,7 @@ struct SplashView: View {
                             Logger.shared.log(
                                 "SplashView: Showing SettingsView - missing permissions")
                         }
-                } else if !agentManager.agentsAvailable && agentManager.scanningInProgress {
+                } else if !agentManager.scanningCompleted && agentManager.scanningInProgress {
                     // Show loading while scanning agents
                     VStack(spacing: 16) {
                         ProgressView()
@@ -54,11 +54,15 @@ struct SplashView: View {
                     ProjectSelectionView(
                         onProjectCreated: { projectManager in
                             Logger.shared.log("SplashView: Project created, opening project window")
-                            Logger.shared.log("SplashView: ProjectManager currentProject: \(projectManager.currentProject?.name ?? "nil")")
+                            Logger.shared.log(
+                                "SplashView: ProjectManager currentProject: \(projectManager.currentProject?.name ?? "nil")"
+                            )
                             if let projectPath = projectManager.currentProject?.directoryPath {
-                                Logger.shared.log("SplashView: Opening project window with path: \(projectPath)")
+                                Logger.shared.log(
+                                    "SplashView: Opening project window with path: \(projectPath)")
                                 openWindow(id: "project", value: projectPath)
-                                Logger.shared.log("SplashView: Called openWindow, now dismissing splash")
+                                Logger.shared.log(
+                                    "SplashView: Called openWindow, now dismissing splash")
                                 dismiss()
                             } else {
                                 Logger.shared.log("SplashView: ERROR - No project path available!")
@@ -77,9 +81,11 @@ struct SplashView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .onAppear {
-            Logger.shared.log("SplashView appeared")
-            checkForLastProject()
+        .onChange(of: agentManager.scanningCompleted) { completed in
+            if completed {
+                Logger.shared.log("SplashView: Agent scanning completed, checking for last project")
+                checkForLastProject()
+            }
         }
     }
 
@@ -94,13 +100,13 @@ struct SplashView: View {
             "SplashView: checkForLastProject - hasScreenRecording: \(permissionManager.hasScreenRecordingPermission)"
         )
         Logger.shared.log(
-            "SplashView: checkForLastProject - agentsAvailable: \(agentManager.agentsAvailable)")
+            "SplashView: checkForLastProject - agentsAvailable: \(agentManager.scanningCompleted)")
 
         // If we have a valid last project and permissions are OK, open it directly
         if !settingsManager.lastProjectPath.isEmpty,
             permissionManager.hasAccessibilityPermission,
             permissionManager.hasScreenRecordingPermission,
-            agentManager.agentsAvailable
+            agentManager.scanningCompleted
         {
 
             Logger.shared.log(
