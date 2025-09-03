@@ -6,7 +6,6 @@ struct SettingsView: View {
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     @Environment(\.dismiss) private var dismiss
-    @State private var showingDebugAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -80,14 +79,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    
-                    if !agentManager.debugOutput.isEmpty {
-                        Button("Debug") {
-                            showingDebugAlert = true
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
                 }
                 
                 Text("Choose which AI agent to use for taskspaces:")
@@ -149,15 +140,6 @@ struct SettingsView: View {
         .onAppear {
             permissionManager.checkAllPermissions()
             agentManager.scanForAgents()
-        }
-        .alert("Debug Output", isPresented: $showingDebugAlert) {
-            Button("Copy") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(agentManager.debugOutput, forType: .string)
-            }
-            Button("OK") { }
-        } message: {
-            Text(agentManager.debugOutput)
         }
     }
     
