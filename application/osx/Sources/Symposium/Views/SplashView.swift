@@ -28,6 +28,9 @@ struct SplashView: View {
                 if !permissionManager.hasAccessibilityPermission || !permissionManager.hasScreenRecordingPermission {
                     // Show settings if required permissions are missing
                     SettingsView()
+                        .onAppear {
+                            Logger.shared.log("SplashView: Showing SettingsView - missing permissions")
+                        }
                 } else if agentManager.isScanning {
                     // Show loading while scanning agents
                     VStack(spacing: 16) {
@@ -39,6 +42,9 @@ struct SplashView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        Logger.shared.log("SplashView: Showing agent scanning - isScanning: \(agentManager.isScanning)")
+                    }
                 } else {
                     ProjectSelectionView(
                         onProjectCreated: { projectManager in
@@ -49,6 +55,9 @@ struct SplashView: View {
                             }
                         }
                     )
+                    .onAppear {
+                        Logger.shared.log("SplashView: Showing ProjectSelectionView - permissions OK, scanning done")
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,6 +72,11 @@ struct SplashView: View {
     }
     
     private func checkForLastProject() {
+        Logger.shared.log("SplashView: checkForLastProject - lastProjectPath: '\(settingsManager.lastProjectPath)'")
+        Logger.shared.log("SplashView: checkForLastProject - hasAccessibility: \(permissionManager.hasAccessibilityPermission)")
+        Logger.shared.log("SplashView: checkForLastProject - hasScreenRecording: \(permissionManager.hasScreenRecordingPermission)")
+        Logger.shared.log("SplashView: checkForLastProject - isScanning: \(agentManager.isScanning)")
+        
         // If we have a valid last project and permissions are OK, open it directly
         if !settingsManager.lastProjectPath.isEmpty,
            permissionManager.hasAccessibilityPermission,
@@ -72,6 +86,8 @@ struct SplashView: View {
             Logger.shared.log("SplashView: Found last project, opening directly: \(settingsManager.lastProjectPath)")
             openWindow(id: "project", value: settingsManager.lastProjectPath)
             dismiss()
+        } else {
+            Logger.shared.log("SplashView: Not opening last project - staying on splash")
         }
     }
 }
