@@ -4,9 +4,9 @@ import Foundation
 enum AgentType: String, CaseIterable, Identifiable {
     case qcli = "qcli"
     case claude = "claude"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .qcli: return "Amazon Q CLI"
@@ -21,10 +21,17 @@ class AgentManager: ObservableObject {
     @Published var scanningInProgress = false
 
     init() {
-        scanForAgents()
+        Logger.shared.log("AgentManager: Created")
+        scanForAgents(force: false)
     }
 
-    func scanForAgents() {
+    func scanForAgents(force: Bool) {
+        if !force {
+            if self.scanningInProgress || self.scanningCompleted {
+                return
+            }
+        }
+
         Logger.shared.log("AgentManager: Starting agent scan...")
         self.scanningInProgress = true
 
@@ -302,7 +309,7 @@ struct AgentInfo: Identifiable {
     let isInstalled: Bool
     let isMCPConfigured: Bool
     let mcpServerPath: String?
-    
+
     var id: String { type.id }
 
     var statusText: String {

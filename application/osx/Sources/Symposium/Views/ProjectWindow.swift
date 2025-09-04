@@ -2,15 +2,31 @@ import SwiftUI
 
 struct ProjectWindow: View {
     let projectPath: String
-    @StateObject private var projectManager: ProjectManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     
-    init(projectPath: String) {
+    var body: some View {
+        ProjectWindowContent(
+            projectPath: projectPath,
+            agentManager: agentManager,
+            settingsManager: settingsManager
+        )
+    }
+}
+
+private struct ProjectWindowContent: View {
+    let projectPath: String
+    let agentManager: AgentManager
+    let settingsManager: SettingsManager
+    
+    @StateObject private var projectManager: ProjectManager
+    
+    init(projectPath: String, agentManager: AgentManager, settingsManager: SettingsManager) {
         self.projectPath = projectPath
-        // Initialize ProjectManager for this specific project
-        let agentManager = AgentManager()
-        let settingsManager = SettingsManager()
+        self.agentManager = agentManager
+        self.settingsManager = settingsManager
+        
+        // Now we can properly initialize with the actual objects
         self._projectManager = StateObject(wrappedValue: ProjectManager(
             agentManager: agentManager,
             settingsManager: settingsManager,
@@ -22,11 +38,9 @@ struct ProjectWindow: View {
         ProjectView(projectManager: projectManager)
             .onAppear {
                 Logger.shared.log("ProjectWindow appeared for path: \(projectPath)")
-                Logger.shared.log("ProjectWindow: About to call loadProject()")
                 loadProject()
             }
     }
-    
     private func loadProject() {
         Logger.shared.log("ProjectWindow: loadProject() called for path: \(projectPath)")
         do {

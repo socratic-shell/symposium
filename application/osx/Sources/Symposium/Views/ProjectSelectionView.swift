@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ProjectSelectionView: View {
     @EnvironmentObject var permissionManager: PermissionManager
@@ -8,20 +8,24 @@ struct ProjectSelectionView: View {
     let onProjectCreated: (ProjectManager) -> Void
     @State private var showingNewProjectDialog = false
     @State private var showingOpenProjectDialog = false
-    
+
     private var hasValidAgent: Bool {
-        agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?.isInstalled == true &&
-        agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?.isMCPConfigured == true
+        agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?
+            .isInstalled == true
+            && agentManager.availableAgents.first(where: {
+                $0.type == settingsManager.selectedAgent
+            })?.isMCPConfigured == true
     }
-    
+
     private var hasRequiredPermissions: Bool {
-        permissionManager.hasAccessibilityPermission && permissionManager.hasScreenRecordingPermission
+        permissionManager.hasAccessibilityPermission
+            && permissionManager.hasScreenRecordingPermission
     }
-    
+
     private var canCreateProjects: Bool {
         hasValidAgent && hasRequiredPermissions
     }
-    
+
     var body: some View {
         VStack(spacing: 24) {
             // Header
@@ -29,16 +33,16 @@ struct ProjectSelectionView: View {
                 Image(systemName: "folder.badge.gearshape")
                     .font(.system(size: 48))
                     .foregroundColor(.blue)
-                
+
                 Text("Symposium")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                
+
                 Text("Select or create a project to get started")
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
-            
+
             // Action buttons
             VStack(spacing: 16) {
                 Button(action: { showingNewProjectDialog = true }) {
@@ -53,10 +57,10 @@ struct ProjectSelectionView: View {
                     .cornerRadius(8)
                 }
                 .disabled(!canCreateProjects)
-                
-                Button(action: { 
+
+                Button(action: {
                     Logger.shared.log("Open Existing Project button clicked")
-                    showingOpenProjectDialog = true 
+                    showingOpenProjectDialog = true
                     Logger.shared.log("Set showingOpenProjectDialog to true")
                 }) {
                     HStack {
@@ -65,14 +69,16 @@ struct ProjectSelectionView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(canCreateProjects ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1))
+                    .background(
+                        canCreateProjects ? Color.gray.opacity(0.2) : Color.gray.opacity(0.1)
+                    )
                     .foregroundColor(canCreateProjects ? .primary : .secondary)
                     .cornerRadius(8)
                 }
                 .disabled(!canCreateProjects)
             }
             .frame(maxWidth: 300)
-            
+
             // Status message when not ready
             if !canCreateProjects {
                 VStack(spacing: 8) {
@@ -83,7 +89,7 @@ struct ProjectSelectionView: View {
                             .font(.headline)
                             .foregroundColor(.orange)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         if !hasRequiredPermissions {
                             Text("• Missing required permissions")
@@ -104,7 +110,7 @@ struct ProjectSelectionView: View {
                 .background(Color.orange.opacity(0.1))
                 .cornerRadius(8)
             }
-            
+
             Spacer()
         }
         .padding(40)
@@ -115,10 +121,6 @@ struct ProjectSelectionView: View {
         .sheet(isPresented: $showingOpenProjectDialog) {
             OpenProjectDialog(onProjectCreated: onProjectCreated)
         }
-        .onAppear {
-            Logger.shared.log("ProjectSelectionView appeared")
-            agentManager.scanForAgents()
-        }
     }
 }
 
@@ -127,29 +129,29 @@ struct NewProjectDialog: View {
     @EnvironmentObject var settingsManager: SettingsManager
     let onProjectCreated: (ProjectManager) -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var projectName = ""
     @State private var gitURL = ""
     @State private var selectedDirectory = ""
     @State private var showingDirectoryPicker = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Create New Project")
                 .font(.headline)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Project Name:")
                 TextField("Enter project name", text: $projectName)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Git Repository URL:")
                 TextField("https://github.com/user/repo.git", text: $gitURL)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Location:")
                 HStack {
@@ -159,20 +161,20 @@ struct NewProjectDialog: View {
                         .padding(8)
                         .background(Color.gray.opacity(0.1))
                         .cornerRadius(4)
-                    
+
                     Button("Browse") {
                         showingDirectoryPicker = true
                     }
                 }
             }
-            
+
             HStack {
                 Button("Cancel") {
                     dismiss()
                 }
-                
+
                 Spacer()
-                
+
                 Button("Create") {
                     createProject()
                 }
@@ -197,11 +199,14 @@ struct NewProjectDialog: View {
             }
         }
     }
-    
+
     private func createProject() {
-        let projectManager = ProjectManager(agentManager: agentManager, settingsManager: settingsManager, selectedAgent: settingsManager.selectedAgent)
+        let projectManager = ProjectManager(
+            agentManager: agentManager, settingsManager: settingsManager,
+            selectedAgent: settingsManager.selectedAgent)
         do {
-            try projectManager.createProject(name: projectName, gitURL: gitURL, at: selectedDirectory)
+            try projectManager.createProject(
+                name: projectName, gitURL: gitURL, at: selectedDirectory)
             onProjectCreated(projectManager)
             dismiss()
         } catch {
@@ -215,17 +220,17 @@ struct OpenProjectDialog: View {
     @EnvironmentObject var settingsManager: SettingsManager
     let onProjectCreated: (ProjectManager) -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var showingDirectoryPicker = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Open Existing Project")
                 .font(.headline)
-            
+
             Text("Select a .symposium project directory:")
                 .foregroundColor(.secondary)
-            
+
             Button("Browse for Project Directory") {
                 Logger.shared.log("Browse for Project Directory button clicked")
                 showingDirectoryPicker = true
@@ -236,12 +241,12 @@ struct OpenProjectDialog: View {
             .background(Color.blue)
             .foregroundColor(.white)
             .cornerRadius(8)
-            
+
             HStack {
                 Button("Cancel") {
                     dismiss()
                 }
-                
+
                 Spacer()
             }
         }
@@ -271,11 +276,14 @@ struct OpenProjectDialog: View {
             }
         }
     }
-    
+
     private func openProject(at path: String) {
         Logger.shared.log("OpenProjectDialog.openProject called with path: \(path)")
-        let projectManager = ProjectManager(agentManager: agentManager, settingsManager: settingsManager, selectedAgent: settingsManager.selectedAgent)
-        Logger.shared.log("Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
+        let projectManager = ProjectManager(
+            agentManager: agentManager, settingsManager: settingsManager,
+            selectedAgent: settingsManager.selectedAgent)
+        Logger.shared.log(
+            "Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
         do {
             Logger.shared.log("Attempting to open project at: \(path)")
             try projectManager.openProject(at: path)
