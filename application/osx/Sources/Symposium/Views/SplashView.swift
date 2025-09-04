@@ -112,8 +112,8 @@ struct SplashView: View {
             Logger.shared.log(
                 "SplashView: Found last project, opening directly: \(settingsManager.lastProjectPath)"
             )
+            Logger.shared.log("SplashView: Opening project window (keeping splash open)")
             openWindow(id: "project", value: settingsManager.lastProjectPath)
-            dismiss()
         } else {
             Logger.shared.log("SplashView: Not opening last project - staying on splash")
         }

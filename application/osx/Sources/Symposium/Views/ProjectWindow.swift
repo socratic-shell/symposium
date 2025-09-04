@@ -22,11 +22,13 @@ struct ProjectWindow: View {
         ProjectView(projectManager: projectManager)
             .onAppear {
                 Logger.shared.log("ProjectWindow appeared for path: \(projectPath)")
+                Logger.shared.log("ProjectWindow: About to call loadProject()")
                 loadProject()
             }
     }
     
     private func loadProject() {
+        Logger.shared.log("ProjectWindow: loadProject() called for path: \(projectPath)")
         do {
             try projectManager.openProject(at: projectPath)
             Logger.shared.log("ProjectWindow: Successfully loaded project at \(projectPath)")

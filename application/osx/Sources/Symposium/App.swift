@@ -23,14 +23,22 @@ struct SymposiumApp: App {
         
         // Project windows (can have multiple)
         WindowGroup("project", for: String.self) { $projectPath in
-            if let projectPath = projectPath {
-                ProjectWindow(projectPath: projectPath)
-                    .environmentObject(agentManager)
-                    .environmentObject(settingsManager)
-                    .environmentObject(permissionManager)
-            } else {
-                Text("No project path provided")
-                    .foregroundColor(.red)
+            Group {
+                if let projectPath = projectPath {
+                    ProjectWindow(projectPath: projectPath)
+                        .environmentObject(agentManager)
+                        .environmentObject(settingsManager)
+                        .environmentObject(permissionManager)
+                        .onAppear {
+                            Logger.shared.log("App: WindowGroup 'project' appeared with path: \(projectPath)")
+                        }
+                } else {
+                    Text("No project path provided")
+                        .foregroundColor(.red)
+                        .onAppear {
+                            Logger.shared.log("App: WindowGroup 'project' appeared with nil path")
+                        }
+                }
             }
         }
         .windowResizability(.contentMinSize)
