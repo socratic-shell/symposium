@@ -239,7 +239,7 @@ The MVP is complete when:
 The following approaches are deliberately hacky for the MVP and will need proper solutions later:
 
 ### 1. Taskspace Identification via Directory Path
-## Current Status (2025-01-02)
+## Current Status (2025-09-04)
 
 ### ✅ Completed
 - **Phase 1**: Complete foundation with working project management
@@ -283,7 +283,16 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Manual registration testing**: ✅ Complete registration flow verified working with successful window associations
 - **Automatic registration on extension startup**: ✅ Extension auto-registers when it starts up if in taskspace
 
-### 📋 Phase 2.9 - Window Screenshots: Visual Taskspace Previews
+### ✅ Completed - Phase 2.9: SwiftUI Window Management Fixes
+- **Fixed SwiftUI openWindow issue**: ✅ Resolved broken `openWindow()` calls by adding explicit `id:` parameter to WindowGroup definitions
+- **Eliminated multiple AgentManager instances**: ✅ Fixed ProjectWindow creating duplicate AgentManager instances causing multiple agent scans
+- **Refactored agent ID system**: ✅ Replaced hardcoded strings with type-safe AgentType enum (.qcli, .claude)
+- **Improved ProjectWindow architecture**: ✅ Used private content struct pattern to properly initialize with environment objects
+- **Single source of truth**: ✅ All views now share the same AgentManager instance from App.swift via @EnvironmentObject
+- **Eliminated race conditions**: ✅ Fixed openWindow/dismiss timing issues that prevented project windows from appearing
+- **Type safety improvements**: ✅ Agent lookups and comparisons now use enum types instead of magic strings
+
+### 📋 Phase 2.10 - Window Screenshots: Visual Taskspace Previews
 - **Window screenshot capture**: Use CGWindowID to capture screenshots of registered VSCode windows
 - **Placeholder for disconnected taskspaces**: Show reload icon when no window is registered or window not found
 - **TaskspaceCard UI updates**: Integrate screenshots into existing card layout, possibly replacing or supplementing text preview
@@ -297,21 +306,21 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - UI remains responsive during screenshot operations
 - Screenshots update appropriately when windows change
 
-### 📋 Phase 2.10 - Window Focus: Click to Bring Windows Forward
+### 📋 Phase 2.11 - Window Focus: Click to Bring Windows Forward
 - **TaskspaceCard click handler**: Add click action to bring associated windows to front
 - **Window focus implementation**: Use CGWindowID to focus/raise VSCode windows via CGS APIs
 - **Multi-window support**: Handle cases where taskspace has multiple associated windows
 - **Error handling**: Graceful fallback when window no longer exists or focus fails
 - **Visual feedback**: Show loading/focusing state during window operations
 
-### 📋 Phase 2.11 - Window Tiling: Optional Tile Mode
+### 📋 Phase 2.12 - Window Tiling: Optional Tile Mode
 - **Tile mode toggle**: Add UI control to enable/disable tiling for taskspaces
 - **Layout calculation**: Position taskspace preview on left, IDE window taking remaining screen space
 - **Window positioning**: Use existing CGS window management APIs for precise positioning
 - **Screen awareness**: Handle multiple monitors and screen resolution changes
 - **Persistence**: Remember tile mode preferences per taskspace
 
-### 📋 Phase 2.12 - Window Cleanup: Close IDE Windows on App Exit
+### 📋 Phase 2.13 - Window Cleanup: Close IDE Windows on App Exit
 - **App termination handler**: Detect when Symposium app is closing
 - **Associated window cleanup**: Close all registered VSCode windows before app exit
 - **Graceful shutdown**: Allow VSCode to save work before forced closure
