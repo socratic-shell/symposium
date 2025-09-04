@@ -190,20 +190,33 @@ struct TaskspaceCard: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
-            // Screenshot placeholder
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.gray.opacity(0.1))
-                .frame(height: screenshotHeight)
-                .overlay(
-                    VStack(spacing: 4) {
-                        Image(systemName: hasRegisteredWindow ? "display" : "arrow.clockwise")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                        Text(hasRegisteredWindow ? "VSCode" : "Disconnected")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                )
+            // Screenshot or placeholder
+            Group {
+                if #available(macOS 14.0, *), hasRegisteredWindow, let screenshot = projectManager.screenshots.getScreenshot(for: taskspace.id) {
+                    // Show actual screenshot
+                    Image(nsImage: screenshot)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: screenshotHeight)
+                        .cornerRadius(6)
+                        .clipped()
+                } else {
+                    // Show placeholder
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: screenshotHeight)
+                        .overlay(
+                            VStack(spacing: 4) {
+                                Image(systemName: hasRegisteredWindow ? "display" : "arrow.clockwise")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text(hasRegisteredWindow ? "Connected" : "Disconnected")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        )
+                }
+            }
             
             // Recent logs
             if !taskspace.logs.isEmpty {

@@ -10,6 +10,13 @@ struct Taskspace: Codable, Identifiable {
     var vscodeWindowID: Int? = nil
     let createdAt: Date
     
+    /// Timestamp of last screenshot capture (not persisted, transient UI state)
+    var lastScreenshotAt: Date?
+    
+    private enum CodingKeys: String, CodingKey {
+        case id, name, description, state, logs, vscodeWindowID, createdAt
+    }
+    
     init(name: String, description: String, initialPrompt: String? = nil) {
         self.id = UUID()
         self.name = name

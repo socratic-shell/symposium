@@ -5,12 +5,14 @@ struct ProjectWindow: View {
     let projectPath: String
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var permissionManager: PermissionManager
     
     var body: some View {
         ProjectWindowContent(
             projectPath: projectPath,
             agentManager: agentManager,
-            settingsManager: settingsManager
+            settingsManager: settingsManager,
+            permissionManager: permissionManager
         )
         .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
         .navigationTitle(extractProjectName(from: projectPath))
@@ -75,19 +77,22 @@ private struct ProjectWindowContent: View {
     let projectPath: String
     let agentManager: AgentManager
     let settingsManager: SettingsManager
+    let permissionManager: PermissionManager
     
     @StateObject private var projectManager: ProjectManager
     
-    init(projectPath: String, agentManager: AgentManager, settingsManager: SettingsManager) {
+    init(projectPath: String, agentManager: AgentManager, settingsManager: SettingsManager, permissionManager: PermissionManager) {
         self.projectPath = projectPath
         self.agentManager = agentManager
         self.settingsManager = settingsManager
+        self.permissionManager = permissionManager
         
         // Now we can properly initialize with the actual objects
         self._projectManager = StateObject(wrappedValue: ProjectManager(
             agentManager: agentManager,
             settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent
+            selectedAgent: settingsManager.selectedAgent,
+            permissionManager: permissionManager
         ))
     }
     

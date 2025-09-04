@@ -45,6 +45,25 @@ struct SymposiumApp: App {
         .windowResizability(.contentMinSize)
         .defaultAppStorage(.standard)
         .commands {
+            // File menu items
+            CommandGroup(replacing: .newItem) {
+                Button("New Project...") {
+                    // Open splash/project selection window
+                    if let window = NSApp.windows.first(where: { $0.title == "Symposium" }) {
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                }
+                .keyboardShortcut("n", modifiers: .command)
+                
+                Button("Open Project...") {
+                    // Open splash/project selection window
+                    if let window = NSApp.windows.first(where: { $0.title == "Symposium" }) {
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                }
+                .keyboardShortcut("o", modifiers: .command)
+            }
+            
             CommandGroup(after: .help) {
                 Button("Copy Debug Logs") {
                     copyLogsToClipboard()

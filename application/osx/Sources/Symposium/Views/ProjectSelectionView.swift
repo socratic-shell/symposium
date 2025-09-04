@@ -125,6 +125,7 @@ struct ProjectSelectionView: View {
 }
 
 struct NewProjectDialog: View {
+    @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     let onProjectCreated: (ProjectManager) -> Void
@@ -203,7 +204,7 @@ struct NewProjectDialog: View {
     private func createProject() {
         let projectManager = ProjectManager(
             agentManager: agentManager, settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent)
+            selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
         do {
             try projectManager.createProject(
                 name: projectName, gitURL: gitURL, at: selectedDirectory)
@@ -216,6 +217,7 @@ struct NewProjectDialog: View {
 }
 
 struct OpenProjectDialog: View {
+    @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     let onProjectCreated: (ProjectManager) -> Void
@@ -281,7 +283,7 @@ struct OpenProjectDialog: View {
         Logger.shared.log("OpenProjectDialog.openProject called with path: \(path)")
         let projectManager = ProjectManager(
             agentManager: agentManager, settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent)
+            selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
         Logger.shared.log(
             "Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
         do {

@@ -93,7 +93,8 @@ struct MainView: View {
         let rememberedProjectManager = ProjectManager(
             agentManager: agentManager,
             settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent
+            selectedAgent: settingsManager.selectedAgent,
+            permissionManager: permissionManager
         )
 
         do {

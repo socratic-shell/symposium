@@ -292,18 +292,7 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Window lifecycle**: ✅ Each project gets independent window, splash closes when project opens
 - **SwiftUI window management**: ✅ Fixed openWindow issues, proper window group definitions with type-safe parameters
 
-### 📋 Phase 2.10 - Menu Items for Window Management
-- **File menu enhancements**: Add "Open Project..." and "New Project..." menu items
-- **Window menu**: Add menu items to switch between open project windows
-- **Project management**: Menu items for common project operations
-- **Keyboard shortcuts**: Assign standard shortcuts for project operations
-
-**Success Criteria:**
-- File menu has "Open Project..." and "New Project..." options
-- Window menu lists all open project windows for easy switching
-- Standard keyboard shortcuts work (⌘O for open, ⌘N for new, etc.)
-- Menu items are properly enabled/disabled based on app state
-### 📋 Phase 2.11 - Window Screenshots: Visual Taskspace Previews
+### 📋 Phase 2.10 - Window Screenshots: Visual Taskspace Previews
 - **Placeholder for disconnected taskspaces**: Show reload icon when no window is registered or window not found
 - **TaskspaceCard UI updates**: Integrate screenshots into existing card layout, possibly replacing or supplementing text preview
 - **Screenshot caching**: Cache screenshots to avoid excessive capture calls, refresh on window focus/activity
@@ -316,21 +305,21 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - UI remains responsive during screenshot operations
 - Screenshots update appropriately when windows change
 
-### 📋 Phase 2.12 - Window Focus: Click to Bring Windows Forward
+### 📋 Phase 2.11 - Window Focus: Click to Bring Windows Forward
 - **TaskspaceCard click handler**: Add click action to bring associated windows to front
 - **Window focus implementation**: Use CGWindowID to focus/raise VSCode windows via CGS APIs
 - **Multi-window support**: Handle cases where taskspace has multiple associated windows
 - **Error handling**: Graceful fallback when window no longer exists or focus fails
 - **Visual feedback**: Show loading/focusing state during window operations
 
-### 📋 Phase 2.13 - Window Tiling: Optional Tile Mode
+### 📋 Phase 2.12 - Window Tiling: Optional Tile Mode
 - **Tile mode toggle**: Add UI control to enable/disable tiling for taskspaces
 - **Layout calculation**: Position taskspace preview on left, IDE window taking remaining screen space
 - **Window positioning**: Use existing CGS window management APIs for precise positioning
 - **Screen awareness**: Handle multiple monitors and screen resolution changes
 - **Persistence**: Remember tile mode preferences per taskspace
 
-### 📋 Phase 2.14 - Window Cleanup: Close IDE Windows on App Exit
+### 📋 Phase 2.13 - Window Cleanup: Close IDE Windows on App Exit
 - **App termination handler**: Detect when Symposium app is closing
 - **Associated window cleanup**: Close all registered VSCode windows before app exit
 - **Graceful shutdown**: Allow VSCode to save work before forced closure
@@ -347,6 +336,14 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **TaskspaceId wrapper type**: Replace `UUID` with `TaskspaceId` wrapper for better type safety and clear intent in function signatures
 - **Window association persistence**: Consider persisting taskspace-window associations across app restarts
 - **Generalize Re-register Windows to Reload button**: Expand functionality to launch VSCode/agents for taskspaces that aren't running, not just re-register existing windows
+
+### 🎨 Polish Items for Later
+- **Menu Items for Window Management**:
+  - File menu enhancements: Add "Open Project..." and "New Project..." menu items
+  - Window menu: Add menu items to switch between open project windows
+  - Project management: Menu items for common project operations
+  - Keyboard shortcuts: Assign standard shortcuts for project operations (⌘O for open, ⌘N for new, etc.)
+  - Menu items properly enabled/disabled based on app state
 
 Then move to Phase 3 for full daemon communication and orchestration.
 

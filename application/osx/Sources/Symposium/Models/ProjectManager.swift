@@ -11,16 +11,44 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let agentManager: AgentManager
     private let settingsManager: SettingsManager
     private let selectedAgent: AgentType
+    private let permissionManager: PermissionManager
     
     // Window associations for current project
     private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
     var mcpStatus: IpcManager { ipcManager }
     
-    init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: AgentType) {
+    // Screenshots are only available on macOS 14.0+ - stored as optional to handle availability
+    private var _screenshotManager: Any?
+    
+    @available(macOS 14.0, *)
+    var screenshots: ScreenshotManager {
+        if let existing = _screenshotManager as? ScreenshotManager {
+            return existing
+        }
+        let manager = ScreenshotManager(permissionManager: permissionManager)
+        _screenshotManager = manager
+        return manager
+    }
+    
+    @available(macOS 14.0, *)
+    @MainActor
+    private func initializeScreenshots() -> ScreenshotManager {
+        if let existing = _screenshotManager as? ScreenshotManager {
+            return existing
+        }
+        let manager = ScreenshotManager(permissionManager: permissionManager)
+        _screenshotManager = manager
+        return manager
+    }
+    
+    init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: AgentType, permissionManager: PermissionManager) {
         self.agentManager = agentManager
         self.settingsManager = settingsManager
         self.selectedAgent = selectedAgent
+        self.permissionManager = permissionManager
+        
+        // ScreenshotManager initialization is deferred via lazy var
     }
     
     /// Create a new Symposium project
@@ -316,6 +344,14 @@ extension ProjectManager {
         
         taskspaceWindows[uuid] = windowID
         Logger.shared.log("ProjectManager: Associated window \(windowID) with taskspace \(uuid)")
+        
+        // Capture screenshot when window is first registered (macOS 14.0+ only)
+        if #available(macOS 14.0, *) {
+            Task { @MainActor in
+                await screenshots.captureWindowScreenshot(windowId: windowID, for: uuid)
+            }
+        }
+        
         return true
     }
     
@@ -452,6 +488,15 @@ extension ProjectManager {
             
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
+            
+            // Capture screenshot when log is updated (if window is registered, macOS 14.0+ only)
+            if let windowID = taskspaceWindows[UUID(uuidString: payload.taskspaceUuid)!] {
+                if #available(macOS 14.0, *) {
+                    Task { @MainActor in
+                        await screenshots.captureWindowScreenshot(windowId: windowID, for: UUID(uuidString: payload.taskspaceUuid)!)
+                    }
+                }
+            }
             
             // Update UI
             DispatchQueue.main.async {
