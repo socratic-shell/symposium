@@ -283,17 +283,27 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Manual registration testing**: ✅ Complete registration flow verified working with successful window associations
 - **Automatic registration on extension startup**: ✅ Extension auto-registers when it starts up if in taskspace
 
-### ✅ Completed - Phase 2.9: SwiftUI Window Management Fixes
-- **Fixed SwiftUI openWindow issue**: ✅ Resolved broken `openWindow()` calls by adding explicit `id:` parameter to WindowGroup definitions
-- **Eliminated multiple AgentManager instances**: ✅ Fixed ProjectWindow creating duplicate AgentManager instances causing multiple agent scans
-- **Refactored agent ID system**: ✅ Replaced hardcoded strings with type-safe AgentType enum (.qcli, .claude)
-- **Improved ProjectWindow architecture**: ✅ Used private content struct pattern to properly initialize with environment objects
-- **Single source of truth**: ✅ All views now share the same AgentManager instance from App.swift via @EnvironmentObject
-- **Eliminated race conditions**: ✅ Fixed openWindow/dismiss timing issues that prevented project windows from appearing
-- **Type safety improvements**: ✅ Agent lookups and comparisons now use enum types instead of magic strings
+### ✅ Completed - Phase 2.9: Window-Per-Project Architecture
+- **Multi-window architecture**: ✅ Separate splash window for setup, dedicated project windows for each project
+- **Window titles**: ✅ Project windows show project name in title bar instead of generic "Symposium"
+- **Smart sidebar sizing**: ✅ Project windows default to 1/3 screen width (300-500px), most of screen height, but remain manually resizable
+- **Window positioning**: ✅ Project windows position themselves as left-side panels with proper margins
+- **UI cleanup**: ✅ Removed redundant "Close Project" button since users can close windows directly
+- **Window lifecycle**: ✅ Each project gets independent window, splash closes when project opens
+- **SwiftUI window management**: ✅ Fixed openWindow issues, proper window group definitions with type-safe parameters
 
-### 📋 Phase 2.10 - Window Screenshots: Visual Taskspace Previews
-- **Window screenshot capture**: Use CGWindowID to capture screenshots of registered VSCode windows
+### 📋 Phase 2.10 - Menu Items for Window Management
+- **File menu enhancements**: Add "Open Project..." and "New Project..." menu items
+- **Window menu**: Add menu items to switch between open project windows
+- **Project management**: Menu items for common project operations
+- **Keyboard shortcuts**: Assign standard shortcuts for project operations
+
+**Success Criteria:**
+- File menu has "Open Project..." and "New Project..." options
+- Window menu lists all open project windows for easy switching
+- Standard keyboard shortcuts work (⌘O for open, ⌘N for new, etc.)
+- Menu items are properly enabled/disabled based on app state
+### 📋 Phase 2.11 - Window Screenshots: Visual Taskspace Previews
 - **Placeholder for disconnected taskspaces**: Show reload icon when no window is registered or window not found
 - **TaskspaceCard UI updates**: Integrate screenshots into existing card layout, possibly replacing or supplementing text preview
 - **Screenshot caching**: Cache screenshots to avoid excessive capture calls, refresh on window focus/activity
@@ -306,21 +316,21 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - UI remains responsive during screenshot operations
 - Screenshots update appropriately when windows change
 
-### 📋 Phase 2.11 - Window Focus: Click to Bring Windows Forward
+### 📋 Phase 2.12 - Window Focus: Click to Bring Windows Forward
 - **TaskspaceCard click handler**: Add click action to bring associated windows to front
 - **Window focus implementation**: Use CGWindowID to focus/raise VSCode windows via CGS APIs
 - **Multi-window support**: Handle cases where taskspace has multiple associated windows
 - **Error handling**: Graceful fallback when window no longer exists or focus fails
 - **Visual feedback**: Show loading/focusing state during window operations
 
-### 📋 Phase 2.12 - Window Tiling: Optional Tile Mode
+### 📋 Phase 2.13 - Window Tiling: Optional Tile Mode
 - **Tile mode toggle**: Add UI control to enable/disable tiling for taskspaces
 - **Layout calculation**: Position taskspace preview on left, IDE window taking remaining screen space
 - **Window positioning**: Use existing CGS window management APIs for precise positioning
 - **Screen awareness**: Handle multiple monitors and screen resolution changes
 - **Persistence**: Remember tile mode preferences per taskspace
 
-### 📋 Phase 2.13 - Window Cleanup: Close IDE Windows on App Exit
+### 📋 Phase 2.14 - Window Cleanup: Close IDE Windows on App Exit
 - **App termination handler**: Detect when Symposium app is closing
 - **Associated window cleanup**: Close all registered VSCode windows before app exit
 - **Graceful shutdown**: Allow VSCode to save work before forced closure

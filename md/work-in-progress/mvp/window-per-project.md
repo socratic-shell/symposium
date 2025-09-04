@@ -110,10 +110,10 @@ struct SymposiumApp: App {
 - **Scalability**: Easy to add more project windows as needed
 
 ## Success Criteria
-- [ ] Splash window appears only when needed (no last project or config issues)
-- [ ] Project windows open independently for each project
-- [ ] Multiple projects can be open simultaneously
-- [ ] Window titles reflect project names
-- [ ] Proper window sizing constraints per window type
-- [ ] Clean window lifecycle (splash closes when project opens)
+- [x] Splash window appears only when needed (no last project or config issues)
+- [x] Project windows open independently for each project
+- [x] Multiple projects can be open simultaneously
+- [x] Window titles reflect project names
+- [x] Proper window sizing constraints per window type
+- [x] Clean window lifecycle (splash closes when project opens)
 - [ ] Menu items for window management

@@ -46,10 +46,6 @@ struct ProjectView: View {
                         .foregroundColor(.red)
                 }
                 
-                Button("Close Project") {
-                    projectManager.closeProject()
-                }
-                
                 Button(action: {
                     do {
                         try projectManager.createTaskspace()
