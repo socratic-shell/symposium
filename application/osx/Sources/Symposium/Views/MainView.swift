@@ -29,7 +29,7 @@ struct MainView: View {
                 {
                     // Show settings if required permissions are missing
                     SettingsView()
-                } else if !agentManager.agentsAvailable
+                } else if !agentManager.scanningCompleted
                     || (projectManager == nil && !settingsManager.lastProjectPath.isEmpty)
                 {
                     // Show loading while scanning agents or validating remembered project
@@ -64,7 +64,7 @@ struct MainView: View {
         .onAppear {
             permissionManager.checkAllPermissions()
         }
-        .onChange(of: agentManager.agentsAvailable) { agentsAvailable in
+        .onChange(of: agentManager.scanningCompleted) { agentsAvailable in
             // When agent scanning completes, try to load remembered project
             if agentsAvailable && projectManager == nil {
                 tryLoadRememberedProject()

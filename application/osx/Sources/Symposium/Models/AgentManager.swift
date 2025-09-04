@@ -3,7 +3,7 @@ import Foundation
 
 class AgentManager: ObservableObject {
     @Published var availableAgents: [AgentInfo] = []
-    @Published var agentsAvailable = false
+    @Published var scanningCompleted = false
     @Published var scanningInProgress = false
 
     init() {
@@ -37,7 +37,7 @@ class AgentManager: ObservableObject {
 
             DispatchQueue.main.async {
                 self.availableAgents = agents
-                self.agentsAvailable = true  // Always set to true when scanning completes
+                self.scanningCompleted = true  // Always set to true when scanning completes
                 self.scanningInProgress = false
                 Logger.shared.log("AgentManager: Scan complete. Found \(agents.count) agents.")
             }
