@@ -14,7 +14,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let permissionManager: PermissionManager
     
     // Window associations for current project
-    private var taskspaceWindows: [UUID: CGWindowID] = [:]
+    @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
     var mcpStatus: IpcManager { ipcManager }
     
@@ -346,10 +346,14 @@ extension ProjectManager {
         Logger.shared.log("ProjectManager: Associated window \(windowID) with taskspace \(uuid)")
         
         // Capture screenshot when window is first registered (macOS 14.0+ only)
+        Logger.shared.log("ProjectManager: Attempting screenshot capture for window \(windowID), taskspace \(uuid)")
         if #available(macOS 14.0, *) {
             Task { @MainActor in
+                Logger.shared.log("ProjectManager: Starting screenshot capture task")
                 await screenshots.captureWindowScreenshot(windowId: windowID, for: uuid)
             }
+        } else {
+            Logger.shared.log("ProjectManager: macOS 14.0+ required for screenshots, skipping")
         }
         
         return true

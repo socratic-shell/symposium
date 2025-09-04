@@ -32,6 +32,9 @@ class ScreenshotManager: ObservableObject {
     
     /// Capture screenshot of a window by CGWindowID
     func captureWindowScreenshot(windowId: CGWindowID, for taskspaceId: UUID) async {
+        Logger.shared.log("ScreenshotManager: Attempting to capture window \(windowId) for taskspace \(taskspaceId)")
+        Logger.shared.log("ScreenshotManager: Can capture screenshots: \(canCaptureScreenshots)")
+        
         guard canCaptureScreenshots else {
             Logger.shared.log("Screenshot capture failed: Missing Screen Recording permission")
             return
