@@ -10,8 +10,8 @@ struct ProjectSelectionView: View {
     @State private var showingOpenProjectDialog = false
     
     private var hasValidAgent: Bool {
-        agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent })?.isInstalled == true &&
-        agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent })?.isMCPConfigured == true
+        agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?.isInstalled == true &&
+        agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?.isMCPConfigured == true
     }
     
     private var hasRequiredPermissions: Bool {

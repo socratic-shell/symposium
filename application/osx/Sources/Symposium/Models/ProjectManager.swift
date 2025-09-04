@@ -10,14 +10,14 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let ipcManager = IpcManager()
     private let agentManager: AgentManager
     private let settingsManager: SettingsManager
-    private let selectedAgent: String
+    private let selectedAgent: AgentType
     
     // Window associations for current project
     private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
     var mcpStatus: IpcManager { ipcManager }
     
-    init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: String) {
+    init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: AgentType) {
         self.agentManager = agentManager
         self.settingsManager = settingsManager
         self.selectedAgent = selectedAgent
@@ -154,7 +154,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         ipcManager.stopClient()
         
         // Start client if we have a valid selected agent
-        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == selectedAgent }) {
+        if let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.type == selectedAgent }) {
             Logger.shared.log("ProjectManager: Found agent \(selectedAgent): installed=\(selectedAgentInfo.isInstalled), mcpConfigured=\(selectedAgentInfo.isMCPConfigured)")
             
             if selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,

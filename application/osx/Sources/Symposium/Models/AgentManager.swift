@@ -1,6 +1,20 @@
 import AppKit
 import Foundation
 
+enum AgentType: String, CaseIterable, Identifiable {
+    case qcli = "qcli"
+    case claude = "claude"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .qcli: return "Amazon Q CLI"
+        case .claude: return "Claude Code"
+        }
+    }
+}
+
 class AgentManager: ObservableObject {
     @Published var availableAgents: [AgentInfo] = []
     @Published var scanningCompleted = false
@@ -56,7 +70,7 @@ class AgentManager: ObservableObject {
         let (mcpConfigured, mcpPath) = checkQCLIMCPConfiguration(qPath: path)
 
         return AgentInfo(
-            id: "qcli",
+            type: .qcli,
             name: "Q CLI",
             description: "Amazon Q Developer CLI",
             executablePath: path,
@@ -78,7 +92,7 @@ class AgentManager: ObservableObject {
             let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
 
             return AgentInfo(
-                id: "claude",
+                type: .claude,
                 name: "Claude Code",
                 description: "Anthropic Claude for coding",
                 executablePath: path,
@@ -107,7 +121,7 @@ class AgentManager: ObservableObject {
                 let (mcpConfigured, mcpPath) = checkClaudeCodeMCPConfiguration(claudePath: path)
 
                 return AgentInfo(
-                    id: "claude",
+                    type: .claude,
                     name: "Claude Code",
                     description: "Anthropic Claude for coding",
                     executablePath: path,
@@ -123,7 +137,7 @@ class AgentManager: ObservableObject {
 
         // Return not installed info
         return AgentInfo(
-            id: "claude",
+            type: .claude,
             name: "Claude Code",
             description: "Anthropic Claude for coding",
             executablePath: nil,
@@ -280,7 +294,7 @@ class AgentManager: ObservableObject {
 }
 
 struct AgentInfo: Identifiable {
-    let id: String
+    let type: AgentType
     let name: String
     let description: String
     let executablePath: String?
@@ -288,6 +302,8 @@ struct AgentInfo: Identifiable {
     let isInstalled: Bool
     let isMCPConfigured: Bool
     let mcpServerPath: String?
+    
+    var id: String { type.id }
 
     var statusText: String {
         if !isInstalled {
@@ -323,13 +339,11 @@ struct AgentInfo: Identifiable {
     func getHatchlingCommand(initialPrompt: String) -> [String]? {
         guard isInstalled && isMCPConfigured else { return nil }
 
-        switch id {
-        case "qcli":
+        switch type {
+        case .qcli:
             return ["q", "chat", initialPrompt]
-        case "claude-code":
+        case .claude:
             // TODO: Implement claude-code hatchling command
-            return nil
-        default:
             return nil
         }
     }
@@ -353,8 +367,8 @@ struct AgentInfo: Identifiable {
 extension AgentManager {
 
     /// Get agent command for a taskspace based on its state and selected agent
-    func getAgentCommand(for taskspace: Taskspace, selectedAgent: String) -> [String]? {
-        guard let agentInfo = availableAgents.first(where: { $0.id == selectedAgent }) else {
+    func getAgentCommand(for taskspace: Taskspace, selectedAgent: AgentType) -> [String]? {
+        guard let agentInfo = availableAgents.first(where: { $0.type == selectedAgent }) else {
             return nil
         }
 

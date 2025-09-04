@@ -89,10 +89,10 @@ struct SettingsView: View {
                     ForEach(agentManager.availableAgents) { agent in
                         AgentRadioButton(
                             agent: agent,
-                            isSelected: settingsManager.selectedAgent == agent.id,
+                            isSelected: settingsManager.selectedAgent == agent.type,
                             action: { 
                                 if agent.isInstalled && agent.isMCPConfigured {
-                                    settingsManager.selectedAgent = agent.id 
+                                    settingsManager.selectedAgent = agent.type 
                                 }
                             }
                         )
@@ -148,7 +148,7 @@ struct SettingsView: View {
     }
     
     private var hasValidAgentSelected: Bool {
-        guard let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.id == settingsManager.selectedAgent }) else {
+        guard let selectedAgentInfo = agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent }) else {
             return false
         }
         return selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured
