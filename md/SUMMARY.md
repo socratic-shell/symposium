@@ -41,6 +41,7 @@
     - [Taskspace Bootup Flow](./work-in-progress/mvp/taskspace-bootup-flow.md)
     - [Window Registration Design](./work-in-progress/mvp/window-registration-design.md)
     - [Window Per Project](./work-in-progress/mvp/window-per-project.md)
+- [Dock-Activated Interface](./work-in-progress/dock-activated-interface.md)
 - [Older material]()
     - [Interface plan](./work-in-progress/mvp/interface-plan.md)
     - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
