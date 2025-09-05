@@ -102,7 +102,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         self.errorMessage = nil
 
         // Save project path for next app launch
-        self.settingsManager.lastProjectPath = project.directoryPath
+        self.settingsManager.activeProjectPath = project.directoryPath
 
         // Register as IPC delegate for this project
         self.ipcManager.addDelegate(self)

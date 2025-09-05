@@ -24,45 +24,18 @@ struct SymposiumApp: App {
         .windowResizability(.contentSize)
         .defaultAppStorage(.standard)
 
-        // Project windows (can have multiple)
-        WindowGroup(id: "project", for: String.self) { $projectPath in
-            Group {
-                if let projectPath = projectPath {
-                    ProjectWindow(projectPath: projectPath)
-                        .environmentObject(agentManager)
-                        .environmentObject(settingsManager)
-                        .environmentObject(permissionManager)
-                        .onAppear {
-                            Logger.shared.log(
-                                "App: WindowGroup 'project' appeared with path: \(projectPath)")
-                        }
-                } else {
-                    Text("No project path provided")
-                        .foregroundColor(.red)
-                        .onAppear {
-                            Logger.shared.log("App: WindowGroup 'project' appeared with nil path")
-                        }
-                }
-            }
-        }
-        .windowResizability(.contentMinSize)
-        .defaultAppStorage(.standard)
         .commands {
             // File menu items
             CommandGroup(replacing: .newItem) {
                 Button("New Project...") {
-                    // Open splash/project selection window
-                    if let window = NSApp.windows.first(where: { $0.title == "Symposium" }) {
-                        window.makeKeyAndOrderFront(nil)
-                    }
+                    // Show splash window for project selection
+                    showSplashWindow()
                 }
                 .keyboardShortcut("n", modifiers: .command)
                 
                 Button("Open Project...") {
-                    // Open splash/project selection window
-                    if let window = NSApp.windows.first(where: { $0.title == "Symposium" }) {
-                        window.makeKeyAndOrderFront(nil)
-                    }
+                    // Show splash window for project selection
+                    showSplashWindow()
                 }
                 .keyboardShortcut("o", modifiers: .command)
             }
@@ -92,6 +65,17 @@ struct SymposiumApp: App {
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
+        }
+    }
+
+    private func showSplashWindow() {
+        // Find existing splash window or ensure it's visible
+        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
+            splashWindow.makeKeyAndOrderFront(nil)
+        } else {
+            // No existing splash window found - this shouldn't happen in normal operation
+            // since we always keep the splash window open in the new architecture
+            Logger.shared.log("App: No splash window found, this is unexpected in dock-activated mode")
         }
     }
 

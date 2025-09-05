@@ -30,7 +30,7 @@ struct MainView: View {
                     // Show settings if required permissions are missing
                     SettingsView()
                 } else if !agentManager.scanningCompleted
-                    || (projectManager == nil && !settingsManager.lastProjectPath.isEmpty)
+                    || (projectManager == nil && !settingsManager.activeProjectPath.isEmpty)
                 {
                     // Show loading while scanning agents or validating remembered project
                     VStack(spacing: 16) {
@@ -74,18 +74,18 @@ struct MainView: View {
 
     private func tryLoadRememberedProject() {
         // Only try to load if we don't already have a project and there's a remembered path
-        guard projectManager == nil, !settingsManager.lastProjectPath.isEmpty else {
+        guard projectManager == nil, !settingsManager.activeProjectPath.isEmpty else {
             return
         }
 
         // Check if the remembered project path still exists and is valid
-        guard FileManager.default.fileExists(atPath: settingsManager.lastProjectPath),
-            Project.isValidProjectDirectory(settingsManager.lastProjectPath)
+        guard FileManager.default.fileExists(atPath: settingsManager.activeProjectPath),
+            Project.isValidProjectDirectory(settingsManager.activeProjectPath)
         else {
             Logger.shared.log(
-                "Remembered project path no longer valid, clearing: \(settingsManager.lastProjectPath)"
+                "Remembered project path no longer valid, clearing: \(settingsManager.activeProjectPath)"
             )
-            settingsManager.lastProjectPath = ""
+            settingsManager.activeProjectPath = ""
             return
         }
 
@@ -98,14 +98,14 @@ struct MainView: View {
         )
 
         do {
-            try rememberedProjectManager.openProject(at: settingsManager.lastProjectPath)
+            try rememberedProjectManager.openProject(at: settingsManager.activeProjectPath)
             self.projectManager = rememberedProjectManager
             Logger.shared.log(
-                "Successfully loaded remembered project from: \(settingsManager.lastProjectPath)")
+                "Successfully loaded remembered project from: \(settingsManager.activeProjectPath)")
         } catch {
             Logger.shared.log("Failed to load remembered project: \(error)")
             // Clear the invalid path
-            settingsManager.lastProjectPath = ""
+            settingsManager.activeProjectPath = ""
         }
     }
 }

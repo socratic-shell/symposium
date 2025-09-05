@@ -3,7 +3,7 @@ import SwiftUI
 
 class SettingsManager: ObservableObject {
     @AppStorage("selectedAgent") var selectedAgentRaw: String = AgentType.qcli.rawValue
-    @AppStorage("lastProjectPath") var lastProjectPath: String = ""
+    @AppStorage("activeProjectPath") var activeProjectPath: String = ""
     
     var selectedAgent: AgentType {
         get { AgentType(rawValue: selectedAgentRaw) ?? .qcli }
