@@ -151,10 +151,11 @@ This document outlines the implementation plan for transitioning Symposium from 
 - [x] ~~Update VSCode extension to respond to roll-call messages~~ → **EXISTING**: Extension already responds
 - [ ] **MISSING**: Handle taskspace Active→Dormant transitions when VSCode closes (windows stay "Connected" until manual refresh)
 
-**30.3: Visual State Indicators** ⚠️ **PARTIAL** 
-- [ ] **CRITICAL MISSING**: Save screenshots to disk (`task-{UUID}/screenshot.png`) → Currently only in-memory [`taskspaceScreenshots`](application/osx/Sources/Symposium/Models/ProjectManager.swift:17)
+**30.3: Visual State Indicators** ✅ **COMPLETED** 
+- [x] ~~**CRITICAL MISSING**: Save screenshots to disk~~ → **FIXED**: Screenshots saved to `task-{UUID}/screenshot.png` ([`ad22cc3`](https://github.com/socratic-shell/symposium/commit/ad22cc3))
+- [x] ~~**CRITICAL BUG**: Screenshots not displaying for dormant taskspaces~~ → **FIXED**: Display logic corrected ([`9d47a08`](https://github.com/socratic-shell/symposium/commit/9d47a08))
 - [x] ~~Add loading states for taskspace awakening process~~ → **BETTER**: Clear "Starting..." state for Hatchling activation
-- [x] Implement visual feedback for dormant taskspaces → "Click to start" vs "Click to connect" messaging
+- [x] Implement visual feedback for dormant taskspaces → "Click to start" vs "Click to connect" messaging with opacity differences
 - [x] ~~Add state indicators (Active/Dormant badges)~~ → **BETTER**: Intuitive text and icons instead of badges
 
 **30.4: Core Behavioral Foundation** ✅ **COMPLETED**
@@ -164,10 +165,42 @@ This document outlines the implementation plan for transitioning Symposium from 
 - [x] Visual distinction: Hatchling vs Resume states → [`stateIcon`](application/osx/Sources/Symposium/Views/ProjectView.swift:187-193), [`stateText`](application/osx/Sources/Symposium/Views/ProjectView.swift:195-201)
 
 **🚨 Remaining Critical Issues:**
-1. **Screenshot Persistence**: Screenshots not saved to disk, breaking dormant visual experience
+1. ~~**Screenshot Persistence**: Screenshots not saved to disk~~ → **FIXED**: Screenshots persist to disk and display correctly ✅
 2. **Automatic State Detection**: No periodic roll-calls, VSCode closures not detected
 
-**Success Criteria**: ✅ **Core Complete** - User-controlled taskspace activation working. ⚠️ **Polish Missing** - Need screenshot persistence and auto-detection for full experience
+**Success Criteria**: ✅ **Core Complete** - User-controlled taskspace activation working with full visual experience! ⚠️ **Polish Missing** - Need automatic state detection for seamless UX
+
+### Phase 35: UI Polish & Design Refinement 🎨 **IDENTIFIED**
+
+*Based on user feedback comparing actual UI to design sketch*
+
+**35.1: Taskspace Card Layout** ❌ **MAJOR ISSUE**
+- [ ] **CRITICAL**: Fix screenshot positioning - currently stacked vertically, should be horizontal thumbnail on left
+  - Current: Taskspace info → Screenshot below → Logs below (vertical stack)
+  - Target: Screenshot thumbnail ← Taskspace info & logs on right (horizontal layout)
+- [ ] Reduce screenshot size from current ~300x200px to ~120x80px thumbnail
+- [ ] Implement proper HStack layout instead of VStack for card content
+
+**35.2: Visual Hierarchy & Information Density** ⚠️ **NEEDS WORK**
+- [ ] Add clear card boundaries with subtle rounded rectangle backgrounds
+- [ ] Implement proper spacing - current layout too sparse with excessive whitespace
+- [ ] Add divider lines between taskspace cards (like ASCII sketch: `─────────────────────────`)
+- [ ] Improve text hierarchy:
+  - Taskspace name: Bold, prominent
+  - Description: Secondary, smaller font
+  - Logs: Compact with bullet points, max 2-3 visible entries
+
+**35.3: Card Structure & Spacing** ⚠️ **NEEDS DEFINITION**
+- [ ] Create clear visual separation between taskspace cards
+- [ ] Implement consistent padding within cards
+- [ ] Add subtle background colors/borders to define card boundaries
+- [ ] Match the compact, list-like appearance from design sketch
+
+**Target Design Reference**: [ASCII Layout](./dock-activated-taskspace-workflow.md#dock-panel-layout)
+
+**Current State**: Functional but layout doesn't match intended design - screenshots too large and wrongly positioned, no clear card structure
+
+**Success Criteria**: Cards match ASCII sketch layout with thumbnail screenshots on left, compact vertical spacing, clear card boundaries
 
 ### Phase 40: Project Lifecycle & Window Management 🪟
 

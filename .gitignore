@@ -25,6 +25,7 @@ DerivedData/
 *.temp
 .netrc
 .claude
+xxx.logs
 
 # Node.js (VSCode extension)
 ide/vscode/node_modules/
