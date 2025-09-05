@@ -210,7 +210,7 @@ The MVP is complete when:
 - [x] User can create/open Symposium projects
 - [x] User can manually create new taskspaces with name/description/prompt
 - [x] VSCode launches automatically for new taskspaces
-- [ ] Taskspaces appear in project view with screenshots
+- [x] Taskspaces appear in project view with screenshots
 - [ ] User can focus taskspace windows by clicking in panel
 - [x] VSCode taskspaces launch automatically with agent tools (via MCP)
 - [x] Real-time progress logs appear in Symposium panel (via MCP)
@@ -292,30 +292,27 @@ The following approaches are deliberately hacky for the MVP and will need proper
 - **Window lifecycle**: ✅ Each project gets independent window, splash closes when project opens
 - **SwiftUI window management**: ✅ Fixed openWindow issues, proper window group definitions with type-safe parameters
 
-### 📋 Phase 2.10 - Window Screenshots: Visual Taskspace Previews ⚠️ IN PROGRESS
+### ✅ Completed - Phase 2.10: Window Screenshots - Visual Taskspace Previews
 - ✅ **Core screenshot system**: ScreenshotManager using ScreenCaptureKit (macOS 14.0+)
 - ✅ **Screenshot triggers**: Capture on window registration and log updates  
 - ✅ **TaskspaceCard UI integration**: Display screenshots when available, fallback to placeholders
 - ✅ **Permission integration**: Works with existing PermissionManager for Screen Recording
 - ✅ **Memory management**: Screenshot caching with cleanup functionality
-- ⚠️ **UI refresh issues**: Screenshots showing as "Disconnected" despite successful window registration
+- ✅ **UI observation issues**: Fixed SwiftUI observation patterns and timing issues
+- ✅ **Screenshot architecture**: Simplified and debugged screenshot capture system
 
-**Current Status:**
-- Core implementation complete and committed (commits 17d6e80, 080a2a9)
-- Window registration working (logs show successful associations)
-- Screenshot capture may be working but UI not refreshing properly
-- Debug logging added to track capture attempts
-
-**Troubleshooting in Progress:**
-1. Made `taskspaceWindows` `@Published` to trigger UI updates
-2. Added extensive debug logging to track screenshot capture flow
-3. Need to verify if issue is UI refresh or actual screenshot capture failure
+**Implementation Complete:**
+- Full screenshot capture system implemented (commits 17d6e80, 080a2a9, 1578c6c, 91c234c)
+- Window registration successfully associating taskspaces with CGWindowIDs
+- Screenshots now properly display in TaskspaceCard UI
+- Fixed UI refresh issues through improved SwiftUI observation patterns
+- Added comprehensive debug logging for troubleshooting
 
 **Success Criteria:**
-- ✅ Connected taskspaces show live screenshots of their VSCode windows (implemented, troubleshooting)
-- ✅ Disconnected taskspaces show clear reload indicator (implemented)
+- ✅ Connected taskspaces show live screenshots of their VSCode windows
+- ✅ Disconnected taskspaces show clear reload indicator
 - ✅ UI remains responsive during screenshot operations (async implementation)
-- ⚠️ Screenshots update appropriately when windows change (troubleshooting)
+- ✅ Screenshots update appropriately when windows change
 
 ### 📋 Phase 2.11 - Window Focus: Click to Bring Windows Forward
 - **TaskspaceCard click handler**: Add click action to bring associated windows to front
