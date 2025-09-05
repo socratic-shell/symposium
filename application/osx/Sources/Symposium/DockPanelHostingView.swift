@@ -14,6 +14,7 @@ struct PanelConstraints {
 class DockPanelHostingView<Content: View>: NSHostingView<Content> {
     
     required init(rootView: Content) {
+        Logger.shared.log("DockPanelHostingView: Initializing with root view")
         super.init(rootView: rootView)
         setupHostingView()
     }
@@ -23,6 +24,9 @@ class DockPanelHostingView<Content: View>: NSHostingView<Content> {
     }
     
     private func setupHostingView() {
+        Logger.shared.log("DockPanelHostingView: Setting up hosting view constraints")
+        Logger.shared.log("DockPanelHostingView: Panel constraints - width: \(PanelConstraints.minWidth)-\(PanelConstraints.maxWidth), height: \(PanelConstraints.minHeight)-\(PanelConstraints.maxHeight)")
+        
         // Configure hosting view for panel layout
         self.translatesAutoresizingMaskIntoConstraints = false
         
@@ -36,6 +40,8 @@ class DockPanelHostingView<Content: View>: NSHostingView<Content> {
         let widthConstraint = self.widthAnchor.constraint(equalToConstant: PanelConstraints.defaultWidth)
         widthConstraint.priority = NSLayoutConstraint.Priority(999)
         widthConstraint.isActive = true
+        
+        Logger.shared.log("DockPanelHostingView: Constraints configured successfully")
     }
     
     /// Calculate ideal panel size based on content and screen constraints

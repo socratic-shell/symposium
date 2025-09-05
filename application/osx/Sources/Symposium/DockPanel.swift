@@ -13,12 +13,15 @@ class DockPanel: NSPanel {
     private var arrowPosition: CGFloat = 0.5 // 0.0 to 1.0 along the edge
     
     override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing backingStoreType: NSWindow.BackingStoreType, defer flag: Bool) {
+        Logger.shared.log("DockPanel: Initializing with contentRect: \(contentRect)")
         super.init(contentRect: contentRect, styleMask: style, backing: backingStoreType, defer: flag)
         
+        Logger.shared.log("DockPanel: Setting up panel configuration")
         setupPanel()
     }
     
     private func setupPanel() {
+        Logger.shared.log("DockPanel: Configuring panel behavior")
         // Configure panel behavior
         self.styleMask = [.nonactivatingPanel, .resizable]
         self.level = .floating
@@ -27,11 +30,13 @@ class DockPanel: NSPanel {
         self.isOpaque = false
         self.backgroundColor = NSColor.clear
         
+        Logger.shared.log("DockPanel: Configuring panel appearance")
         // Configure panel appearance
         self.titlebarAppearsTransparent = true
         self.titleVisibility = .hidden
         self.isMovableByWindowBackground = true
         
+        Logger.shared.log("DockPanel: Setting up visual effect view")
         // Set up visual effect view for blur background
         setupVisualEffectView()
     }
@@ -63,35 +68,50 @@ class DockPanel: NSPanel {
     
     /// Update arrow direction and position based on dock location
     func setArrowDirection(_ direction: ArrowDirection, position: CGFloat = 0.5) {
+        Logger.shared.log("DockPanel: Setting arrow direction: \(direction), position: \(position)")
         self.arrowDirection = direction
         self.arrowPosition = max(0.0, min(1.0, position))
         
         // Update the container view
         if let containerView = contentView as? DockPanelContainerView {
+            Logger.shared.log("DockPanel: Updating container view arrow")
             containerView.updateArrow(direction: direction, position: position)
+        } else {
+            Logger.shared.log("DockPanel: WARNING - Content view is not DockPanelContainerView")
         }
     }
     
     /// Show panel with animation
     func showPanel(at point: NSPoint) {
+        Logger.shared.log("DockPanel: showPanel at point: \(point)")
+        Logger.shared.log("DockPanel: Panel frame before: \(self.frame)")
+        
         self.setFrameOrigin(point)
         self.alphaValue = 0.0
+        
+        Logger.shared.log("DockPanel: Making panel key and ordering front")
         self.makeKeyAndOrderFront(nil)
         
+        Logger.shared.log("DockPanel: Starting fade-in animation")
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.25
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             self.animator().alphaValue = 1.0
         }
+        Logger.shared.log("DockPanel: Panel frame after: \(self.frame)")
     }
     
     /// Hide panel with animation
     func hidePanel(completion: (() -> Void)? = nil) {
+        Logger.shared.log("DockPanel: hidePanel called")
+        Logger.shared.log("DockPanel: Starting fade-out animation")
+        
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.2
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             self.animator().alphaValue = 0.0
         }, completionHandler: {
+            Logger.shared.log("DockPanel: Fade-out animation completed, ordering out")
             self.orderOut(nil)
             completion?()
         })

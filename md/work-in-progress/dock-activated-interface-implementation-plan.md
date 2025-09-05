@@ -34,22 +34,22 @@ This document outlines the implementation plan for transitioning Symposium from 
 ### Phase 10: NSPanel Foundation 🏗️
 
 **10.1: Create Custom NSPanel Class**
-- [ ] Create `DockPanel.swift` - custom NSPanel subclass
-- [ ] Configure panel styling: `.nonactivatingPanel`, floating level, no title bar
-- [ ] Add visual styling to match system contextual menus (blur, rounded corners, shadow)
-- [ ] Implement arrow/tail drawing pointing toward dock
+- [x] Create `DockPanel.swift` - custom NSPanel subclass
+- [x] Configure panel styling: `.nonactivatingPanel`, floating level, no title bar
+- [x] Add visual styling to match system contextual menus (blur, rounded corners, shadow)
+- [x] Implement arrow/tail drawing pointing toward dock
 
 **10.2: SwiftUI Integration**
-- [ ] Create `DockPanelHostingView` - NSHostingView wrapper for SwiftUI content
-- [ ] Port existing ProjectView to work inside NSPanel sizing constraints
-- [ ] Test SwiftUI view lifecycle within NSPanel container
-- [ ] Ensure proper sizing and layout for ~400px panel width
+- [x] Create `DockPanelHostingView` - NSHostingView wrapper for SwiftUI content
+- [x] Port existing ProjectView to work inside NSPanel sizing constraints
+- [x] Test SwiftUI view lifecycle within NSPanel container
+- [x] Ensure proper sizing and layout for ~400px panel width
 
 **10.3: Basic Panel Management**
-- [ ] Create `DockPanelManager` - handles panel show/hide logic
-- [ ] Add panel positioning logic relative to dock location
-- [ ] Implement click-outside-to-dismiss behavior
-- [ ] Add basic dock click detection (temporary implementation)
+- [x] Create `DockPanelManager` - handles panel show/hide logic
+- [x] Add panel positioning logic relative to dock location
+- [x] Implement click-outside-to-dismiss behavior
+- [x] Add basic dock click detection (temporary implementation)
 
 **Success Criteria**: NSPanel appears with SwiftUI content, positioned near dock, dismisses properly
 

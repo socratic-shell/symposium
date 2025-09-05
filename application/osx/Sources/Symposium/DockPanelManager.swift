@@ -28,14 +28,24 @@ class DockPanelManager: ObservableObject {
     
     /// Show panel with project content at the specified location
     func showPanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint) {
+        Logger.shared.log("DockPanelManager: showPanel called")
+        Logger.shared.log("DockPanelManager: Dock click point: \(dockClickPoint)")
+        Logger.shared.log("DockPanelManager: Project: \(projectManager.currentProject?.name ?? "nil")")
+        Logger.shared.log("DockPanelManager: Current panel visible: \(isPanelVisible)")
+        
         // Hide any existing panel first
         if isPanelVisible {
+            Logger.shared.log("DockPanelManager: Hiding existing panel first")
             hidePanel()
         }
         
         // Create new panel and hosting view
+        Logger.shared.log("DockPanelManager: Calculating ideal panel size")
         let idealSize = calculateIdealPanelSize()
+        Logger.shared.log("DockPanelManager: Ideal panel size: \(idealSize)")
+        
         let panelRect = NSRect(origin: .zero, size: idealSize)
+        Logger.shared.log("DockPanelManager: Creating DockPanel with rect: \(panelRect)")
         
         let panel = DockPanel(
             contentRect: panelRect,
@@ -45,48 +55,68 @@ class DockPanelManager: ObservableObject {
         )
         
         // Create SwiftUI hosting view
+        Logger.shared.log("DockPanelManager: Creating DockPanelHostingView")
         let hostingView = DockPanelHostingView(projectManager: projectManager)
         
         // Set up the panel layout
+        Logger.shared.log("DockPanelManager: Setting up panel layout")
         setupPanelLayout(panel: panel, hostingView: hostingView)
         
         // Calculate optimal position and arrow direction
+        Logger.shared.log("DockPanelManager: Calculating panel position")
         let (panelPosition, arrowDirection, arrowPosition) = calculatePanelPosition(
             for: idealSize,
             near: dockClickPoint
         )
+        Logger.shared.log("DockPanelManager: Panel position: \(panelPosition)")
+        Logger.shared.log("DockPanelManager: Arrow direction: \(arrowDirection), position: \(arrowPosition)")
         
         // Configure arrow
+        Logger.shared.log("DockPanelManager: Configuring panel arrow")
         panel.setArrowDirection(arrowDirection, position: arrowPosition)
         
         // Store references
         self.currentPanel = panel
         self.currentHostingView = hostingView
+        Logger.shared.log("DockPanelManager: Stored panel and hosting view references")
         
         // Show panel with animation
+        Logger.shared.log("DockPanelManager: Showing panel with animation")
         panel.showPanel(at: panelPosition)
         
         // Set up click-outside monitoring
+        Logger.shared.log("DockPanelManager: Setting up click-outside monitoring")
         setupClickOutsideMonitoring()
         
         // Update state
         DispatchQueue.main.async {
             self.isPanelVisible = true
+            Logger.shared.log("DockPanelManager: Panel visibility state updated to true")
         }
     }
     
     /// Hide the current panel
     func hidePanel() {
-        guard let panel = currentPanel else { return }
+        Logger.shared.log("DockPanelManager: hidePanel called")
+        
+        guard let panel = currentPanel else { 
+            Logger.shared.log("DockPanelManager: No current panel to hide")
+            return 
+        }
+        
+        Logger.shared.log("DockPanelManager: Hiding panel")
         
         // Remove click-outside monitoring
         if let monitor = clickOutsideMonitor {
+            Logger.shared.log("DockPanelManager: Removing click-outside monitor")
             NSEvent.removeMonitor(monitor)
             clickOutsideMonitor = nil
         }
         
         // Hide panel with animation
+        Logger.shared.log("DockPanelManager: Starting panel hide animation")
         panel.hidePanel { [weak self] in
+            Logger.shared.log("DockPanelManager: Panel hide animation completed")
             self?.currentPanel = nil
             self?.currentHostingView = nil
         }
@@ -94,14 +124,20 @@ class DockPanelManager: ObservableObject {
         // Update state immediately
         DispatchQueue.main.async {
             self.isPanelVisible = false
+            Logger.shared.log("DockPanelManager: Panel visibility state updated to false")
         }
     }
     
     /// Toggle panel visibility
     func togglePanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint) {
+        Logger.shared.log("DockPanelManager: togglePanel called")
+        Logger.shared.log("DockPanelManager: Current panel visible: \(isPanelVisible)")
+        
         if isPanelVisible {
+            Logger.shared.log("DockPanelManager: Panel is visible, hiding it")
             hidePanel()
         } else {
+            Logger.shared.log("DockPanelManager: Panel is hidden, showing it")
             showPanel(with: projectManager, near: dockClickPoint)
         }
     }
