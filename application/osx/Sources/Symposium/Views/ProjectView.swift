@@ -175,6 +175,30 @@ struct TaskspaceCard: View {
     private var hasRegisteredWindow: Bool {
         projectManager.getWindow(for: taskspace.id) != nil
     }
+    
+    // Phase 30: Two-dimensional state helpers
+    private var isHatchling: Bool {
+        switch taskspace.state {
+        case .hatchling: return true
+        case .resume: return false
+        }
+    }
+    
+    private var stateIcon: String {
+        if hasRegisteredWindow {
+            return isHatchling ? "hourglass" : "display"
+        } else {
+            return isHatchling ? "play.circle" : "arrow.clockwise"
+        }
+    }
+    
+    private var stateText: String {
+        if hasRegisteredWindow {
+            return isHatchling ? "Starting..." : "Connected"
+        } else {
+            return isHatchling ? "Click to start" : "Click to connect"
+        }
+    }
 
     private var screenshotHeight: CGFloat {
         guard let screen = NSScreen.main else { return 120 }
@@ -240,12 +264,10 @@ struct TaskspaceCard: View {
                         .frame(height: screenshotHeight)
                         .overlay(
                             VStack(spacing: 4) {
-                                Image(
-                                    systemName: hasRegisteredWindow ? "display" : "arrow.clockwise"
-                                )
-                                .font(.title2)
-                                .foregroundColor(.secondary)
-                                Text(hasRegisteredWindow ? "Connected" : "Disconnected")
+                                Image(systemName: stateIcon)
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                Text(stateText)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
