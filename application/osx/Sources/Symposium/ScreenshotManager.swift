@@ -4,7 +4,7 @@ import Foundation
 import ScreenCaptureKit
 
 /// Utility for capturing window screenshots using ScreenCaptureKit
-/// 
+///
 /// Simplified stateless service - all caching handled by ProjectManager
 class ScreenshotManager {
 
@@ -21,11 +21,13 @@ class ScreenshotManager {
 
     /// Capture screenshot of a window by CGWindowID and return it directly
     func captureWindowScreenshot(windowId: CGWindowID) async -> NSImage? {
+        let startTime = Date()
         Logger.shared.log("ScreenshotManager: Attempting to capture window \(windowId)")
         Logger.shared.log("ScreenshotManager: Can capture screenshots: \(canCaptureScreenshots)")
 
         guard canCaptureScreenshots else {
-            Logger.shared.log("ScreenshotManager: Screenshot capture failed: Missing Screen Recording permission")
+            Logger.shared.log(
+                "ScreenshotManager: Screenshot capture failed: Missing Screen Recording permission")
             return nil
         }
 
@@ -59,19 +61,30 @@ class ScreenshotManager {
 
             // Capture the screenshot
             Logger.shared.log("ScreenshotManager: Capture the screenshot")
+            let captureStartTime = Date()
             let cgImage = try await SCScreenshotManager.captureImage(
                 contentFilter: filter, configuration: configuration)
 
             // Convert to NSImage and return
+            let conversionStartTime = Date()
             Logger.shared.log("ScreenshotManager: Convert to NSImage and return")
             let screenshot = NSImage(
                 cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
 
-            Logger.shared.log("ScreenshotManager: Screenshot captured successfully")
+            let endTime = Date()
+            let totalTime = endTime.timeIntervalSince(startTime)
+            let conversionTime = endTime.timeIntervalSince(conversionStartTime)
+            let captureTime = conversionStartTime.timeIntervalSince(captureStartTime)
+            Logger.shared.log(
+                "ScreenshotManager: Screenshot captured successfully (total: \(String(format: "%.3f", totalTime))s, capture: \(String(format: "%.3f", captureTime)), conversion: \(String(format: "%.3f", conversionTime))s)"
+            )
             return screenshot
 
         } catch {
-            Logger.shared.log("ScreenshotManager: Failed to capture screenshot: \(error)")
+            let errorTime = Date().timeIntervalSince(startTime)
+            Logger.shared.log(
+                "ScreenshotManager: Failed to capture screenshot after \(String(format: "%.3f", errorTime))s: \(error)"
+            )
             return nil
         }
     }

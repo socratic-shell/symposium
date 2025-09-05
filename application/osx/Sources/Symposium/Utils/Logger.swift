@@ -11,8 +11,15 @@ class Logger: ObservableObject {
         logs.append(startMessage)
     }
     
+    private lazy var dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter
+    }()
+    
     func log(_ message: String) {
-        let logMessage = "[\(Date())] \(message)"
+        let timestamp = dateFormatter.string(from: Date())
+        let logMessage = "[\(timestamp)] \(message)"
         
         DispatchQueue.main.async {
             self.logs.append(logMessage)
