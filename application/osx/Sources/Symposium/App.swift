@@ -24,6 +24,10 @@ struct SymposiumApp: App {
                 .onAppear {
                     Logger.shared.log("Splash window started")
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .openSplashWindow)) { _ in
+                    Logger.shared.log("App: Received openSplashWindow notification")
+                    showSplashWindow()
+                }
         }
         .windowResizability(.contentSize)
         .defaultAppStorage(.standard)

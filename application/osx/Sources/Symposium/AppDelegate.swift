@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    static let openSplashWindow = Notification.Name("openSplashWindow")
+}
+
 /// App delegate to handle dock icon clicks and other app-level events
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
@@ -102,10 +106,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             Logger.shared.log("AppDelegate: Found existing splash window, bringing to front")
             splashWindow.makeKeyAndOrderFront(nil)
         } else {
-            // Open splash window via environment
-            // Note: This is a temporary approach for Phase 10.1
-            Logger.shared.log("AppDelegate: No splash window found")
-            Logger.shared.log("AppDelegate: TODO - Implement splash window opening from AppDelegate")
+            Logger.shared.log("AppDelegate: No splash window found, posting notification to open it")
+            // Post notification for SwiftUI app to handle window opening
+            NotificationCenter.default.post(name: .openSplashWindow, object: nil)
         }
     }
     
