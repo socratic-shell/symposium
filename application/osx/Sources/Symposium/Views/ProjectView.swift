@@ -4,10 +4,14 @@ import SwiftUI
 struct ProjectView: View {
     @ObservedObject var projectManager: ProjectManager
     @ObservedObject var ipcManager: IpcManager
+    
+    // Phase 22: Optional callback for closing the project from dock panel
+    var onCloseProject: (() -> Void)?
 
-    init(projectManager: ProjectManager) {
+    init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil) {
         self.projectManager = projectManager
         self.ipcManager = projectManager.mcpStatus
+        self.onCloseProject = onCloseProject
     }
 
     var body: some View {
@@ -65,6 +69,18 @@ struct ProjectView: View {
                             }
                             .help("Re-register Windows")
                             .disabled(projectManager.isLoading)
+                            
+                            // Phase 22: Close Project button (only show if callback provided)
+                            if let onClose = onCloseProject {
+                                Button(action: {
+                                    Logger.shared.log("ProjectView: Close Project button pressed")
+                                    onClose()
+                                }) {
+                                    Image(systemName: "xmark.circle")
+                                }
+                                .help("Close Project")
+                                .foregroundColor(.red)
+                            }
                         }
                         .padding()
                         .background(Color.gray.opacity(0.1))

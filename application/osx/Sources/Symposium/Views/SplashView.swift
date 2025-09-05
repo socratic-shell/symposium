@@ -7,10 +7,6 @@ struct SplashView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
     @State private var showingSettings = false
-    
-    // Phase 20: Project lifecycle management
-    @State private var activeProjectManager: ProjectManager?
-    @State private var showingProject = false
 
     var body: some View {
         VStack {
@@ -54,20 +50,6 @@ struct SplashView: View {
                             "SplashView: Showing agent scanning - scanningInProgress: \(agentManager.scanningInProgress)"
                         )
                     }
-                } else if let activeProject = activeProjectManager?.currentProject {
-                    // Phase 20: Show active project management UI
-                    ActiveProjectView(
-                        project: activeProject,
-                        onCloseProject: {
-                            Logger.shared.log("SplashView: Closing active project")
-                            closeActiveProject()
-                        }
-                    )
-                    .onAppear {
-                        Logger.shared.log(
-                            "SplashView: Showing ActiveProjectView for project: \(activeProject.name)"
-                        )
-                    }
                 } else {
                     // Show project selection when no active project
                     ProjectSelectionView(
@@ -100,27 +82,82 @@ struct SplashView: View {
     
     private func setActiveProject(_ projectManager: ProjectManager) {
         Logger.shared.log("SplashView: Setting active project manager")
-        self.activeProjectManager = projectManager
         
         // Notify AppDelegate about the active project for dock panel integration
-        AppDelegate.shared?.setCurrentProjectManager(projectManager)
+        AppDelegate.shared?.setCurrentProjectManager(projectManager, closeCallback: closeActiveProject)
         
-        Logger.shared.log("SplashView: Active project set, dock panel integration ready")
+        // Phase 22: Implement XOR invariant - hide splash window when project is active
+        hideSplashWindow()
+        
+        // Phase 22: Show dock panel immediately when project opens
+        showDockPanelImmediately(with: projectManager)
+        
+        Logger.shared.log("SplashView: Active project set, splash hidden, dock panel shown")
     }
     
     private func closeActiveProject() {
         Logger.shared.log("SplashView: Closing active project")
         
         // Clear the active project
-        self.activeProjectManager = nil
         settingsManager.activeProjectPath = ""
         
         // Notify AppDelegate
         AppDelegate.shared?.setCurrentProjectManager(nil)
         
+        // Phase 22: Implement XOR invariant - show splash window when no active project
+        showSplashWindow()
+        
         // TODO Phase 40: Close any VSCode windows associated with the project
         
-        Logger.shared.log("SplashView: Active project closed, returning to project selection")
+        Logger.shared.log("SplashView: Active project closed, splash window shown")
+    }
+    
+    // MARK: - Phase 22: XOR Invariant Helper Functions
+    
+    private func hideSplashWindow() {
+        Logger.shared.log("SplashView: Hiding splash window for XOR invariant")
+        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
+            splashWindow.orderOut(nil)
+            Logger.shared.log("SplashView: Splash window hidden")
+        } else {
+            Logger.shared.log("SplashView: Warning - splash window not found to hide")
+        }
+    }
+    
+    private func showSplashWindow() {
+        Logger.shared.log("SplashView: Showing splash window for XOR invariant")
+        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
+            splashWindow.makeKeyAndOrderFront(nil)
+            Logger.shared.log("SplashView: Splash window shown")
+        } else {
+            Logger.shared.log("SplashView: Warning - splash window not found to show")
+        }
+    }
+    
+    private func showDockPanelImmediately(with projectManager: ProjectManager) {
+        Logger.shared.log("SplashView: Showing dock panel immediately on project open")
+        
+        // Use AppDelegate to show the dock panel immediately
+        if let appDelegate = AppDelegate.shared {
+            let dockPosition = estimateDockPosition()
+            appDelegate.showDockPanel(with: projectManager, at: dockPosition)
+            Logger.shared.log("SplashView: Dock panel shown immediately at position: \(dockPosition)")
+        } else {
+            Logger.shared.log("SplashView: Warning - AppDelegate not found, cannot show dock panel")
+        }
+    }
+    
+    private func estimateDockPosition() -> NSPoint {
+        // Reuse the same logic from AppDelegate for consistency
+        guard let screen = NSScreen.main else {
+            return NSPoint(x: 100, y: 100)
+        }
+        
+        let screenFrame = screen.visibleFrame
+        return NSPoint(
+            x: screenFrame.midX,
+            y: screenFrame.minY + 30  // Approximate dock height
+        )
     }
 
     private func checkForLastProject() {

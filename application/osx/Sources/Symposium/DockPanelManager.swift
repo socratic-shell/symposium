@@ -27,7 +27,7 @@ class DockPanelManager: ObservableObject {
     // MARK: - Panel Display
     
     /// Show panel with project content at the specified location
-    func showPanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint) {
+    func showPanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint, onCloseProject: (() -> Void)? = nil) {
         Logger.shared.log("DockPanelManager: showPanel called")
         Logger.shared.log("DockPanelManager: Dock click point: \(dockClickPoint)")
         Logger.shared.log("DockPanelManager: Project: \(projectManager.currentProject?.name ?? "nil")")
@@ -56,7 +56,8 @@ class DockPanelManager: ObservableObject {
         
         // Create SwiftUI hosting view
         Logger.shared.log("DockPanelManager: Creating DockPanelHostingView")
-        let hostingView = DockPanelHostingView(projectManager: projectManager)
+        Logger.shared.log("DockPanelManager: Close callback provided: \(onCloseProject != nil)")
+        let hostingView = DockPanelHostingView(projectManager: projectManager, onCloseProject: onCloseProject)
         
         // Set up the panel layout
         Logger.shared.log("DockPanelManager: Setting up panel layout")
@@ -129,7 +130,7 @@ class DockPanelManager: ObservableObject {
     }
     
     /// Toggle panel visibility
-    func togglePanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint) {
+    func togglePanel(with projectManager: ProjectManager, near dockClickPoint: NSPoint, onCloseProject: (() -> Void)? = nil) {
         Logger.shared.log("DockPanelManager: togglePanel called")
         Logger.shared.log("DockPanelManager: Current panel visible: \(isPanelVisible)")
         
@@ -138,7 +139,7 @@ class DockPanelManager: ObservableObject {
             hidePanel()
         } else {
             Logger.shared.log("DockPanelManager: Panel is hidden, showing it")
-            showPanel(with: projectManager, near: dockClickPoint)
+            showPanel(with: projectManager, near: dockClickPoint, onCloseProject: onCloseProject)
         }
     }
     

@@ -10,6 +10,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Current project manager (for showing panel content)
     private var currentProjectManager: ProjectManager?
     
+    /// Phase 22: Callback for closing the active project (set by SplashView)
+    private var closeProjectCallback: (() -> Void)?
+    
     /// Track if we have a current project loaded
     private var hasActiveProject: Bool {
         return currentProjectManager?.currentProject != nil
@@ -53,7 +56,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             
             // Toggle panel visibility
             Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel")
-            dockPanelManager.togglePanel(with: projectManager, near: dockClickPoint)
+            dockPanelManager.togglePanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback)
         } else {
             Logger.shared.log("AppDelegate: No active project, showing splash window instead")
             Logger.shared.log("AppDelegate: currentProjectManager nil: \(currentProjectManager == nil)")
@@ -109,12 +112,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Project Manager Integration
     
     /// Update current project manager (called from SplashView or other coordinators)
-    func setCurrentProjectManager(_ projectManager: ProjectManager?) {
+    func setCurrentProjectManager(_ projectManager: ProjectManager?, closeCallback: (() -> Void)? = nil) {
         Logger.shared.log("AppDelegate: setCurrentProjectManager called")
         Logger.shared.log("AppDelegate: Previous project manager: \(self.currentProjectManager == nil ? "nil" : "exists")")
         Logger.shared.log("AppDelegate: New project manager: \(projectManager == nil ? "nil" : "exists")")
+        Logger.shared.log("AppDelegate: Close callback provided: \(closeCallback != nil)")
         
         self.currentProjectManager = projectManager
+        self.closeProjectCallback = closeCallback
         
         if let projectManager = projectManager, let project = projectManager.currentProject {
             Logger.shared.log("AppDelegate: Set active project: \(project.name)")
@@ -139,7 +144,7 @@ extension AppDelegate {
     /// Show dock panel with specific project
     func showDockPanel(with projectManager: ProjectManager, at point: NSPoint? = nil) {
         let dockPoint = point ?? estimateDockClickPosition()
-        dockPanelManager.showPanel(with: projectManager, near: dockPoint)
+        dockPanelManager.showPanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback)
     }
     
     /// Hide dock panel
@@ -167,6 +172,6 @@ extension AppDelegate {
         
         let dockPoint = estimateDockClickPosition()
         Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel from menu action")
-        dockPanelManager.togglePanel(with: projectManager, near: dockPoint)
+        dockPanelManager.togglePanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback)
     }
 }
