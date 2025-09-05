@@ -200,12 +200,6 @@ struct TaskspaceCard: View {
         }
     }
 
-    private var screenshotHeight: CGFloat {
-        guard let screen = NSScreen.main else { return 120 }
-        let screenAspectRatio = screen.frame.width / screen.frame.height
-        let baseWidth: CGFloat = 200  // Approximate width available for screenshot
-        return baseWidth / screenAspectRatio
-    }
     
     private func handleTaskspaceClick() {
         if hasRegisteredWindow {
@@ -219,58 +213,33 @@ struct TaskspaceCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(taskspace.name)
-                    .font(.headline)
-
-                Spacer()
-
-                if taskspace.needsAttention {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundColor(.orange)
-                }
-
-                Button(action: {
-                    showingDeleteConfirmation = true
-                }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                }
-                .buttonStyle(.plain)
-                .help("Delete taskspace")
-            }
-
-            Text(taskspace.description)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            // Screenshot or placeholder
+        HStack(alignment: .top, spacing: 12) {
+            // Left: Screenshot thumbnail
             Group {
                 if let screenshot = projectManager.getScreenshot(for: taskspace.id) {
                     // Show screenshot - live if active, heavily greyed with overlay if dormant
                     ZStack {
                         Image(nsImage: screenshot)
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: screenshotHeight)
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 120, height: 80)
                             .cornerRadius(6)
                             .clipped()
-                            .opacity(hasRegisteredWindow ? 1.0 : 0.3) // Much more greyed out
-                            .saturation(hasRegisteredWindow ? 1.0 : 0.2) // Desaturate dormant screenshots
+                            .opacity(hasRegisteredWindow ? 1.0 : 0.3)
+                            .saturation(hasRegisteredWindow ? 1.0 : 0.2)
                         
                         // Overlay action text for dormant screenshots
                         if !hasRegisteredWindow {
                             RoundedRectangle(cornerRadius: 6)
                                 .fill(Color.black.opacity(0.4))
-                                .frame(height: screenshotHeight)
+                                .frame(width: 120, height: 80)
                                 .overlay(
-                                    VStack(spacing: 4) {
+                                    VStack(spacing: 2) {
                                         Image(systemName: stateIcon)
-                                            .font(.title2)
+                                            .font(.caption)
                                             .foregroundColor(.white)
                                         Text(stateText)
-                                            .font(.caption)
+                                            .font(.system(size: 8))
                                             .foregroundColor(.white)
                                             .fontWeight(.medium)
                                     }
@@ -281,32 +250,68 @@ struct TaskspaceCard: View {
                     // Show placeholder
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.gray.opacity(0.1))
-                        .frame(height: screenshotHeight)
+                        .frame(width: 120, height: 80)
                         .overlay(
-                            VStack(spacing: 4) {
+                            VStack(spacing: 2) {
                                 Image(systemName: stateIcon)
-                                    .font(.title2)
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                                 Text(stateText)
-                                    .font(.caption)
+                                    .font(.system(size: 8))
                                     .foregroundColor(.secondary)
                             }
                         )
                 }
             }
+            
+            // Right: Content column
+            VStack(alignment: .leading, spacing: 6) {
+                // Header row
+                HStack {
+                    Text(taskspace.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
 
-            // Recent logs
-            if !taskspace.logs.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(taskspace.logs.suffix(3)) { log in
-                        HStack {
-                            Text(log.category.icon)
-                            Text(log.message)
-                                .font(.caption)
-                                .lineLimit(1)
+                    Spacer()
+
+                    if taskspace.needsAttention {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundColor(.orange)
+                    }
+
+                    Button(action: {
+                        showingDeleteConfirmation = true
+                    }) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete taskspace")
+                }
+
+                // Description
+                Text(taskspace.description)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+
+                // Recent logs (compact)
+                if !taskspace.logs.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(taskspace.logs.suffix(2)) { log in
+                            HStack(spacing: 4) {
+                                Text(log.category.icon)
+                                    .font(.system(size: 10))
+                                Text(log.message)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
                         }
                     }
                 }
+                
+                Spacer(minLength: 0)
             }
         }
         .padding()
