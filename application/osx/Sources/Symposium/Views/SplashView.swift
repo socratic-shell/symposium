@@ -115,23 +115,15 @@ struct SplashView: View {
     // MARK: - Phase 22: XOR Invariant Helper Functions
     
     private func hideSplashWindow() {
-        Logger.shared.log("SplashView: Hiding splash window for XOR invariant")
-        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
-            splashWindow.orderOut(nil)
-            Logger.shared.log("SplashView: Splash window hidden")
-        } else {
-            Logger.shared.log("SplashView: Warning - splash window not found to hide")
-        }
+        Logger.shared.log("SplashView: Dismissing splash window for XOR invariant")
+        dismiss()
+        Logger.shared.log("SplashView: Splash window dismissed")
     }
     
     private func showSplashWindow() {
-        Logger.shared.log("SplashView: Showing splash window for XOR invariant")
-        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
-            splashWindow.makeKeyAndOrderFront(nil)
-            Logger.shared.log("SplashView: Splash window shown")
-        } else {
-            Logger.shared.log("SplashView: Warning - splash window not found to show")
-        }
+        Logger.shared.log("SplashView: Opening splash window for XOR invariant")
+        openWindow(id: "splash")
+        Logger.shared.log("SplashView: Splash window opened")
     }
     
     private func showDockPanelImmediately(with projectManager: ProjectManager) {

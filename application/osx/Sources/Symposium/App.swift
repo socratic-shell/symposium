@@ -9,6 +9,9 @@ struct SymposiumApp: App {
     
     // App delegate for dock click handling
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
+    // SwiftUI environment for window management
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         // Splash/Setup window - only shows when needed
@@ -69,14 +72,9 @@ struct SymposiumApp: App {
     }
 
     private func showSplashWindow() {
-        // Find existing splash window or ensure it's visible
-        if let splashWindow = NSApp.windows.first(where: { $0.title == "Symposium" }) {
-            splashWindow.makeKeyAndOrderFront(nil)
-        } else {
-            // No existing splash window found - this shouldn't happen in normal operation
-            // since we always keep the splash window open in the new architecture
-            Logger.shared.log("App: No splash window found, this is unexpected in dock-activated mode")
-        }
+        Logger.shared.log("App: Opening splash window via menu command")
+        openWindow(id: "splash")
+        Logger.shared.log("App: Splash window opened via SwiftUI environment")
     }
 
     private func copyLogsToClipboard() {
