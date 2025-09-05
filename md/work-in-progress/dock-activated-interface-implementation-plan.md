@@ -53,27 +53,35 @@ This document outlines the implementation plan for transitioning Symposium from 
 
 **Success Criteria**: NSPanel appears with SwiftUI content, positioned near dock, dismisses properly
 
-### Phase 20: Application Architecture Changes 🔧
+### Phase 20: Application Architecture Changes ✅
 
 **20.1: Modify App.swift Window Structure**
-- [ ] Remove "project" WindowGroup (multi-project window support)
-- [ ] Keep "splash" WindowGroup as dedicated Project Selection Window
-- [ ] Integrate DockPanelManager into app lifecycle
-- [ ] Add dock click event handling to App.swift
+- [x] Remove "project" WindowGroup (multi-project window support)
+- [x] Keep "splash" WindowGroup as dedicated Project Selection Window
+- [x] Integrate DockPanelManager into app lifecycle (via AppDelegate coordination)
+- [x] Add dock click event handling to App.swift (inherited from Phase 10)
 
 **20.2: Single Active Project Model**
-- [ ] Add `activeProjectPath` to SettingsManager (replace multi-project tracking)
-- [ ] Modify SplashView to automatically restore last active project on startup
-- [ ] Add "Close Project" functionality that returns to SplashView
-- [ ] Update project selection flow to set active project instead of opening windows
+- [x] Add `activeProjectPath` to SettingsManager (replace multi-project tracking)
+- [x] Modify SplashView to automatically restore last active project on startup
+- [x] Add "Close Project" functionality that returns to SplashView
+- [x] Update project selection flow to set active project instead of opening windows
 
 **20.3: Splash Window as Project Manager**
-- [ ] Modify SplashView to handle both project selection AND dock panel management
-- [ ] Add dock panel integration to SplashView lifecycle
-- [ ] Ensure splash window persists while project is active (hidden but not closed)
-- [ ] Handle splash window show/hide when projects are opened/closed
+- [x] Modify SplashView to handle both project selection AND dock panel management
+- [x] Add dock panel integration to SplashView lifecycle (via AppDelegate coordination)
+- [x] Ensure splash window persists while project is active (no longer dismissed)
+- [x] Handle splash window show/hide when projects are opened/closed (ActiveProjectView)
 
-**Success Criteria**: App launches with splash window, can open project that shows dock panel, can close project to return to splash
+**Success Criteria**: ✅ App launches with splash window, can open project that shows dock panel, can close project to return to splash
+
+**Implementation Notes**: 
+- Created `ActiveProjectView` for managing active project state with "Close Project" functionality
+- Renamed `lastProjectPath` → `activeProjectPath` across entire codebase for clearer semantics  
+- SplashView now manages project lifecycle with `setActiveProject()` and `closeActiveProject()` methods
+- Single window architecture: splash window persists and shows different content based on project state
+- Full AppDelegate integration for dock panel coordination maintained from Phase 10
+- Project restoration on app startup now sets active project instead of opening separate windows
 
 ### Phase 30: Enhanced Taskspace State Management 📊
 
