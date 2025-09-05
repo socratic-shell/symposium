@@ -83,6 +83,36 @@ This document outlines the implementation plan for transitioning Symposium from 
 - Full AppDelegate integration for dock panel coordination maintained from Phase 10
 - Project restoration on app startup now sets active project instead of opening separate windows
 
+### Phase 22: Improved Project Workflow & XOR Invariant 🎯
+
+**22.1: Implement XOR Invariant (Active Project ⊕ Splash Window Visible)**
+- [ ] Remove ActiveProjectView entirely (intermediate state not needed)
+- [ ] Modify setActiveProject() to hide splash window instead of showing ActiveProjectView
+- [ ] Modify closeActiveProject() to show splash window when project closed
+- [ ] Update SplashView body logic to never show ActiveProjectView
+
+**22.2: Immediate Dock Panel on Project Open**
+- [ ] Show dock panel immediately when project is opened (don't wait for dock click)
+- [ ] Position dock panel near dock location on project open
+- [ ] Ensure panel shows dormant taskspaces ready for user activation
+- [ ] Maintain existing dock click behavior for subsequent panel displays
+
+**22.4: Consistent Initial Taskspace Creation**
+- [ ] Modify project creation to automatically create one initial taskspace (dormant)
+- [ ] Ensure new project taskspaces start dormant until user activation
+- [ ] Update existing project loading to show all taskspaces as dormant initially
+- [ ] Create consistent experience: all projects open with dormant taskspaces
+
+**22.3: Dock Panel as Primary Project Interface**
+- [ ] Add "Close Project" functionality to dock panel (button or menu)
+- [ ] Remove "Close Project" from splash window (no longer needed)
+- [ ] Ensure dock panel can manage all project operations
+- [ ] Update dock panel to be the sole interface for active projects
+
+**Success Criteria**: Opening project immediately shows dock panel with dormant taskspaces, splash window hidden. Closing project returns to splash. Clean XOR invariant maintained.
+
+**Implementation Notes**: This creates a much more intuitive workflow where the dock panel becomes both the initial project workspace (letting users activate taskspaces) and the ongoing project interface. Eliminates the awkward "Project Active" intermediate screen.
+
 ### Phase 30: Enhanced Taskspace State Management 📊
 
 **30.1: Two-Dimensional State Model**
