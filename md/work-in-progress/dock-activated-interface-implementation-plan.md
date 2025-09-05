@@ -174,27 +174,31 @@ This document outlines the implementation plan for transitioning Symposium from 
 
 *Based on user feedback comparing actual UI to design sketch*
 
-**35.1: Taskspace Card Layout** ❌ **MAJOR ISSUE**
-- [ ] **CRITICAL**: Fix screenshot positioning - currently stacked vertically, should be horizontal thumbnail on left
-  - Current: Taskspace info → Screenshot below → Logs below (vertical stack)
-  - Target: Screenshot thumbnail ← Taskspace info & logs on right (horizontal layout)
-- [ ] Reduce screenshot size from current ~300x200px to ~120x80px thumbnail
-- [ ] Implement proper HStack layout instead of VStack for card content
+**35.1: Taskspace Card Layout** ✅ **COMPLETED** ([`641f5d9`](https://github.com/socratic-shell/symposium/commit/641f5d9))
+- [x] ~~**CRITICAL**: Fix screenshot positioning~~ → **FIXED**: Now horizontal thumbnail on left
+- [x] ~~Reduce screenshot size~~ → **FIXED**: 120x80px thumbnails  
+- [x] ~~Implement proper HStack layout~~ → **FIXED**: HStack with thumbnail left, content right
 
-**35.2: Visual Hierarchy & Information Density** ⚠️ **NEEDS WORK**
+**35.1b: Layout Refinements** ⚠️ **USER FEEDBACK**
+- [ ] **Spacing**: Current layout "a bit too tight" - make panel overall bigger and more spacious
+- [ ] **Log Visibility**: Show more than 2 logs - expand to show last ~10 log entries
+- [ ] **Log Interaction**: Add "pop out" functionality for full log viewing
+- [ ] **Card Actions**: Add "maximize" icon/button on cards for detailed view/interaction
+
+**35.2: Enhanced Information Density & Interaction** ⚠️ **IN PROGRESS**
+- [ ] **Panel Sizing**: Increase panel width/height for more spacious layout
+- [ ] **Extended Log Display**: Show last ~10 log entries instead of current 2
+- [ ] **Log Interaction**: 
+  - Add "View All Logs" button/link on each card
+  - Implement log popup/modal for full log history viewing
+- [ ] **Card Actions**: Add "maximize" icon button for card-specific actions
+- [ ] **Improved Spacing**: Less cramped layout with better padding throughout
+
+**35.3: Visual Polish & Card Definition** ⚠️ **NEEDS WORK** 
 - [ ] Add clear card boundaries with subtle rounded rectangle backgrounds
-- [ ] Implement proper spacing - current layout too sparse with excessive whitespace
 - [ ] Add divider lines between taskspace cards (like ASCII sketch: `─────────────────────────`)
-- [ ] Improve text hierarchy:
-  - Taskspace name: Bold, prominent
-  - Description: Secondary, smaller font
-  - Logs: Compact with bullet points, max 2-3 visible entries
-
-**35.3: Card Structure & Spacing** ⚠️ **NEEDS DEFINITION**
-- [ ] Create clear visual separation between taskspace cards
-- [ ] Implement consistent padding within cards
-- [ ] Add subtle background colors/borders to define card boundaries
-- [ ] Match the compact, list-like appearance from design sketch
+- [ ] Implement better card hover states and interactions
+- [ ] Consistent padding and visual hierarchy improvements
 
 **Target Design Reference**: [ASCII Layout](./dock-activated-taskspace-workflow.md#dock-panel-layout)
 

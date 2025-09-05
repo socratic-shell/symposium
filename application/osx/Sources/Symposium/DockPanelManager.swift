@@ -164,9 +164,9 @@ class DockPanelManager: ObservableObject {
     }
     
     private func calculateIdealPanelSize() -> NSSize {
-        // Use a fixed ideal size instead of creating a temporary ProjectManager
-        // This avoids creating unnecessary instances and potential screenshot loading issues
-        return NSSize(width: 400, height: 800)
+        // Use a larger, more spacious panel size for better information density
+        // Width increased for better horizontal layout, height maintained for screen compatibility
+        return NSSize(width: 550, height: 800)
     }
     
     private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> (position: NSPoint, arrowDirection: DockPanel.ArrowDirection, arrowPosition: CGFloat) {

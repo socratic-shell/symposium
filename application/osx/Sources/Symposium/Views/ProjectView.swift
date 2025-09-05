@@ -213,7 +213,7 @@ struct TaskspaceCard: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 16) {
             // Left: Screenshot thumbnail
             Group {
                 if let screenshot = projectManager.getScreenshot(for: taskspace.id) {
@@ -265,7 +265,7 @@ struct TaskspaceCard: View {
             }
             
             // Right: Content column
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Header row
                 HStack {
                     Text(taskspace.name)
@@ -278,6 +278,16 @@ struct TaskspaceCard: View {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundColor(.orange)
                     }
+
+                    Button(action: {
+                        // TODO: Implement maximize/detail view
+                        Logger.shared.log("TaskspaceCard: TODO - Show detailed view for: \(taskspace.name)")
+                    }) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .foregroundColor(.blue)
+                    }
+                    .buttonStyle(.plain)
+                    .help("View details")
 
                     Button(action: {
                         showingDeleteConfirmation = true
@@ -295,10 +305,31 @@ struct TaskspaceCard: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
 
-                // Recent logs (compact)
+                // Recent logs (expanded)
                 if !taskspace.logs.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(taskspace.logs.suffix(2)) { log in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text("Recent Activity")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            if taskspace.logs.count > 10 {
+                                Button(action: {
+                                    // TODO: Implement full log viewer
+                                    Logger.shared.log("TaskspaceCard: TODO - Show full logs for: \(taskspace.name)")
+                                }) {
+                                    Text("View All (\(taskspace.logs.count))")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(.blue)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        
+                        ForEach(taskspace.logs.suffix(10)) { log in
                             HStack(spacing: 4) {
                                 Text(log.category.icon)
                                     .font(.system(size: 10))
@@ -314,7 +345,7 @@ struct TaskspaceCard: View {
                 Spacer(minLength: 0)
             }
         }
-        .padding()
+        .padding(16)
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
         .onTapGesture {
