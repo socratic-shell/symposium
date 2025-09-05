@@ -60,6 +60,10 @@ struct SplashView: View {
                             if let projectPath = projectManager.currentProject?.directoryPath {
                                 Logger.shared.log(
                                     "SplashView: Opening project window with path: \(projectPath)")
+                                
+                                // Notify AppDelegate about the active project
+                                AppDelegate.shared?.setCurrentProjectManager(projectManager)
+                                
                                 openWindow(id: "project", value: projectPath)
                                 Logger.shared.log(
                                     "SplashView: Called openWindow, now dismissing splash")
@@ -113,6 +117,23 @@ struct SplashView: View {
                 "SplashView: Found last project, opening directly: \(settingsManager.lastProjectPath)"
             )
             Logger.shared.log("SplashView: Opening project window (keeping splash open)")
+            
+            // For restoring last project, we need to create a ProjectManager to notify AppDelegate
+            // This is a temporary solution for Phase 10.1 - will be refactored in later phases
+            let tempProjectManager = ProjectManager(
+                agentManager: agentManager,
+                settingsManager: settingsManager, 
+                selectedAgent: settingsManager.selectedAgent,
+                permissionManager: permissionManager
+            )
+            
+            do {
+                try tempProjectManager.openProject(at: settingsManager.lastProjectPath)
+                AppDelegate.shared?.setCurrentProjectManager(tempProjectManager)
+            } catch {
+                Logger.shared.log("SplashView: Failed to load last project for AppDelegate: \(error)")
+            }
+            
             openWindow(id: "project", value: settingsManager.lastProjectPath)
         } else {
             Logger.shared.log("SplashView: Not opening last project - staying on splash")

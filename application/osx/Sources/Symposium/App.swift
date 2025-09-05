@@ -6,6 +6,9 @@ struct SymposiumApp: App {
     @StateObject private var agentManager = AgentManager()
     @StateObject private var settingsManager = SettingsManager()
     @StateObject private var permissionManager = PermissionManager()
+    
+    // App delegate for dock click handling
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         // Splash/Setup window - only shows when needed
@@ -74,6 +77,13 @@ struct SymposiumApp: App {
                     listAllWindows()
                 }
                 .keyboardShortcut("w", modifiers: [.command, .shift])
+                
+                Divider()
+                
+                Button("Toggle Dock Panel") {
+                    appDelegate.toggleDockPanel()
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
             }
         }
 
