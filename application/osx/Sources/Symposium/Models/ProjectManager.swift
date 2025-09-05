@@ -296,8 +296,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Save taskspace metadata
         try taskspace.save(in: project.directoryPath)
 
-        // Launch VSCode in the cloned repository directory
-        launchVSCode(for: taskspace, in: project.directoryPath)
+        // Phase 30: Do NOT auto-launch VSCode - new taskspaces start dormant until user clicks
+        Logger.shared.log("ProjectManager: Created new taskspace '\(taskspace.name)' (dormant until activated)")
 
         // Add to current project
         DispatchQueue.main.async {
