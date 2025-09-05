@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// App delegate to handle dock icon clicks and other app-level events
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     /// Dock panel manager for handling panel display
     private let dockPanelManager = DockPanelManager()

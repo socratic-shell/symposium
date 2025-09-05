@@ -20,6 +20,7 @@ struct SymposiumApp: App {
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
+                .environmentObject(appDelegate)
                 .onAppear {
                     Logger.shared.log("Splash window started")
                 }

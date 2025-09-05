@@ -4,6 +4,7 @@ struct SplashView: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var appDelegate: AppDelegate
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
     @State private var showingSettings = false
@@ -84,7 +85,7 @@ struct SplashView: View {
         Logger.shared.log("SplashView: Setting active project manager")
         
         // Notify AppDelegate about the active project for dock panel integration
-        AppDelegate.shared?.setCurrentProjectManager(projectManager, closeCallback: closeActiveProject)
+        appDelegate.setCurrentProjectManager(projectManager, closeCallback: closeActiveProject)
         
         // Phase 22: Implement XOR invariant - hide splash window when project is active
         hideSplashWindow()
@@ -130,13 +131,9 @@ struct SplashView: View {
         Logger.shared.log("SplashView: Showing dock panel immediately on project open")
         
         // Use AppDelegate to show the dock panel immediately
-        if let appDelegate = AppDelegate.shared {
-            let dockPosition = estimateDockPosition()
-            appDelegate.showDockPanel(with: projectManager, at: dockPosition)
-            Logger.shared.log("SplashView: Dock panel shown immediately at position: \(dockPosition)")
-        } else {
-            Logger.shared.log("SplashView: Warning - AppDelegate not found, cannot show dock panel")
-        }
+        let dockPosition = estimateDockPosition()
+        appDelegate.showDockPanel(with: projectManager, at: dockPosition)
+        Logger.shared.log("SplashView: Dock panel shown immediately at position: \(dockPosition)")
     }
     
     private func estimateDockPosition() -> NSPoint {
