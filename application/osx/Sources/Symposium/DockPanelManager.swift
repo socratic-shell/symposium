@@ -164,8 +164,9 @@ class DockPanelManager: ObservableObject {
     }
     
     private func calculateIdealPanelSize() -> NSSize {
-        let hostingView = DockPanelHostingView<ProjectView>.init(rootView: ProjectView(projectManager: ProjectManager(agentManager: AgentManager(), settingsManager: SettingsManager(), selectedAgent: .claude, permissionManager: PermissionManager())))
-        return hostingView.calculateIdealSize()
+        // Use a fixed ideal size instead of creating a temporary ProjectManager
+        // This avoids creating unnecessary instances and potential screenshot loading issues
+        return NSSize(width: 400, height: 800)
     }
     
     private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> (position: NSPoint, arrowDirection: DockPanel.ArrowDirection, arrowPosition: CGFloat) {

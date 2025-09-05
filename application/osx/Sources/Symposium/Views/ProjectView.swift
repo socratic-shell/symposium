@@ -247,16 +247,15 @@ struct TaskspaceCard: View {
 
             // Screenshot or placeholder
             Group {
-                if hasRegisteredWindow,
-                    let screenshot = projectManager.getScreenshot(for: taskspace.id)
-                {
-                    // Show actual screenshot
+                if let screenshot = projectManager.getScreenshot(for: taskspace.id) {
+                    // Show screenshot - live if active, greyed if dormant
                     Image(nsImage: screenshot)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(height: screenshotHeight)
                         .cornerRadius(6)
                         .clipped()
+                        .opacity(hasRegisteredWindow ? 1.0 : 0.6) // Grey out dormant screenshots
                 } else {
                     // Show placeholder
                     RoundedRectangle(cornerRadius: 6)
