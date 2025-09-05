@@ -137,27 +137,37 @@ This document outlines the implementation plan for transitioning Symposium from 
 
 **Implementation Notes**: 🎉 **FULLY FUNCTIONAL** - The dock-activated interface is working perfectly! Users click dock → see speech bubble panel with taskspaces. Project workflow is intuitive: project selection → immediate dock panel → taskspace activation. XOR invariant works flawlessly through proper SwiftUI patterns. Ready for Phase 30!
 
-### Phase 30: Enhanced Taskspace State Management 📊
+### Phase 30: Enhanced Taskspace State Management 🎯 **IN PROGRESS**
 
-**30.1: Two-Dimensional State Model**
-- [ ] Add `PersistentState` enum to Taskspace model: `Hatchling`, `Resume`
-- [ ] Add runtime Active/Dormant detection via IPC roll-call system
-- [ ] Modify TaskspaceCard to show visual states based on both dimensions
-- [ ] Update taskspace.json persistence to include persistent state
+**30.1: Two-Dimensional State Model** ✅
+- [x] ~~Add `PersistentState` enum to Taskspace model~~ → **ALTERNATE**: Use existing `TaskspaceState` enum ([`Taskspace.swift:7`](application/osx/Sources/Symposium/Models/Taskspace.swift))
+- [x] Add runtime Active/Dormant detection via window registration → [`hasRegisteredWindow`](application/osx/Sources/Symposium/Views/ProjectView.swift:175-177)
+- [x] Modify TaskspaceCard to show visual states based on both dimensions → [`stateIcon`](application/osx/Sources/Symposium/Views/ProjectView.swift:187-201), [`stateText`](application/osx/Sources/Symposium/Views/ProjectView.swift:195-201)
+- [x] ~~Update taskspace.json persistence~~ → **EXISTING**: `TaskspaceState` already persisted via Codable
 
-**30.2: IPC Roll-Call System**
-- [ ] Implement periodic taskspace detection broadcasts
-- [ ] Add IPC message types for taskspace presence detection
-- [ ] Update VSCode extension to respond to roll-call messages
-- [ ] Handle taskspace Active→Dormant transitions when VSCode closes
+**30.2: IPC Roll-Call System** ⚠️ **PARTIAL**
+- [ ] **MISSING**: Implement periodic taskspace detection broadcasts (only manual via [`reregisterWindows()`](application/osx/Sources/Symposium/Views/ProjectView.swift:152-167))
+- [x] Add IPC message types for taskspace presence detection → [`TaskspaceRollCallPayload`](application/osx/Sources/Symposium/Models/IpcManager.swift:57-63)
+- [x] ~~Update VSCode extension to respond to roll-call messages~~ → **EXISTING**: Extension already responds
+- [ ] **MISSING**: Handle taskspace Active→Dormant transitions when VSCode closes (windows stay "Connected" until manual refresh)
 
-**30.3: Visual State Indicators**
-- [ ] Update TaskspaceCard to show live/grey/placeholder screenshots
-- [ ] Add loading states for taskspace awakening process
-- [ ] Implement visual feedback for dormant taskspaces being awakened
-- [ ] Add state indicators (Active/Dormant badges) to taskspace cards
+**30.3: Visual State Indicators** ⚠️ **PARTIAL** 
+- [ ] **CRITICAL MISSING**: Save screenshots to disk (`task-{UUID}/screenshot.png`) → Currently only in-memory [`taskspaceScreenshots`](application/osx/Sources/Symposium/Models/ProjectManager.swift:17)
+- [x] ~~Add loading states for taskspace awakening process~~ → **BETTER**: Clear "Starting..." state for Hatchling activation
+- [x] Implement visual feedback for dormant taskspaces → "Click to start" vs "Click to connect" messaging
+- [x] ~~Add state indicators (Active/Dormant badges)~~ → **BETTER**: Intuitive text and icons instead of badges
 
-**Success Criteria**: Taskspaces correctly show Active/Dormant states, visual feedback matches actual window states
+**30.4: Core Behavioral Foundation** ✅ **COMPLETED**
+- [x] Dormant by default: Projects open without auto-launching VSCode → [`ProjectManager.swift:111-112`](application/osx/Sources/Symposium/Models/ProjectManager.swift:111-112)
+- [x] Click-to-activate: Users click taskspace cards to launch VSCode → [`handleTaskspaceClick()`](application/osx/Sources/Symposium/Views/ProjectView.swift:210-218)
+- [x] New taskspaces start dormant → [`ProjectManager.swift:299-300`](application/osx/Sources/Symposium/Models/ProjectManager.swift:299-300)
+- [x] Visual distinction: Hatchling vs Resume states → [`stateIcon`](application/osx/Sources/Symposium/Views/ProjectView.swift:187-193), [`stateText`](application/osx/Sources/Symposium/Views/ProjectView.swift:195-201)
+
+**🚨 Remaining Critical Issues:**
+1. **Screenshot Persistence**: Screenshots not saved to disk, breaking dormant visual experience
+2. **Automatic State Detection**: No periodic roll-calls, VSCode closures not detected
+
+**Success Criteria**: ✅ **Core Complete** - User-controlled taskspace activation working. ⚠️ **Polish Missing** - Need screenshot persistence and auto-detection for full experience
 
 ### Phase 40: Project Lifecycle & Window Management 🪟
 

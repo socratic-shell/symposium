@@ -111,6 +111,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Phase 30: Do NOT auto-launch VSCode - taskspaces start dormant until user activates them
         Logger.shared.log("ProjectManager: Project opened with \(project.taskspaces.count) dormant taskspaces")
 
+        // Load existing screenshots from disk for visual persistence
+        self.loadExistingScreenshots()
+
         self.startMCPClient()
     }
 
@@ -390,13 +393,77 @@ extension ProjectManager {
             let captureTime = Date().timeIntervalSince(startTime)
             Logger.shared.log("ProjectManager: Screenshot captured in \(String(format: "%.3f", captureTime))s")
             
+            // Cache in memory for immediate UI updates
             taskspaceScreenshots[taskspaceId] = screenshot
+            
+            // Save to disk for persistence across app restarts
+            await saveScreenshotToDisk(screenshot: screenshot, taskspaceId: taskspaceId)
+            
             let totalTime = Date().timeIntervalSince(startTime)
             Logger.shared.log("ProjectManager: Screenshot cached for taskspace \(taskspaceId) (total: \(String(format: "%.3f", totalTime))s)")
         } else {
             let failTime = Date().timeIntervalSince(startTime)
             Logger.shared.log("ProjectManager: Failed to capture screenshot for taskspace \(taskspaceId) after \(String(format: "%.3f", failTime))s")
         }
+    }
+    
+    /// Save screenshot to disk for persistence across app restarts
+    private func saveScreenshotToDisk(screenshot: NSImage, taskspaceId: UUID) async {
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: Cannot save screenshot - no current project")
+            return
+        }
+        
+        // Find the taskspace to get its directory path
+        guard let taskspace = currentProject.findTaskspace(uuid: taskspaceId.uuidString) else {
+            Logger.shared.log("ProjectManager: Cannot find taskspace for screenshot save: \(taskspaceId)")
+            return
+        }
+        
+        let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
+        let screenshotPath = "\(taskspaceDir)/screenshot.png"
+        
+        // Convert NSImage to PNG data
+        guard let tiffData = screenshot.tiffRepresentation,
+              let bitmapImage = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
+            Logger.shared.log("ProjectManager: Failed to convert screenshot to PNG data")
+            return
+        }
+        
+        do {
+            try pngData.write(to: URL(fileURLWithPath: screenshotPath))
+            Logger.shared.log("ProjectManager: Screenshot saved to disk: \(screenshotPath)")
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to save screenshot to disk: \(error)")
+        }
+    }
+    
+    /// Load existing screenshots from disk on project open for visual persistence
+    private func loadExistingScreenshots() {
+        guard let currentProject = currentProject else {
+            Logger.shared.log("ProjectManager: Cannot load screenshots - no current project")
+            return
+        }
+        
+        var loadedCount = 0
+        
+        for taskspace in currentProject.taskspaces {
+            let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
+            let screenshotPath = "\(taskspaceDir)/screenshot.png"
+            
+            if FileManager.default.fileExists(atPath: screenshotPath) {
+                if let screenshot = NSImage(contentsOfFile: screenshotPath) {
+                    taskspaceScreenshots[taskspace.id] = screenshot
+                    loadedCount += 1
+                    Logger.shared.log("ProjectManager: Loaded screenshot from disk for taskspace: \(taskspace.name)")
+                } else {
+                    Logger.shared.log("ProjectManager: Failed to load screenshot file: \(screenshotPath)")
+                }
+            }
+        }
+        
+        Logger.shared.log("ProjectManager: Loaded \(loadedCount) existing screenshots from disk")
     }
 }
 
