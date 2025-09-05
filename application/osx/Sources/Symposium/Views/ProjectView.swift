@@ -192,7 +192,7 @@ struct TaskspaceCard: View {
             
             // Screenshot or placeholder
             Group {
-                if #available(macOS 14.0, *), hasRegisteredWindow, let screenshot = projectManager.screenshots.getScreenshot(for: taskspace.id) {
+                if hasRegisteredWindow, let screenshot = projectManager.getScreenshot(for: taskspace.id) {
                     // Show actual screenshot
                     Image(nsImage: screenshot)
                         .resizable()

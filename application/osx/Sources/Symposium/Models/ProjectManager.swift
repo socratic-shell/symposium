@@ -1,11 +1,13 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 /// Manages project creation, loading, and operations
 class ProjectManager: ObservableObject, IpcMessageDelegate {
     @Published var currentProject: Project?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var taskspaceScreenshots: [UUID: NSImage] = [:]
     
     private let ipcManager = IpcManager()
     private let agentManager: AgentManager
@@ -14,33 +16,19 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let permissionManager: PermissionManager
     
     // Window associations for current project
-    @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
+    private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
     var mcpStatus: IpcManager { ipcManager }
     
-    // Screenshots are only available on macOS 14.0+ - stored as optional to handle availability
-    private var _screenshotManager: Any?
-    
-    @available(macOS 14.0, *)
-    var screenshots: ScreenshotManager {
-        if let existing = _screenshotManager as? ScreenshotManager {
-            return existing
-        }
-        let manager = ScreenshotManager(permissionManager: permissionManager)
-        _screenshotManager = manager
-        return manager
+    /// Get screenshot for a taskspace (returns cached version from @Published property)
+    func getScreenshot(for taskspaceId: UUID) -> NSImage? {
+        return taskspaceScreenshots[taskspaceId]
     }
     
-    @available(macOS 14.0, *)
-    @MainActor
-    private func initializeScreenshots() -> ScreenshotManager {
-        if let existing = _screenshotManager as? ScreenshotManager {
-            return existing
-        }
-        let manager = ScreenshotManager(permissionManager: permissionManager)
-        _screenshotManager = manager
-        return manager
-    }
+    // Screenshot manager (macOS 14.0+ assumed)
+    private lazy var screenshotManager: ScreenshotManager = {
+        ScreenshotManager(permissionManager: permissionManager)
+    }()
     
     init(agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: AgentType, permissionManager: PermissionManager) {
         self.agentManager = agentManager
@@ -345,15 +333,11 @@ extension ProjectManager {
         taskspaceWindows[uuid] = windowID
         Logger.shared.log("ProjectManager: Associated window \(windowID) with taskspace \(uuid)")
         
-        // Capture screenshot when window is first registered (macOS 14.0+ only)
+        // Capture screenshot when window is first registered
         Logger.shared.log("ProjectManager: Attempting screenshot capture for window \(windowID), taskspace \(uuid)")
-        if #available(macOS 14.0, *) {
-            Task { @MainActor in
-                Logger.shared.log("ProjectManager: Starting screenshot capture task")
-                await screenshots.captureWindowScreenshot(windowId: windowID, for: uuid)
-            }
-        } else {
-            Logger.shared.log("ProjectManager: macOS 14.0+ required for screenshots, skipping")
+        Task { @MainActor in
+            Logger.shared.log("ProjectManager: Starting screenshot capture task")
+            await captureAndCacheScreenshot(windowId: windowID, for: uuid)
         }
         
         return true
@@ -362,6 +346,18 @@ extension ProjectManager {
     /// Get window ID for a taskspace
     func getWindow(for taskspaceUuid: UUID) -> CGWindowID? {
         return taskspaceWindows[taskspaceUuid]
+    }
+    
+    /// Capture screenshot and update the @Published cache
+    @MainActor
+    private func captureAndCacheScreenshot(windowId: CGWindowID, for taskspaceId: UUID) async {
+        // Use the screenshot manager to capture the screenshot directly
+        if let screenshot = await screenshotManager.captureWindowScreenshot(windowId: windowId) {
+            taskspaceScreenshots[taskspaceId] = screenshot
+            Logger.shared.log("ProjectManager: Cached screenshot for taskspace \(taskspaceId)")
+        } else {
+            Logger.shared.log("ProjectManager: Failed to capture screenshot for taskspace \(taskspaceId)")
+        }
     }
 }
 
@@ -493,12 +489,10 @@ extension ProjectManager {
             // Save updated taskspace
             try updatedProject.taskspaces[taskspaceIndex].save(in: currentProject.directoryPath)
             
-            // Capture screenshot when log is updated (if window is registered, macOS 14.0+ only)
+            // Capture screenshot when log is updated (if window is registered)
             if let windowID = taskspaceWindows[UUID(uuidString: payload.taskspaceUuid)!] {
-                if #available(macOS 14.0, *) {
-                    Task { @MainActor in
-                        await screenshots.captureWindowScreenshot(windowId: windowID, for: UUID(uuidString: payload.taskspaceUuid)!)
-                    }
+                Task { @MainActor in
+                    await captureAndCacheScreenshot(windowId: windowID, for: UUID(uuidString: payload.taskspaceUuid)!)
                 }
             }
             
