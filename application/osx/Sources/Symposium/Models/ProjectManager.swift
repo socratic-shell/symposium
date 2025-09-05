@@ -108,30 +108,42 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         self.ipcManager.addDelegate(self)
         Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
 
-        // Launch VSCode for active taskspaces
-        self.launchVSCodeForActiveTaskspaces(in: project)
+        // Phase 30: Do NOT auto-launch VSCode - taskspaces start dormant until user activates them
+        Logger.shared.log("ProjectManager: Project opened with \(project.taskspaces.count) dormant taskspaces")
 
         self.startMCPClient()
     }
 
-    /// Launch VSCode for all active taskspaces (both hatchling and resume states)
-    private func launchVSCodeForActiveTaskspaces(in project: Project) {
-        let activeTaskspaces = project.taskspaces.filter { taskspace in
-            switch taskspace.state {
-            case .hatchling, .resume:
-                return true
-            }
+    /// Launch VSCode for a specific taskspace (used for user-activated awakening)
+    func launchVSCode(for taskspace: Taskspace) {
+        guard let project = currentProject else {
+            Logger.shared.log("ProjectManager: Cannot launch VSCode - no current project")
+            return
         }
-
-        for taskspace in activeTaskspaces {
-            launchVSCode(for: taskspace, in: project.directoryPath)
-        }
-
-        if !activeTaskspaces.isEmpty {
-            Logger.shared.log(
-                "ProjectManager: Launched VSCode for \(activeTaskspaces.count) active taskspaces")
-        }
+        
+        launchVSCode(for: taskspace, in: project.directoryPath)
+        Logger.shared.log("ProjectManager: User-activated VSCode for taskspace: \(taskspace.name)")
     }
+    
+    // MARK: - Legacy method (no longer auto-launches on project open)
+    // /// Launch VSCode for all active taskspaces (both hatchling and resume states)
+    // private func launchVSCodeForActiveTaskspaces(in project: Project) {
+    //     let activeTaskspaces = project.taskspaces.filter { taskspace in
+    //         switch taskspace.state {
+    //         case .hatchling, .resume:
+    //             return true
+    //         }
+    //     }
+    //
+    //     for taskspace in activeTaskspaces {
+    //         launchVSCode(for: taskspace, in: project.directoryPath)
+    //     }
+    //
+    //     if !activeTaskspaces.isEmpty {
+    //         Logger.shared.log(
+    //             "ProjectManager: Launched VSCode for \(activeTaskspaces.count) active taskspaces")
+    //     }
+    // }
 
     /// Load all taskspaces from project directory
     private func loadTaskspaces(from projectPath: String) throws -> [Taskspace] {

@@ -182,6 +182,17 @@ struct TaskspaceCard: View {
         let baseWidth: CGFloat = 200  // Approximate width available for screenshot
         return baseWidth / screenAspectRatio
     }
+    
+    private func handleTaskspaceClick() {
+        if hasRegisteredWindow {
+            // TODO Phase 40: Focus existing window
+            Logger.shared.log("TaskspaceCard: TODO - Focus active taskspace: \(taskspace.name)")
+        } else {
+            // Phase 30: Activate dormant taskspace by launching VSCode
+            Logger.shared.log("TaskspaceCard: Activating dormant taskspace: \(taskspace.name)")
+            projectManager.launchVSCode(for: taskspace)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -259,6 +270,9 @@ struct TaskspaceCard: View {
         .padding()
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
+        .onTapGesture {
+            handleTaskspaceClick()
+        }
         .alert("Delete Taskspace", isPresented: $showingDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
