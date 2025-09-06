@@ -149,7 +149,7 @@ This document outlines the implementation plan for transitioning Symposium from 
 - [ ] **MISSING**: Implement periodic taskspace detection broadcasts (only manual via [`reregisterWindows()`](application/osx/Sources/Symposium/Views/ProjectView.swift:152-167))
 - [x] Add IPC message types for taskspace presence detection → [`TaskspaceRollCallPayload`](application/osx/Sources/Symposium/Models/IpcManager.swift:57-63)
 - [x] ~~Update VSCode extension to respond to roll-call messages~~ → **EXISTING**: Extension already responds
-- [ ] **MISSING**: Handle taskspace Active→Dormant transitions when VSCode closes (windows stay "Connected" until manual refresh)
+- [x] ~~**MISSING**: Handle taskspace Active→Dormant transitions when VSCode closes~~ → **FIXED**: Automatic polling-based detection working ([`250e5fb`](https://github.com/socratic-shell/symposium/commit/250e5fb))
 
 **30.3: Visual State Indicators** ✅ **COMPLETED** 
 - [x] ~~**CRITICAL MISSING**: Save screenshots to disk~~ → **FIXED**: Screenshots saved to `task-{UUID}/screenshot.png` ([`ad22cc3`](https://github.com/socratic-shell/symposium/commit/ad22cc3))
@@ -164,11 +164,12 @@ This document outlines the implementation plan for transitioning Symposium from 
 - [x] New taskspaces start dormant → [`ProjectManager.swift:299-300`](application/osx/Sources/Symposium/Models/ProjectManager.swift:299-300)
 - [x] Visual distinction: Hatchling vs Resume states → [`stateIcon`](application/osx/Sources/Symposium/Views/ProjectView.swift:187-193), [`stateText`](application/osx/Sources/Symposium/Views/ProjectView.swift:195-201)
 
-**🚨 Remaining Critical Issues:**
-1. ~~**Screenshot Persistence**: Screenshots not saved to disk~~ → **FIXED**: Screenshots persist to disk and display correctly ✅
-2. **Automatic State Detection**: No periodic roll-calls, VSCode closures not detected
+**🚨 Remaining Items:**
+1. ~~**Screenshot Persistence & Display**~~ → **COMPLETE** ✅ 
+2. ~~**Automatic Window Close Detection**~~ → **COMPLETE** ✅
+3. **Optional: Targeted Roll-Calls for Recovery** → Edge case recovery when windows should be active but aren't tracked
 
-**Success Criteria**: ✅ **Core Complete** - User-controlled taskspace activation working with full visual experience! ⚠️ **Polish Missing** - Need automatic state detection for seamless UX
+**Success Criteria**: ✅ **PHASE 30 COMPLETE** - Seamless two-dimensional state management with automatic detection working perfectly!
 
 ### Phase 35: UI Polish & Design Refinement 🎨 **IDENTIFIED**
 

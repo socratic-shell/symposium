@@ -203,8 +203,12 @@ struct TaskspaceCard: View {
     
     private func handleTaskspaceClick() {
         if hasRegisteredWindow {
-            // TODO Phase 40: Focus existing window
-            Logger.shared.log("TaskspaceCard: TODO - Focus active taskspace: \(taskspace.name)")
+            // Phase 40: Focus existing active window
+            Logger.shared.log("TaskspaceCard: Focusing active taskspace: \(taskspace.name)")
+            let success = projectManager.focusTaskspaceWindow(for: taskspace)
+            if !success {
+                Logger.shared.log("TaskspaceCard: Focus failed, taskspace may have become dormant")
+            }
         } else {
             // Phase 30: Activate dormant taskspace by launching VSCode
             Logger.shared.log("TaskspaceCard: Activating dormant taskspace: \(taskspace.name)")

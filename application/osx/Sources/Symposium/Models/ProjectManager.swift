@@ -397,6 +397,98 @@ extension ProjectManager {
     func getWindow(for taskspaceUuid: UUID) -> CGWindowID? {
         return taskspaceWindows[taskspaceUuid]
     }
+    
+    /// Focus an active taskspace's VSCode window
+    func focusTaskspaceWindow(for taskspace: Taskspace) -> Bool {
+        guard let windowID = taskspaceWindows[taskspace.id] else {
+            Logger.shared.log("ProjectManager: Cannot focus taskspace \(taskspace.name) - no registered window")
+            return false
+        }
+        
+        // Verify window still exists before trying to focus it
+        guard isWindowStillOpen(windowID: windowID) else {
+            Logger.shared.log("ProjectManager: Cannot focus taskspace \(taskspace.name) - window no longer exists")
+            // Clean up stale window reference
+            taskspaceWindows.removeValue(forKey: taskspace.id)
+            return false
+        }
+        
+        Logger.shared.log("ProjectManager: Focusing window \(windowID) for taskspace: \(taskspace.name)")
+        
+        // Use Core Graphics to focus the window
+        let result = focusWindow(windowID: windowID)
+        
+        if result {
+            Logger.shared.log("ProjectManager: Successfully focused window for taskspace: \(taskspace.name)")
+        } else {
+            Logger.shared.log("ProjectManager: Failed to focus window for taskspace: \(taskspace.name)")
+        }
+        
+        return result
+    }
+    
+    /// Focus a window by its CGWindowID using Core Graphics APIs
+    private func focusWindow(windowID: CGWindowID) -> Bool {
+        // Get window info to find the owning process
+        let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return false
+        }
+        
+        guard let windowInfo = windowList.first(where: { window in
+            if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                return id == windowID
+            }
+            return false
+        }) else {
+            return false
+        }
+        
+        // Get the process ID that owns this window
+        guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+            return false
+        }
+        
+        // Get the running application for this process
+        guard let app = NSRunningApplication(processIdentifier: ownerPID) else {
+            return false
+        }
+        
+        // Activate the application (brings it to front)
+        let success = app.activate()
+        
+        if success {
+            // Small delay to let the app activation complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Try to bring the specific window to front using Accessibility APIs
+                self.focusWindowViaAccessibility(windowID: windowID, processID: ownerPID)
+            }
+        }
+        
+        return success
+    }
+    
+    /// Use Accessibility APIs to focus a specific window within an application
+    private func focusWindowViaAccessibility(windowID: CGWindowID, processID: pid_t) {
+        let app = AXUIElementCreateApplication(processID)
+        
+        var windowsRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef)
+        
+        guard result == .success,
+              let windows = windowsRef as? [AXUIElement] else {
+            return
+        }
+        
+        // Find the window with matching CGWindowID
+        for window in windows {
+            if let axWindowID = getWindowID(from: window), axWindowID == windowID {
+                // Focus this specific window
+                AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                break
+            }
+        }
+    }
 
     /// Capture screenshot and update the @Published cache
     @MainActor
