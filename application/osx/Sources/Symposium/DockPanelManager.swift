@@ -170,81 +170,18 @@ class DockPanelManager: ObservableObject {
     }
     
     private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> (position: NSPoint, arrowDirection: DockPanel.ArrowDirection, arrowPosition: CGFloat) {
-        
-        guard let screen = NSScreen.main else {
-            return (dockClickPoint, .down, 0.5)
-        }
-        
+        guard let screen = NSScreen.main else { return (NSPoint.zero, .down, 0.5) }
         let screenFrame = screen.visibleFrame
-        let dockLocation = determineDockLocation(screenFrame: screenFrame)
         
-        let margin: CGFloat = 20
-        var panelPosition: NSPoint
-        var arrowDirection: DockPanel.ArrowDirection
-        var arrowPosition: CGFloat = 0.5
+        // Center the panel on screen
+        let centeredX = screenFrame.midX - (panelSize.width / 2)
+        let centeredY = screenFrame.midY - (panelSize.height / 2)
         
-        switch dockLocation {
-        case .bottom:
-            // Panel appears above dock
-            panelPosition = NSPoint(
-                x: dockClickPoint.x - panelSize.width / 2,
-                y: screenFrame.minY + margin
-            )
-            arrowDirection = .down
-            
-            // Ensure panel stays on screen
-            panelPosition.x = max(screenFrame.minX + margin, 
-                                min(panelPosition.x, screenFrame.maxX - panelSize.width - margin))
-            
-            // Calculate arrow position relative to panel
-            arrowPosition = (dockClickPoint.x - panelPosition.x) / panelSize.width
-            arrowPosition = max(0.1, min(0.9, arrowPosition))
-            
-        case .left:
-            // Panel appears to right of dock
-            panelPosition = NSPoint(
-                x: screenFrame.minX + margin,
-                y: dockClickPoint.y - panelSize.height / 2
-            )
-            arrowDirection = .left
-            
-            // Ensure panel stays on screen vertically
-            panelPosition.y = max(screenFrame.minY + margin,
-                                min(panelPosition.y, screenFrame.maxY - panelSize.height - margin))
-            
-            arrowPosition = (dockClickPoint.y - panelPosition.y) / panelSize.height
-            arrowPosition = max(0.1, min(0.9, arrowPosition))
-            
-        case .right:
-            // Panel appears to left of dock
-            panelPosition = NSPoint(
-                x: screenFrame.maxX - panelSize.width - margin,
-                y: dockClickPoint.y - panelSize.height / 2
-            )
-            arrowDirection = .right
-            
-            panelPosition.y = max(screenFrame.minY + margin,
-                                min(panelPosition.y, screenFrame.maxY - panelSize.height - margin))
-            
-            arrowPosition = (dockClickPoint.y - panelPosition.y) / panelSize.height
-            arrowPosition = max(0.1, min(0.9, arrowPosition))
-        }
-        
-        return (panelPosition, arrowDirection, arrowPosition)
+        return (NSPoint(x: centeredX, y: centeredY), .down, 0.5)
     }
     
     // MARK: - Dock Location Detection
-    
-    enum DockLocation {
-        case bottom, left, right
-    }
-    
-    private func determineDockLocation(screenFrame: NSRect) -> DockLocation {
-        // Simple heuristic: check dock preferences or assume bottom
-        // For MVP, we'll assume bottom dock (most common)
-        // TODO: Implement actual dock position detection
-        return .bottom
-    }
+    // (Removed - no longer needed for centered positioning)
     
     // MARK: - Click Outside Monitoring
     
