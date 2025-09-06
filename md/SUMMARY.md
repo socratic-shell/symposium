@@ -43,6 +43,8 @@
     - [Window Per Project](./work-in-progress/mvp/window-per-project.md)
 - [Dock-Activated Taskspace Workflow](./work-in-progress/dock-activated-taskspace-workflow.md)
     - [Implementation Plan](./work-in-progress/dock-activated-interface-implementation-plan.md)
+- [Project Window Visual Design](./work-in-progress/project-window-visual-design.md)
+    - [Full-Screen Overlay Implementation](./work-in-progress/full-screen-overlay-implementation.md)
 - [Older material]()
     - [Interface plan](./work-in-progress/mvp/interface-plan.md)
     - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
