@@ -270,7 +270,8 @@ struct ProjectView: View {
                                         
                                         Text(log.timestamp, format: .dateTime.hour().minute().second())
                                             .font(.system(size: 10))
-                                            .foregroundColor(.tertiary)
+                                            .foregroundColor(.secondary)
+                                            .opacity(0.7)
                                     }
                                     .padding(.vertical, 2)
                                 }
