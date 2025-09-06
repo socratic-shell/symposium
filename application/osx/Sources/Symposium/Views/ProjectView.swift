@@ -145,7 +145,6 @@ struct ProjectView: View {
                     .foregroundColor(.red)
             }
         }
-        .frame(minWidth: 300, idealWidth: 400, maxWidth: 500)
         .frame(minHeight: 400)
     }
 

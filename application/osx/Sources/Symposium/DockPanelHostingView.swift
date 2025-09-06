@@ -25,23 +25,14 @@ class DockPanelHostingView<Content: View>: NSHostingView<Content> {
     
     private func setupHostingView() {
         Logger.shared.log("DockPanelHostingView: Setting up hosting view constraints")
-        Logger.shared.log("DockPanelHostingView: Panel constraints - width: \(PanelConstraints.minWidth)-\(PanelConstraints.maxWidth), height: \(PanelConstraints.minHeight)-\(PanelConstraints.maxHeight)")
         
         // Configure hosting view for panel layout
         self.translatesAutoresizingMaskIntoConstraints = false
         
-        // Set initial size constraints
-        self.widthAnchor.constraint(greaterThanOrEqualToConstant: PanelConstraints.minWidth).isActive = true
-        self.widthAnchor.constraint(lessThanOrEqualToConstant: PanelConstraints.maxWidth).isActive = true
-        self.heightAnchor.constraint(greaterThanOrEqualToConstant: PanelConstraints.minHeight).isActive = true
-        self.heightAnchor.constraint(lessThanOrEqualToConstant: PanelConstraints.maxHeight).isActive = true
+        // Remove fixed width/height constraints to allow responsive sizing
+        // The panel size will be controlled by DockPanelManager's calculations
         
-        // Prefer the default width
-        let widthConstraint = self.widthAnchor.constraint(equalToConstant: PanelConstraints.defaultWidth)
-        widthConstraint.priority = NSLayoutConstraint.Priority(999)
-        widthConstraint.isActive = true
-        
-        Logger.shared.log("DockPanelHostingView: Constraints configured successfully")
+        Logger.shared.log("DockPanelHostingView: Constraints configured successfully (responsive sizing enabled)")
     }
     
     /// Calculate ideal panel size based on content and screen constraints
