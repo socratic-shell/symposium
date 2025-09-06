@@ -15,16 +15,26 @@ BUILD_DIR="./.build/arm64-apple-macosx/release"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 CONTENTS_DIR="${APP_BUNDLE}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
 echo "Creating app bundle structure..."
 rm -rf "${APP_BUNDLE}"
 mkdir -p "${MACOS_DIR}"
+mkdir -p "${RESOURCES_DIR}"
 
 # Copy executable
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS_DIR}/${APP_NAME}"
 
 # Copy Info.plist
 cp "./Info.plist" "${CONTENTS_DIR}/Info.plist"
+
+# Copy app icon
+if [ -f "./AppIcon.icns" ]; then
+    echo "Copying app icon..."
+    cp "./AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+else
+    echo "Warning: AppIcon.icns not found, app will use default icon"
+fi
 
 # Sign the app bundle
 echo "Signing app bundle..."
