@@ -48,10 +48,17 @@ num_rows = ceil(total_taskspaces / taskspaces_per_row)
 panel_height = num_visible_rows * taskspace_height + header_height
 ```
 
+**Three-Area Layout Structure:**
+The panel uses a consistent three-area layout that optimizes both usability and visual hierarchy:
+
+1. **Fixed header** (top): Project information, controls, never scrolls
+2. **Scrollable content** (middle): Dynamic grid of taskspaces, expands/contracts as needed  
+3. **Fixed footer** (bottom): Primary actions, always accessible
+
 **Overflow Management:**
 - **Vertical scrolling**: Users scroll through rows when taskspace count exceeds visible area
 - **Row-based navigation**: Scroll by complete rows for predictable navigation
-- **Expand mode**: Selected taskspace fills entire panel for detailed log viewing
+- **Expand mode**: Selected taskspace fills entire content area for detailed log viewing
 
 ### Interaction Modes
 
@@ -60,18 +67,19 @@ The interface supports two primary interaction modes:
 **Grid Mode (Default):**
 ```
 ┌─────────────────────────────────────────┐
-│ Project: MyApp                 [📌] [X] │ ← Project header with pin option
+│ Project: MyApp                 [📌] [X] │ ← Header: project info + controls
 │ ─────────────────────────────────────── │
 │                                         │
-│ [Taskspace 1] [Taskspace 2] [Task 3]   │ ← Primary row (up to 4 per row)
+│ [Taskspace 1] [Taskspace 2] [Task 3]   │ ← Grid: primary row (up to 4 per row)
 │                                         │
-│ [Taskspace 4] [Taskspace 5] [Task 6]   │ ← Secondary row
+│ [Taskspace 4] [Taskspace 5] [Task 6]   │ ← Grid: secondary row
 │                                         │
-│ ┌─────────────────────────────────────┐ │ ← Scrollable area
-│ │ [Additional taskspaces...]          │ │   (when >2 rows)
+│ ┌─────────────────────────────────────┐ │ ← Grid: scrollable area
+│ │ [Additional taskspaces...]          │ │   (when >2 rows visible)
 │ └─────────────────────────────────────┘ │
 │                                         │
-│ [+] New Taskspace                       │
+│ ─────────────────────────────────────── │
+│ [+] New Taskspace                       │ ← Footer: always-visible actions
 └─────────────────────────────────────────┘
 ```
 
@@ -97,8 +105,9 @@ The interface supports two primary interaction modes:
 ```
 
 **Information Architecture:**
-- **Project header**: Shows active project with pin option (future) and close control
-- **Grid layout**: Taskspaces arranged in calculated columns with consistent spacing
+- **Fixed header**: Shows active project with pin option (future) and close control
+- **Scrollable grid**: Taskspaces arranged in calculated columns with consistent spacing
+- **Fixed footer**: Always-visible actions (New Taskspace, future additional controls)
 - **Expand functionality**: Individual taskspaces can fill panel for detailed interaction
 - **Navigation**: Clear breadcrumb system for moving between grid and detail modes
 
@@ -129,53 +138,9 @@ The panel uses intelligent dismissal logic that distinguishes between management
 - **Sidebar mode**: Pinned panel can optionally dock to screen edge
 - **User preference**: Remember pin state across sessions
 
-## Visual Design
-
-### Panel Architecture
-The interface uses a clean, focused panel design built on NSPanel architecture:
-
-- **Centered positioning**: Panel always appears at screen center for consistent, predictable placement
-- **Clean design**: No background overlay or full-screen dimming
-- **System integration**: Built on NSPanel with proper focus management and system behavior
-- **Visual clarity**: Clean separation between taskspaces with thoughtful use of whitespace
-
-### Animation System (Future Phase)
-**Planned Enhancement:**
-- **Smooth appearance**: Panel materializes at center with subtle scale/fade animation
-- **Graceful dismissal**: Panel disappears with coordinated animation
-- **Internal transitions**: Smooth expand/collapse for taskspace detail mode
-- **Performance focused**: Lightweight animations that enhance rather than distract
-
 ## Technical Implementation
 
-### Panel Architecture
-The interface maintains NSPanel architecture with centered positioning and responsive layout:
-
-- **NSPanel foundation**: Built on existing panel system with proper focus management
-- **Centered positioning**: Screen center positioning eliminates unpredictable placement
-- **Grid layout system**: SwiftUI-based responsive grid with calculated dimensions
-- **Performance optimization**: Efficient rendering and memory management for responsive interaction
-
-### Integration Points
-- **Existing codebase**: Reuses current ProjectView, TaskspaceCard, and management systems
-- **Dock interaction**: Maintains existing dock click detection and activation
-- **System events**: Proper handling of screen changes and focus transitions
-- **Multi-display**: Centers on screen containing dock (future enhancement)
-
-## Design Philosophy
-
-The centered panel approach embodies several key design principles:
-
-**Predictability**: Consistent, centered positioning provides reliable user experience across different screen configurations
-
-**Efficiency**: Intelligent grid layout system maximizes taskspace visibility while adapting to screen constraints and content requirements  
-
-**Contextuality**: Smart dismissal behavior keeps panel available for management tasks while clearing the way for actual work
-
-**Scalability**: Responsive layout system gracefully handles projects with varying taskspace counts, from single taskspace to dozens
-
-**Extensibility**: Architecture supports future enhancements (animations, pin functionality) without breaking existing workflows
-
-**Familiarity**: Builds on proven NSPanel foundation while providing consistent, predictable positioning
-
-This design creates an intuitive, reliable interface that provides consistent taskspace management while adapting intelligently to different screen sizes and project scales.
+- **NSPanel foundation**: Centered at screen center, no dock-relative positioning
+- **Three-area layout**: Fixed header, scrollable grid content, fixed footer
+- **Responsive sizing**: Panel width calculated using TW constraint chain
+- **Grid layout**: Calculated columns based on screen width and taskspace count
