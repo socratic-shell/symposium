@@ -16,6 +16,11 @@ struct ProjectView: View {
         self.ipcManager = projectManager.mcpStatus
         self.onCloseProject = onCloseProject
     }
+    
+    // Step 7: Smart dismissal helper
+    private func dismissPanel() {
+        onCloseProject?()
+    }
 
     var body: some View {
         Group {
@@ -159,7 +164,8 @@ struct ProjectView: View {
                         TaskspaceCard(
                             taskspace: taskspace, 
                             projectManager: projectManager,
-                            onExpand: { expandedTaskspace = taskspace.id }
+                            onExpand: { expandedTaskspace = taskspace.id },
+                            onDismiss: dismissPanel
                         )
                     }
                 }
@@ -344,6 +350,9 @@ struct TaskspaceCard: View {
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
+    
+    // Step 7: Callback for panel dismissal on VSCode engagement
+    var onDismiss: (() -> Void)? = nil
 
     private var hasRegisteredWindow: Bool {
         projectManager.getWindow(for: taskspace.id) != nil
@@ -387,6 +396,9 @@ struct TaskspaceCard: View {
             Logger.shared.log("TaskspaceCard: Activating dormant taskspace: \(taskspace.name)")
             projectManager.launchVSCode(for: taskspace)
         }
+        
+        // Step 7: Dismiss panel after VSCode engagement
+        onDismiss?()
     }
 
     var body: some View {
