@@ -102,6 +102,9 @@ struct SplashView: View {
         // Clear the active project
         settingsManager.activeProjectPath = ""
         
+        // Hide dock panel before showing splash
+        AppDelegate.shared?.hideDockPanel()
+        
         // Notify AppDelegate
         AppDelegate.shared?.setCurrentProjectManager(nil)
         
