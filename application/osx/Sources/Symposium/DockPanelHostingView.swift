@@ -75,8 +75,8 @@ class DockPanelHostingView<Content: View>: NSHostingView<Content> {
 extension DockPanelHostingView where Content == ProjectView {
     
     /// Convenience initializer for ProjectView integration
-    convenience init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil) {
-        let projectView = ProjectView(projectManager: projectManager, onCloseProject: onCloseProject)
+    convenience init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
+        let projectView = ProjectView(projectManager: projectManager, onCloseProject: onCloseProject, onDismiss: onDismiss)
         self.init(rootView: projectView)
     }
     

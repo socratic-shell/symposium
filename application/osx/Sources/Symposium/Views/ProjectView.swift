@@ -8,18 +8,22 @@ struct ProjectView: View {
     // Phase 22: Optional callback for closing the project from dock panel
     var onCloseProject: (() -> Void)?
     
+    // Step 7: Optional callback for just dismissing the panel
+    var onDismiss: (() -> Void)?
+    
     // Step 5: Expand/collapse state management
     @State private var expandedTaskspace: UUID? = nil
 
-    init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil) {
+    init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.projectManager = projectManager
         self.ipcManager = projectManager.mcpStatus
         self.onCloseProject = onCloseProject
+        self.onDismiss = onDismiss
     }
     
     // Step 7: Smart dismissal helper
     private func dismissPanel() {
-        onCloseProject?()
+        onDismiss?()
     }
 
     var body: some View {

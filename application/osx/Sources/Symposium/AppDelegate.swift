@@ -60,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             
             // Toggle panel visibility
             Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel")
-            dockPanelManager.togglePanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback)
+            dockPanelManager.togglePanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
         } else {
             Logger.shared.log("AppDelegate: No active project, showing splash window instead")
             Logger.shared.log("AppDelegate: currentProjectManager nil: \(currentProjectManager == nil)")
@@ -147,7 +147,7 @@ extension AppDelegate {
     /// Show dock panel with specific project
     func showDockPanel(with projectManager: ProjectManager, at point: NSPoint? = nil) {
         let dockPoint = point ?? estimateDockClickPosition()
-        dockPanelManager.showPanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback)
+        dockPanelManager.showPanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
     }
     
     /// Hide dock panel
@@ -175,6 +175,6 @@ extension AppDelegate {
         
         let dockPoint = estimateDockClickPosition()
         Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel from menu action")
-        dockPanelManager.togglePanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback)
+        dockPanelManager.togglePanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
     }
 }
