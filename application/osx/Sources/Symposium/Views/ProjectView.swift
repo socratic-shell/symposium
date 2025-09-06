@@ -7,6 +7,9 @@ struct ProjectView: View {
     
     // Phase 22: Optional callback for closing the project from dock panel
     var onCloseProject: (() -> Void)?
+    
+    // Step 5: Expand/collapse state management
+    @State private var expandedTaskspace: UUID? = nil
 
     init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil) {
         self.projectManager = projectManager
@@ -86,7 +89,10 @@ struct ProjectView: View {
                         .background(Color.gray.opacity(0.1))
 
                         // Main content area
-                        if project.taskspaces.isEmpty {
+                        if let expandedTaskspace = expandedTaskspace {
+                            // Detail mode - show expanded taskspace
+                            expandedTaskspaceView(for: expandedTaskspace)
+                        } else if project.taskspaces.isEmpty {
                             // Empty state
                             VStack(spacing: 16) {
                                 Image(systemName: "tray")
@@ -102,16 +108,8 @@ struct ProjectView: View {
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
-                            // Taskspace list
-                            ScrollView {
-                                LazyVStack(spacing: 12) {
-                                    ForEach(project.taskspaces) { taskspace in
-                                        TaskspaceCard(
-                                            taskspace: taskspace, projectManager: projectManager)
-                                    }
-                                }
-                                .padding()
-                            }
+                            // Grid mode - show all taskspaces
+                            taskspaceGridView
                         }
                     }
                 } else {
@@ -147,6 +145,153 @@ struct ProjectView: View {
         }
         .frame(minHeight: 400)
     }
+    
+    // MARK: - Step 5: Helper Views
+    
+    private var taskspaceGridView: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(projectManager.currentProject?.taskspaces ?? []) { taskspace in
+                    TaskspaceCard(
+                        taskspace: taskspace, 
+                        projectManager: projectManager,
+                        onExpand: { expandedTaskspace = taskspace.id }
+                    )
+                }
+            }
+            .padding()
+        }
+    }
+    
+    private func expandedTaskspaceView(for taskspaceId: UUID) -> some View {
+        VStack(spacing: 0) {
+            // Breadcrumb header
+            HStack {
+                Button(action: { expandedTaskspace = nil }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.left")
+                        Text("Back to Grid")
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+                
+                if let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
+                    Text(taskspace.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                } else {
+                    Text("Unknown Taskspace")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            
+            // Expanded taskspace content
+            if let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Taskspace header with screenshot and info
+                        HStack(alignment: .top, spacing: 16) {
+                            // Screenshot
+                            Group {
+                                if let screenshot = projectManager.getScreenshot(for: taskspace.id) {
+                                    Image(nsImage: screenshot)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 120, height: 80)
+                                        .cornerRadius(6)
+                                        .clipped()
+                                } else {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.gray.opacity(0.1))
+                                        .frame(width: 120, height: 80)
+                                        .overlay(
+                                            Text("No Preview")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        )
+                                }
+                            }
+                            
+                            // Info column
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(taskspace.description)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                HStack {
+                                    Button("Focus Window") {
+                                        // TODO: Focus taskspace window
+                                    }
+                                    .disabled(projectManager.getWindow(for: taskspace.id) == nil)
+                                    
+                                    Button("Settings") {
+                                        // TODO: Show taskspace settings
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            
+                            Spacer()
+                        }
+                        
+                        Divider()
+                        
+                        // Full log list
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Activity Log")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            if taskspace.logs.isEmpty {
+                                Text("No activity yet")
+                                    .foregroundColor(.secondary)
+                                    .italic()
+                            } else {
+                                ForEach(taskspace.logs) { log in
+                                    HStack(spacing: 8) {
+                                        Text(log.category.icon)
+                                            .font(.system(size: 12))
+                                        
+                                        Text(log.message)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                        
+                                        Spacer()
+                                        
+                                        Text(log.timestamp, format: .dateTime.hour().minute().second())
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.tertiary)
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                        }
+                        
+                        Spacer(minLength: 0)
+                    }
+                    .padding()
+                }
+            } else {
+                VStack {
+                    Text("Taskspace not found")
+                        .foregroundColor(.secondary)
+                        .italic()
+                    Spacer()
+                }
+                .padding()
+            }
+        }
+    }
 
     private func reregisterWindows() {
         guard let project = projectManager.currentProject else {
@@ -170,6 +315,9 @@ struct TaskspaceCard: View {
     let taskspace: Taskspace
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
+    
+    // Step 5: Callback for expand functionality
+    var onExpand: (() -> Void)? = nil
 
     private var hasRegisteredWindow: Bool {
         projectManager.getWindow(for: taskspace.id) != nil
@@ -283,8 +431,7 @@ struct TaskspaceCard: View {
                     }
 
                     Button(action: {
-                        // TODO: Implement maximize/detail view
-                        Logger.shared.log("TaskspaceCard: TODO - Show detailed view for: \(taskspace.name)")
+                        onExpand?()
                     }) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .foregroundColor(.blue)
