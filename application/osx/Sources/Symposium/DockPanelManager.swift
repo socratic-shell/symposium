@@ -63,18 +63,10 @@ class DockPanelManager: ObservableObject {
         Logger.shared.log("DockPanelManager: Setting up panel layout")
         setupPanelLayout(panel: panel, hostingView: hostingView)
         
-        // Calculate optimal position and arrow direction
+        // Calculate panel position
         Logger.shared.log("DockPanelManager: Calculating panel position")
-        let (panelPosition, arrowDirection, arrowPosition) = calculatePanelPosition(
-            for: idealSize,
-            near: dockClickPoint
-        )
+        let panelPosition = calculatePanelPosition(for: idealSize, near: dockClickPoint)
         Logger.shared.log("DockPanelManager: Panel position: \(panelPosition)")
-        Logger.shared.log("DockPanelManager: Arrow direction: \(arrowDirection), position: \(arrowPosition)")
-        
-        // Configure arrow
-        Logger.shared.log("DockPanelManager: Configuring panel arrow")
-        panel.setArrowDirection(arrowDirection, position: arrowPosition)
         
         // Store references
         self.currentPanel = panel
@@ -151,14 +143,13 @@ class DockPanelManager: ObservableObject {
         containerView.addSubview(hostingView)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add padding to account for arrow space and margins
+        // Add padding for clean margins (no arrow space needed)
         let padding: CGFloat = 16
-        let arrowSpace: CGFloat = 12
         
         NSLayoutConstraint.activate([
             hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: padding),
             hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -padding),
-            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: padding + arrowSpace),
+            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: padding),
             hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -padding)
         ])
     }
@@ -194,15 +185,15 @@ class DockPanelManager: ObservableObject {
         return NSSize(width: panelWidth, height: panelHeight)
     }
     
-    private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> (position: NSPoint, arrowDirection: DockPanel.ArrowDirection, arrowPosition: CGFloat) {
-        guard let screen = NSScreen.main else { return (NSPoint.zero, .down, 0.5) }
+    private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> NSPoint {
+        guard let screen = NSScreen.main else { return NSPoint.zero }
         let screenFrame = screen.visibleFrame
         
         // Center the panel on screen
         let centeredX = screenFrame.midX - (panelSize.width / 2)
         let centeredY = screenFrame.midY - (panelSize.height / 2)
         
-        return (NSPoint(x: centeredX, y: centeredY), .down, 0.5)
+        return NSPoint(x: centeredX, y: centeredY)
     }
     
     // MARK: - Dock Location Detection
