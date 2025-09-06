@@ -149,18 +149,43 @@ struct ProjectView: View {
     // MARK: - Step 5: Helper Views
     
     private var taskspaceGridView: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(projectManager.currentProject?.taskspaces ?? []) { taskspace in
-                    TaskspaceCard(
-                        taskspace: taskspace, 
-                        projectManager: projectManager,
-                        onExpand: { expandedTaskspace = taskspace.id }
-                    )
+        GeometryReader { geometry in
+            let taskspaceWidth = calculateTaskspaceWidth()
+            let columns = calculateGridColumns(panelWidth: geometry.size.width, taskspaceWidth: taskspaceWidth)
+            
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(taskspaceWidth)), count: columns), spacing: 16) {
+                    ForEach(projectManager.currentProject?.taskspaces ?? []) { taskspace in
+                        TaskspaceCard(
+                            taskspace: taskspace, 
+                            projectManager: projectManager,
+                            onExpand: { expandedTaskspace = taskspace.id }
+                        )
+                    }
                 }
+                .padding()
             }
-            .padding()
         }
+    }
+    
+    // MARK: - Step 6: Grid Layout Helpers
+    
+    private func calculateTaskspaceWidth() -> CGFloat {
+        let screenshotWidth: CGFloat = 120
+        
+        // Measure sample Star Trek log message
+        let sampleText = "Captain, we're getting mysterious sensor readings"
+        let textAttributes = [NSAttributedString.Key.font: NSFont.systemFont(ofSize: 13)]
+        let sampleTextWidth = sampleText.size(withAttributes: textAttributes).width
+        
+        let padding: CGFloat = 40 // Internal card padding
+        return screenshotWidth + sampleTextWidth + padding
+    }
+    
+    private func calculateGridColumns(panelWidth: CGFloat, taskspaceWidth: CGFloat) -> Int {
+        let availableWidth = panelWidth - 32 // Account for padding
+        let maxColumns = Int(floor(availableWidth / taskspaceWidth))
+        return max(1, maxColumns) // Always at least 1 column
     }
     
     private func expandedTaskspaceView(for taskspaceId: UUID) -> some View {
