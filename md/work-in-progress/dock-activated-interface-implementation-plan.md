@@ -242,7 +242,7 @@ private func calculateIdealPanelSize() -> NSSize {
 
 private func calculateTaskspaceWidth() -> CGFloat {
     let screenshotWidth: CGFloat = 120
-    let sampleTextWidth = "Implementing authentication system...".size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width
+    let sampleTextWidth = "Captain, we're getting mysterious sensor readings".size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width
     let padding: CGFloat = 40
     return screenshotWidth + sampleTextWidth + padding
 }

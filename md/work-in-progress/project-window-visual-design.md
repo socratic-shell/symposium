@@ -29,7 +29,7 @@ Symposium's project interface uses a centered panel system that provides focused
 The system calculates optimal taskspace width based on content requirements:
 
 1. **Screenshot width**: Fixed at 120px for consistent thumbnail sizing
-2. **Sample text width**: Measured against typical log messages ("Implementing authentication system...")
+2. **Sample text width**: Measured against typical log messages ("Captain, we're getting mysterious sensor readings")
 3. **Padding**: Margins and spacing between elements
 4. **Result**: `TW = screenshot_width + text_width + padding`
 
@@ -81,15 +81,16 @@ The interface supports two primary interaction modes:
 │ Project: MyApp > Taskspace Name    [↩] │ ← Breadcrumb navigation
 │ ─────────────────────────────────────── │
 │                                         │
-│ ┌─────┐ Implementing auth system        │ ← Expanded taskspace header
+│ ┌─────┐ Enterprise Security Systems     │ ← Expanded taskspace header
 │ │ 📸  │ Status: Active                  │
 │ └─────┘ [Focus Window] [⚙Settings]     │
 │                                         │
 │ Recent Activity:                        │ ← Scrollable log area
 │ ┌─────────────────────────────────────┐ │
-│ │ • Created JWT token validation      │ │
-│ │ • Added middleware for auth         │ │
-│ │ • Fixed session timeout bug        │ │
+│ │ • Red alert! Klingon vessel detected│ │
+│ │ • Shields at maximum, Captain!      │ │
+│ │ • Scotty reports: "She cannae take  │ │
+│ │   much more of this, Captain!"      │ │
 │ │ • [... 47 more entries]            │ │
 │ └─────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
