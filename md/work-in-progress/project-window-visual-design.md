@@ -6,6 +6,31 @@
 
 Symposium's project interface uses a centered panel system that provides focused, predictable interaction with taskspace management. When users click the Symposium dock icon, a clean panel appears at the center of the screen, displaying all taskspaces in an intelligent grid layout that adapts to screen size and content requirements.
 
+## Core Principles
+
+### Single Active Project
+- Only one project is active at any time for simplicity
+- Opening/creating a new project replaces the current active project
+- Multi-project support is planned for future iterations
+
+### Two-Dimensional Taskspace State
+Taskspaces have two independent state dimensions:
+
+**Runtime State** (Active/Dormant):
+- **Active**: VSCode window is open and registered with Symposium
+- **Dormant**: VSCode window is closed, taskspace is inactive
+- Determined at runtime by IPC broadcast - taskspaces that respond are Active
+
+**Persistent State** (Hatchling/Resume):
+- **Hatchling**: Initial prompt hasn't been consumed by agent yet
+- **Resume**: Initial prompt was used, agent should resume normally  
+- Stored in `taskspace.json`, persists across app restarts
+
+### Visual Representation
+- **Live screenshot**: Active taskspace with existing screenshot
+- **Greyed screenshot**: Dormant taskspace with existing screenshot
+- **Placeholder image**: No screenshot exists (typically new/Hatchling taskspaces)
+
 ## User Experience
 
 ### Interaction Model
