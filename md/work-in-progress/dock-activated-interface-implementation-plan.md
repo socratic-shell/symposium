@@ -171,39 +171,90 @@ This document outlines the implementation plan for transitioning Symposium from 
 
 **Success Criteria**: ✅ **PHASE 30 COMPLETE** - Seamless two-dimensional state management with automatic detection working perfectly!
 
-### Phase 35: UI Polish & Design Refinement 🎨 **IDENTIFIED**
+### Phase 35: Centered Panel with Grid Layout 🎯 **NEXT PRIORITY**
 
-*Based on user feedback comparing actual UI to design sketch*
+*Transition from dock-relative positioning to centered panel with responsive grid*
 
-**35.1: Taskspace Card Layout** ✅ **COMPLETED** ([`641f5d9`](https://github.com/socratic-shell/symposium/commit/641f5d9))
-- [x] ~~**CRITICAL**: Fix screenshot positioning~~ → **FIXED**: Now horizontal thumbnail on left
-- [x] ~~Reduce screenshot size~~ → **FIXED**: 120x80px thumbnails  
-- [x] ~~Implement proper HStack layout~~ → **FIXED**: HStack with thumbnail left, content right
+**Current State Analysis:**
+- ✅ **Working dock-activated interface** with speech bubble panel (Phase 30 complete)
+- ✅ **NSPanel architecture** proven and functional (`DockPanel.swift`, `DockPanelManager.swift`)
+- ✅ **ProjectView + TaskspaceCard** layout working well in current 550px panel
+- ❌ **Positioning issues**: `calculatePanelPosition()` uses dock estimation causing unpredictable placement
 
-**35.1b: Layout Refinements** ✅ **COMPLETED** ([`b447a0f`](https://github.com/socratic-shell/symposium/commit/b447a0f))
-- [x] ~~**Spacing**: Current layout "a bit too tight"~~ → **FIXED**: Panel 400px→550px, increased spacing throughout
-- [x] ~~**Log Visibility**: Show more than 2 logs~~ → **FIXED**: Now shows last 10 log entries with "Recent Activity" header
-- [x] ~~**Log Interaction**: Add "pop out" functionality~~ → **FIXED**: "View All (count)" button when >10 logs exist
-- [x] ~~**Card Actions**: Add "maximize" icon/button~~ → **FIXED**: Added expand button (TODO: implement detailed view)
+**35.1: Replace Dock-Relative Positioning with Centered Layout** ⏳ **IN PROGRESS**
+- [ ] **Update `DockPanelManager.calculatePanelPosition()`**: Replace dock-relative logic with screen center calculation
+- [ ] **Remove arrow functionality**: Eliminate `DockPanel.ArrowDirection` and arrow drawing since centered panel doesn't need directional arrow
+- [ ] **Simplify panel appearance**: Remove arrow space calculations from `setupPanelLayout()` padding
+- [ ] **Update panel size**: Implement responsive panel sizing based on taskspace width calculations
 
-**35.2: Advanced Interaction Features** ⚠️ **NEXT UP**
-- [ ] **Log Viewer Modal**: Implement full log history popup when "View All" clicked
-- [ ] **Maximize/Detail View**: Define and implement what the expand button should do
-  - Options: Separate detail window, modal overlay, expanded card view
-- [ ] **Card Dividers**: Add subtle divider lines between taskspace cards
-- [ ] **Hover States**: Improve card hover interactions and visual feedback
+**35.2: Implement Responsive Grid Layout Calculations** ⏳ **CORE FEATURE**
+- [ ] **Add taskspace width calculation**: Create `calculateTaskspaceWidth()` method using screenshot + text + padding
+- [ ] **Implement panel width constraints**: Add constraint chain (4*TW → 3/4 screen → min 1*TW → screen limit)
+- [ ] **Update `calculateIdealPanelSize()`**: Replace hardcoded 550x800 with calculated responsive dimensions
+- [ ] **Grid layout logic**: Calculate columns per row and total rows based on taskspace count
 
-**35.3: Visual Polish & Card Definition** ⚠️ **NEEDS WORK** 
-- [ ] Add clear card boundaries with subtle rounded rectangle backgrounds
-- [ ] Add divider lines between taskspace cards (like ASCII sketch: `─────────────────────────`)
-- [ ] Implement better card hover states and interactions
-- [ ] Consistent padding and visual hierarchy improvements
+**35.3: Add Taskspace Expand/Collapse Functionality** ⏳ **NEW FEATURE**
+- [ ] **Expand state management**: Add `@State var expandedTaskspace: UUID?` to `ProjectView`
+- [ ] **Detail mode layout**: Create expanded taskspace view that fills entire panel
+- [ ] **Breadcrumb navigation**: Add "Project > Taskspace Name [↩]" header for detail mode
+- [ ] **Scrollable logs**: Implement full log history scrolling in expanded view
+- [ ] **Back navigation**: Handle collapse back to grid mode
 
-**Target Design Reference**: [ASCII Layout](./dock-activated-taskspace-workflow.md#dock-panel-layout)
+**35.4: Update Panel Dismissal Behavior** ⏳ **BEHAVIOR CHANGE**
+- [ ] **Smart dismissal logic**: Distinguish between management actions (persist panel) vs engagement (dismiss panel)
+- [ ] **Update taskspace click handlers**: Dismiss panel when launching/focusing VSCode, keep open for expansion
+- [ ] **Panel persistence**: Keep panel visible for expand, scroll, settings, create taskspace
+- [ ] **Future pin preparation**: Add UI placeholder for pin button (non-functional initially)
 
-**Current State**: ✅ **Major Progress** - Horizontal layout working well, spacious and information-rich cards, core visual experience solid
+**Key Code Changes Required:**
 
-**Success Criteria**: ✅ **Layout & Spacing Complete** - Still need interaction features (modals, detail views) and visual polish (dividers, hover states)
+```swift
+// DockPanelManager.swift - Replace positioning logic
+private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> NSPoint {
+    guard let screen = NSScreen.main else { return NSPoint.zero }
+    let screenFrame = screen.visibleFrame
+    
+    // Center the panel on screen
+    let centeredX = screenFrame.midX - (panelSize.width / 2)
+    let centeredY = screenFrame.midY - (panelSize.height / 2)
+    
+    return NSPoint(x: centeredX, y: centeredY)
+}
+
+// Add responsive sizing
+private func calculateIdealPanelSize() -> NSSize {
+    let taskspaceWidth = calculateTaskspaceWidth()
+    let screenWidth = NSScreen.main?.visibleFrame.width ?? 1200
+    
+    // Implement constraint chain
+    let idealWidth = 4 * taskspaceWidth
+    let constrainedWidth = min(idealWidth, 0.75 * screenWidth)
+    let finalWidth = max(constrainedWidth, taskspaceWidth)
+    let panelWidth = min(finalWidth, screenWidth)
+    
+    // Calculate height based on taskspace count and rows
+    let taskspacesPerRow = Int(floor(panelWidth / taskspaceWidth))
+    let numRows = ceil(Double(projectManager.currentProject?.taskspaces.count ?? 1) / Double(taskspacesPerRow))
+    let panelHeight = numRows * taskspaceHeight + headerHeight
+    
+    return NSSize(width: panelWidth, height: min(panelHeight, 0.8 * screenHeight))
+}
+
+private func calculateTaskspaceWidth() -> CGFloat {
+    let screenshotWidth: CGFloat = 120
+    let sampleTextWidth = "Implementing authentication system...".size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width
+    let padding: CGFloat = 40
+    return screenshotWidth + sampleTextWidth + padding
+}
+```
+
+**Success Criteria for Phase 35:**
+- [ ] Panel always appears at screen center (predictable positioning)
+- [ ] Panel width adapts to screen size and taskspace count
+- [ ] Grid layout shows 1-4 taskspaces per row based on calculated constraints
+- [ ] Taskspaces can expand to fill panel for detailed log viewing
+- [ ] Panel persists for management but dismisses for VSCode engagement
+- [ ] All existing functionality preserved (screenshots, logs, taskspace creation)
 
 ### Phase 40: Project Lifecycle & Window Management 🪟
 
