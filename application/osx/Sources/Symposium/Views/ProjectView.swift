@@ -307,7 +307,7 @@ struct TaskspaceCard: View {
                 Text(taskspace.description)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
 
                 // Recent logs (expanded)
                 if !taskspace.logs.isEmpty {
@@ -340,7 +340,7 @@ struct TaskspaceCard: View {
                                 Text(log.message)
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
-                                    .lineLimit(1)
+                                    .lineLimit(2)
                             }
                         }
                     }
