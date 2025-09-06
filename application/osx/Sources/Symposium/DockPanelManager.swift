@@ -167,7 +167,7 @@ class DockPanelManager: ObservableObject {
         let screenshotWidth: CGFloat = 120
         
         // Measure sample Star Trek log message
-        let sampleText = "Captain, we're getting mysterious sensor readings"
+        let sampleText = "Captain, we're getting mysterious sensor readings. It seems like there's a wormhole appearing!"
         let textAttributes = [NSAttributedString.Key.font: NSFont.systemFont(ofSize: 13)]
         let sampleTextWidth = sampleText.size(withAttributes: textAttributes).width
         
