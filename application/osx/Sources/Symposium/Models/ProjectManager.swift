@@ -17,6 +17,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     // Window associations for current project
     @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
+    
+    // Window close detection timer
+    private var windowCloseTimer: Timer?
 
     var mcpStatus: IpcManager { ipcManager }
 
@@ -43,6 +46,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         self.permissionManager = permissionManager
 
         // ScreenshotManager initialization is deferred via lazy var
+    }
+    
+    deinit {
+        stopWindowCloseDetection()
     }
 
     /// Create a new Symposium project
@@ -98,6 +105,12 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     /// Helper to set current project and register as IPC delegate
     private func setCurrentProject(_ project: Project) {
+        // Stop window detection for previous project
+        stopWindowCloseDetection()
+        
+        // Clear previous project state
+        taskspaceWindows.removeAll()
+        
         self.currentProject = project
         self.errorMessage = nil
 
@@ -113,6 +126,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         // Load existing screenshots from disk for visual persistence
         self.loadExistingScreenshots()
+        
+        // Start automatic window close detection
+        self.startWindowCloseDetection()
 
         self.startMCPClient()
     }
@@ -464,6 +480,63 @@ extension ProjectManager {
         }
         
         Logger.shared.log("ProjectManager: Loaded \(loadedCount) existing screenshots from disk")
+    }
+    
+    // MARK: - Window Close Detection
+    
+    /// Start polling for closed windows to automatically transition taskspaces to Dormant state
+    private func startWindowCloseDetection() {
+        // Stop any existing timer
+        stopWindowCloseDetection()
+        
+        Logger.shared.log("ProjectManager: Starting window close detection (polling every 3 seconds)")
+        
+        windowCloseTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.checkForClosedWindows()
+        }
+    }
+    
+    /// Stop window close detection timer
+    private func stopWindowCloseDetection() {
+        windowCloseTimer?.invalidate()
+        windowCloseTimer = nil
+        Logger.shared.log("ProjectManager: Stopped window close detection")
+    }
+    
+    /// Check if any registered windows have been closed and update taskspace states
+    private func checkForClosedWindows() {
+        let windowsToCheck = taskspaceWindows
+        var closedWindows: [UUID] = []
+        
+        for (taskspaceId, windowId) in windowsToCheck {
+            if !isWindowStillOpen(windowID: windowId) {
+                closedWindows.append(taskspaceId)
+            }
+        }
+        
+        // Update state for closed windows
+        for taskspaceId in closedWindows {
+            if let taskspaceName = currentProject?.taskspaces.first(where: { $0.id == taskspaceId })?.name {
+                Logger.shared.log("ProjectManager: Window closed for taskspace: \(taskspaceName)")
+                taskspaceWindows.removeValue(forKey: taskspaceId)
+                // Note: UI automatically updates via @Published taskspaceWindows and hasRegisteredWindow computed property
+            }
+        }
+    }
+    
+    /// Check if a CGWindowID still exists in the system
+    private func isWindowStillOpen(windowID: CGWindowID) -> Bool {
+        let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return false
+        }
+        
+        return windowList.contains { window in
+            if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                return id == windowID
+            }
+            return false
+        }
     }
 }
 

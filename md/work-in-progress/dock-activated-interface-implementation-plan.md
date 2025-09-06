@@ -179,20 +179,18 @@ This document outlines the implementation plan for transitioning Symposium from 
 - [x] ~~Reduce screenshot size~~ → **FIXED**: 120x80px thumbnails  
 - [x] ~~Implement proper HStack layout~~ → **FIXED**: HStack with thumbnail left, content right
 
-**35.1b: Layout Refinements** ⚠️ **USER FEEDBACK**
-- [ ] **Spacing**: Current layout "a bit too tight" - make panel overall bigger and more spacious
-- [ ] **Log Visibility**: Show more than 2 logs - expand to show last ~10 log entries
-- [ ] **Log Interaction**: Add "pop out" functionality for full log viewing
-- [ ] **Card Actions**: Add "maximize" icon/button on cards for detailed view/interaction
+**35.1b: Layout Refinements** ✅ **COMPLETED** ([`b447a0f`](https://github.com/socratic-shell/symposium/commit/b447a0f))
+- [x] ~~**Spacing**: Current layout "a bit too tight"~~ → **FIXED**: Panel 400px→550px, increased spacing throughout
+- [x] ~~**Log Visibility**: Show more than 2 logs~~ → **FIXED**: Now shows last 10 log entries with "Recent Activity" header
+- [x] ~~**Log Interaction**: Add "pop out" functionality~~ → **FIXED**: "View All (count)" button when >10 logs exist
+- [x] ~~**Card Actions**: Add "maximize" icon/button~~ → **FIXED**: Added expand button (TODO: implement detailed view)
 
-**35.2: Enhanced Information Density & Interaction** ⚠️ **IN PROGRESS**
-- [ ] **Panel Sizing**: Increase panel width/height for more spacious layout
-- [ ] **Extended Log Display**: Show last ~10 log entries instead of current 2
-- [ ] **Log Interaction**: 
-  - Add "View All Logs" button/link on each card
-  - Implement log popup/modal for full log history viewing
-- [ ] **Card Actions**: Add "maximize" icon button for card-specific actions
-- [ ] **Improved Spacing**: Less cramped layout with better padding throughout
+**35.2: Advanced Interaction Features** ⚠️ **NEXT UP**
+- [ ] **Log Viewer Modal**: Implement full log history popup when "View All" clicked
+- [ ] **Maximize/Detail View**: Define and implement what the expand button should do
+  - Options: Separate detail window, modal overlay, expanded card view
+- [ ] **Card Dividers**: Add subtle divider lines between taskspace cards
+- [ ] **Hover States**: Improve card hover interactions and visual feedback
 
 **35.3: Visual Polish & Card Definition** ⚠️ **NEEDS WORK** 
 - [ ] Add clear card boundaries with subtle rounded rectangle backgrounds
@@ -202,9 +200,9 @@ This document outlines the implementation plan for transitioning Symposium from 
 
 **Target Design Reference**: [ASCII Layout](./dock-activated-taskspace-workflow.md#dock-panel-layout)
 
-**Current State**: Functional but layout doesn't match intended design - screenshots too large and wrongly positioned, no clear card structure
+**Current State**: ✅ **Major Progress** - Horizontal layout working well, spacious and information-rich cards, core visual experience solid
 
-**Success Criteria**: Cards match ASCII sketch layout with thumbnail screenshots on left, compact vertical spacing, clear card boundaries
+**Success Criteria**: ✅ **Layout & Spacing Complete** - Still need interaction features (modals, detail views) and visual polish (dividers, hover states)
 
 ### Phase 40: Project Lifecycle & Window Management 🪟
 
