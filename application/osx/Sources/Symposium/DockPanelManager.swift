@@ -41,7 +41,7 @@ class DockPanelManager: ObservableObject {
         
         // Create new panel and hosting view
         Logger.shared.log("DockPanelManager: Calculating ideal panel size")
-        let idealSize = calculateIdealPanelSize()
+        let idealSize = calculateIdealPanelSize(for: projectManager)
         Logger.shared.log("DockPanelManager: Ideal panel size: \(idealSize)")
         
         let panelRect = NSRect(origin: .zero, size: idealSize)
@@ -166,7 +166,7 @@ class DockPanelManager: ObservableObject {
         return screenshotWidth + sampleTextWidth + padding
     }
     
-    private func calculateIdealPanelSize() -> NSSize {
+    private func calculateIdealPanelSize(for projectManager: ProjectManager) -> NSSize {
         guard let screen = NSScreen.main else { return NSSize(width: 550, height: 800) }
         
         let taskspaceWidth = calculateTaskspaceWidth()
@@ -179,10 +179,45 @@ class DockPanelManager: ObservableObject {
         let finalWidth = max(constrainedWidth, taskspaceWidth) // Min 1 taskspace width
         let panelWidth = min(finalWidth, screenFrame.width)    // Hard screen limit
         
-        // Calculate height (placeholder logic)
-        let panelHeight = min(800, 0.8 * screenFrame.height)
+        // Calculate responsive height with partial visibility
+        let panelHeight = calculatePanelHeight(
+            panelWidth: panelWidth,
+            taskspaceWidth: taskspaceWidth, 
+            taskspaceCount: projectManager.currentProject?.taskspaces.count ?? 0,
+            screenHeight: screenFrame.height
+        )
         
         return NSSize(width: panelWidth, height: panelHeight)
+    }
+    
+    private func calculatePanelHeight(panelWidth: CGFloat, taskspaceWidth: CGFloat, taskspaceCount: Int, screenHeight: CGFloat) -> CGFloat {
+        // Calculate grid dimensions
+        let taskspacesPerRow = max(1, Int(floor(panelWidth / taskspaceWidth)))
+        let totalRows = taskspaceCount == 0 ? 1 : Int(ceil(Double(taskspaceCount) / Double(taskspacesPerRow)))
+        
+        // Height components
+        let taskspaceHeight: CGFloat = 160  // Approximate height of TaskspaceCard
+        let headerHeight: CGFloat = 80      // Project header
+        let footerHeight: CGFloat = 60      // "New Taskspace" footer  
+        let spacing: CGFloat = 16           // Grid spacing
+        let padding: CGFloat = 32           // Top/bottom padding
+        
+        // Calculate content height for all rows
+        let contentHeight = CGFloat(totalRows) * taskspaceHeight + CGFloat(max(0, totalRows - 1)) * spacing
+        let totalIdealHeight = headerHeight + contentHeight + footerHeight + padding
+        
+        // Screen constraints
+        let maxHeight = 0.8 * screenHeight
+        let constrainedHeight = min(totalIdealHeight, maxHeight)
+        
+        // If we're constrained and have more than 2 rows, show partial visibility
+        if constrainedHeight < totalIdealHeight && totalRows > 2 {
+            // Show complete rows minus ~30px to reveal part of the next row
+            let partialVisibilityOffset: CGFloat = 30
+            return constrainedHeight - partialVisibilityOffset
+        }
+        
+        return constrainedHeight
     }
     
     private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> NSPoint {
