@@ -176,9 +176,22 @@ class DockPanelManager: ObservableObject {
     }
     
     private func calculateIdealPanelSize() -> NSSize {
-        // Use a larger, more spacious panel size for better information density
-        // Width increased for better horizontal layout, height maintained for screen compatibility
-        return NSSize(width: 550, height: 800)
+        guard let screen = NSScreen.main else { return NSSize(width: 550, height: 800) }
+        
+        let taskspaceWidth = calculateTaskspaceWidth()
+        let screenFrame = screen.visibleFrame
+        
+        // Panel Width Constraint Chain
+        let idealWidth = 4 * taskspaceWidth              // Target 4 taskspaces per row
+        let screenConstraint = 0.75 * screenFrame.width  // Max 3/4 screen width  
+        let constrainedWidth = min(idealWidth, screenConstraint)
+        let finalWidth = max(constrainedWidth, taskspaceWidth) // Min 1 taskspace width
+        let panelWidth = min(finalWidth, screenFrame.width)    // Hard screen limit
+        
+        // Calculate height (placeholder logic)
+        let panelHeight = min(800, 0.8 * screenFrame.height)
+        
+        return NSSize(width: panelWidth, height: panelHeight)
     }
     
     private func calculatePanelPosition(for panelSize: NSSize, near dockClickPoint: NSPoint) -> (position: NSPoint, arrowDirection: DockPanel.ArrowDirection, arrowPosition: CGFloat) {
