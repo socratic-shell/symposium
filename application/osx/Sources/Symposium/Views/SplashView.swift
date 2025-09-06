@@ -88,7 +88,10 @@ struct SplashView: View {
         appDelegate.setCurrentProjectManager(projectManager, closeCallback: closeActiveProject)
         
         // Phase 22: Implement XOR invariant - hide splash window when project is active
-        hideSplashWindow()
+        // Delay splash window dismissal to ensure any open dialog dismisses first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.hideSplashWindow()
+        }
         
         // Phase 22: Show dock panel immediately when project opens
         showDockPanelImmediately(with: projectManager)

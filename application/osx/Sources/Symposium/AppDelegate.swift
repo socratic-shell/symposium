@@ -39,6 +39,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // This gets called when user clicks dock icon while app is already running
     }
     
+    /// Handle application becoming active (alt-tab, app switcher)
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Logger.shared.log("AppDelegate: Application became active (alt-tab or app switcher)")
+        Logger.shared.log("AppDelegate: Current project manager exists: \(currentProjectManager != nil)")
+        Logger.shared.log("AppDelegate: Has active project: \(hasActiveProject)")
+        
+        // Show panel if we have an active project, otherwise show splash
+        if hasActiveProject, let projectManager = currentProjectManager {
+            Logger.shared.log("AppDelegate: Showing dock panel for active project on activation")
+            
+            let dockClickPoint = estimateDockClickPosition()
+            dockPanelManager.showPanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
+        } else {
+            Logger.shared.log("AppDelegate: No active project, showing splash window on activation")
+            showSplashWindow()
+        }
+    }
+    
     /// Handle dock icon clicks when app is already running
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         Logger.shared.log("AppDelegate: Dock icon clicked (hasVisibleWindows: \(flag))")
