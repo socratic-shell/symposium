@@ -491,16 +491,25 @@ extension ProjectManager {
         
         Logger.shared.log("ProjectManager: Starting window close detection (polling every 3 seconds)")
         
-        windowCloseTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            self?.checkForClosedWindows()
+        // Ensure timer is created on the main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.windowCloseTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+                self?.checkForClosedWindows()
+            }
+            
+            Logger.shared.log("ProjectManager: Window close detection timer created successfully")
         }
     }
     
     /// Stop window close detection timer
     private func stopWindowCloseDetection() {
-        windowCloseTimer?.invalidate()
-        windowCloseTimer = nil
-        Logger.shared.log("ProjectManager: Stopped window close detection")
+        DispatchQueue.main.async { [weak self] in
+            self?.windowCloseTimer?.invalidate()
+            self?.windowCloseTimer = nil
+            Logger.shared.log("ProjectManager: Stopped window close detection")
+        }
     }
     
     /// Check if any registered windows have been closed and update taskspace states
