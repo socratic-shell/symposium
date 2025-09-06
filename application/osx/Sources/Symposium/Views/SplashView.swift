@@ -112,7 +112,10 @@ struct SplashView: View {
         AppDelegate.shared?.setCurrentProjectManager(nil)
         
         // Phase 22: Implement XOR invariant - show splash window when no active project
-        showSplashWindow()
+        // Delay splash window to ensure panel hide animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.showSplashWindow()
+        }
         
         // TODO Phase 40: Close any VSCode windows associated with the project
         
