@@ -449,18 +449,23 @@ extension ProjectManager {
             return false
         }
         
-        // Verify the process exists
-        guard NSRunningApplication(processIdentifier: ownerPID) != nil else {
+        // Get the running application for this process
+        guard let app = NSRunningApplication(processIdentifier: ownerPID) else {
             return false
         }
         
-        // Skip application activation to avoid bringing all app windows forward
-        // Try to focus only the specific window using Accessibility APIs
-        Logger.shared.log("ProjectManager: Focusing specific window without app activation")
-        focusWindowViaAccessibility(windowID: windowID, processID: ownerPID)
+        // Activate the application (brings it to front)
+        let success = app.activate()
         
-        // For now, return true - the focusWindowViaAccessibility method handles success/failure logging
-        return true
+        if success {
+            // Small delay to let the app activation complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Try to bring the specific window to front using Accessibility APIs
+                self.focusWindowViaAccessibility(windowID: windowID, processID: ownerPID)
+            }
+        }
+        
+        return success
     }
     
     /// Use Accessibility APIs to focus a specific window within an application
