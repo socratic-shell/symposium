@@ -137,22 +137,8 @@ struct SplashView: View {
         Logger.shared.log("SplashView: Showing dock panel immediately on project open")
         
         // Use AppDelegate to show the dock panel immediately
-        let dockPosition = estimateDockPosition()
-        appDelegate.showDockPanel(with: projectManager, at: dockPosition)
-        Logger.shared.log("SplashView: Dock panel shown immediately at position: \(dockPosition)")
-    }
-    
-    private func estimateDockPosition() -> NSPoint {
-        // Reuse the same logic from AppDelegate for consistency
-        guard let screen = NSScreen.main else {
-            return NSPoint(x: 100, y: 100)
-        }
-        
-        let screenFrame = screen.visibleFrame
-        return NSPoint(
-            x: screenFrame.midX,
-            y: screenFrame.minY + 30  // Approximate dock height
-        )
+        appDelegate.showDockPanel(with: projectManager)
+        Logger.shared.log("SplashView: Dock panel shown immediately")
     }
 
     private func checkForLastProject() {

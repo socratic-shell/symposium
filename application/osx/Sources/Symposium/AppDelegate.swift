@@ -49,12 +49,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if hasActiveProject, let projectManager = currentProjectManager {
             Logger.shared.log("AppDelegate: Showing dock panel for active project on activation")
             
-            let dockClickPoint = estimateDockClickPosition()
-            dockPanelManager.showPanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
+            dockPanelManager.showPanel(with: projectManager, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
         } else {
             Logger.shared.log("AppDelegate: No active project, showing splash window on activation")
             showSplashWindow()
         }
+    }
+    
+    /// Handle application losing focus (switching to other apps)
+    func applicationDidResignActive(_ notification: Notification) {
+        Logger.shared.log("AppDelegate: Application resigned active (switched to other app)")
+        
+        // Hide panel when user switches to another application
+        hideDockPanel()
+        Logger.shared.log("AppDelegate: Hidden dock panel on app resign")
     }
     
     /// Handle dock icon clicks when app is already running
@@ -71,14 +79,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if hasActiveProject, let projectManager = currentProjectManager {
             Logger.shared.log("AppDelegate: Showing dock panel for active project: \(projectManager.currentProject?.name ?? "unknown")")
             
-            // Calculate approximate dock click position
-            // For MVP, we'll use a simple heuristic
-            let dockClickPoint = estimateDockClickPosition()
-            Logger.shared.log("AppDelegate: Calculated dock click position: \(dockClickPoint)")
-            
             // Toggle panel visibility
             Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel")
-            dockPanelManager.togglePanel(with: projectManager, near: dockClickPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
+            dockPanelManager.togglePanel(with: projectManager, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
         } else {
             Logger.shared.log("AppDelegate: No active project, showing splash window instead")
             Logger.shared.log("AppDelegate: currentProjectManager nil: \(currentProjectManager == nil)")
@@ -95,26 +98,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return false
     }
     
-    /// Estimate dock click position based on dock location and screen size
-    private func estimateDockClickPosition() -> NSPoint {
-        guard let screen = NSScreen.main else {
-            Logger.shared.log("AppDelegate: No main screen found, using fallback position")
-            return NSPoint(x: 100, y: 100)
-        }
-        
-        let screenFrame = screen.visibleFrame
-        Logger.shared.log("AppDelegate: Screen frame: \(screenFrame)")
-        
-        // For MVP, assume dock is at bottom center
-        // TODO: Implement proper dock position detection in Phase 50
-        let dockClickPoint = NSPoint(
-            x: screenFrame.midX,
-            y: screenFrame.minY + 30  // Approximate dock height
-        )
-        
-        Logger.shared.log("AppDelegate: Estimated dock click at: \(dockClickPoint)")
-        return dockClickPoint
-    }
     
     /// Show splash window when no active project
     private func showSplashWindow() {
@@ -163,9 +146,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 extension AppDelegate {
     
     /// Show dock panel with specific project
-    func showDockPanel(with projectManager: ProjectManager, at point: NSPoint? = nil) {
-        let dockPoint = point ?? estimateDockClickPosition()
-        dockPanelManager.showPanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
+    func showDockPanel(with projectManager: ProjectManager) {
+        dockPanelManager.showPanel(with: projectManager, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
     }
     
     /// Hide dock panel
@@ -191,8 +173,7 @@ extension AppDelegate {
             Logger.shared.log("AppDelegate: ProjectManager exists but no current project")
         }
         
-        let dockPoint = estimateDockClickPosition()
         Logger.shared.log("AppDelegate: Calling dockPanelManager.togglePanel from menu action")
-        dockPanelManager.togglePanel(with: projectManager, near: dockPoint, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
+        dockPanelManager.togglePanel(with: projectManager, onCloseProject: closeProjectCallback, onDismiss: hideDockPanel)
     }
 }
