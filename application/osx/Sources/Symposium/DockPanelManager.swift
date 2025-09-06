@@ -163,6 +163,18 @@ class DockPanelManager: ObservableObject {
         ])
     }
     
+    private func calculateTaskspaceWidth() -> CGFloat {
+        let screenshotWidth: CGFloat = 120
+        
+        // Measure sample Star Trek log message
+        let sampleText = "Captain, we're getting mysterious sensor readings"
+        let textAttributes = [NSAttributedString.Key.font: NSFont.systemFont(ofSize: 13)]
+        let sampleTextWidth = sampleText.size(withAttributes: textAttributes).width
+        
+        let padding: CGFloat = 40 // Internal card padding
+        return screenshotWidth + sampleTextWidth + padding
+    }
+    
     private func calculateIdealPanelSize() -> NSSize {
         // Use a larger, more spacious panel size for better information density
         // Width increased for better horizontal layout, height maintained for screen compatibility
