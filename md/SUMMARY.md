@@ -37,6 +37,11 @@
 # Work in Progress
 
 - [Big picture plans](./work-in-progress/big-picture.md)
+    - [Architecture](./work-in-progress/big-picture/architecture.md)
+        - [Agent Container](./work-in-progress/big-picture/architecture/agent-container.md)
+        - [Development Environment Container](./work-in-progress/big-picture/architecture/dev-container.md)
+        - [Container Orchestration](./work-in-progress/big-picture/architecture/orchestration.md)
+        - [IPC Communication Protocol](./work-in-progress/big-picture/architecture/ipc-protocol.md)
 - [MVP](./work-in-progress/mvp/README.md)
     - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)
     - [Taskspace Bootup Flow](./work-in-progress/mvp/taskspace-bootup-flow.md)
