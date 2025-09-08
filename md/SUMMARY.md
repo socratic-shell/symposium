@@ -36,6 +36,7 @@
 
 # Work in Progress
 
+- [Big picture plans](./work-in-progress/big-picture.md)
 - [MVP](./work-in-progress/mvp/README.md)
     - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)
     - [Taskspace Bootup Flow](./work-in-progress/mvp/taskspace-bootup-flow.md)
