@@ -1,217 +1,175 @@
 # Taskspace Architecture
 
-This document describes the high-level architectural patterns and deployment models for Symposium taskspaces.
+This document describes the core architectural decisions for Symposium taskspaces - the essential components and design patterns that would be expensive to rederive.
 
-## Overview
+## Core Concept
 
-A taskspace is an isolated work environment containing:
+A **taskspace** is an isolated work environment containing:
 - **AI Agent**: Autonomous coding assistant (Claude Code, Q CLI, etc.)
 - **Project Code**: The codebase being worked on  
 - **Development Environment**: Tools, compilers, runtime dependencies
-- **Communication Hub**: IPC coordination between components
-- **Editor Interface**: IDE/terminal access for human collaboration
+- **Communication Hub**: Daemon providing HTTP-based IPC with message buffering
 
-## System Components
+## Container Architecture
 
-The taskspace architecture is built from four main components, each detailed in dedicated architecture documents:
+Each taskspace runs as a **pod** with multiple containers working together:
 
-### [Agent Container](./architecture/agent-container.md)
-Houses the AI agent with persistent session management:
-- **Agent execution**: Claude Code/Q CLI in supervised tmux sessions
-- **Session persistence**: Conversation history survives disconnections
-- **SSH access**: Direct connection to agent conversation
-- **Crash recovery**: Automatic restart with context preservation
+### Agent Container
+- **Purpose**: Runs the AI agent in a persistent tmux session
+- **Contents**: Agent binary (Claude Code/Q CLI), tmux session manager, conversation history
+- **Access**: SSH connection drops directly into agent conversation
+- **Session Management**: tmux configured for good scrollback, agent auto-restarts on crash
 
-### [Development Environment Container](./architecture/dev-container.md)  
-Provides project-specific toolchain and IDE connectivity:
-- **Language toolchains**: Auto-detected from project configuration
-- **SSH access**: Remote IDE connectivity (VSCode, IntelliJ, etc.)
-- **Development services**: Databases, web servers, testing frameworks
-- **File system**: Shared project code with agent container
+### Development Environment Container  
+- **Purpose**: Provides project-specific toolchain and IDE connectivity
+- **Contents**: Language toolchains (detected from project), development tools, SSH server
+- **Access**: VSCode Remote-SSH, IntelliJ remote development, terminal access
+- **Integration**: Shares project files with agent container via mounted volumes
 
-### [Container Orchestration](./architecture/orchestration.md)
-Manages pod lifecycle, networking, and resource allocation:
-- **Pod management**: Creation, startup coordination, health monitoring
-- **Volume strategies**: Copy-on-write project storage, persistent agent state
-- **Network coordination**: Port allocation, SSH configuration management
-- **Resource management**: CPU, memory, storage limits and cleanup
+## Communication Model
 
-### [IPC Communication Protocol](./architecture/ipc-protocol.md)
-Enables reliable coordination between all components:
-- **Message buffering**: Reliable delivery across reconnections using `buffer_` prefix
-- **Request-response patterns**: Structured command/response flows
-- **Connection management**: Client registration, heartbeat, automatic reconnection
-- **Error handling**: Comprehensive error codes and recovery strategies
+### HTTP-Based Daemon
+- **Migration from Unix Sockets**: HTTP communication enables container-to-container coordination
+- **Message Buffering**: Daemon buffers messages when clients disconnect/reconnect
+- **Event Replay**: Reconnecting clients receive all missed messages in order
+- **Multi-Client Support**: Coordinates between agent, IDE connections, and Symposium app
 
-## Deployment Models
+### Message Flow
+- Agent progress updates → Daemon buffer → Symposium app UI
+- User commands from app → Daemon → Agent container
+- IDE connections maintain independent communication with dev container
 
-### Direct Execution Model
-Components run with minimal containerization while maintaining architecture benefits:
+## Taskspace Layout
 
-**Agent Environment:**
-- Agent and MCP server in container for isolation
-- SSH access for both agent conversation and development
-- Host file system access for familiar IDE workflow
-- Container provides crash recovery and session persistence
+Each taskspace gets a host directory with shared mounts across containers:
 
-**Development Environment:**  
-- IDE connects directly to project files on host
-- Development tools available in agent container
-- Hybrid approach: containerized agent, direct file access
-
-**Benefits:**
-- Familiar development workflow (IDE opens local files)
-- Minimal container overhead
-- Agent isolation and crash recovery
-- Easy transition to full containerization
-
-### Containerized Execution Model  
-Full container isolation with comprehensive development environment:
-
-**Pod Architecture:**
-- Agent container with tmux session management
-- Development container with project toolchain
-- Shared pod networking and volumes
-- SSH access to both environments
-
-**Multi-Editor Support:**
-- VSCode Remote-SSH to development container
-- Terminal SSH to agent container for conversation  
-- Real-time collaboration: agent edits visible in IDE immediately
-- Multiple connection types supported simultaneously
-
-**Benefits:**
-- Complete environment isolation
-- Reproducible development environments
-- Remote deployment capability
-- Advanced resource management and scaling
-
-## Configuration and Project Setup
-
-### Project Discovery
-Taskspaces automatically adapt to project requirements:
-
-```bash
-# Configuration priority order
-1. Dockerfile                    # Explicit container definition
-2. .devcontainer/devcontainer.json  # VSCode dev container config
-3. Language detection            # package.json, Cargo.toml, etc.
-4. Default environment           # Generic development container
+### Host Directory Structure
+```
+/path/to/project.symposium
+├── common/               # Shared resources across all containers
+│   ├── ssh/
+│   │   ├── agent_key     # Optional: SSH key for agent git operations
+│   │   └── agent_key.pub
+│   ├── bin/
+│   │   └── symposium-mcp # MCP server binary
+│   └── config/           # Shared configuration files
+└── taskspace-{uuid}/     # Per taskspace data
+  ├── .taskspace.json     # Logs, metadata, progress records
+  ├── .agent/             # Agent-specific dotfiles and configuration  
+  └── {project-name}/     # Git checkout (cannot start with '.')
 ```
 
-### Taskspace Configuration
-Each taskspace gets a host directory with complete configuration:
+### Container Mount Strategy
 
+**Agent Container Mounts:**
 ```
-/tmp/symposium-{taskspace-id}/
-├── config.yaml           # Agent and MCP server settings
-├── project/              # Project code (git clone or mounted)
-├── agent/
-│   ├── auth/            # API keys, SSH credentials
-│   ├── context/         # Collaboration patterns, project docs  
-│   └── state/           # Persistent agent state, conversation history
-└── containers/
-    ├── agent.Dockerfile
-    └── dev.Dockerfile
+~/.claude/          ← /path/to/project.symposium/task-{uuid}/.agent
+~/{project-name}    ← /path/to/project.symposium/task-{uuid}/{project-name}
+~/.ssh/             ← /path/to/project.symposium/common/ssh
+~/bin/              ← /path/to/project.symposium/common/bin
 ```
 
-### Static Binary Deployment
-The `symposium-mcp` static binary provides all coordination functionality:
-
-**Multi-Role Binary:**
-- **MCP Server**: Provides tools to agent (file ops, IDE integration, progress logging)
-- **IPC Daemon**: Message buffering, broadcasting, connection management  
-- **IPC Client**: Connection to parent Symposium coordination
-
-**Deployment Benefits:**
-- Single artifact to build, version, and distribute
-- No runtime dependencies (MUSL static linking)
-- Consistent behavior across deployment models
-- Simplified container images
-
-## Multi-Editor Connectivity Patterns
-
-### SSH-Based Access
-Both deployment models use SSH for multi-editor support:
-
-```bash
-# SSH configuration per taskspace
-Host taskspace-abc123-dev
-  HostName localhost
-  Port 10001
-  User developer
-  
-Host taskspace-abc123-agent
-  HostName localhost  
-  Port 10002
-  User agent
+**Dev Container Mounts:**
+```
+~/{project-name}    ← /path/to/project.symposium/task-{uuid}/{project-name}
+~/.ssh/             ← /path/to/project.symposium/common/ssh
+~/bin/              ← /path/to/project.symposium/common/bin
 ```
 
-### Editor Integration Examples
+## SSH Access Model
 
-**VSCode Remote-SSH:**
-- Connect to development container
-- Full IDE experience with project files
-- Integrated terminal, debugging, extensions
+### Multi-Level Access
+- **User SSH**: Personal keys for IDE connectivity, SSH agent forwarding for personal git operations
+- **Agent SSH**: Optional shared key pair for agent git operations (same keys across all agents)
+- **Security Boundary**: Agents never access user's personal SSH keys
 
-**Terminal Direct:**
-- SSH to agent container
-- Direct conversation with AI agent
-- Watch agent work in real-time
+### IDE Integration Patterns
+- **VSCode Remote-SSH**: Connects to development container for full IDE experience
+- **Terminal Direct**: SSH to agent container for direct AI conversation
+- **Multi-Editor Support**: IntelliJ, RubyMine via SSH remote development
 
-**IntelliJ/RubyMine:**
-- Remote development via SSH
-- Language-specific toolchain in container
-- Debugging and profiling support
+## tmux Session Management
 
-## Communication Patterns
+### Agent Persistence
+- Agent runs in named tmux session with extensive scrollback history
+- SSH connections attach directly to agent conversation (no shell prompt)
+- Session survives agent crashes and container restarts
+- Optimized for long-form conversations with good scroll/copy support
 
-### Agent-Symposium Coordination
-```mermaid
-graph LR
-    A[Agent Container] -->|buffer_taskspace_progress| D[IPC Daemon]
-    A -->|buffer_taskspace_signal_user| D
-    D -->|broadcast| S[Symposium App]
-    S -->|agent_command| D
-    D -->|forward| A
+### Session Recovery
+- If agent exits, tmux session remains; agent auto-restarts in background
+- SSH disconnection doesn't terminate agent - conversation continues
+- New SSH connections attach to existing session
+
+## Project Creation Workflow
+
+### Setup Wizard
+Each `.symposium` directory is created through a configuration wizard that handles deployment setup:
+
+**User Configuration:**
+1. **Location & Host**: User specifies path and target host
+   - Local: `~/projects/my-app.symposium`
+   - Remote: `ssh://dev-server/home/user/my-app.symposium`
+2. **SSH Access**: Optional checkbox for agent SSH key generation
+3. **Agent Type**: Choose default agent (Claude Code, Q CLI, etc.)
+
+**Infrastructure Provisioning:**
+- **Directory Creation**: Symposium creates `.symposium` structure at target location
+- **SSH Key Setup**: Generates agent SSH keys if enabled, installs at target location
+- **Binary Distribution**: Downloads/builds `symposium-mcp` binary for target platform
+- **Configuration**: Writes `project.json` with agent settings and deployment info
+
+**Result:**
+```
+{user-specified-path}/
+├── common/
+│   ├── ssh/                 # Created if SSH access enabled
+│   │   ├── agent_key
+│   │   └── agent_key.pub
+│   ├── bin/
+│   │   └── symposium-mcp    # Platform-appropriate binary
+│   └── config/
+│       └── project.json     # Agent type, SSH settings, host info
+└── (taskspace directories created as needed)
 ```
 
-### Multi-Client Message Flow
-```mermaid  
-graph TB
-    Agent[Agent Container] -->|progress updates| Daemon[IPC Daemon]
-    IDE[IDE Connection] -->|commands| Daemon
-    App[Symposium App] -->|management| Daemon
-    
-    Daemon -->|broadcast| Agent
-    Daemon -->|broadcast| IDE  
-    Daemon -->|broadcast| App
-    
-    Daemon -->|buffer & replay| Buffer[(Message Buffer)]
-```
+### Deployment Flexibility
+- **Location Independence**: Same structure works locally or on any SSH-accessible host
+- **Team Collaboration**: Multiple developers can share a remote `.symposium` directory
+- **One-Time Setup**: Infrastructure concerns handled at project creation, not per-taskspace
 
-## Scaling and Evolution Path
+## Deployment Evolution
 
-### Resource Management
-- **Per-taskspace limits**: CPU, memory, storage quotas
-- **Copy-on-write storage**: Efficient project file management
-- **Automated cleanup**: Inactive taskspace removal
-- **Resource monitoring**: Usage tracking and alerts
+### Current Focus: Local Development
+- **Phase 1**: localhost/macOS experiments and validation
+- Project creation wizard supports local `.symposium` directories
+- SSH connections to localhost ports for IDE integration
 
-### Remote Deployment
-The architecture supports natural progression to remote hosting:
+### Future: Remote Deployment  
+- **Same Architecture**: SSH to remote Mac/Linux machines via project creation wizard
+- **Extended Targets**: Cloud deployment, Kubernetes orchestration, GitHub Codespaces
+- Multi-tenant support with isolated taskspaces per user
 
-1. **Local containers**: Development and testing
-2. **Remote SSH hosts**: Same interface, different target
-3. **Container orchestration**: Kubernetes, Docker Swarm
-4. **Multi-tenant hosting**: Shared infrastructure, isolated taskspaces
+## Key Design Decisions
 
-### Agent Ecosystem Expansion
-Foundation supports multiple agent types:
+### Why Containers?
+- **Agent Isolation**: Crash recovery, resource limits, clean shutdown
+- **Reproducible Environments**: Consistent toolchains across deployment targets
+- **Multi-Editor Support**: SSH-based access works with any IDE
 
-- **MCP-compatible agents**: Current focus (Claude Code, Q CLI)
-- **ACP-compatible agents**: Future expansion via Agent Client Protocol
-- **Custom agents**: Plugin architecture for specialized tools
-- **Multi-agent coordination**: Agents collaborating on complex tasks
+### Why HTTP vs Unix Sockets?
+- **Container Boundaries**: HTTP crosses container network boundaries
+- **Message Buffering**: Enables reliable communication across disconnects
+- **Remote Ready**: Same communication model works locally and remotely
 
-This architecture provides a robust foundation for AI-assisted development that scales from individual use to team collaboration and enterprise deployment.
+### Why tmux for Sessions?
+- **Persistence**: Conversation history survives connection drops
+- **Scrollback**: Essential for long AI conversations and code review
+- **Familiar**: Standard tool that integrates well with terminal workflows
+
+### Why Shared Common Directory?
+- **Binary Distribution**: Same MCP server binary across all taskspaces
+- **Key Management**: Centralized SSH key distribution
+- **Configuration**: Shared tools and settings without duplication
+
+This architecture provides a foundation for AI-assisted development that scales from individual experimentation to team collaboration while maintaining familiar development workflows.
