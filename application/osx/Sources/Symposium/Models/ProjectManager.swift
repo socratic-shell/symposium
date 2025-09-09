@@ -331,6 +331,25 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let url = gitURL.replacingOccurrences(of: ".git", with: "")
         return URL(string: url)?.lastPathComponent ?? "repo"
     }
+    
+    /// Check if a bare git repository exists at the project path
+    private func bareRepositoryExists(in projectPath: String) -> Bool {
+        let gitPath = "\(projectPath)/.git"
+        let fileManager = FileManager.default
+        
+        // Check if .git exists
+        guard fileManager.fileExists(atPath: gitPath) else {
+            return false
+        }
+        
+        // Check if it's a bare repository by looking for the 'bare' config
+        let configPath = "\(gitPath)/config"
+        guard let configContent = try? String(contentsOfFile: configPath) else {
+            return false
+        }
+        
+        return configContent.contains("bare = true")
+    }
 }
 
 /// Errors that can occur during project operations
