@@ -49,6 +49,7 @@
     - [Window Per Project](./work-in-progress/mvp/window-per-project.md)
 - [Project Window Visual Design](./work-in-progress/project-window-visual-design.md)
 - [Centered Panel Implementation Plan](./work-in-progress/centered-panel-implementation-plan.md)
+- [Git Worktrees Migration Plan](./work-in-progress/git-worktrees-migration.md)
 - [Older material]()
     - [Interface plan](./work-in-progress/mvp/interface-plan.md)
     - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
