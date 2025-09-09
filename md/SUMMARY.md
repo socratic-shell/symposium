@@ -20,6 +20,7 @@
 - [Implementation Overview](./design/implementation-overview.md)
 - [Startup and Window Management](./design/startup-and-window-management.md)
 - [Stacked Windows](./design/stacked-windows.md)
+- [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
 - [MCP Server Tools](./design/mcp-server.md)
     - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
     - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
