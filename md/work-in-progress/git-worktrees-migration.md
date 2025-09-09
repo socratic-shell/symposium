@@ -30,10 +30,11 @@ project.symposium/
 ## Required Implementation Work
 
 ### 1. Worktree Cleanup (Backend)
-- ✅ Partially done: Basic worktree creation exists
-- ❌ **TODO**: Add `git worktree remove` to `deleteTaskspace()`
-- ❌ **TODO**: Offer user choice to delete git branch or keep it
-- ❌ **TODO**: Handle cleanup gracefully with fallbacks
+- ✅ **DONE**: Add `git worktree remove` to `deleteTaskspace()`
+- ✅ **DONE**: Offer user choice to delete git branch or keep it
+- ✅ **DONE**: Handle cleanup gracefully with fallbacks
+- ✅ **DONE**: Get current branch name using `git branch --show-current`
+- ✅ **DONE**: Custom dialog with checkbox (default unchecked) for branch deletion
 
 ### 2. Branch Management (MCP Tool)
 - ❌ **TODO**: Extend `update_taskspace` tool with optional `branch_name` parameter
@@ -73,8 +74,8 @@ project.symposium/
 
 ## Implementation Priority
 
-1. **MCP Tool Enhancement** - Add branch naming to `update_taskspace`
-2. **Backend Cleanup** - Proper worktree removal with user choice
+1. ✅ **Backend Cleanup** - Proper worktree removal with user choice (COMPLETED)
+2. **MCP Tool Enhancement** - Add branch naming to `update_taskspace`
 3. **Remote Management** - Fork detection and push remote configuration
 4. **UI Integration** - Display and edit branch names, remote settings
 5. **Agent Instructions** - Updated initial prompt and workflow
