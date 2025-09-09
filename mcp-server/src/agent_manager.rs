@@ -121,6 +121,28 @@ impl AgentManager {
         Ok(())
     }
 
+    /// Execute attach to an agent session (blocks until detach)
+    pub async fn execute_attach(&self, uuid: &str) -> Result<()> {
+        let session = self.sessions.get(uuid)
+            .ok_or_else(|| anyhow!("Agent session {} not found", uuid))?;
+
+        info!("Attaching to agent session {}", uuid);
+
+        // Execute tmux attach command
+        let status = std::process::Command::new("tmux")
+            .arg("attach-session")
+            .arg("-t")
+            .arg(&session.tmux_session_name)
+            .status()?;
+
+        if !status.success() {
+            return Err(anyhow!("Failed to attach to tmux session {}", session.tmux_session_name));
+        }
+
+        info!("Detached from agent session {}", uuid);
+        Ok(())
+    }
+
     /// Get connection command for attaching to an agent session
     pub fn get_attach_command(&self, uuid: &str) -> Result<Vec<String>> {
         let session = self.sessions.get(uuid)

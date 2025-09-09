@@ -235,9 +235,7 @@ async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
             }
         }
         AgentCommand::Attach { uuid } => {
-            let attach_cmd = manager.get_attach_command(&uuid)?;
-            println!("To attach to agent session {}, run:", uuid);
-            println!("  {}", attach_cmd.join(" "));
+            manager.execute_attach(&uuid).await?;
         }
         AgentCommand::Kill { uuid } => {
             manager.kill_agent(&uuid).await?;
