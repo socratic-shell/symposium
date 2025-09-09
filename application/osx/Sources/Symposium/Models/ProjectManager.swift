@@ -991,42 +991,34 @@ extension ProjectManager {
     /// Launch VSCode for a taskspace directory
     private func launchVSCode(for taskspace: Taskspace, in projectPath: String) {
         let taskspaceDir = taskspace.directoryPath(in: projectPath)
+        let repoName = extractRepoName(from: currentProject?.gitURL ?? "")
+        let workingDir = "\(taskspaceDir)/\(repoName)"
 
-        // Find the repository directory within the taskspace (works for both clones and worktrees)
+        // Check if the working directory exists
+        guard FileManager.default.fileExists(atPath: workingDir) else {
+            Logger.shared.log("ProjectManager: Working directory not found for taskspace: \(taskspace.name)")
+            return
+        }
+
+        let vscodeProcess = Process()
+
+        if let codePath = getCodeCommandPath() {
+            // Use 'code' command - opens each directory in a new window by default
+            vscodeProcess.executableURL = URL(fileURLWithPath: codePath)
+            vscodeProcess.arguments = [workingDir]
+            Logger.shared.log("ProjectManager: Using code command at: \(codePath)")
+        } else {
+            // Fallback to 'open' command
+            vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            vscodeProcess.arguments = ["-a", "Visual Studio Code", workingDir]
+            Logger.shared.log("ProjectManager: Code command not found, using open")
+        }
+
         do {
-            let contents = try FileManager.default.contentsOfDirectory(atPath: taskspaceDir)
-            // Look for a directory that's not taskspace.json
-            if let repoDir = contents.first(where: { $0 != "taskspace.json" }) {
-                let workingDir = "\(taskspaceDir)/\(repoDir)"
-
-                let vscodeProcess = Process()
-
-                if let codePath = getCodeCommandPath() {
-                    // Use 'code' command - opens each directory in a new window by default
-                    vscodeProcess.executableURL = URL(fileURLWithPath: codePath)
-                    vscodeProcess.arguments = [workingDir]
-                    Logger.shared.log("ProjectManager: Using code command at: \(codePath)")
-                } else {
-                    // Fallback to 'open' command
-                    vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                    vscodeProcess.arguments = ["-a", "Visual Studio Code", workingDir]
-                    Logger.shared.log("ProjectManager: Code command not found, using open")
-                }
-
-                do {
-                    try vscodeProcess.run()
-                    Logger.shared.log(
-                        "ProjectManager: Launched VSCode for taskspace: \(taskspace.name) in \(repoDir)"
-                    )
-                } catch {
-                    Logger.shared.log(
-                        "ProjectManager: Failed to launch VSCode for \(taskspace.name): \(error)")
-                }
-            } else {
-                Logger.shared.log(
-                    "ProjectManager: No repository directory found for taskspace: \(taskspace.name)"
-                )
-            }
+            try vscodeProcess.run()
+            Logger.shared.log(
+                "ProjectManager: Launched VSCode for taskspace: \(taskspace.name) in \(repoName)"
+            )
         } catch {
             Logger.shared.log(
                 "ProjectManager: Failed to launch VSCode for \(taskspace.name): \(error)")
