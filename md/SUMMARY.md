@@ -30,6 +30,7 @@
 - [Symposium Reference System](./design/symposium-ref-system.md)
 - [Ask Socratic Shell](./design/ask-socratic-shell.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
+- [Agent manager](./design/agent-manager.md)
 - [Code walkthroughs](./design/walkthroughs.md)
     - [Walkthrough format](./design/walkthrough-format.md)
     - [Comment Interactions](./design/walkthrough-comment-interactions.md)
