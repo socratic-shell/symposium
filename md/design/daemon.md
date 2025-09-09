@@ -41,46 +41,10 @@ graph TB
 
 ## Message Targeting and Routing
 
-### Current Implementation: Broadcast Model
-The daemon currently uses a simple broadcast approach where every message is forwarded to all connected clients. Individual clients then filter messages based on targeting criteria.
-
-### Message Structure
-```typescript
-interface IPCMessage {
-    type: string;
-    id: string;
-    shellPid: number;  // Current targeting mechanism
-    payload: any;
-}
-```
-
-### Client-Side Filtering
-VSCode extensions filter incoming messages using PID-based matching:
-
-```typescript
-// Current approach - PID matching only
-private async isMessageForOurWindow(shellPid: number): Promise<boolean> {
-    const terminals = vscode.window.terminals;
-    for (const terminal of terminals) {
-        const terminalPid = await terminal.processId;
-        if (terminalPid === shellPid) {
-            return true; // Message is for this VSCode window
-        }
-    }
-    return false; // Message is for different VSCode window
-}
-```
-
-### Limitations with Persistent Agents
-The current PID-based targeting breaks with persistent agents running in tmux sessions:
-- **No VSCode Parent**: tmux agents don't have VSCode in their process tree
-- **Different Shell PID**: tmux session PID differs from VSCode terminal PIDs
-- **No Terminal Match**: VSCode can't find the tmux shell in its terminal list
-
-## Enhanced Message Targeting (Planned)
+## Message Targeting and Routing
 
 ### Hybrid Directory + PID Approach
-To support both synchronous and persistent agents, we plan to enhance message targeting:
+The daemon uses intelligent message targeting to support both synchronous and persistent agents:
 
 ```typescript
 interface IPCMessage {
@@ -95,7 +59,9 @@ interface IPCMessage {
 }
 ```
 
-### Enhanced Client Filtering Logic
+### Client-Side Filtering Logic
+VSCode extensions filter incoming messages using hybrid directory + PID matching:
+
 ```typescript
 private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
     // 1. Check if working directory is within our workspace
@@ -125,8 +91,7 @@ private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
 ```
 
 ### Benefits of Hybrid Approach
-- **Backward Compatible**: Existing synchronous agents continue working with PID matching
-- **Forward Compatible**: Persistent agents work with directory matching
+- **Universal Compatibility**: Works with both synchronous (terminal-based) and persistent (tmux-based) agents
 - **Precise When Possible**: Uses PID matching when available for accuracy
 - **Robust Fallback**: Directory matching works across all execution models
 - **Multi-Window Safe**: Prevents cross-window message leakage
@@ -163,7 +128,7 @@ struct BufferConfig {
 - **Taskspace Events**: Spawn/update notifications preserved across disconnections
 - **Development Workflow**: Daemon restarts don't lose in-flight messages
 
-### Buffering Implementation (Planned)
+### Buffering Implementation
 ```rust
 impl MessageBus {
     async fn route_message(&mut self, message: IPCMessage) -> Result<()> {
@@ -223,8 +188,8 @@ The daemon creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC 
 - See: `ide/vscode/src/extension.ts` - spawns `symposium-mcp client` process
 
 **Intelligent message routing**: Daemon uses hybrid directory + PID targeting to route messages accurately across different agent execution models.
-- See: Enhanced targeting logic above
 - Supports both synchronous (terminal-based) and persistent (tmux-based) agents
+- Directory-based matching with PID precision when available
 
 **Message buffering and replay**: Daemon buffers messages when target clients are disconnected and replays them on reconnection.
 - Prevents message loss during VSCode restarts or network issues
@@ -244,9 +209,9 @@ The daemon creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC 
 [Experiment 1](../work-in-progress/big-picture/experiments/experiment-1-http-buffering-daemon.md) explores migrating from Unix sockets to HTTP for improved debugging and cross-platform compatibility.
 
 ### Persistent Message Storage
-Consider persisting buffered messages to disk for daemon restart resilience, though this adds complexity and may not be needed for MVP.
+Buffered messages could be persisted to disk for daemon restart resilience, though this adds complexity.
 
 ### Advanced Routing
-Future versions could support more sophisticated routing based on message content, client capabilities, or user preferences.
+More sophisticated routing based on message content, client capabilities, or user preferences.
 
 See [Communication Protocol](./protocol.md) for detailed message format specifications.
