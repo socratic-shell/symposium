@@ -1,79 +1,62 @@
 # Big picture plans and progress
 
-## Phases
+## Major planned workstreams
 
 * ✅ *Done: proof-of-concept for synchronous execution*
-* ① *Phase 1: proof-of-concept for asynchronous execution on localhost*
-* ② *Phase 2: expand to more editors, more agents, more configuration options*
-* ⏳ *Planned for the future but not on a concrete timeline*
+* ① *Worktrees*
+* ② *Remote hosting via ssh*
+* ③ *Persistent, asynchronous agents*
+* ④ *Misc UI improvements*
+* ⑤ *Socratic Shell improvements*
+* ⑥ *Multiwindow taskspaces*
+* ⏳ *No specific plan*
 
 ## App startup experience
 
 *On first startup, app configures everything*
 
 * ✅ Detects required permissions
-* ⏳ Installs extensions for editors you plan to use
-
-## Editor choices
-
-*Support a wide variety of editors within a taskspace*
-
-* ✅ VSCode
-* ② Terminal
-* ② IntelliJ and RustRover
-* ⏳ Vim.app (does this exist?)
-* ⏳ Emacs.app
-
-## Agent choices
-
-*Support a wide variety of AI agents*
-
-* ✅ CLI agents -- these can be used for autonom
-    * ✅ Claude Code
-    * ✅ Q CLI
-    * ⏳ Aider
-* ⏳ Non-CLI agents like Cline, Kiro, and friends
-    * We do want to support these, but unclear how to support them outside of a localhost, non-containerized environment
-
-## "Attached" execution (non-containerized)
-
-*User can work on localhost in maximally compatible fashion with existing workflows*
-
-* ✅ Synchronous agent that runs only when connected
-* ✅ Creates directory on localhost
-* ✅ Clones project
-* ✅ Starts editor
+* ⏳ Editor choices
+    * ⏳ Verifies available editors
+    * ⏳ Installs extensions for editors you plan to use
 * ✅ Agent choices
     * ✅ Verifies CLI agent configuration on localhost
     * ⏳ Configures CLI agents for you
     * ⏳ Supports non-CLI agents
 
-## "Detached" execution (containerized)
+## Creating a project
 
-*User can work with 'detached agents' that run asynchronously on a variety of hosting platforms*
+* User selects where to host the project
+    * ✅ Localhost
+    * ② SSH remote -- supporting will require cross-cutting work to execute via ssh
+* ✅ Creating new projects
+    * ✅ Creates base project directory structure
 
-Core goals:
+## Opening and viewing a project
 
-* ① Launching a new taskspace creates a new active taskspace that runs even when disconnected:
-    * ① Localhost (probably a useful stepping stone)
-    * ② SSH remote (good first goal)
-    * ② Public ephemeral environments like Github codespaces
-    * ② Private ephemeral environments configured via plugin
-* ① Agent runs asynchronously
-    * Launch the CLI tool in a process in that taskspace connected via tmux or some other thing
-* ① Project repository includes 'development configuration'
-    * ① Dockerfile
-    * ② DevContainer
-    * App automatically extends that configuration with
-        * ① Pre-configured CLI agent of choice (Claude Code, Q CLI, etc)
-        * ① Our MCP server
-* ① When "disconnected":
-    * ① App should attempt connect with the CLI agent even when editor is not visible
-    * ① Permits logging etc
-* ① When "connected"
-    * ① App should open editor of choice and let user work with project files + agent
-    * ① App should make the CLI agent visible in the editor
-    * ② App should make the CLI agent visible in a separate terminal window that it controls
+* ✅ Taskspace window appears showing existing taskspaces with previous screenshots
+* ✅ User can expand a taskspace to view logs
+* ④ User can rearrange taskspace ordering at will
+* ③ When agent sends taskspace updates (note that taskspace need not be connected)
+    * ③ Logs are recorded and updated
+    * ④ When a taskspace has requested user attention, dock icon is badged, badge is cleared when user activates taskspace
+
+## Creating a taskspace
+
+* ✅ Creating new taskspace with UUID `$U`
+    * ① Create the "master" `.git` if needed
+    * ① Fresh worktree in branch `task-$U`
+    * ③ Spawn autonomous agent operating in that worktree (record the PID)
+* ✅ Initial prompt guides taskspace to setup:
+    * ✅ a name
+    * ✅ a description
+    * ① a branch name
+
+## Selecting a taskspace
+
+* ✅ Selecting existing taskspace with UUID `$U`
+    * ✅ Attaches editor if needed, activates editor window to the front otherwise
+    * ③ Connect to the agent
 
 ## Development experience
 
@@ -120,3 +103,47 @@ We wish to support many languages, starting with:
 ## Taskspace coordination
 
 * ⏳ Shares results and data across taskspaces
+
+## Configuration options
+
+### Editor choices
+
+*Support a wide variety of editors within a taskspace*
+
+* ✅ VSCode
+* ② Terminal
+* ② IntelliJ and RustRover
+* ⏳ Vim.app (does this exist?)
+* ⏳ Emacs.app
+
+### Window choices
+
+* Agent can be
+    * ✅ in editor terminal
+    * ⑥ in separate terminal
+    * ⏳ IDE-integrated
+* ⏳ Users can configure and attach other windows to the taskspace
+
+### Agent choices
+
+*Support a wide variety of AI agents*
+
+* ✅ CLI agents -- these can be used for autonom
+    * ✅ Claude Code
+    * ✅ Q CLI
+    * ⏳ Aider
+* ⏳ Non-CLI agents like Cline, Kiro, and friends
+    * We do want to support these, but unclear how to support them outside of a localhost, non-containerized environment
+
+### Execution model
+
+* ✅ "Direct" execution model
+    * Each taskspace is a directory, agents are processes; maximally compatible fashion with existing workflows
+    * Can run on:
+        * ✅ localhost
+        * ② ssh remotes
+    * User is responsible for:
+        * setting up their dev tools and environment
+        * installing CLI agents on the desired host
+* "Containerized" execution (containerized)
+    * TBD -- containerized execution will be used for ephemeral compute but requires resolving auth and setup issues (e.g., Claude Code does not allow you to easily setup a container with auth tokens).
