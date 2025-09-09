@@ -11,6 +11,7 @@ use rmcp::{ServiceExt, transport::stdio};
 use tracing::{error, info};
 
 use symposium_mcp::{
+    AgentManager,
     DialecticServer,
     constants::DAEMON_SOCKET_PREFIX,
     structured_logging::{self, Component},
@@ -53,6 +54,42 @@ enum Command {
         /// Auto-start daemon if not running
         #[arg(long, default_value = "true")]
         auto_start: bool,
+    },
+
+    /// Manage persistent agent sessions
+    #[command(subcommand)]
+    Agent(AgentCommand),
+}
+
+#[derive(Parser, Debug)]
+enum AgentCommand {
+    /// Spawn a new persistent agent session
+    Spawn {
+        /// Unique identifier for the agent session
+        #[arg(long)]
+        uuid: String,
+
+        /// Working directory for the agent
+        #[arg(long)]
+        workdir: String,
+
+        /// Agent command to run (e.g., "q chat --resume")
+        agent_args: Vec<String>,
+    },
+
+    /// List all agent sessions
+    List,
+
+    /// Get attach command for an agent session
+    Attach {
+        /// Agent session UUID
+        uuid: String,
+    },
+
+    /// Kill an agent session
+    Kill {
+        /// Agent session UUID
+        uuid: String,
     },
 }
 
@@ -97,6 +134,10 @@ async fn main() -> Result<()> {
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
             symposium_mcp::run_client(prefix, auto_start).await?;
+        }
+        Some(Command::Agent(agent_cmd)) => {
+            info!("🤖 AGENT MANAGER MODE");
+            run_agent_manager(agent_cmd).await?;
         }
         None => {
             info!("Starting Symposium MCP Server (Rust)");
@@ -158,5 +199,51 @@ async fn run_pid_probe() -> Result<()> {
     }
 
     info!("=== END PID PROBE ===");
+    Ok(())
+}
+
+/// Run agent manager commands
+async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
+    use std::path::PathBuf;
+    
+    // Default sessions file location
+    let sessions_file = PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()))
+        .join(".symposium")
+        .join("agent-sessions.json");
+
+    let mut manager = AgentManager::new(sessions_file).await?;
+
+    match agent_cmd {
+        AgentCommand::Spawn { uuid, workdir, agent_args } => {
+            let workdir = PathBuf::from(workdir);
+            manager.spawn_agent(uuid, agent_args, workdir).await?;
+            println!("Agent session spawned successfully");
+        }
+        AgentCommand::List => {
+            let sessions = manager.list_sessions();
+            if sessions.is_empty() {
+                println!("No active agent sessions");
+            } else {
+                println!("Active agent sessions:");
+                for session in sessions {
+                    println!("  {} - {:?} ({})", 
+                        session.uuid, 
+                        session.status,
+                        session.tmux_session_name
+                    );
+                }
+            }
+        }
+        AgentCommand::Attach { uuid } => {
+            let attach_cmd = manager.get_attach_command(&uuid)?;
+            println!("To attach to agent session {}, run:", uuid);
+            println!("  {}", attach_cmd.join(" "));
+        }
+        AgentCommand::Kill { uuid } => {
+            manager.kill_agent(&uuid).await?;
+            println!("Agent session {} killed", uuid);
+        }
+    }
+
     Ok(())
 }
