@@ -40,13 +40,20 @@ project.symposium/
 - ❌ **TODO**: When `branch_name` provided, rename current git branch with `git branch -m`
 - ❌ **TODO**: Update tool to support the new collaborative naming workflow
 
-### 3. UI Integration (Frontend)
+### 3. Remote Management (Git Integration)
+- ❌ **TODO**: UI to configure user's push remote (typically their GitHub fork)
+- ❌ **TODO**: Auto-detect GitHub fork when creating project (check if `username/repo-name` exists)
+- ❌ **TODO**: Set up smart defaults for `git config push.default` and remote configuration
+- ❌ **TODO**: Allow users to modify remote configuration through UI
+
+### 4. UI Integration (Frontend)
 - ❌ **TODO**: Display git branch name in project window alongside taskspace name/description
 - ❌ **TODO**: Make branch name editable in UI
 - ❌ **TODO**: When user edits branch name in UI, call backend to rename git branch
 - ❌ **TODO**: Show branch name in taskspace cards/panels
+- ❌ **TODO**: Add remote configuration UI in project settings
 
-### 4. Improved Agent Workflow (Instructions)
+### 5. Improved Agent Workflow (Instructions)
 - ❌ **TODO**: Update default initial prompt to encourage user discussion before naming
 - ❌ **TODO**: Guide agents to propose name, description, and branch name together
 - ❌ **TODO**: Encourage "Got it! Here's my proposal..." pattern
@@ -68,13 +75,15 @@ project.symposium/
 
 1. **MCP Tool Enhancement** - Add branch naming to `update_taskspace`
 2. **Backend Cleanup** - Proper worktree removal with user choice
-3. **UI Integration** - Display and edit branch names
-4. **Agent Instructions** - Updated initial prompt and workflow
+3. **Remote Management** - Fork detection and push remote configuration
+4. **UI Integration** - Display and edit branch names, remote settings
+5. **Agent Instructions** - Updated initial prompt and workflow
 
 ## Benefits
 
 - **Proper Git Hygiene**: Clean worktree and branch management
 - **User Control**: Choice over branch deletion and naming
-- **UI/Git Sync**: Branch names stay consistent between UI and git
+- **Fork Integration**: Seamless GitHub fork workflow with smart defaults
+- **UI/Git Sync**: Branch names and remotes stay consistent between UI and git
 - **Collaborative Naming**: Agents discuss with users before naming
 - **Better Organization**: Meaningful branch names reflect taskspace purpose
