@@ -297,7 +297,24 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             attributes: nil
         )
 
-        // Clone repository into taskspace directory
+        // Ensure bare repository exists (create if this is the first taskspace)
+        if !bareRepositoryExists(in: project.directoryPath) {
+            Logger.shared.log("ProjectManager: Creating bare repository for first taskspace")
+            let bareProcess = Process()
+            bareProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            bareProcess.arguments = ["clone", "--bare", project.gitURL, "\(project.directoryPath)/.git"]
+            
+            try bareProcess.run()
+            bareProcess.waitUntilExit()
+            
+            if bareProcess.terminationStatus != 0 {
+                throw ProjectError.gitCloneFailed
+            }
+        } else {
+            Logger.shared.log("ProjectManager: Bare repository already exists")
+        }
+
+        // Clone repository into taskspace directory (TODO: replace with worktree)
         let repoName = extractRepoName(from: project.gitURL)
         let cloneDir = "\(taskspaceDir)/\(repoName)"
 
