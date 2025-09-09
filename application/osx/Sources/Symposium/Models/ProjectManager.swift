@@ -251,7 +251,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     /// Delete a taskspace and its directory
-    func deleteTaskspace(_ taskspace: Taskspace) throws {
+    func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
         }
@@ -259,9 +259,42 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         isLoading = true
         defer { isLoading = false }
 
-        // Delete the taskspace directory recursively
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
-        try FileManager.default.removeItem(atPath: taskspaceDir)
+        
+        // Get current branch name before removing worktree
+        let branchName = try getCurrentBranch(in: taskspaceDir)
+        
+        // Remove git worktree (this also removes the directory)
+        let worktreeProcess = Process()
+        worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        worktreeProcess.arguments = ["worktree", "remove", taskspaceDir, "--force"]
+        worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+        
+        try worktreeProcess.run()
+        worktreeProcess.waitUntilExit()
+        
+        if worktreeProcess.terminationStatus != 0 {
+            Logger.shared.log("Warning: Failed to remove git worktree, falling back to directory removal")
+            // Fallback: remove directory if worktree removal failed
+            try FileManager.default.removeItem(atPath: taskspaceDir)
+        }
+        
+        // Optionally delete the branch
+        if deleteBranch && !branchName.isEmpty {
+            let branchProcess = Process()
+            branchProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+            branchProcess.arguments = ["branch", "-D", branchName]
+            branchProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+            
+            try branchProcess.run()
+            branchProcess.waitUntilExit()
+            
+            if branchProcess.terminationStatus != 0 {
+                Logger.shared.log("Warning: Failed to delete branch \(branchName)")
+            } else {
+                Logger.shared.log("ProjectManager: Deleted branch \(branchName)")
+            }
+        }
 
         // Remove from current project
         DispatchQueue.main.async {
@@ -270,6 +303,40 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             self.currentProject = updatedProject
             Logger.shared.log("ProjectManager: Deleted taskspace \(taskspace.name)")
         }
+    }
+    
+    func getBranchName(for taskspace: Taskspace) -> String {
+        guard let project = currentProject else {
+            return ""
+        }
+        
+        let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        do {
+            return try getCurrentBranch(in: taskspaceDir)
+        } catch {
+            Logger.shared.log("Failed to get branch name for taskspace \(taskspace.name): \(error)")
+            return ""
+        }
+    }
+    
+    private func getCurrentBranch(in directory: String) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["branch", "--show-current"]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        guard process.terminationStatus == 0 else {
+            return ""
+        }
+        
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     /// Create a new taskspace with default values

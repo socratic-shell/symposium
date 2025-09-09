@@ -351,6 +351,8 @@ struct TaskspaceCard: View {
     let taskspace: Taskspace
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
+    @State private var deleteBranch = false
+    @State private var branchName = ""
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
@@ -543,23 +545,72 @@ struct TaskspaceCard: View {
         .onTapGesture {
             handleTaskspaceClick()
         }
-        .alert("Delete Taskspace", isPresented: $showingDeleteConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Delete", role: .destructive) {
-                do {
-                    try projectManager.deleteTaskspace(taskspace)
-                } catch {
-                    Logger.shared.log("Failed to delete taskspace: \(error)")
+        .sheet(isPresented: $showingDeleteConfirmation) {
+            DeleteTaskspaceDialog(
+                taskspaceName: taskspace.name,
+                branchName: branchName,
+                deleteBranch: $deleteBranch,
+                onConfirm: {
+                    do {
+                        try projectManager.deleteTaskspace(taskspace, deleteBranch: deleteBranch)
+                    } catch {
+                        Logger.shared.log("Failed to delete taskspace: \(error)")
+                    }
+                    showingDeleteConfirmation = false
+                },
+                onCancel: {
+                    showingDeleteConfirmation = false
                 }
-            }
-        } message: {
-            Text(
-                "Are you sure you want to delete '\(taskspace.name)'? This will permanently remove all files and cannot be undone."
             )
+        }
+        .onAppear {
+            branchName = projectManager.getBranchName(for: taskspace)
         }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(taskspace.needsAttention ? Color.orange : Color.clear, lineWidth: 2)
         )
+    }
+}
+
+struct DeleteTaskspaceDialog: View {
+    let taskspaceName: String
+    let branchName: String
+    @Binding var deleteBranch: Bool
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Delete Taskspace")
+                .font(.headline)
+            
+            Text("Are you sure you want to delete '\(taskspaceName)'? This will permanently remove all files and cannot be undone.")
+                .multilineTextAlignment(.center)
+            
+            if !branchName.isEmpty {
+                HStack {
+                    Toggle("Also delete the branch `\(branchName)` from git", isOn: $deleteBranch)
+                    Spacer()
+                }
+            }
+            
+            HStack {
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.escape)
+                
+                Spacer()
+                
+                Button("Delete") {
+                    onConfirm()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return)
+            }
+        }
+        .padding()
+        .frame(width: 400)
     }
 }
