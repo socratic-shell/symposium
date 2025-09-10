@@ -175,7 +175,17 @@ struct SymposiumApp: App {
             return
         }
         
-        // Check 2: Is there a previously opened project?
+        // Check 2: Are agents ready? (needed for project restoration)
+        if !agentManager.scanningCompleted {
+            Logger.shared.log("App: Agent scan not complete, waiting...")
+            // Wait a bit and try again
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.runStartupLogic()
+            }
+            return
+        }
+        
+        // Check 3: Is there a previously opened project?
         if !settingsManager.activeProjectPath.isEmpty,
            isValidProject(at: settingsManager.activeProjectPath) {
             Logger.shared.log("App: Found valid last project at \(settingsManager.activeProjectPath), attempting to restore")
