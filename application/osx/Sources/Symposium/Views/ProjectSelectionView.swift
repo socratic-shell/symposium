@@ -134,7 +134,10 @@ struct NewProjectDialog: View {
     @State private var projectName = ""
     @State private var gitURL = ""
     @State private var selectedDirectory = ""
+    @State private var selectedAgent: String? = nil
+    @State private var defaultBranch = ""
     @State private var showingDirectoryPicker = false
+    @State private var showingAdvancedSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -169,6 +172,54 @@ struct NewProjectDialog: View {
                 }
             }
 
+            VStack(alignment: .leading, spacing: 8) {
+                Text("AI Agent:")
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(agentManager.availableAgents, id: \.type) { agent in
+                        AgentRadioButton(
+                            agent: agent,
+                            isSelected: selectedAgent == agent.type.id,
+                            action: { selectedAgent = agent.type.id }
+                        )
+                    }
+                    
+                    // None option
+                    Button(action: { selectedAgent = "none" }) {
+                        HStack {
+                            Image(systemName: selectedAgent == "none" ? "largecircle.fill.circle" : "circle")
+                                .foregroundColor(selectedAgent == "none" ? .accentColor : .secondary)
+                            Text("None")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Advanced Settings
+            VStack(alignment: .leading, spacing: 8) {
+                Button(action: { showingAdvancedSettings.toggle() }) {
+                    HStack {
+                        Image(systemName: showingAdvancedSettings ? "chevron.down" : "chevron.right")
+                        Text("Advanced Settings")
+                    }
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if showingAdvancedSettings {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Default Branch for New Taskspaces:")
+                            .font(.caption)
+                        TextField("Leave empty to use origin's default branch", text: $defaultBranch)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.leading, 16)
+                }
+            }
+
             HStack {
                 Button("Cancel") {
                     dismiss()
@@ -179,7 +230,7 @@ struct NewProjectDialog: View {
                 Button("Create") {
                     createProject()
                 }
-                .disabled(projectName.isEmpty || gitURL.isEmpty || selectedDirectory.isEmpty)
+                .disabled(projectName.isEmpty || gitURL.isEmpty || selectedDirectory.isEmpty || selectedAgent == nil)
             }
         }
         .padding()
@@ -206,8 +257,11 @@ struct NewProjectDialog: View {
             agentManager: agentManager, settingsManager: settingsManager,
             selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
         do {
+            let agent = (selectedAgent == "none") ? nil : selectedAgent
+            let branch = defaultBranch.isEmpty ? nil : defaultBranch
             try projectManager.createProject(
-                name: projectName, gitURL: gitURL, at: selectedDirectory)
+                name: projectName, gitURL: gitURL, at: selectedDirectory, 
+                agent: agent, defaultBranch: branch)
             onProjectCreated(projectManager)
             dismiss()
         } catch {
