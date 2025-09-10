@@ -11,23 +11,11 @@ We're transitioning from the current single-window splash system to a three-wind
 3. **State Machine** - Implement deterministic startup flow
 4. **Migration Logic** - Handle existing projects gracefully
 
-## Current Status: Planning
+## Current Status: Phase 1 In Progress
 
-### Phase 1: Project Metadata Migration
+### Phase 1: Project Metadata Migration ✅ Mostly Complete
 
 **Goal**: Update the `Project` struct to match the target schema and handle migration of existing projects.
-
-**Current Schema**:
-```swift
-struct Project: Codable, Identifiable {
-    let id: UUID
-    let name: String
-    let gitURL: String
-    let directoryPath: String
-    var taskspaces: [Taskspace] = []
-    let createdAt: Date
-}
-```
 
 **Target Schema**:
 ```swift
@@ -37,17 +25,25 @@ struct Project: Codable, Identifiable {
     let name: String
     let gitURL: String
     let directoryPath: String
-    let agent: String?  // Selected agent, nil if none
+    let agent: String?        // Selected agent, nil if none
+    let defaultBranch: String? // Default branch for new taskspaces, nil = auto-detect
     var taskspaces: [Taskspace] = []
     let createdAt: Date
 }
 ```
 
-**Migration Requirements**:
-- Add version field for future compatibility
-- Add agent field for storing selected agent
-- Handle loading projects without these fields (backward compatibility)
-- Gracefully handle cases where stored agent is no longer available
+**Completed**:
+- ✅ Added version and agent fields to Project struct
+- ✅ Implemented backward-compatible loading with ProjectV0 fallback
+- ✅ Added migration logic that auto-saves upgraded projects
+- ✅ Updated design document with defaultBranch field
+- ✅ Added defaultBranch field to Project struct
+- ✅ Updated ProjectManager.createProject() with agent and defaultBranch parameters
+- ✅ Updated migration logic to set defaultBranch to nil (auto-detect)
+
+**Remaining**:
+- [ ] Update project creation UI to capture agent selection and advanced settings
+- [ ] Test migration and new project creation
 
 ### Phase 2: Window Architecture (Planned)
 
@@ -79,9 +75,16 @@ When loading existing projects:
 - Show warning in UI if selected agent is missing
 - Allow project to function without agent (graceful degradation)
 
+### Default Branch Handling
+
+- Store defaultBranch as optional string (remote/branch reference)
+- Support full remote/branch syntax (e.g., `origin/main`, `origin/develop`)
+- Auto-detect origin's default branch when field is null/empty
+- Use `git symbolic-ref refs/remotes/origin/HEAD` with fallback to `origin/main`
+- New taskspaces start from specified or detected remote branch
+
 ## Next Steps
 
-- [ ] Update Project struct with version and agent fields
-- [ ] Implement backward-compatible loading logic
-- [ ] Test migration with existing projects
-- [ ] Update project creation to include agent selection
+- [ ] Update project creation UI with agent selection and Advanced Settings section
+- [ ] Test complete project creation and migration workflow
+- [ ] Begin Phase 2: Window Architecture implementation
