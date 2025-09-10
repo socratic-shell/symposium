@@ -18,6 +18,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     // Window associations for current project
     @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
+    // Window stacking state
+    private var stackTracker: WindowStackTracker?
+    
     // Public access to settings manager for UI
     var settings: SettingsManager {
         return settingsManager
@@ -28,6 +31,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         guard var project = currentProject else { return }
         project.stackedWindowsEnabled = enabled
         currentProject = project
+        
+        // Stop tracking if disabling stacked windows
+        if !enabled {
+            stackTracker?.stopTracking()
+        }
         
         // Save the updated project
         do {
@@ -211,6 +219,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     /// Close current project
     func closeProject() {
+        // Stop window stack tracking
+        stackTracker?.stopTracking()
+        stackTracker = nil
+        
         // Unregister as IPC delegate
         ipcManager.removeDelegate(self)
         Logger.shared.log("ProjectManager: Unregistered as IPC delegate")
@@ -669,6 +681,8 @@ extension ProjectManager {
         // Position all other taskspace windows at the same location (but behind)
         guard let project = currentProject else { return focusResult }
         
+        var followerWindowIDs: [CGWindowID] = []
+        
         for taskspace in project.taskspaces {
             // Skip the target taskspace
             if taskspace.id == targetTaskspace.id { continue }
@@ -684,8 +698,15 @@ extension ProjectManager {
             
             // Position this window at the same location as the target
             positionWindow(windowID: windowID, to: targetBounds)
+            followerWindowIDs.append(windowID)
             Logger.shared.log("ProjectManager: Positioned window for taskspace \(taskspace.name) in stack")
         }
+        
+        // Set up window stack tracking for drag following
+        if stackTracker == nil {
+            stackTracker = WindowStackTracker()
+        }
+        stackTracker?.startTracking(leaderWindowID: targetWindowID, followerWindowIDs: followerWindowIDs)
         
         return focusResult
     }
