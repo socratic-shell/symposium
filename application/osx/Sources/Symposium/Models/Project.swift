@@ -10,19 +10,6 @@ private struct ProjectV0: Codable {
     let createdAt: Date
 }
 
-/// Version 1 project structure for backward compatibility
-private struct ProjectV1: Codable {
-    let version: Int
-    let id: UUID
-    let name: String
-    let gitURL: String
-    let directoryPath: String
-    let agent: String?
-    let defaultBranch: String?
-    var taskspaces: [Taskspace] = []
-    let createdAt: Date
-}
-
 /// Represents a Symposium project containing multiple taskspaces
 struct Project: Codable, Identifiable {
     let version: Int
@@ -86,50 +73,50 @@ struct Project: Codable, Identifiable {
         decoder.dateDecodingStrategy = .iso8601
         
         do {
-            // Try to decode with current schema (version 2)
-            return try decoder.decode(Project.self, from: data)
-        } catch {
-            // Try version 1 schema
-            do {
-                let v1Project = try decoder.decode(ProjectV1.self, from: data)
-                let migratedProject = Project(
+            // Try to decode with current schema
+            var project = try decoder.decode(Project.self, from: data)
+            
+            // Handle version migration
+            if project.version == 1 {
+                // Migrate from version 1 to version 2
+                project = Project(
                     version: 2,
-                    id: v1Project.id,
-                    name: v1Project.name,
-                    gitURL: v1Project.gitURL,
-                    directoryPath: v1Project.directoryPath,
-                    agent: v1Project.agent,
-                    defaultBranch: v1Project.defaultBranch,
-                    taskspaces: v1Project.taskspaces,
-                    createdAt: v1Project.createdAt,
+                    id: project.id,
+                    name: project.name,
+                    gitURL: project.gitURL,
+                    directoryPath: project.directoryPath,
+                    agent: project.agent,
+                    defaultBranch: project.defaultBranch,
+                    taskspaces: project.taskspaces,
+                    createdAt: project.createdAt,
                     stackedWindowsEnabled: false
                 )
                 
                 // Save migrated project back to disk
-                try migratedProject.save()
-                
-                return migratedProject
-            } catch {
-                // Fall back to legacy schema (version 0) and migrate
-                let legacyProject = try decoder.decode(ProjectV0.self, from: data)
-                let migratedProject = Project(
-                    version: 2,
-                    id: legacyProject.id,
-                    name: legacyProject.name,
-                    gitURL: legacyProject.gitURL,
-                    directoryPath: legacyProject.directoryPath,
-                    agent: nil,
-                    defaultBranch: nil,
-                    taskspaces: legacyProject.taskspaces,
-                    createdAt: legacyProject.createdAt,
-                    stackedWindowsEnabled: false
-                )
-                
-                // Save migrated project back to disk
-                try migratedProject.save()
-                
-                return migratedProject
+                try project.save()
             }
+            
+            return project
+        } catch {
+            // Fall back to legacy schema (version 0) and migrate
+            let legacyProject = try decoder.decode(ProjectV0.self, from: data)
+            let migratedProject = Project(
+                version: 2,
+                id: legacyProject.id,
+                name: legacyProject.name,
+                gitURL: legacyProject.gitURL,
+                directoryPath: legacyProject.directoryPath,
+                agent: nil,
+                defaultBranch: nil,
+                taskspaces: legacyProject.taskspaces,
+                createdAt: legacyProject.createdAt,
+                stackedWindowsEnabled: false
+            )
+            
+            // Save migrated project back to disk
+            try migratedProject.save()
+            
+            return migratedProject
         }
     }
     
