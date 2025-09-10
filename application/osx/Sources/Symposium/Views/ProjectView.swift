@@ -77,10 +77,8 @@ struct ProjectView: View {
                                 .font(.caption)
                                 .help("When enabled, clicking a taskspace positions all windows at the same location")
                                 .onChange(of: stackedWindowsEnabled) { newValue in
-                                    if let project = projectManager.currentProject {
-                                        projectManager.settings.setStackedWindowsEnabled(newValue, for: project.directoryPath)
-                                        Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled") for project \(project.name)")
-                                    }
+                                    projectManager.setStackedWindowsEnabled(newValue)
+                                    Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled")")
                                 }
 
                             Button(action: {
@@ -175,9 +173,9 @@ struct ProjectView: View {
         }
         .frame(minHeight: 400)
         .onAppear {
-            // Initialize stacked windows state from settings
+            // Initialize stacked windows state from project
             if let project = projectManager.currentProject {
-                stackedWindowsEnabled = projectManager.settings.getStackedWindowsEnabled(for: project.directoryPath)
+                stackedWindowsEnabled = project.stackedWindowsEnabled
                 Logger.shared.log("ProjectView: Initialized stacked windows state: \(stackedWindowsEnabled) for project \(project.name)")
             }
         }

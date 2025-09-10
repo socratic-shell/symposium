@@ -23,6 +23,21 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return settingsManager
     }
     
+    /// Update stacked windows setting for current project
+    func setStackedWindowsEnabled(_ enabled: Bool) {
+        guard var project = currentProject else { return }
+        project.stackedWindowsEnabled = enabled
+        currentProject = project
+        
+        // Save the updated project
+        do {
+            try project.save()
+            Logger.shared.log("ProjectManager: Updated stacked windows setting to \(enabled) for project \(project.name)")
+        } catch {
+            Logger.shared.log("ProjectManager: Failed to save stacked windows setting: \(error)")
+        }
+    }
+    
     // Window close detection timer
     private var windowCloseTimer: Timer?
 
@@ -573,8 +588,7 @@ extension ProjectManager {
         Logger.shared.log("ProjectManager: Focusing window \(windowID) for taskspace: \(taskspace.name)")
         
         // Check if stacked windows mode is enabled for this project
-        if let project = currentProject,
-           settingsManager.getStackedWindowsEnabled(for: project.directoryPath) {
+        if let project = currentProject, project.stackedWindowsEnabled {
             Logger.shared.log("ProjectManager: Stacked windows mode enabled - positioning all taskspace windows")
             return focusWindowWithStacking(targetTaskspace: taskspace, targetWindowID: windowID)
         } else {
