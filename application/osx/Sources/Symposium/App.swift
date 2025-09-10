@@ -87,6 +87,10 @@ struct SymposiumApp: App {
                         appDelegate.currentProjectManager = nil
                         // Clear saved project path so it doesn't auto-restore on next startup
                         settingsManager.activeProjectPath = ""
+                        // Re-run startup logic to determine appropriate next window
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            self.runStartupLogic()
+                        }
                     }
             } else {
                 // Fallback if no project manager
