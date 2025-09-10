@@ -15,7 +15,11 @@ struct ProjectView: View {
     @State private var expandedTaskspace: UUID? = nil
     
     // Task description dialog state
-    @State private var showingNewTaskspaceDialog = false
+    @State private var showingNewTaskspaceDialog = false {
+        didSet {
+            Logger.shared.log("ProjectView: showingNewTaskspaceDialog changed to \(showingNewTaskspaceDialog)")
+        }
+    }
 
     init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.projectManager = projectManager
@@ -66,12 +70,16 @@ struct ProjectView: View {
                             }
 
                             Button(action: {
+                                Logger.shared.log("ProjectView: + button clicked, showing dialog")
                                 showingNewTaskspaceDialog = true
                             }) {
                                 Image(systemName: "plus")
                             }
                             .help("New Taskspace")
                             .disabled(projectManager.isLoading)
+                            .popover(isPresented: $showingNewTaskspaceDialog) {
+                                NewTaskspaceDialog(projectManager: projectManager)
+                            }
 
                             Button(action: {
                                 reregisterWindows()
@@ -325,9 +333,6 @@ struct ProjectView: View {
                 }
                 .padding()
             }
-        }
-        .sheet(isPresented: $showingNewTaskspaceDialog) {
-            NewTaskspaceDialog(projectManager: projectManager)
         }
     }
 
@@ -642,6 +647,7 @@ struct NewTaskspaceDialog: View {
             
             HStack {
                 Button("Cancel") {
+                    Logger.shared.log("NewTaskspaceDialog: Cancel clicked")
                     dismiss()
                 }
                 .keyboardShortcut(.escape)
@@ -658,6 +664,9 @@ struct NewTaskspaceDialog: View {
         }
         .padding()
         .frame(width: 500, height: 250)
+        .onAppear {
+            Logger.shared.log("NewTaskspaceDialog: Dialog appeared")
+        }
     }
     
     private func createTaskspace() {
