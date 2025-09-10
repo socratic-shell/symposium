@@ -41,6 +41,9 @@ class WindowStackTracker {
         Logger.shared.log("WindowStackTracker: Stopped tracking")
     }
     
+    /// Sets up a system-wide event tap to detect mouse clicks and drags
+    /// This allows us to detect when the user starts dragging the leader window
+    /// without relying on unreliable AXObserver notifications
     private func setupEventTap() {
         let eventMask: CGEventMask = (1 << CGEventType.leftMouseDown.rawValue) |
                                    (1 << CGEventType.leftMouseDragged.rawValue) |
