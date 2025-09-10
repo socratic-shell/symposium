@@ -12,6 +12,7 @@ struct SymposiumApp: App {
     
     // SwiftUI environment for window management
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some Scene {
         // Splash window - shown first on app launch with cute loading messages
@@ -136,8 +137,7 @@ struct SymposiumApp: App {
     
     private func closeWindow(id: String) {
         Logger.shared.log("App: Closing window with id: \(id)")
-        // Note: SwiftUI doesn't provide direct window closing, but the window will close
-        // when the user dismisses it or when we open another window
+        dismissWindow(id: id)
     }
     
     private func dismissSplash() {
