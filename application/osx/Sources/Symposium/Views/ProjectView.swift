@@ -56,16 +56,6 @@ struct ProjectView: View {
 
                             Spacer()
 
-                            // IPC Daemon Status
-                            HStack(spacing: 4) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-
-                                Text("Daemon Connected")
-                                    .font(.caption)
-                                    .foregroundColor(.green)
-                            }
-
                             if let error = ipcManager.error {
                                 Text("• \(error)")
                                     .font(.caption)
