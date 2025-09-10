@@ -385,11 +385,14 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let branchName = "taskspace-\(taskspace.id.uuidString)"
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"
-        Logger.shared.log("ProjectManager: Creating worktree with branch \(branchName)")
+        
+        // Determine the base branch to start from
+        let baseBranch = try getBaseBranch(for: project)
+        Logger.shared.log("ProjectManager: Creating worktree with branch \(branchName) from \(baseBranch)")
         
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["worktree", "add", worktreeDir, "-b", branchName]
+        process.arguments = ["worktree", "add", worktreeDir, "-b", branchName, baseBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
 
         try process.run()
@@ -417,6 +420,41 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private func extractRepoName(from gitURL: String) -> String {
         let url = gitURL.replacingOccurrences(of: ".git", with: "")
         return URL(string: url)?.lastPathComponent ?? "repo"
+    }
+    
+    /// Get the base branch for new taskspaces (from project.defaultBranch or auto-detect)
+    private func getBaseBranch(for project: Project) throws -> String {
+        // If project specifies a default branch, use it
+        if let defaultBranch = project.defaultBranch, !defaultBranch.isEmpty {
+            return defaultBranch
+        }
+        
+        // Auto-detect origin's default branch
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["symbolic-ref", "refs/remotes/origin/HEAD"]
+        process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        if process.terminationStatus == 0 {
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                // Output is like "refs/remotes/origin/main", extract "origin/main"
+                if output.hasPrefix("refs/remotes/") {
+                    return String(output.dropFirst("refs/remotes/".count))
+                }
+            }
+        }
+        
+        // Fallback to origin/main
+        Logger.shared.log("ProjectManager: Could not detect origin's default branch, falling back to origin/main")
+        return "origin/main"
     }
     
     /// Check if a bare git repository exists at the project path
