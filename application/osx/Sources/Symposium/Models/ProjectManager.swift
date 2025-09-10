@@ -372,6 +372,20 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     /// Create a new taskspace with default values
+    /// Generate comprehensive initial prompt for new taskspaces
+    func generateInitialPrompt(taskDescription: String) -> String {
+        return """
+        Hi, welcome! You are a new agent just getting started as part of the project \(currentProject?.name ?? ""). \
+        This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
+        The user's description of the task to be done follows after this message. \
+        Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
+        Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.
+
+        User's task description:
+        \(taskDescription)
+        """
+    }
+
     func createTaskspace() throws {
         try createTaskspace(
             name: "Unnamed taskspace",
@@ -1013,11 +1027,14 @@ extension ProjectManager {
         )
 
         do {
+            // Generate comprehensive initial prompt (ignore the MCP payload's initialPrompt)
+            let comprehensivePrompt = generateInitialPrompt(taskDescription: payload.taskDescription)
+            
             // Use the existing createTaskspace logic
             try createTaskspace(
                 name: payload.name,
                 description: payload.taskDescription, 
-                initialPrompt: payload.initialPrompt
+                initialPrompt: comprehensivePrompt
             )
             
             // Get the newly created taskspace (it will be the last one added)
