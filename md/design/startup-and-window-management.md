@@ -253,6 +253,35 @@ The splash window:
 - Closes itself once startup is complete
 - Never reopens during the app session
 
+### Race Condition Resolution
+
+A critical implementation challenge was a race condition where project restoration happened before agent scanning completed, causing "waiting for daemon" issues. The solution was to wait for `agentManager.scanningCompleted` before attempting project restoration:
+
+```swift
+private func runStartupLogic() {
+    // Check if agents are ready (needed for project restoration)
+    if !agentManager.scanningCompleted {
+        Logger.shared.log("App: Agent scan not complete, waiting...")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.runStartupLogic()
+        }
+        return
+    }
+    // ... rest of startup logic
+}
+```
+
+### Automatic Window Refresh
+
+To improve user experience, the system automatically calls `reregisterWindows()` after project restoration to re-establish VSCode window connections without requiring manual refresh button clicks:
+
+```swift
+// Automatically refresh window connections on startup
+DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+    self.reregisterWindows(for: projectManager)
+}
+```
+
 ### State Coordination
 
 The main App struct acts as the coordinator:
