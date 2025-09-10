@@ -85,6 +85,8 @@ struct SymposiumApp: App {
                         Logger.shared.log("Project window closed")
                         // Clear current project manager when project window closes
                         appDelegate.currentProjectManager = nil
+                        // Clear saved project path so it doesn't auto-restore on next startup
+                        settingsManager.activeProjectPath = ""
                     }
             } else {
                 // Fallback if no project manager
