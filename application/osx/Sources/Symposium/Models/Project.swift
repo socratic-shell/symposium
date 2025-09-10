@@ -1,20 +1,46 @@
 import Foundation
 
-/// Represents a Symposium project containing multiple taskspaces
-struct Project: Codable, Identifiable {
+/// Version 0 project structure for backward compatibility
+private struct ProjectV0: Codable {
     let id: UUID
     let name: String
     let gitURL: String
     let directoryPath: String
+    var taskspaces: [Taskspace]
+    let createdAt: Date
+}
+
+/// Represents a Symposium project containing multiple taskspaces
+struct Project: Codable, Identifiable {
+    let version: Int
+    let id: UUID
+    let name: String
+    let gitURL: String
+    let directoryPath: String
+    let agent: String?
     var taskspaces: [Taskspace] = []
     let createdAt: Date
     
-    init(name: String, gitURL: String, directoryPath: String) {
+    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil) {
+        self.version = 1
         self.id = UUID()
         self.name = name
         self.gitURL = gitURL
         self.directoryPath = directoryPath
+        self.agent = agent
         self.createdAt = Date()
+    }
+    
+    // Internal initializer for migration
+    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, taskspaces: [Taskspace], createdAt: Date) {
+        self.version = version
+        self.id = id
+        self.name = name
+        self.gitURL = gitURL
+        self.directoryPath = directoryPath
+        self.agent = agent
+        self.taskspaces = taskspaces
+        self.createdAt = createdAt
     }
     
     /// Path to project.json file
@@ -40,7 +66,28 @@ struct Project: Codable, Identifiable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
-        return try decoder.decode(Project.self, from: data)
+        do {
+            // Try to decode with current schema
+            return try decoder.decode(Project.self, from: data)
+        } catch {
+            // Fall back to legacy schema and migrate
+            let legacyProject = try decoder.decode(ProjectV0.self, from: data)
+            let migratedProject = Project(
+                version: 1,
+                id: legacyProject.id,
+                name: legacyProject.name,
+                gitURL: legacyProject.gitURL,
+                directoryPath: legacyProject.directoryPath,
+                agent: nil,
+                taskspaces: legacyProject.taskspaces,
+                createdAt: legacyProject.createdAt
+            )
+            
+            // Save migrated project back to disk
+            try migratedProject.save()
+            
+            return migratedProject
+        }
     }
     
     /// Check if directory contains a valid Symposium project
