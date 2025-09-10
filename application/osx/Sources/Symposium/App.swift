@@ -32,9 +32,17 @@ struct SymposiumApp: App {
         // Project selection window
         WindowGroup(id: "choose-project") {
             ProjectSelectionView { projectManager in
-                // When project is created/selected, close this window and open project window
-                closeWindow(id: "choose-project")
-                openProjectWindow(with: projectManager)
+                // When project is created/selected, save it and re-run startup logic
+                if let projectPath = projectManager.currentProject?.directoryPath {
+                    Logger.shared.log("App: Project selected, saving path and re-running startup logic")
+                    settingsManager.activeProjectPath = projectPath
+                    dismissWindow(id: "choose-project")
+                    
+                    // Re-run startup logic to detect and open the project
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.runStartupLogic()
+                    }
+                }
             }
             .environmentObject(agentManager)
             .environmentObject(settingsManager)
