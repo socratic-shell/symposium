@@ -140,6 +140,11 @@ struct SymposiumApp: App {
         // when the user dismisses it or when we open another window
     }
     
+    private func dismissSplash() {
+        Logger.shared.log("App: Dismissing splash window")
+        closeWindow(id: "splash")
+    }
+    
     private func showProjectSelectionWindow() {
         Logger.shared.log("App: Opening project selection window")
         openWindow(id: "choose-project")
@@ -164,6 +169,7 @@ struct SymposiumApp: App {
         
         if !hasPermissions {
             Logger.shared.log("App: Missing permissions, showing settings window")
+            dismissSplash()
             openWindow(id: "settings")
             return
         }
@@ -172,12 +178,14 @@ struct SymposiumApp: App {
         if !settingsManager.activeProjectPath.isEmpty,
            isValidProject(at: settingsManager.activeProjectPath) {
             Logger.shared.log("App: Found valid last project at \(settingsManager.activeProjectPath), attempting to restore")
+            dismissSplash()
             restoreLastProject(at: settingsManager.activeProjectPath)
             return
         }
         
         // Default: Show project selection
         Logger.shared.log("App: No previous project, showing project selection window")
+        dismissSplash()
         openWindow(id: "choose-project")
     }
     
@@ -196,6 +204,7 @@ struct SymposiumApp: App {
             Logger.shared.log("App: Failed to restore last project: \(error), showing project selection")
             // Clear invalid project path
             settingsManager.activeProjectPath = ""
+            dismissSplash()
             openWindow(id: "choose-project")
         }
     }
