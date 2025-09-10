@@ -139,6 +139,8 @@ struct SymposiumApp: App {
     private func openProjectWindow(with projectManager: ProjectManager) {
         Logger.shared.log("App: Setting current project manager and opening project window")
         appDelegate.currentProjectManager = projectManager
+        // Dismiss project selection window if it's open
+        dismissWindow(id: "choose-project")
         openWindow(id: "open-project")
     }
     
