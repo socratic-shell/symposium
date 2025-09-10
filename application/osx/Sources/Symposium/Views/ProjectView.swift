@@ -672,11 +672,22 @@ struct NewTaskspaceDialog: View {
     private func createTaskspace() {
         let trimmedDescription = taskDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         
+        let initialPrompt = """
+        Hi, welcome! You are a new agent just getting started as part of the project \(projectManager.currentProject?.name ?? ""). \
+        This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
+        The user's description of the task to be done follows after this message. \
+        Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
+        Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.
+
+        User's task description:
+        \(trimmedDescription)
+        """
+        
         do {
             try projectManager.createTaskspace(
                 name: "New Task",
-                description: trimmedDescription,
-                initialPrompt: trimmedDescription
+                description: "Getting started...",
+                initialPrompt: initialPrompt
             )
             dismiss()
         } catch {
