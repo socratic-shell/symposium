@@ -13,6 +13,13 @@ struct ProjectView: View {
     
     // Step 5: Expand/collapse state management
     @State private var expandedTaskspace: UUID? = nil
+    
+    // Task description dialog state
+    @State private var showingNewTaskspaceDialog = false {
+        didSet {
+            Logger.shared.log("ProjectView: showingNewTaskspaceDialog changed to \(showingNewTaskspaceDialog)")
+        }
+    }
 
     init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.projectManager = projectManager
@@ -63,16 +70,16 @@ struct ProjectView: View {
                             }
 
                             Button(action: {
-                                do {
-                                    try projectManager.createTaskspace()
-                                } catch {
-                                    Logger.shared.log("Failed to create taskspace: \(error)")
-                                }
+                                Logger.shared.log("ProjectView: + button clicked, showing dialog")
+                                showingNewTaskspaceDialog = true
                             }) {
                                 Image(systemName: "plus")
                             }
                             .help("New Taskspace")
                             .disabled(projectManager.isLoading)
+                            .popover(isPresented: $showingNewTaskspaceDialog) {
+                                NewTaskspaceDialog(projectManager: projectManager)
+                            }
 
                             Button(action: {
                                 reregisterWindows()
@@ -612,5 +619,79 @@ struct DeleteTaskspaceDialog: View {
         }
         .padding()
         .frame(width: 400)
+    }
+}
+
+struct NewTaskspaceDialog: View {
+    @ObservedObject var projectManager: ProjectManager
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var taskDescription = ""
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("New Taskspace")
+                .font(.headline)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Describe what you want to accomplish:")
+                    .font(.subheadline)
+                
+                TextEditor(text: $taskDescription)
+                    .frame(minHeight: 100)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            
+            HStack {
+                Button("Cancel") {
+                    Logger.shared.log("NewTaskspaceDialog: Cancel clicked")
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+                
+                Spacer()
+                
+                Button("Create") {
+                    createTaskspace()
+                }
+                .disabled(taskDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return)
+            }
+        }
+        .padding()
+        .frame(width: 500, height: 250)
+        .onAppear {
+            Logger.shared.log("NewTaskspaceDialog: Dialog appeared")
+        }
+    }
+    
+    private func createTaskspace() {
+        let trimmedDescription = taskDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        let initialPrompt = """
+        Hi, welcome! You are a new agent just getting started as part of the project \(projectManager.currentProject?.name ?? ""). \
+        This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
+        The user's description of the task to be done follows after this message. \
+        Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
+        Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.
+
+        User's task description:
+        \(trimmedDescription)
+        """
+        
+        do {
+            try projectManager.createTaskspace(
+                name: "New Task",
+                description: "Getting started...",
+                initialPrompt: initialPrompt
+            )
+            dismiss()
+        } catch {
+            Logger.shared.log("Failed to create taskspace: \(error)")
+        }
     }
 }
