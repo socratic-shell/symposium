@@ -1,0 +1,257 @@
+# Startup and Window Management
+
+Symposium maintains exactly one window open at any time, using three distinct window types for different application states.
+
+## Three-Window Architecture
+
+The application uses three distinct window types for different application states:
+
+1. **Settings Window** - for permissions and agent configuration
+2. **Project Selection Window** - for creating or opening projects  
+3. **Project Window** - the main project workspace
+
+## Startup State Machine
+
+The application follows a deterministic state machine on startup and window transitions:
+
+```mermaid
+stateDiagram-v2
+    [*] --> AppStart
+    AppStart --> Settings : Missing permissions
+    AppStart --> CheckProject : Has permissions
+    Settings --> AppStart : Window closed
+    CheckProject --> OpenProject : Valid current project
+    CheckProject --> ChooseProject : No current project
+    ChooseProject --> AppStart : Window closed (no selection)
+    ChooseProject --> NewProject : New project created
+    ChooseProject --> OpenProject : Existing project selected
+    NewProject --> OpenProject : Project created
+    OpenProject --> AppStart : Window closed (clears current project)
+```
+
+### State Descriptions
+
+**AppStart**: Entry point that validates permissions and current project state
+- If the correct window for the current state is already open, takes no action
+- Checks accessibility and screen recording permissions
+- If missing permissions → Settings Window
+- If has permissions → CheckProject
+
+**Settings**: Regular window for permission management and agent configuration
+- User grants required permissions
+- User configures available agents
+- When closed → AppStart (re-validates permissions)
+
+**CheckProject**: Validates the persisted current project
+- Checks if current project path exists and is valid
+- If valid project → OpenProject
+- If no/invalid project → ChooseProject
+
+**ChooseProject**: Project selection and creation interface
+- Lists available agents with refresh capability
+- Provides new project creation form
+- Provides "Open existing project" file picker
+- When project selected → NewProject or OpenProject
+- When closed without selection → AppStart
+
+**NewProject**: Creates project directory structure and metadata
+- Creates `.symposium` directory with `project.json`
+- Sets up initial project structure
+- Sets as current project → OpenProject
+
+**OpenProject**: Main project workspace window
+- Displays project taskspaces and management interface
+- When closed → clears current project and goes to AppStart
+
+## Window Management Implementation
+
+### Single Window Principle
+
+The application typically maintains one window at a time, with the exception that Settings can be opened from any state:
+
+```swift
+func openWindow(id: String) {
+    if id != "settings" {
+        closeAllWindows()
+    }
+    // Open the requested window
+}
+
+func appStart() {
+    // If the project window is open and we have a valid current project, do nothing
+    if isProjectWindowOpen() && hasValidCurrentProject() {
+        return
+    }
+    
+    // If settings window is open, do nothing (user is configuring)
+    if isSettingsWindowOpen() {
+        return
+    }
+    
+    // Normal startup logic...
+    if !hasRequiredPermissions {
+        openWindow(id: "settings")
+    } else if let validCurrentProject = validateCurrentProject() {
+        openWindow(id: "open-project") 
+    } else {
+        openWindow(id: "choose-project")
+    }
+}
+```
+
+### Window Close Handling
+
+All windows use `.onDisappear` to trigger state transitions:
+
+```swift
+.onDisappear {
+    appStart() // Always return to entry point
+}
+```
+
+This ensures the application always re-validates its complete state when any window closes.
+
+## Project Persistence
+
+### Current Project Storage
+
+The current project is persisted in UserDefaults:
+
+```swift
+@AppStorage("activeProjectPath") var activeProjectPath: String = ""
+```
+
+### Project Metadata
+
+Each project stores metadata in `project.json`:
+
+```json
+{
+  "version": 1,
+  "id": "uuid-string",
+  "name": "Project Name",
+  "gitURL": "https://github.com/user/repo.git",
+  "directoryPath": "/path/to/Project.symposium",
+  "agent": "claude-code",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "taskspaces": []
+}
+```
+
+### Validation Logic
+
+On startup, the application validates the current project:
+
+1. Check if `activeProjectPath` exists as directory
+2. Check if `project.json` exists and is valid JSON
+3. Check if version number is supported
+4. If any validation fails → clear current project, go to ChooseProject
+
+## Project Creation Flow
+
+### New Project Form
+
+The ChooseProject window includes a comprehensive project creation form:
+
+- **Project Name**: Used for directory name (`Name.symposium`)
+- **SSH Host**: Currently localhost only (placeholder for future remote projects)
+- **Directory Location**: Parent directory with browse button
+- **Origin Git Repository**: Initial repository to clone
+- **Additional Remotes**: Extra git remotes with custom names
+- **Editor**: VSCode only (placeholder for future editor support)
+- **AI Agent**: Selection from available agents, including "None" option
+
+### Agent Selection
+
+The agent selection uses the same widget as Settings but in selectable mode:
+
+- Lists all available agents from `AgentManager.availableAgents`
+- Includes "Refresh" button to rescan for agents
+- Includes "None" option for projects without AI assistance
+- Selected agent is stored in project metadata
+
+### Project Directory Structure
+
+New projects create this structure:
+
+```
+ProjectName.symposium/
+├── project.json          # Project metadata
+├── .git/                 # Bare git repository
+└── taskspaces/           # Individual taskspace directories
+```
+
+## Error Handling
+
+### Validation Failures
+
+When validation fails during CheckProject:
+- Log the specific failure reason
+- Show user notification explaining what happened
+- Clear `activeProjectPath` 
+- Proceed to ChooseProject
+
+### Missing Agents
+
+If a project's selected agent is no longer available:
+- Allow the project to open (don't block on missing agents)
+- Show warning in project window about missing agent
+- User will discover the issue when attempting to use agent features
+
+### Corrupted Project Files
+
+If `project.json` is corrupted or unreadable:
+- Show user notification: "Project file corrupted, please select a different project"
+- Treat as validation failure
+- Clear current project and go to ChooseProject
+- User can attempt to recover or create new project
+
+## Implementation Notes
+
+### Window IDs
+
+The application uses four SwiftUI WindowGroup IDs:
+- `"splash"` - Startup coordinator window (auto-opened by SwiftUI, immediately closes itself)
+- `"settings"` - Settings window
+- `"choose-project"` - Project selection window  
+- `"open-project"` - Main project window
+
+### Startup Window Handling
+
+Since SwiftUI automatically opens the first WindowGroup, the splash window serves as a startup coordinator:
+
+```swift
+WindowGroup(id: "splash") {
+    SplashCoordinatorView()
+        .onAppear {
+            // Brief delay to show the amusing message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                appStart()
+                closeWindow(id: "splash")
+            }
+        }
+}
+```
+
+The splash window:
+- Opens automatically when the app launches
+- Shows a brief Socratic-themed message (e.g., "Preparing the symposium...", "Gathering the philosophers...", "Arranging the dialogue...", "Calling the assembly to order...")
+- Triggers the `appStart()` logic after a short delay
+- Closes itself once startup is complete
+- Never reopens during the app session
+
+### State Coordination
+
+The main App struct acts as the coordinator:
+- No separate AppCoordinator class needed
+- `appStart()` function handles all state logic
+- State is implicit in the currently executing code path
+
+### Permission Checking
+
+Reuses existing permission management:
+- `permissionManager.hasAccessibilityPermission`
+- `permissionManager.hasScreenRecordingPermission`
+- `permissionManager.checkAllPermissions()`
+
+This architecture provides a clean, predictable user experience while maintaining the flexibility to extend functionality in the future.
