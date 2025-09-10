@@ -13,6 +13,9 @@ struct ProjectView: View {
     
     // Step 5: Expand/collapse state management
     @State private var expandedTaskspace: UUID? = nil
+    
+    // Task description dialog state
+    @State private var showingNewTaskspaceDialog = false
 
     init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.projectManager = projectManager
@@ -63,11 +66,7 @@ struct ProjectView: View {
                             }
 
                             Button(action: {
-                                do {
-                                    try projectManager.createTaskspace()
-                                } catch {
-                                    Logger.shared.log("Failed to create taskspace: \(error)")
-                                }
+                                showingNewTaskspaceDialog = true
                             }) {
                                 Image(systemName: "plus")
                             }
@@ -326,6 +325,9 @@ struct ProjectView: View {
                 }
                 .padding()
             }
+        }
+        .sheet(isPresented: $showingNewTaskspaceDialog) {
+            NewTaskspaceDialog(projectManager: projectManager)
         }
     }
 
@@ -612,5 +614,64 @@ struct DeleteTaskspaceDialog: View {
         }
         .padding()
         .frame(width: 400)
+    }
+}
+
+struct NewTaskspaceDialog: View {
+    @ObservedObject var projectManager: ProjectManager
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var taskDescription = ""
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("New Taskspace")
+                .font(.headline)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Describe what you want to accomplish:")
+                    .font(.subheadline)
+                
+                TextEditor(text: $taskDescription)
+                    .frame(minHeight: 100)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.escape)
+                
+                Spacer()
+                
+                Button("Create") {
+                    createTaskspace()
+                }
+                .disabled(taskDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return)
+            }
+        }
+        .padding()
+        .frame(width: 500, height: 250)
+    }
+    
+    private func createTaskspace() {
+        let trimmedDescription = taskDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        do {
+            try projectManager.createTaskspace(
+                name: "New Task",
+                description: trimmedDescription,
+                initialPrompt: trimmedDescription
+            )
+            dismiss()
+        } catch {
+            Logger.shared.log("Failed to create taskspace: \(error)")
+        }
     }
 }
