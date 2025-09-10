@@ -14,14 +14,16 @@ struct SymposiumApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        // Settings window
-        WindowGroup(id: "settings") {
-            SettingsView()
+        // Splash window - shown first on app launch with cute loading messages
+        WindowGroup(id: "splash") {
+            SplashView()
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
+                .environmentObject(appDelegate)
                 .onAppear {
-                    Logger.shared.log("Settings window opened")
+                    Logger.shared.log("Splash window opened - running startup logic")
+                    // TODO: Implement appStart() state machine logic
                 }
         }
         .windowResizability(.contentSize)
@@ -39,6 +41,18 @@ struct SymposiumApp: App {
             .onAppear {
                 Logger.shared.log("Project selection window opened")
             }
+        }
+        .windowResizability(.contentSize)
+        
+        // Settings window
+        WindowGroup(id: "settings") {
+            SettingsView()
+                .environmentObject(agentManager)
+                .environmentObject(settingsManager)
+                .environmentObject(permissionManager)
+                .onAppear {
+                    Logger.shared.log("Settings window opened")
+                }
         }
         .windowResizability(.contentSize)
         
