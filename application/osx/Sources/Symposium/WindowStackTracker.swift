@@ -90,7 +90,7 @@ class WindowStackTracker {
         
         Logger.shared.log("WindowStackTracker: Started drag tracking")
         
-        trackingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+        trackingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self?.updateFollowerPositions()
         }
     }
