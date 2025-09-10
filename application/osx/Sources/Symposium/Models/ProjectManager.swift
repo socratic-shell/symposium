@@ -1027,8 +1027,8 @@ extension ProjectManager {
         )
 
         do {
-            // Generate comprehensive initial prompt (ignore the MCP payload's initialPrompt)
-            let comprehensivePrompt = generateInitialPrompt(taskDescription: payload.taskDescription)
+            // Generate comprehensive initial prompt using the user's task description from initialPrompt
+            let comprehensivePrompt = generateInitialPrompt(taskDescription: payload.initialPrompt)
             
             // Use the existing createTaskspace logic
             try createTaskspace(
