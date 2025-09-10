@@ -157,16 +157,7 @@ struct SymposiumApp: App {
             return
         }
         
-        // Check 2: Do we have any available agents?
-        let hasAgents = !agentManager.availableAgents.isEmpty
-        
-        if !hasAgents {
-            Logger.shared.log("App: No agents available, showing settings window")
-            openWindow(id: "settings")
-            return
-        }
-        
-        // Check 3: Is there a previously opened project?
+        // Check 2: Is there a previously opened project?
         if !settingsManager.activeProjectPath.isEmpty,
            FileManager.default.fileExists(atPath: settingsManager.activeProjectPath) {
             Logger.shared.log("App: Found last project at \(settingsManager.activeProjectPath), attempting to restore")
