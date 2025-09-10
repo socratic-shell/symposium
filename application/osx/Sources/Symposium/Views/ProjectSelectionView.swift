@@ -173,7 +173,14 @@ struct NewProjectDialog: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("AI Agent:")
+                HStack {
+                    Text("AI Agent:")
+                    Spacer()
+                    Button("Refresh") {
+                        agentManager.scanForAgents(force: true)
+                    }
+                    .font(.caption)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(agentManager.availableAgents, id: \.type) { agent in
                         AgentRadioButton(
