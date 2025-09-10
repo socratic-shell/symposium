@@ -148,6 +148,22 @@ struct SymposiumApp: App {
         closeWindow(id: "splash")
     }
     
+    private func reregisterWindows(for projectManager: ProjectManager) {
+        guard let project = projectManager.currentProject else {
+            Logger.shared.log("App: No current project for window re-registration")
+            return
+        }
+
+        Logger.shared.log("App: Re-registering windows for \(project.taskspaces.count) taskspaces")
+
+        for taskspace in project.taskspaces {
+            // Send taskspace roll call message
+            let payload = TaskspaceRollCallPayload(taskspaceUuid: taskspace.id.uuidString)
+            projectManager.mcpStatus.sendBroadcastMessage(type: "taskspace_roll_call", payload: payload)
+            Logger.shared.log("App: Sent roll call for taskspace: \(taskspace.name)")
+        }
+    }
+    
     private func showProjectSelectionWindow() {
         Logger.shared.log("App: Opening project selection window")
         openWindow(id: "choose-project")
@@ -212,6 +228,13 @@ struct SymposiumApp: App {
             )
             try projectManager.openProject(at: path)
             openProjectWindow(with: projectManager)
+            
+            // Automatically refresh window connections on startup
+            Logger.shared.log("App: Auto-refreshing window connections after project restoration")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.reregisterWindows(for: projectManager)
+            }
+            
             Logger.shared.log("App: Successfully restored last project")
         } catch {
             Logger.shared.log("App: Failed to restore last project: \(error), showing project selection")
