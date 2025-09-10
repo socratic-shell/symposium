@@ -4,8 +4,8 @@ struct MainView: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var agentManager: AgentManager
+    @EnvironmentObject var appDelegate: AppDelegate
     @State private var showingSettings = false
-    @State private var projectManager: ProjectManager?
 
     var body: some View {
         VStack {
@@ -30,7 +30,7 @@ struct MainView: View {
                     // Show settings if required permissions are missing
                     SettingsView()
                 } else if !agentManager.scanningCompleted
-                    || (projectManager == nil && !settingsManager.activeProjectPath.isEmpty)
+                    || (appDelegate.currentProjectManager == nil && !settingsManager.activeProjectPath.isEmpty)
                 {
                     // Show loading while scanning agents or validating remembered project
                     VStack(spacing: 16) {
@@ -42,13 +42,13 @@ struct MainView: View {
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let projectManager = projectManager {
+                } else if let projectManager = appDelegate.currentProjectManager {
                     ProjectView(projectManager: projectManager)
                 } else {
                     ProjectSelectionView(
                         onProjectCreated: { newProjectManager in
                             Logger.shared.log("MainView received onProjectCreated callback")
-                            self.projectManager = newProjectManager
+                            appDelegate.currentProjectManager = newProjectManager
                         }
                     )
                 }
@@ -66,7 +66,7 @@ struct MainView: View {
         }
         .onChange(of: agentManager.scanningCompleted) { agentsAvailable in
             // When agent scanning completes, try to load remembered project
-            if agentsAvailable && projectManager == nil {
+            if agentsAvailable && appDelegate.currentProjectManager == nil {
                 tryLoadRememberedProject()
             }
         }
@@ -74,7 +74,7 @@ struct MainView: View {
 
     private func tryLoadRememberedProject() {
         // Only try to load if we don't already have a project and there's a remembered path
-        guard projectManager == nil, !settingsManager.activeProjectPath.isEmpty else {
+        guard appDelegate.currentProjectManager == nil, !settingsManager.activeProjectPath.isEmpty else {
             return
         }
 
@@ -99,7 +99,7 @@ struct MainView: View {
 
         do {
             try rememberedProjectManager.openProject(at: settingsManager.activeProjectPath)
-            self.projectManager = rememberedProjectManager
+            appDelegate.currentProjectManager = rememberedProjectManager
             Logger.shared.log(
                 "Successfully loaded remembered project from: \(settingsManager.activeProjectPath)")
         } catch {

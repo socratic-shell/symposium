@@ -47,3 +47,5 @@ yarn-error.log*
 
 # dialectic-repo (temporary during migration)
 dialectic-repo/
+# Log files
+killme.logs
