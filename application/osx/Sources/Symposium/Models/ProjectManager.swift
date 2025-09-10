@@ -341,6 +341,15 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     /// Create a new taskspace with default values
     func createTaskspace() throws {
+        try createTaskspace(
+            name: "Unnamed taskspace",
+            description: "TBD", 
+            initialPrompt: "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
+        )
+    }
+    
+    /// Create a new taskspace with specified values
+    func createTaskspace(name: String, description: String, initialPrompt: String) throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
         }
@@ -348,12 +357,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         isLoading = true
         defer { isLoading = false }
 
-        // Create taskspace with default values
+        // Create taskspace with provided values
         let taskspace = Taskspace(
-            name: "Unnamed taskspace",
-            description: "TBD",
-            initialPrompt:
-                "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
+            name: name,
+            description: description,
+            initialPrompt: initialPrompt
         )
 
         // Create taskspace directory
@@ -815,38 +823,20 @@ extension ProjectManager {
         )
 
         do {
-            // Create new taskspace with fresh UUID
-            let taskspace = Taskspace(
+            // Use the existing createTaskspace logic
+            try createTaskspace(
                 name: payload.name,
-                description: payload.taskDescription,
+                description: payload.taskDescription, 
                 initialPrompt: payload.initialPrompt
             )
-
-            Logger.shared.log(
-                "ProjectManager: Created new taskspace with UUID: \(taskspace.id.uuidString)")
-
-            // Create taskspace directory and clone repo
-            // TODO: This should use the existing createTaskspace logic
-            let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
-            try FileManager.default.createDirectory(
-                atPath: taskspaceDir,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-
-            // Save taskspace metadata
-            try taskspace.save(in: currentProject.directoryPath)
-
-            // Update current project with new taskspace
-            DispatchQueue.main.async {
-                var updatedProject = currentProject
-                updatedProject.taskspaces.append(taskspace)
-                self.currentProject = updatedProject
-                Logger.shared.log("ProjectManager: Added taskspace \(taskspace.name) to project")
+            
+            // Get the newly created taskspace (it will be the last one added)
+            guard let newTaskspace = currentProject.taskspaces.last else {
+                throw ProjectError.failedToSaveProject
             }
 
             // Return the new taskspace UUID in response
-            let response = SpawnTaskspaceResponse(newTaskspaceUuid: taskspace.id.uuidString)
+            let response = SpawnTaskspaceResponse(newTaskspaceUuid: newTaskspace.id.uuidString)
             return .handled(response)
 
         } catch {
