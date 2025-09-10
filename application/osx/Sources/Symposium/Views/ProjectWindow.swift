@@ -2,20 +2,17 @@ import SwiftUI
 import AppKit
 
 struct ProjectWindow: View {
-    let projectPath: String
+    let projectManager: ProjectManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var permissionManager: PermissionManager
     
     var body: some View {
         ProjectWindowContent(
-            projectPath: projectPath,
-            agentManager: agentManager,
-            settingsManager: settingsManager,
-            permissionManager: permissionManager
+            projectManager: projectManager
         )
         .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
-        .navigationTitle(extractProjectName(from: projectPath))
+        .navigationTitle(projectManager.currentProject?.name ?? "Project")
         .onAppear {
             positionWindow()
         }
@@ -74,42 +71,16 @@ struct ProjectWindow: View {
 }
 
 private struct ProjectWindowContent: View {
-    let projectPath: String
-    let agentManager: AgentManager
-    let settingsManager: SettingsManager
-    let permissionManager: PermissionManager
+    @ObservedObject var projectManager: ProjectManager
     
-    @StateObject private var projectManager: ProjectManager
-    
-    init(projectPath: String, agentManager: AgentManager, settingsManager: SettingsManager, permissionManager: PermissionManager) {
-        self.projectPath = projectPath
-        self.agentManager = agentManager
-        self.settingsManager = settingsManager
-        self.permissionManager = permissionManager
-        
-        // Now we can properly initialize with the actual objects
-        self._projectManager = StateObject(wrappedValue: ProjectManager(
-            agentManager: agentManager,
-            settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent,
-            permissionManager: permissionManager
-        ))
+    init(projectManager: ProjectManager) {
+        self.projectManager = projectManager
     }
     
     var body: some View {
         ProjectView(projectManager: projectManager)
             .onAppear {
-                Logger.shared.log("ProjectWindow appeared for path: \(projectPath)")
-                loadProject()
+                Logger.shared.log("ProjectWindow appeared for project: \(projectManager.currentProject?.name ?? "unknown")")
             }
-    }
-    private func loadProject() {
-        Logger.shared.log("ProjectWindow: loadProject() called for path: \(projectPath)")
-        do {
-            try projectManager.openProject(at: projectPath)
-            Logger.shared.log("ProjectWindow: Successfully loaded project at \(projectPath)")
-        } catch {
-            Logger.shared.log("ProjectWindow: Failed to load project at \(projectPath): \(error)")
-        }
     }
 }

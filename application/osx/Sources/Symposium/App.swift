@@ -14,20 +14,49 @@ struct SymposiumApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        // Splash/Setup window - only shows when needed
-        WindowGroup(id: "splash") {
-            SplashView()
+        // Settings window
+        WindowGroup(id: "settings") {
+            SettingsView()
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
-                .environmentObject(appDelegate)
                 .onAppear {
-                    Logger.shared.log("Splash window started")
+                    Logger.shared.log("Settings window opened")
                 }
-                .onReceive(NotificationCenter.default.publisher(for: .openSplashWindow)) { _ in
-                    Logger.shared.log("App: Received openSplashWindow notification")
-                    showSplashWindow()
-                }
+        }
+        .windowResizability(.contentSize)
+        
+        // Project selection window
+        WindowGroup(id: "choose-project") {
+            ProjectSelectionView { projectManager in
+                // When project is created/selected, close this window and open project window
+                closeWindow(id: "choose-project")
+                openProjectWindow(with: projectManager)
+            }
+            .environmentObject(agentManager)
+            .environmentObject(settingsManager)
+            .environmentObject(permissionManager)
+            .onAppear {
+                Logger.shared.log("Project selection window opened")
+            }
+        }
+        .windowResizability(.contentSize)
+        
+        // Main project window
+        WindowGroup(id: "open-project") {
+            if let projectManager = appDelegate.currentProjectManager {
+                ProjectWindow(projectManager: projectManager)
+                    .environmentObject(agentManager)
+                    .environmentObject(settingsManager)
+                    .environmentObject(permissionManager)
+                    .onAppear {
+                        Logger.shared.log("Project window opened")
+                    }
+            } else {
+                // Fallback if no project manager
+                Text("No project loaded")
+                    .frame(width: 400, height: 300)
+            }
         }
         .windowResizability(.contentSize)
         .defaultAppStorage(.standard)
@@ -36,14 +65,12 @@ struct SymposiumApp: App {
             // File menu items
             CommandGroup(replacing: .newItem) {
                 Button("New Project...") {
-                    // Show splash window for project selection
-                    showSplashWindow()
+                    showProjectSelectionWindow()
                 }
                 .keyboardShortcut("n", modifiers: .command)
                 
                 Button("Open Project...") {
-                    // Show splash window for project selection
-                    showSplashWindow()
+                    showProjectSelectionWindow()
                 }
                 .keyboardShortcut("o", modifiers: .command)
             }
@@ -76,10 +103,21 @@ struct SymposiumApp: App {
         }
     }
 
-    private func showSplashWindow() {
-        Logger.shared.log("App: Opening splash window via menu command")
-        openWindow(id: "splash")
-        Logger.shared.log("App: Splash window opened via SwiftUI environment")
+    private func openProjectWindow(with projectManager: ProjectManager) {
+        Logger.shared.log("App: Setting current project manager and opening project window")
+        appDelegate.currentProjectManager = projectManager
+        openWindow(id: "open-project")
+    }
+    
+    private func closeWindow(id: String) {
+        Logger.shared.log("App: Closing window with id: \(id)")
+        // Note: SwiftUI doesn't provide direct window closing, but the window will close
+        // when the user dismisses it or when we open another window
+    }
+    
+    private func showProjectSelectionWindow() {
+        Logger.shared.log("App: Opening project selection window")
+        openWindow(id: "choose-project")
     }
 
     private func copyLogsToClipboard() {

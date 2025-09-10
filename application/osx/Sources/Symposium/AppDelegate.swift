@@ -12,7 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private let dockPanelManager = DockPanelManager()
     
     /// Current project manager (for showing panel content)
-    private var currentProjectManager: ProjectManager?
+    @Published var currentProjectManager: ProjectManager?
     
     /// Phase 22: Callback for closing the active project (set by SplashView)
     private var closeProjectCallback: (() -> Void)?
