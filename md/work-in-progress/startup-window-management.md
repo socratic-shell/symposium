@@ -41,9 +41,9 @@ struct Project: Codable, Identifiable {
 - ✅ Updated ProjectManager.createProject() with agent and defaultBranch parameters
 - ✅ Updated migration logic to set defaultBranch to nil (auto-detect)
 - ✅ Added agent selection and Advanced Settings to project creation UI
+- ✅ Updated taskspace creation to use defaultBranch field with auto-detection
 
 **Remaining**:
-- [ ] Update taskspace creation to use defaultBranch field (detect origin's default when nil)
 - [ ] Test migration and new project creation
 
 ### Phase 2: Window Architecture (Planned)
@@ -86,6 +86,7 @@ When loading existing projects:
 
 ## Next Steps
 
-- [ ] Update taskspace creation logic to use project.defaultBranch field
 - [ ] Test complete project creation, migration, and taskspace creation workflow
 - [ ] Begin Phase 2: Window Architecture implementation
+
+**Phase 1 Status**: ✅ **COMPLETE** - All backend and UI functionality implemented
