@@ -23,7 +23,7 @@ struct SymposiumApp: App {
                 .environmentObject(appDelegate)
                 .onAppear {
                     Logger.shared.log("Splash window opened - running startup logic")
-                    // TODO: Implement appStart() state machine logic
+                    appStart()
                 }
         }
         .windowResizability(.contentSize)
@@ -132,6 +132,68 @@ struct SymposiumApp: App {
     private func showProjectSelectionWindow() {
         Logger.shared.log("App: Opening project selection window")
         openWindow(id: "choose-project")
+    }
+    
+    /// Startup state machine - determines which window to show based on app state
+    private func appStart() {
+        Logger.shared.log("App: Starting appStart() state machine")
+        
+        // Give splash window time to appear, then run logic
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.runStartupLogic()
+        }
+    }
+    
+    private func runStartupLogic() {
+        Logger.shared.log("App: Running startup logic checks")
+        
+        // Check 1: Do we have required permissions?
+        let hasPermissions = permissionManager.hasAccessibilityPermission && 
+                           permissionManager.hasScreenRecordingPermission
+        
+        if !hasPermissions {
+            Logger.shared.log("App: Missing permissions, showing settings window")
+            openWindow(id: "settings")
+            return
+        }
+        
+        // Check 2: Do we have any available agents?
+        let hasAgents = !agentManager.availableAgents.isEmpty
+        
+        if !hasAgents {
+            Logger.shared.log("App: No agents available, showing settings window")
+            openWindow(id: "settings")
+            return
+        }
+        
+        // Check 3: Is there a previously opened project?
+        if !settingsManager.activeProjectPath.isEmpty,
+           FileManager.default.fileExists(atPath: settingsManager.activeProjectPath) {
+            Logger.shared.log("App: Found last project at \(settingsManager.activeProjectPath), attempting to restore")
+            restoreLastProject(at: settingsManager.activeProjectPath)
+            return
+        }
+        
+        // Default: Show project selection
+        Logger.shared.log("App: No previous project, showing project selection window")
+        openWindow(id: "choose-project")
+    }
+    
+    private func restoreLastProject(at path: String) {
+        do {
+            let projectManager = ProjectManager(
+                agentManager: agentManager,
+                settingsManager: settingsManager,
+                selectedAgent: settingsManager.selectedAgent,
+                permissionManager: permissionManager
+            )
+            try projectManager.openProject(at: path)
+            openProjectWindow(with: projectManager)
+            Logger.shared.log("App: Successfully restored last project")
+        } catch {
+            Logger.shared.log("App: Failed to restore last project: \(error), showing project selection")
+            openWindow(id: "choose-project")
+        }
     }
 
     private func copyLogsToClipboard() {
