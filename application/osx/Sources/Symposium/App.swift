@@ -41,6 +41,9 @@ struct SymposiumApp: App {
             .onAppear {
                 Logger.shared.log("Project selection window opened")
             }
+            .onDisappear {
+                Logger.shared.log("Project selection window closed")
+            }
         }
         .windowResizability(.contentSize)
         
@@ -52,6 +55,9 @@ struct SymposiumApp: App {
                 .environmentObject(permissionManager)
                 .onAppear {
                     Logger.shared.log("Settings window opened")
+                }
+                .onDisappear {
+                    Logger.shared.log("Settings window closed")
                 }
         }
         .windowResizability(.contentSize)
@@ -65,6 +71,11 @@ struct SymposiumApp: App {
                     .environmentObject(permissionManager)
                     .onAppear {
                         Logger.shared.log("Project window opened")
+                    }
+                    .onDisappear {
+                        Logger.shared.log("Project window closed")
+                        // Clear current project manager when project window closes
+                        appDelegate.currentProjectManager = nil
                     }
             } else {
                 // Fallback if no project manager
