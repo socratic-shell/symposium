@@ -695,9 +695,20 @@ impl DialecticServer {
             .await;
 
         // Send spawn_taskspace message to Symposium app via daemon
+        // Generate comprehensive initial prompt like the GUI does
+        let comprehensive_prompt = format!(
+            "Hi, welcome! You are a new agent just getting started as part of the project Symposium. \
+            This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
+            The user's description of the task to be done follows after this message. \
+            Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
+            Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.\n\n\
+            User's task description:\n{}",
+            params.task_description
+        );
+        
         match self
             .ipc
-            .spawn_taskspace(params.name.clone(), params.task_description, params.initial_prompt)
+            .spawn_taskspace(params.name.clone(), params.task_description, comprehensive_prompt)
             .await
         {
             Ok(()) => {
