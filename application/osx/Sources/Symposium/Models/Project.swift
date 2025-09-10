@@ -18,27 +18,30 @@ struct Project: Codable, Identifiable {
     let gitURL: String
     let directoryPath: String
     let agent: String?
+    let defaultBranch: String?
     var taskspaces: [Taskspace] = []
     let createdAt: Date
     
-    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil) {
+    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil, defaultBranch: String? = nil) {
         self.version = 1
         self.id = UUID()
         self.name = name
         self.gitURL = gitURL
         self.directoryPath = directoryPath
         self.agent = agent
+        self.defaultBranch = defaultBranch
         self.createdAt = Date()
     }
     
     // Internal initializer for migration
-    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, taskspaces: [Taskspace], createdAt: Date) {
+    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, defaultBranch: String?, taskspaces: [Taskspace], createdAt: Date) {
         self.version = version
         self.id = id
         self.name = name
         self.gitURL = gitURL
         self.directoryPath = directoryPath
         self.agent = agent
+        self.defaultBranch = defaultBranch
         self.taskspaces = taskspaces
         self.createdAt = createdAt
     }
@@ -79,6 +82,7 @@ struct Project: Codable, Identifiable {
                 gitURL: legacyProject.gitURL,
                 directoryPath: legacyProject.directoryPath,
                 agent: nil,
+                defaultBranch: nil,
                 taskspaces: legacyProject.taskspaces,
                 createdAt: legacyProject.createdAt
             )

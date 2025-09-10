@@ -53,7 +53,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     /// Create a new Symposium project
-    func createProject(name: String, gitURL: String, at directoryPath: String) throws {
+    func createProject(name: String, gitURL: String, at directoryPath: String, agent: String? = nil, defaultBranch: String? = nil) throws {
         isLoading = true
         defer { isLoading = false }
 
@@ -73,7 +73,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         )
 
         // Create project instance
-        let project = Project(name: name, gitURL: gitURL, directoryPath: projectDirPath)
+        let project = Project(name: name, gitURL: gitURL, directoryPath: projectDirPath, agent: agent, defaultBranch: defaultBranch)
 
         // Save project.json
         try project.save()
