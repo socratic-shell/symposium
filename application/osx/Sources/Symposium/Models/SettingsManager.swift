@@ -10,6 +10,14 @@ class SettingsManager: ObservableObject {
         set { selectedAgentRaw = newValue.rawValue }
     }
     
-    // Add other settings here as needed
-    // @AppStorage("someOtherSetting") var someOtherSetting: Bool = false
+    // Per-project settings stored with project path as key
+    private let userDefaults = UserDefaults.standard
+    
+    func getStackedWindowsEnabled(for projectPath: String) -> Bool {
+        return userDefaults.bool(forKey: "stackedWindows_\(projectPath)")
+    }
+    
+    func setStackedWindowsEnabled(_ enabled: Bool, for projectPath: String) {
+        userDefaults.set(enabled, forKey: "stackedWindows_\(projectPath)")
+    }
 }

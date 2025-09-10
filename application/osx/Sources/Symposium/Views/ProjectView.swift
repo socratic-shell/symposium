@@ -20,6 +20,9 @@ struct ProjectView: View {
             Logger.shared.log("ProjectView: showingNewTaskspaceDialog changed to \(showingNewTaskspaceDialog)")
         }
     }
+    
+    // Stacked windows state
+    @State private var stackedWindowsEnabled = false
 
     init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
         self.projectManager = projectManager
@@ -68,6 +71,17 @@ struct ProjectView: View {
                                     .font(.caption)
                                     .foregroundColor(.red)
                             }
+                            
+                            // Stacked Windows Toggle
+                            Toggle("Stack Windows", isOn: $stackedWindowsEnabled)
+                                .font(.caption)
+                                .help("When enabled, clicking a taskspace positions all windows at the same location")
+                                .onChange(of: stackedWindowsEnabled) { newValue in
+                                    if let project = projectManager.currentProject {
+                                        projectManager.settings.setStackedWindowsEnabled(newValue, for: project.directoryPath)
+                                        Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled") for project \(project.name)")
+                                    }
+                                }
 
                             Button(action: {
                                 Logger.shared.log("ProjectView: + button clicked, showing dialog")
@@ -160,6 +174,13 @@ struct ProjectView: View {
             }
         }
         .frame(minHeight: 400)
+        .onAppear {
+            // Initialize stacked windows state from settings
+            if let project = projectManager.currentProject {
+                stackedWindowsEnabled = projectManager.settings.getStackedWindowsEnabled(for: project.directoryPath)
+                Logger.shared.log("ProjectView: Initialized stacked windows state: \(stackedWindowsEnabled) for project \(project.name)")
+            }
+        }
     }
     
     // MARK: - Step 5: Helper Views

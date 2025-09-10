@@ -18,6 +18,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     // Window associations for current project
     @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
     
+    // Public access to settings manager for UI
+    var settings: SettingsManager {
+        return settingsManager
+    }
+    
     // Window close detection timer
     private var windowCloseTimer: Timer?
 
@@ -567,16 +572,23 @@ extension ProjectManager {
         
         Logger.shared.log("ProjectManager: Focusing window \(windowID) for taskspace: \(taskspace.name)")
         
-        // Use Core Graphics to focus the window
-        let result = focusWindow(windowID: windowID)
-        
-        if result {
-            Logger.shared.log("ProjectManager: Successfully focused window for taskspace: \(taskspace.name)")
+        // Check if stacked windows mode is enabled for this project
+        if let project = currentProject,
+           settingsManager.getStackedWindowsEnabled(for: project.directoryPath) {
+            Logger.shared.log("ProjectManager: Stacked windows mode enabled - positioning all taskspace windows")
+            return focusWindowWithStacking(targetTaskspace: taskspace, targetWindowID: windowID)
         } else {
-            Logger.shared.log("ProjectManager: Failed to focus window for taskspace: \(taskspace.name)")
+            // Use Core Graphics to focus the window normally
+            let result = focusWindow(windowID: windowID)
+            
+            if result {
+                Logger.shared.log("ProjectManager: Successfully focused window for taskspace: \(taskspace.name)")
+            } else {
+                Logger.shared.log("ProjectManager: Failed to focus window for taskspace: \(taskspace.name)")
+            }
+            
+            return result
         }
-        
-        return result
     }
     
     /// Focus a window by its CGWindowID using Core Graphics APIs
@@ -620,6 +632,79 @@ extension ProjectManager {
         return success
     }
     
+    
+    /// Focus a window with stacking - positions all other taskspace windows at the same location
+    private func focusWindowWithStacking(targetTaskspace: Taskspace, targetWindowID: CGWindowID) -> Bool {
+        // First, focus the target window normally
+        let focusResult = focusWindow(windowID: targetWindowID)
+        
+        if !focusResult {
+            Logger.shared.log("ProjectManager: Failed to focus target window for stacking")
+            return false
+        }
+        
+        // Get the position and size of the target window
+        guard let targetWindowInfo = getWindowInfo(for: targetWindowID) else {
+            Logger.shared.log("ProjectManager: Could not get target window info for stacking")
+            return focusResult
+        }
+        
+        let targetBounds = targetWindowInfo.bounds
+        Logger.shared.log("ProjectManager: Target window bounds: \(targetBounds)")
+        
+        // Position all other taskspace windows at the same location (but behind)
+        guard let project = currentProject else { return focusResult }
+        
+        for taskspace in project.taskspaces {
+            // Skip the target taskspace
+            if taskspace.id == targetTaskspace.id { continue }
+            
+            // Skip taskspaces without registered windows
+            guard let windowID = taskspaceWindows[taskspace.id] else { continue }
+            
+            // Verify window still exists
+            guard isWindowStillOpen(windowID: windowID) else {
+                taskspaceWindows.removeValue(forKey: taskspace.id)
+                continue
+            }
+            
+            // Position this window at the same location as the target
+            positionWindow(windowID: windowID, to: targetBounds)
+            Logger.shared.log("ProjectManager: Positioned window for taskspace \(taskspace.name) in stack")
+        }
+        
+        return focusResult
+    }
+    
+    /// Get window information including bounds
+    private func getWindowInfo(for windowID: CGWindowID) -> (bounds: CGRect, processID: pid_t)? {
+        let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+        
+        guard let windowInfo = windowList.first(where: { window in
+            if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                return id == windowID
+            }
+            return false
+        }) else {
+            return nil
+        }
+        
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat,
+              let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+            return nil
+        }
+        
+        let bounds = CGRect(x: x, y: y, width: width, height: height)
+        return (bounds: bounds, processID: processID)
+    }
+    
     /// Use Accessibility APIs to focus a specific window within an application
     private func focusWindowViaAccessibility(windowID: CGWindowID, processID: pid_t) {
         let app = AXUIElementCreateApplication(processID)
@@ -637,6 +722,38 @@ extension ProjectManager {
             if let axWindowID = getWindowID(from: window), axWindowID == windowID {
                 // Focus this specific window
                 AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                break
+            }
+        }
+    }
+    
+    /// Position a window to specific bounds using Accessibility APIs
+    private func positionWindow(windowID: CGWindowID, to bounds: CGRect) {
+        guard let windowInfo = getWindowInfo(for: windowID) else { return }
+        
+        let app = AXUIElementCreateApplication(windowInfo.processID)
+        
+        var windowsRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef)
+        
+        guard result == .success,
+              let windows = windowsRef as? [AXUIElement] else {
+            return
+        }
+        
+        // Find the window with matching CGWindowID
+        for window in windows {
+            if let axWindowID = getWindowID(from: window), axWindowID == windowID {
+                // Set position
+                var position = CGPoint(x: bounds.origin.x, y: bounds.origin.y)
+                var positionValue = AXValueCreate(AXValueType.cgPoint, &position)
+                AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue!)
+                
+                // Set size
+                var size = CGSize(width: bounds.size.width, height: bounds.size.height)
+                var sizeValue = AXValueCreate(AXValueType.cgSize, &size)
+                AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue!)
+                
                 break
             }
         }
