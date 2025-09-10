@@ -111,13 +111,6 @@ struct SymposiumApp: App {
                     listAllWindows()
                 }
                 .keyboardShortcut("w", modifiers: [.command, .shift])
-                
-                Divider()
-                
-                Button("Toggle Dock Panel") {
-                    appDelegate.toggleDockPanel()
-                }
-                .keyboardShortcut("p", modifiers: [.command, .shift])
             }
         }
 
