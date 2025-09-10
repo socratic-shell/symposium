@@ -211,35 +211,8 @@ struct SymposiumApp: App {
     }
     
     private func isValidProject(at path: String) -> Bool {
-        // Check 1: Directory exists
-        guard FileManager.default.fileExists(atPath: path) else {
-            Logger.shared.log("App: Project path does not exist: \(path)")
-            return false
-        }
-        
-        // Check 2: Has .symposium directory
-        let symposiumDir = "\(path)/.symposium"
-        guard FileManager.default.fileExists(atPath: symposiumDir) else {
-            Logger.shared.log("App: Missing .symposium directory: \(symposiumDir)")
-            return false
-        }
-        
-        // Check 3: Has valid project.json
-        let projectFile = "\(symposiumDir)/project.json"
-        guard FileManager.default.fileExists(atPath: projectFile) else {
-            Logger.shared.log("App: Missing project.json: \(projectFile)")
-            return false
-        }
-        
-        // Check 4: Can parse project.json
-        do {
-            let data = try Data(contentsOf: URL(fileURLWithPath: projectFile))
-            _ = try JSONDecoder().decode(Project.self, from: data)
-            return true
-        } catch {
-            Logger.shared.log("App: Invalid project.json: \(error)")
-            return false
-        }
+        // Use the same validation logic as ProjectManager
+        return Project.isValidProjectDirectory(path)
     }
 
     private func copyLogsToClipboard() {
