@@ -133,10 +133,20 @@ Each project stores metadata in `project.json`:
   "gitURL": "https://github.com/user/repo.git",
   "directoryPath": "/path/to/Project.symposium",
   "agent": "claude-code",
+  "defaultBranch": null,
   "createdAt": "2025-01-01T00:00:00Z",
   "taskspaces": []
 }
 ```
+
+### Default Branch Handling
+
+The `defaultBranch` field controls which branch new taskspaces start from:
+
+- If `defaultBranch` is specified: Use that remote/branch (e.g., `main`, `origin/foo`, etc.)
+- If `defaultBranch` is null/empty: Auto-detect the default branch from origin remote (e.g., `origin/main`)
+- Auto-detection uses `git symbolic-ref refs/remotes/origin/HEAD` or falls back to `origin/main`
+- New taskspace worktrees are created from the specified or detected remote branch
 
 ### Validation Logic
 
@@ -160,6 +170,9 @@ The ChooseProject window includes a comprehensive project creation form:
 - **Additional Remotes**: Extra git remotes with custom names
 - **Editor**: VSCode only (placeholder for future editor support)
 - **AI Agent**: Selection from available agents, including "None" option
+
+**Advanced Settings** (collapsible section):
+- **Default Branch for New Taskspaces**: Branch name to use when creating new taskspaces (defaults to origin's default branch if empty)
 
 ### Agent Selection
 
