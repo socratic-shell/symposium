@@ -198,7 +198,7 @@ interface FileLocation {
  * Investigate current workspace to determine if we're in a taskspace
  * Returns taskspace UUID if valid, null otherwise
  */
-function getCurrentTaskspaceUuid(): string | null {
+export function getCurrentTaskspaceUuid(): string | null {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
         return null;

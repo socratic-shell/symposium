@@ -6,8 +6,8 @@
 use crate::synthetic_pr::UserFeedback;
 use crate::types::{
     FindAllReferencesPayload, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType,
-    LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload,
-    ResponsePayload, UserFeedbackPayload,
+    LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload,
+    UserFeedbackPayload,
 };
 use anyhow::Context;
 use futures::FutureExt;
@@ -26,19 +26,17 @@ use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
 
 /// Create MessageSender with current context information
-/// 
+///
 /// Attempts to gather working directory, taskspace UUID, and shell PID for message routing.
 /// Falls back gracefully when information is not available.
 fn create_message_sender(shell_pid: Option<u32>) -> MessageSender {
     // Get working directory - always required
     let working_directory = std::env::current_dir()
         .map(|path| path.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "/tmp".to_string());
+        .unwrap_or_default(); // empty string in case of error fetching current directory
 
     // Try to extract taskspace UUID from directory structure
-    let taskspace_uuid = extract_project_info()
-        .map(|(_, uuid)| uuid)
-        .ok();
+    let taskspace_uuid = extract_project_info().map(|(_, uuid)| uuid).ok();
 
     MessageSender {
         working_directory,
@@ -48,17 +46,17 @@ fn create_message_sender(shell_pid: Option<u32>) -> MessageSender {
 }
 
 /// Extract project path and taskspace UUID from current working directory
-/// 
+///
 /// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
 /// Traverses upward looking for `task-$UUID` directories and stops at `.symposium`.
 /// Uses the last UUID found during traversal.
 fn extract_project_info() -> Result<(String, String)> {
     let current_dir = crate::workspace_dir::current_dir()
         .map_err(|e| IPCError::Other(format!("Failed to get current working directory: {}", e)))?;
-    
+
     let mut dir = current_dir.as_path();
     let mut last_uuid = None;
-    
+
     loop {
         // Check if current directory name matches task-$UUID pattern
         if let Some(dir_name) = dir.file_name().and_then(|name| name.to_str()) {
@@ -68,26 +66,30 @@ fn extract_project_info() -> Result<(String, String)> {
                     last_uuid = Some(uuid.to_string());
                 }
             }
-            
+
             // Check if we've reached a .symposium directory
             if dir_name.ends_with(".symposium") {
                 let project_path = dir.to_string_lossy().to_string();
                 let taskspace_uuid = last_uuid.ok_or_else(|| {
-                    IPCError::Other("No task-$UUID directory found before reaching .symposium".to_string())
+                    IPCError::Other(
+                        "No task-$UUID directory found before reaching .symposium".to_string(),
+                    )
                 })?;
-                
+
                 return Ok((project_path, taskspace_uuid));
             }
         }
-        
+
         // Move to parent directory
         match dir.parent() {
             Some(parent) => dir = parent,
             None => break,
         }
     }
-    
-    Err(IPCError::Other("No .symposium directory found in directory tree".to_string()))
+
+    Err(IPCError::Other(
+        "No .symposium directory found in directory tree".to_string(),
+    ))
 }
 
 /// Errors that can occur during IPC communication
@@ -156,14 +158,16 @@ struct IPCCommunicatorInner {
     /// When true, ensure_connection() is a no-op
     connected: bool,
 
-
     /// Terminal shell PID for this MCP server instance
     /// Reported to extension during handshake for smart terminal selection
     terminal_shell_pid: u32,
 }
 
 impl IPCCommunicator {
-    pub async fn new(shell_pid: u32, reference_store: Arc<crate::reference_store::ReferenceStore>) -> Result<Self> {
+    pub async fn new(
+        shell_pid: u32,
+        reference_store: Arc<crate::reference_store::ReferenceStore>,
+    ) -> Result<Self> {
         info!("Creating IPC communicator for shell PID {shell_pid}");
 
         Ok(Self {
@@ -202,7 +206,11 @@ impl IPCCommunicator {
         }
 
         // Use ensure_connection for initial connection
-        IPCCommunicatorInner::ensure_connection(Arc::clone(&self.inner), Arc::clone(&self.reference_store)).await?;
+        IPCCommunicatorInner::ensure_connection(
+            Arc::clone(&self.inner),
+            Arc::clone(&self.reference_store),
+        )
+        .await?;
 
         info!("Connected to message bus daemon via IPC");
         Ok(())
@@ -263,7 +271,11 @@ impl IPCCommunicator {
         }
 
         // Ensure connection is established before proceeding
-        IPCCommunicatorInner::ensure_connection(Arc::clone(&self.inner), Arc::clone(&self.reference_store)).await?;
+        IPCCommunicatorInner::ensure_connection(
+            Arc::clone(&self.inner),
+            Arc::clone(&self.reference_store),
+        )
+        .await?;
 
         // Create message payload with shell PID for multi-window filtering
         let shell_pid = {
@@ -550,10 +562,10 @@ impl IPCCommunicator {
         task_description: String,
         initial_prompt: String,
     ) -> Result<()> {
-        use crate::types::{SpawnTaskspacePayload, IPCMessageType};
-        
+        use crate::types::{IPCMessageType, SpawnTaskspacePayload};
+
         let (project_path, taskspace_uuid) = extract_project_info()?;
-        
+
         let shell_pid = {
             let inner = self.inner.lock().await;
             Some(inner.terminal_shell_pid)
@@ -581,10 +593,10 @@ impl IPCCommunicator {
         message: String,
         category: crate::types::ProgressCategory,
     ) -> Result<()> {
-        use crate::types::{LogProgressPayload, IPCMessageType};
-        
+        use crate::types::{IPCMessageType, LogProgressPayload};
+
         let (project_path, taskspace_uuid) = extract_project_info()?;
-        
+
         let shell_pid = {
             let inner = self.inner.lock().await;
             Some(inner.terminal_shell_pid)
@@ -607,10 +619,10 @@ impl IPCCommunicator {
 
     /// Send signal_user message to request user attention
     pub async fn signal_user(&self, message: String) -> Result<()> {
-        use crate::types::{SignalUserPayload, IPCMessageType};
-        
+        use crate::types::{IPCMessageType, SignalUserPayload};
+
         let (project_path, taskspace_uuid) = extract_project_info()?;
-        
+
         let shell_pid = {
             let inner = self.inner.lock().await;
             Some(inner.terminal_shell_pid)
@@ -620,10 +632,10 @@ impl IPCCommunicator {
             message_type: IPCMessageType::SignalUser,
             id: Uuid::new_v4().to_string(),
             sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(SignalUserPayload { 
+            payload: serde_json::to_value(SignalUserPayload {
                 project_path,
                 taskspace_uuid,
-                message 
+                message,
             })?,
         };
 
@@ -632,10 +644,10 @@ impl IPCCommunicator {
 
     /// Send update_taskspace message to update taskspace metadata
     pub async fn update_taskspace(&self, name: String, description: String) -> Result<()> {
-        use crate::types::{UpdateTaskspacePayload, IPCMessageType};
-        
+        use crate::types::{IPCMessageType, UpdateTaskspacePayload};
+
         let (project_path, taskspace_uuid) = extract_project_info()?;
-        
+
         let shell_pid = {
             let inner = self.inner.lock().await;
             Some(inner.terminal_shell_pid)
@@ -798,22 +810,24 @@ impl IPCCommunicatorInner {
     /// Ensures connection is established, connecting if necessary
     /// Idempotent - safe to call multiple times, only connects if not already connected
     async fn ensure_connection(
-        this: Arc<Mutex<Self>>, 
-        reference_store: Arc<crate::reference_store::ReferenceStore>
+        this: Arc<Mutex<Self>>,
+        reference_store: Arc<crate::reference_store::ReferenceStore>,
     ) -> Result<()> {
         let mut inner = this.lock().await;
         if inner.connected {
             return Ok(()); // Already connected, nothing to do
         }
 
-        inner.attempt_connection_with_backoff(&this, reference_store).await
+        inner
+            .attempt_connection_with_backoff(&this, reference_store)
+            .await
     }
 
     /// Clears dead connection state and attempts fresh reconnection
     /// Called by reader task as "parting gift" when connection dies
     async fn clear_connection_and_reconnect(
         this: Arc<Mutex<Self>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>
+        reference_store: Arc<crate::reference_store::ReferenceStore>,
     ) {
         info!("Clearing dead connection state and attempting reconnection");
 
@@ -831,7 +845,10 @@ impl IPCCommunicatorInner {
         }
 
         // Attempt fresh connection
-        match inner.attempt_connection_with_backoff(&this, reference_store).await {
+        match inner
+            .attempt_connection_with_backoff(&this, reference_store)
+            .await
+        {
             Ok(()) => {
                 info!("Reader task successfully reconnected");
             }
@@ -848,9 +865,9 @@ impl IPCCommunicatorInner {
     /// try to re-establish the connection. This ensures only one connection attempt
     /// happens at a time, preventing duplicate reader tasks or connection state corruption.
     async fn attempt_connection_with_backoff(
-        &mut self, 
+        &mut self,
         this: &Arc<Mutex<Self>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>
+        reference_store: Arc<crate::reference_store::ReferenceStore>,
     ) -> Result<()> {
         // Precondition: we should only be called when disconnected
         assert!(
@@ -865,7 +882,8 @@ impl IPCCommunicatorInner {
         const MAX_RETRIES: u32 = 5;
         const BASE_DELAY_MS: u64 = 100;
 
-        let socket_path = crate::constants::daemon_socket_path(crate::constants::DAEMON_SOCKET_PREFIX);
+        let socket_path =
+            crate::constants::daemon_socket_path(crate::constants::DAEMON_SOCKET_PREFIX);
         info!(
             "Attempting connection to message bus daemon: {}",
             socket_path
@@ -888,7 +906,12 @@ impl IPCCommunicatorInner {
                     let inner_clone = Arc::clone(this);
                     let reference_store_clone = Arc::clone(&reference_store);
                     tokio::spawn(async move {
-                        IPCCommunicator::response_reader_task(read_half, inner_clone, reference_store_clone).await;
+                        IPCCommunicator::response_reader_task(
+                            read_half,
+                            inner_clone,
+                            reference_store_clone,
+                        )
+                        .await;
                     });
 
                     return Ok(());
@@ -982,7 +1005,7 @@ impl IPCCommunicator {
     /// Processes incoming messages from the daemon
     /// Handles both responses to our requests and incoming messages (like Marco)
     async fn handle_incoming_message(
-        inner: &Arc<Mutex<IPCCommunicatorInner>>, 
+        inner: &Arc<Mutex<IPCCommunicatorInner>>,
         message_str: &str,
         reference_store: &Arc<crate::reference_store::ReferenceStore>,
     ) {
@@ -1124,16 +1147,20 @@ impl IPCCommunicator {
                 info!("Received store reference message");
 
                 // Deserialize payload into StoreReferencePayload struct
-                let payload: crate::types::StoreReferencePayload = match serde_json::from_value(message.payload) {
-                    Ok(payload) => payload,
-                    Err(e) => {
-                        error!("Failed to deserialize store_reference payload: {}", e);
-                        return;
-                    }
-                };
+                let payload: crate::types::StoreReferencePayload =
+                    match serde_json::from_value(message.payload) {
+                        Ok(payload) => payload,
+                        Err(e) => {
+                            error!("Failed to deserialize store_reference payload: {}", e);
+                            return;
+                        }
+                    };
 
                 // Store the arbitrary JSON value in the reference store
-                match reference_store.store_json_with_id(&payload.key, payload.value).await {
+                match reference_store
+                    .store_json_with_id(&payload.key, payload.value)
+                    .await
+                {
                     Ok(()) => {
                         info!("Successfully stored reference {}", payload.key);
                     }
@@ -1235,7 +1262,9 @@ mod test {
     //! Tests the IPC communication layer and message structure
 
     use crate::ipc::IPCCommunicator;
-    use crate::types::{IPCMessage, IPCMessageType, MessageSender, PresentReviewParams, ReviewMode};
+    use crate::types::{
+        IPCMessage, IPCMessageType, MessageSender, PresentReviewParams, ReviewMode,
+    };
     use serde_json;
     use std::sync::Arc;
 

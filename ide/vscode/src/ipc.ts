@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { SyntheticPRProvider } from './syntheticPRProvider';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
+import { getCurrentTaskspaceUuid } from './extension';
 
 interface MessageSender {
     workingDirectory: string;      // Always present - reliable matching
@@ -91,34 +92,6 @@ interface FileRange {
 interface Position {
     line: number;
     column: number;
-}
-
-function getCurrentTaskspaceUuid(): string | null {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-        return null;
-    }
-
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-
-    let currentDir = workspaceRoot;
-    while (currentDir !== path.dirname(currentDir)) {
-        const dirName = path.basename(currentDir);
-        const match = dirName.match(taskUuidPattern);
-
-        if (match) {
-            const taskspaceJsonPath = path.join(currentDir, 'taskspace.json');
-            const fs = require('fs');
-            if (fs.existsSync(taskspaceJsonPath)) {
-                return match[1];
-            }
-        }
-
-        currentDir = path.dirname(currentDir);
-    }
-
-    return null;
 }
 
 export class DaemonClient implements vscode.Disposable {
@@ -669,7 +642,7 @@ export class DaemonClient implements vscode.Disposable {
             sender: {
                 workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
                 shellPid: undefined,
-                taskspaceUuid: undefined
+                taskspaceUuid: getCurrentTaskspaceUuid() || undefined
             },
             payload: response,
         };
@@ -812,8 +785,8 @@ export class DaemonClient implements vscode.Disposable {
             id: crypto.randomUUID(),
             sender: {
                 workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
-                shellPid: shellPid,
-                taskspaceUuid: undefined
+                shellPid: undefined,
+                taskspaceUuid: getCurrentTaskspaceUuid() || undefined
             },
             payload: storePayload
         };
@@ -990,8 +963,8 @@ export class DaemonClient implements vscode.Disposable {
                 id: messageId,
                 sender: {
                     workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
-                    shellPid: process.pid,
-                    taskspaceUuid: undefined
+                    shellPid: undefined,
+                    taskspaceUuid: getCurrentTaskspaceUuid() || undefined
                 },
                 payload: payload,
             };

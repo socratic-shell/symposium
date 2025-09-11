@@ -113,8 +113,8 @@ sender: {
 ```typescript
 sender: {
     workingDirectory: vscode.workspace.workspaceFolders[0].uri.fsPath,  // First workspace folder
-    taskspaceUuid: undefined,               // Extensions don't provide taskspace info
-    shellPid: process.pid                   // VSCode extension process PID (for requests)
+    taskspaceUuid: getCurrentTaskspaceUuid() || undefined,  // Extracted from directory structure (if available)
+    shellPid: undefined                         // Extensions don't provide shell PID
 }
 ```
 
