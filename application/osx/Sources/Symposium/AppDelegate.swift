@@ -1,11 +1,27 @@
 import AppKit
 import SwiftUI
+import Combine
 
 /// App delegate for handling dock clicks and application lifecycle
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     /// Current project manager (for window coordination)
-    @Published var currentProjectManager: ProjectManager?
+    @Published var currentProjectManager: ProjectManager? {
+        didSet {
+            // Cancel previous subscription
+            projectManagerCancellable?.cancel()
+            
+            // Subscribe to new project manager changes
+            if let projectManager = currentProjectManager {
+                projectManagerCancellable = projectManager.objectWillChange
+                    .sink { [weak self] in
+                        self?.objectWillChange.send()
+                    }
+            }
+        }
+    }
+    
+    private var projectManagerCancellable: AnyCancellable?
     
     /// Track if we have a current project loaded
     private var hasActiveProject: Bool {
