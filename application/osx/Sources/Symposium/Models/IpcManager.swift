@@ -139,6 +139,12 @@ class IpcManager: ObservableObject {
     private var inputPipe: Pipe?
     private var delegates: [IpcMessageDelegate] = []
     
+    deinit {
+        Logger.shared.log("IpcManager: Cleaning up - terminating client process")
+        clientProcess?.terminate()
+        inputPipe = nil
+    }
+    
     // MARK: - Delegate Management
     
     func addDelegate(_ delegate: IpcMessageDelegate) {
