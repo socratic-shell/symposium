@@ -91,41 +91,6 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         stopWindowCloseDetection()
     }
 
-    /// Create a new Symposium project
-    func createProject(
-        name: String, gitURL: String, at directoryPath: String, agent: String? = nil,
-        defaultBranch: String? = nil
-    ) throws {
-        isLoading = true
-        defer { isLoading = false }
-
-        // Create project directory with .symposium extension
-        let projectDirPath = "\(directoryPath)/\(name).symposium"
-
-        // Check if directory already exists
-        if FileManager.default.fileExists(atPath: projectDirPath) {
-            throw ProjectError.directoryAlreadyExists
-        }
-
-        // Create directory
-        try FileManager.default.createDirectory(
-            atPath: projectDirPath,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
-
-        // Create project instance
-        let project = Project(
-            name: name, gitURL: gitURL, directoryPath: projectDirPath, agent: agent,
-            defaultBranch: defaultBranch)
-
-        // Save project.json
-        try project.save()
-
-        // Set as current project
-        setCurrentProject(project)
-    }
-
     /// Open an existing Symposium project
     func openProject(at directoryPath: String) throws {
         isLoading = true
@@ -870,13 +835,13 @@ extension ProjectManager {
             if let axWindowID = getWindowID(from: window), axWindowID == windowID {
                 // Set position
                 var position = CGPoint(x: bounds.origin.x, y: bounds.origin.y)
-                var positionValue = AXValueCreate(AXValueType.cgPoint, &position)
+                let positionValue = AXValueCreate(AXValueType.cgPoint, &position)
                 AXUIElementSetAttributeValue(
                     window, kAXPositionAttribute as CFString, positionValue!)
 
                 // Set size
                 var size = CGSize(width: bounds.size.width, height: bounds.size.height)
-                var sizeValue = AXValueCreate(AXValueType.cgSize, &size)
+                let sizeValue = AXValueCreate(AXValueType.cgSize, &size)
                 AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue!)
 
                 break
@@ -1327,7 +1292,7 @@ extension ProjectManager {
             DispatchQueue.main.async {
                 self.currentProject = updatedProject
                 Logger.shared.log(
-                    "ProjectManager[\(instanceId)]: Updated taskspace: \(payload.name)")
+                    "ProjectManager[\(self.instanceId)]: Updated taskspace: \(payload.name)")
             }
 
             return .handled(EmptyResponse())

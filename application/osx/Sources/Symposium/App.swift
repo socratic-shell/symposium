@@ -6,10 +6,10 @@ struct SymposiumApp: App {
     @StateObject private var agentManager = AgentManager()
     @StateObject private var settingsManager = SettingsManager()
     @StateObject private var permissionManager = PermissionManager()
-    
+
     // App delegate for dock click handling
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     // SwiftUI environment for window management
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
@@ -28,34 +28,23 @@ struct SymposiumApp: App {
                 }
         }
         .windowResizability(.contentSize)
-        
+
         // Project selection window
         WindowGroup(id: "choose-project") {
-            ProjectSelectionView { projectManager in
-                // When project is created/selected, save it and re-run startup logic
-                if let projectPath = projectManager.currentProject?.directoryPath {
-                    Logger.shared.log("App: Project selected, saving path and re-running startup logic")
-                    settingsManager.activeProjectPath = projectPath
-                    dismissWindow(id: "choose-project")
-                    
-                    // Re-run startup logic to detect and open the project
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        self.runStartupLogic()
-                    }
+            ProjectSelectionView()
+                .environmentObject(agentManager)
+                .environmentObject(settingsManager)
+                .environmentObject(permissionManager)
+                .onAppear {
+                    Logger.shared.log("Project selection window opened")
                 }
-            }
-            .environmentObject(agentManager)
-            .environmentObject(settingsManager)
-            .environmentObject(permissionManager)
-            .onAppear {
-                Logger.shared.log("Project selection window opened")
-            }
-            .onDisappear {
-                Logger.shared.log("Project selection window closed")
-            }
+                .onDisappear {
+                    Logger.shared.log("Project selection window closed")
+                    appStart()
+                }
         }
         .windowResizability(.contentSize)
-        
+
         // Settings window
         WindowGroup(id: "settings") {
             SettingsView()
@@ -67,10 +56,11 @@ struct SymposiumApp: App {
                 }
                 .onDisappear {
                     Logger.shared.log("Settings window closed")
+                    appStart()
                 }
         }
         .windowResizability(.contentSize)
-        
+
         // Main project window
         WindowGroup(id: "open-project") {
             if let projectManager = appDelegate.currentProjectManager {
@@ -87,10 +77,7 @@ struct SymposiumApp: App {
                         appDelegate.currentProjectManager = nil
                         // Clear saved project path so it doesn't auto-restore on next startup
                         settingsManager.activeProjectPath = ""
-                        // Re-run startup logic to determine appropriate next window
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            self.runStartupLogic()
-                        }
+                        appStart()
                     }
             } else {
                 // Fallback if no project manager
@@ -108,13 +95,13 @@ struct SymposiumApp: App {
                     showProjectSelectionWindow()
                 }
                 .keyboardShortcut("n", modifiers: .command)
-                
+
                 Button("Open Project...") {
                     showProjectSelectionWindow()
                 }
                 .keyboardShortcut("o", modifiers: .command)
             }
-            
+
             CommandGroup(after: .help) {
                 Button("Copy Debug Logs") {
                     copyLogsToClipboard()
@@ -143,17 +130,17 @@ struct SymposiumApp: App {
         dismissWindow(id: "choose-project")
         openWindow(id: "open-project")
     }
-    
+
     private func closeWindow(id: String) {
         Logger.shared.log("App: Closing window with id: \(id)")
         dismissWindow(id: id)
     }
-    
+
     private func dismissSplash() {
         Logger.shared.log("App: Dismissing splash window")
         closeWindow(id: "splash")
     }
-    
+
     private func reregisterWindows(for projectManager: ProjectManager) {
         guard let project = projectManager.currentProject else {
             Logger.shared.log("App: No current project for window re-registration")
@@ -165,40 +152,42 @@ struct SymposiumApp: App {
         for taskspace in project.taskspaces {
             // Send taskspace roll call message
             let payload = TaskspaceRollCallPayload(taskspaceUuid: taskspace.id.uuidString)
-            projectManager.mcpStatus.sendBroadcastMessage(type: "taskspace_roll_call", payload: payload)
+            projectManager.mcpStatus.sendBroadcastMessage(
+                type: "taskspace_roll_call", payload: payload)
             Logger.shared.log("App: Sent roll call for taskspace: \(taskspace.name)")
         }
     }
-    
+
     private func showProjectSelectionWindow() {
         Logger.shared.log("App: Opening project selection window")
         openWindow(id: "choose-project")
     }
-    
+
     /// Startup state machine - determines which window to show based on app state
     private func appStart() {
         Logger.shared.log("App: Starting appStart() state machine")
-        
+
         // Give splash window time to appear, then run logic
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.runStartupLogic()
         }
     }
-    
+
     private func runStartupLogic() {
         Logger.shared.log("App: Running startup logic checks")
-        
+
         // Check 1: Do we have required permissions?
-        let hasPermissions = permissionManager.hasAccessibilityPermission && 
-                           permissionManager.hasScreenRecordingPermission
-        
+        let hasPermissions =
+            permissionManager.hasAccessibilityPermission
+            && permissionManager.hasScreenRecordingPermission
+
         if !hasPermissions {
             Logger.shared.log("App: Missing permissions, showing settings window")
             dismissSplash()
             openWindow(id: "settings")
             return
         }
-        
+
         // Check 2: Are agents ready? (needed for project restoration)
         if !agentManager.scanningCompleted {
             Logger.shared.log("App: Agent scan not complete, waiting...")
@@ -208,22 +197,25 @@ struct SymposiumApp: App {
             }
             return
         }
-        
+
         // Check 3: Is there a previously opened project?
         if !settingsManager.activeProjectPath.isEmpty,
-           isValidProject(at: settingsManager.activeProjectPath) {
-            Logger.shared.log("App: Found valid last project at \(settingsManager.activeProjectPath), attempting to restore")
+            isValidProject(at: settingsManager.activeProjectPath)
+        {
+            Logger.shared.log(
+                "App: Found valid last project at \(settingsManager.activeProjectPath), attempting to restore"
+            )
             dismissSplash()
             restoreLastProject(at: settingsManager.activeProjectPath)
             return
         }
-        
+
         // Default: Show project selection
         Logger.shared.log("App: No previous project, showing project selection window")
         dismissSplash()
         openWindow(id: "choose-project")
     }
-    
+
     private func restoreLastProject(at path: String) {
         do {
             let projectManager = ProjectManager(
@@ -234,23 +226,24 @@ struct SymposiumApp: App {
             )
             try projectManager.openProject(at: path)
             openProjectWindow(with: projectManager)
-            
+
             // Automatically refresh window connections on startup
             Logger.shared.log("App: Auto-refreshing window connections after project restoration")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 self.reregisterWindows(for: projectManager)
             }
-            
+
             Logger.shared.log("App: Successfully restored last project")
         } catch {
-            Logger.shared.log("App: Failed to restore last project: \(error), showing project selection")
+            Logger.shared.log(
+                "App: Failed to restore last project: \(error), showing project selection")
             // Clear invalid project path
             settingsManager.activeProjectPath = ""
             dismissSplash()
             openWindow(id: "choose-project")
         }
     }
-    
+
     private func isValidProject(at path: String) -> Bool {
         // Use the same validation logic as ProjectManager
         return Project.isValidProjectDirectory(path)

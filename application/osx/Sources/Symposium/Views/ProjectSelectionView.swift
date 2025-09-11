@@ -5,9 +5,8 @@ struct ProjectSelectionView: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
-    let onProjectCreated: (ProjectManager) -> Void
+    @Environment(\.dismiss) private var dismiss
     @State private var showingNewProjectDialog = false
-    @State private var showingOpenProjectDialog = false
     @State private var showingDirectoryPicker = false
 
     private var hasValidAgent: Bool {
@@ -22,22 +21,12 @@ struct ProjectSelectionView: View {
         permissionManager.hasAccessibilityPermission
             && permissionManager.hasScreenRecordingPermission
     }
-    
+
     private func openProject(at path: String) {
         Logger.shared.log("ProjectSelectionView.openProject called with path: \(path)")
-        let projectManager = ProjectManager(
-            agentManager: agentManager, settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
-        Logger.shared.log("Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
-        do {
-            Logger.shared.log("Attempting to open project at: \(path)")
-            try projectManager.openProject(at: path)
-            Logger.shared.log("Successfully opened project, calling onProjectCreated callback")
-            onProjectCreated(projectManager)
-        } catch {
-            Logger.shared.log("ERROR: Failed to open project: \(error)")
-            // Handle error - could show alert
-        }
+        // Save project path for next app launch
+        self.settingsManager.activeProjectPath = path
+        dismiss()
     }
 
     private var canCreateProjects: Bool {
@@ -77,7 +66,8 @@ struct ProjectSelectionView: View {
                 .disabled(!canCreateProjects)
 
                 Button(action: {
-                    Logger.shared.log("Open Existing Project button clicked - showing directory picker directly")
+                    Logger.shared.log(
+                        "Open Existing Project button clicked - showing directory picker directly")
                     showingDirectoryPicker = true
                 }) {
                     HStack {
@@ -152,10 +142,7 @@ struct ProjectSelectionView: View {
             }
         }
         .sheet(isPresented: $showingNewProjectDialog) {
-            NewProjectDialog(onProjectCreated: onProjectCreated)
-        }
-        .sheet(isPresented: $showingOpenProjectDialog) {
-            OpenProjectDialog(onProjectCreated: onProjectCreated)
+            NewProjectDialog()
         }
     }
 }
@@ -164,7 +151,6 @@ struct NewProjectDialog: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
-    let onProjectCreated: (ProjectManager) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var projectName = ""
@@ -225,12 +211,15 @@ struct NewProjectDialog: View {
                             action: { selectedAgent = agent.type.id }
                         )
                     }
-                    
+
                     // None option
                     Button(action: { selectedAgent = "none" }) {
                         HStack {
-                            Image(systemName: selectedAgent == "none" ? "largecircle.fill.circle" : "circle")
-                                .foregroundColor(selectedAgent == "none" ? .accentColor : .secondary)
+                            Image(
+                                systemName: selectedAgent == "none"
+                                    ? "largecircle.fill.circle" : "circle"
+                            )
+                            .foregroundColor(selectedAgent == "none" ? .accentColor : .secondary)
                             Text("None")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
@@ -245,7 +234,8 @@ struct NewProjectDialog: View {
             VStack(alignment: .leading, spacing: 8) {
                 Button(action: { showingAdvancedSettings.toggle() }) {
                     HStack {
-                        Image(systemName: showingAdvancedSettings ? "chevron.down" : "chevron.right")
+                        Image(
+                            systemName: showingAdvancedSettings ? "chevron.down" : "chevron.right")
                         Text("Advanced Settings")
                     }
                     .foregroundColor(.blue)
@@ -256,8 +246,10 @@ struct NewProjectDialog: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Default Branch for New Taskspaces:")
                             .font(.caption)
-                        TextField("Leave empty to use origin's default branch", text: $defaultBranch)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        TextField(
+                            "Leave empty to use origin's default branch", text: $defaultBranch
+                        )
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                     .padding(.leading, 16)
                 }
@@ -273,7 +265,9 @@ struct NewProjectDialog: View {
                 Button("Create") {
                     createProject()
                 }
-                .disabled(projectName.isEmpty || gitURL.isEmpty || selectedDirectory.isEmpty || selectedAgent == nil)
+                .disabled(
+                    projectName.isEmpty || gitURL.isEmpty || selectedDirectory.isEmpty
+                        || selectedAgent == nil)
             }
         }
         .padding()
@@ -296,103 +290,48 @@ struct NewProjectDialog: View {
     }
 
     private func createProject() {
-        let projectManager = ProjectManager(
-            agentManager: agentManager, settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
         do {
             let agent = (selectedAgent == "none") ? nil : selectedAgent
             let branch = defaultBranch.isEmpty ? nil : defaultBranch
-            try projectManager.createProject(
-                name: projectName, gitURL: gitURL, at: selectedDirectory, 
+            try createProject(
+                name: projectName, gitURL: gitURL, at: selectedDirectory,
                 agent: agent, defaultBranch: branch)
-            onProjectCreated(projectManager)
             dismiss()
         } catch {
             // Handle error - could show alert
         }
     }
-}
 
-struct OpenProjectDialog: View {
-    @EnvironmentObject var permissionManager: PermissionManager
-    @EnvironmentObject var agentManager: AgentManager
-    @EnvironmentObject var settingsManager: SettingsManager
-    let onProjectCreated: (ProjectManager) -> Void
-    @Environment(\.dismiss) private var dismiss
+    /// Create a new Symposium project
+    private func createProject(
+        name: String, gitURL: String, at directoryPath: String, agent: String? = nil,
+        defaultBranch: String? = nil
+    ) throws {
+        // Create project directory with .symposium extension
+        let projectDirPath = "\(directoryPath)/\(name).symposium"
 
-    @State private var showingDirectoryPicker = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Open Existing Project")
-                .font(.headline)
-
-            Text("Select a .symposium project directory:")
-                .foregroundColor(.secondary)
-
-            Button("Browse for Project Directory") {
-                Logger.shared.log("Browse for Project Directory button clicked")
-                showingDirectoryPicker = true
-                Logger.shared.log("Set showingDirectoryPicker to true")
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-
-            HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-
-                Spacer()
-            }
+        // Check if directory already exists
+        if FileManager.default.fileExists(atPath: projectDirPath) {
+            throw ProjectError.directoryAlreadyExists
         }
-        .padding()
-        .frame(width: 400)
-        .onAppear {
-            Logger.shared.log("OpenProjectDialog appeared")
-        }
-        .fileImporter(
-            isPresented: $showingDirectoryPicker,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                Logger.shared.log("File picker succeeded with URLs: \(urls)")
-                if let url = urls.first {
-                    Logger.shared.log("Selected URL: \(url.path)")
-                    openProject(at: url.path)
-                } else {
-                    Logger.shared.log("ERROR: No URL selected from file picker")
-                }
-            case .failure(let error):
-                Logger.shared.log("ERROR: File picker failed: \(error)")
-                // Could show alert here
-                print("Failed to select directory: \(error.localizedDescription)")
-            }
-        }
-    }
 
-    private func openProject(at path: String) {
-        Logger.shared.log("OpenProjectDialog.openProject called with path: \(path)")
-        let projectManager = ProjectManager(
-            agentManager: agentManager, settingsManager: settingsManager,
-            selectedAgent: settingsManager.selectedAgent, permissionManager: permissionManager)
-        Logger.shared.log(
-            "Created ProjectManager with selectedAgent: \(settingsManager.selectedAgent)")
-        do {
-            Logger.shared.log("Attempting to open project at: \(path)")
-            try projectManager.openProject(at: path)
-            Logger.shared.log("Successfully opened project, calling onProjectCreated callback")
-            onProjectCreated(projectManager)
-            Logger.shared.log("Called onProjectCreated, dismissing dialog")
-            dismiss()
-        } catch {
-            Logger.shared.log("ERROR: Failed to open project: \(error)")
-            // Handle error - could show alert
-        }
+        // Create directory
+        try FileManager.default.createDirectory(
+            atPath: projectDirPath,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+
+        // Create project instance
+        let project = Project(
+            name: name, gitURL: gitURL, directoryPath: projectDirPath, agent: agent,
+            defaultBranch: defaultBranch)
+
+        // Save project.json
+        try project.save()
+
+        // Set as current project
+        self.settingsManager.activeProjectPath = directoryPath
+        dismiss()
     }
 }
