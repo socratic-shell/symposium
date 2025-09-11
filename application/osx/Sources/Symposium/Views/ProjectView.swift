@@ -2,8 +2,7 @@ import AppKit
 import SwiftUI
 
 struct ProjectView: View {
-    @ObservedObject var projectManager: ProjectManager
-    @ObservedObject var ipcManager: IpcManager
+    @EnvironmentObject var appDelegate: AppDelegate
     
     // Phase 22: Optional callback for closing the project from dock panel
     var onCloseProject: (() -> Void)?
@@ -38,8 +37,9 @@ struct ProjectView: View {
 
     var body: some View {
         Group {
-            if let project = projectManager.currentProject {
-                if ipcManager.isConnected {
+            if let projectManager = appDelegate.currentProjectManager,
+               let project = projectManager.currentProject {
+                if projectManager.mcpStatus.isConnected {
                     // Show full project interface when daemon is connected
                     VStack {
                         // Header with project info
@@ -157,8 +157,9 @@ struct ProjectView: View {
                     Text("Loading project...")
                 }
             } else {
-                Text("No project loaded")
-                    .foregroundColor(.red)
+                Text("No project selected")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(minHeight: 400)
