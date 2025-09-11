@@ -6,7 +6,7 @@
 use crate::synthetic_pr::UserFeedback;
 use crate::types::{
     FindAllReferencesPayload, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType,
-    LogLevel, LogParams, PoloPayload, ResolveSymbolByNamePayload,
+    LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload,
     ResponsePayload, UserFeedbackPayload,
 };
 use anyhow::Context;
@@ -24,6 +24,28 @@ use tokio::net::UnixStream;
 use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
+
+/// Create MessageSender with current context information
+/// 
+/// Attempts to gather working directory, taskspace UUID, and shell PID for message routing.
+/// Falls back gracefully when information is not available.
+fn create_message_sender(shell_pid: Option<u32>) -> MessageSender {
+    // Get working directory - always required
+    let working_directory = std::env::current_dir()
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "/tmp".to_string());
+
+    // Try to extract taskspace UUID from directory structure
+    let taskspace_uuid = extract_project_info()
+        .map(|(_, uuid)| uuid)
+        .ok();
+
+    MessageSender {
+        working_directory,
+        taskspace_uuid,
+        shell_pid,
+    }
+}
 
 /// Extract project path and taskspace UUID from current working directory
 /// 
@@ -199,14 +221,14 @@ impl IPCCommunicator {
 
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::PresentWalkthrough,
-            payload,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload,
         };
 
         debug!("Sending present_walkthrough message: {:?}", message);
@@ -246,14 +268,14 @@ impl IPCCommunicator {
         // Create message payload with shell PID for multi-window filtering
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::GetSelection,
-            payload: serde_json::json!({}),
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload: serde_json::json!({}),
         };
 
         debug!("Sending get_selection message: {:?}", message);
@@ -289,14 +311,14 @@ impl IPCCommunicator {
 
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::Log,
-            payload,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload,
         };
 
         // For log messages, we don't need to wait for response
@@ -317,10 +339,10 @@ impl IPCCommunicator {
         }
 
         let message = IPCMessage {
-            shell_pid: 0, // Marco messages are broadcasts, no specific shell PID
             message_type: IPCMessageType::Marco,
-            payload: serde_json::json!({}),
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(None), // Marco messages are broadcasts, no specific shell PID
+            payload: serde_json::json!({}),
         };
 
         debug!("Sending Marco discovery message");
@@ -339,10 +361,10 @@ impl IPCCommunicator {
 
         let payload = PoloPayload {};
         let message = IPCMessage {
-            shell_pid: terminal_shell_pid,
             message_type: IPCMessageType::Polo,
-            payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(Some(terminal_shell_pid)),
+            payload: serde_json::to_value(payload)?,
         };
 
         debug!(
@@ -364,10 +386,10 @@ impl IPCCommunicator {
 
         let payload = GoodbyePayload {};
         let message = IPCMessage {
-            shell_pid: terminal_shell_pid,
             message_type: IPCMessageType::Goodbye,
-            payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(Some(terminal_shell_pid)),
+            payload: serde_json::to_value(payload)?,
         };
 
         debug!(
@@ -409,10 +431,10 @@ impl IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::CreateSyntheticPr,
-            payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(Some(shell_pid)),
+            payload: serde_json::to_value(payload)?,
         };
 
         debug!(
@@ -502,17 +524,17 @@ impl IPCCommunicator {
 
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         // Create update payload
         let payload = serde_json::to_value(review)?;
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::UpdateSyntheticPr,
-            payload,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload,
         };
 
         // Send message and wait for response
@@ -534,13 +556,13 @@ impl IPCCommunicator {
         
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let message = IPCMessage {
-            shell_pid,
-            id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SpawnTaskspace,
+            id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
             payload: serde_json::to_value(SpawnTaskspacePayload {
                 project_path,
                 taskspace_uuid,
@@ -565,13 +587,13 @@ impl IPCCommunicator {
         
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
-            id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::LogProgress,
+            id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
             payload: serde_json::to_value(LogProgressPayload {
                 project_path,
                 taskspace_uuid,
@@ -591,13 +613,13 @@ impl IPCCommunicator {
         
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
-            id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SignalUser,
+            id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
             payload: serde_json::to_value(SignalUserPayload { 
                 project_path,
                 taskspace_uuid,
@@ -616,13 +638,13 @@ impl IPCCommunicator {
         
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
-            id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::UpdateTaskspace,
+            id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
             payload: serde_json::to_value(UpdateTaskspacePayload {
                 project_path,
                 taskspace_uuid,
@@ -1145,14 +1167,14 @@ impl crate::ide::IpcClient for IPCCommunicator {
 
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::ResolveSymbolByName,
-            payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload: serde_json::to_value(payload)?,
         };
 
         let symbols: Vec<crate::ide::SymbolDef> = self
@@ -1178,14 +1200,14 @@ impl crate::ide::IpcClient for IPCCommunicator {
 
         let shell_pid = {
             let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+            Some(inner.terminal_shell_pid)
         };
 
         let message = IPCMessage {
-            shell_pid,
             message_type: IPCMessageType::FindAllReferences,
-            payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
+            sender: create_message_sender(shell_pid),
+            payload: serde_json::to_value(payload)?,
         };
 
         let locations: Vec<crate::ide::FileRange> = self
@@ -1213,7 +1235,7 @@ mod test {
     //! Tests the IPC communication layer and message structure
 
     use crate::ipc::IPCCommunicator;
-    use crate::types::{IPCMessage, IPCMessageType, PresentReviewParams, ReviewMode};
+    use crate::types::{IPCMessage, IPCMessageType, MessageSender, PresentReviewParams, ReviewMode};
     use serde_json;
     use std::sync::Arc;
 
@@ -1250,10 +1272,14 @@ mod test {
 
         // Create an IPC message like the server would
         let message = IPCMessage {
-            shell_pid: 12345,
             message_type: IPCMessageType::PresentReview,
-            payload: serde_json::to_value(&params).unwrap(),
             id: Uuid::new_v4().to_string(),
+            sender: MessageSender {
+                working_directory: "/project/root".to_string(),
+                taskspace_uuid: None,
+                shell_pid: Some(12345),
+            },
+            payload: serde_json::to_value(&params).unwrap(),
         };
 
         // Verify IPC message structure

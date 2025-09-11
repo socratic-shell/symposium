@@ -5,11 +5,17 @@ import { SyntheticPRProvider } from './syntheticPRProvider';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 
+interface MessageSender {
+    workingDirectory: string;      // Always present - reliable matching
+    taskspaceUuid?: string;        // Optional - for taskspace-specific routing
+    shellPid?: number;             // Optional - only when VSCode parent found
+}
+
 interface IPCMessage {
-    shellPid: number;
     type: string;
-    payload: any;
     id: string;
+    sender: MessageSender;
+    payload: any;
 }
 
 interface LogPayload {
@@ -235,8 +241,8 @@ export class DaemonClient implements vscode.Disposable {
 
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
         // First check: is this message for our window?
-        // Marco messages (shellPid = 0) are broadcasts that everyone should ignore
-        if (message.shellPid && !await this.isMessageForOurWindow(message.shellPid)) {
+        // Marco messages (no shellPid) are broadcasts that everyone should ignore
+        if (message.sender.shellPid && !await this.isMessageForOurWindow(message.sender)) {
             return; // Silently ignore messages for other windows
         }
 
@@ -292,10 +298,13 @@ export class DaemonClient implements vscode.Disposable {
         } else if (message.type === 'polo') {
             // Handle Polo messages - MCP server announcing presence
             try {
-                this.outputChannel.appendLine(`[DISCOVERY] MCP server connected in terminal PID ${message.shellPid}`);
+                const shellPid = message.sender.shellPid || 'persistent';
+                this.outputChannel.appendLine(`[DISCOVERY] MCP server connected in terminal PID ${shellPid}`);
 
-                // Add to terminal registry for Ask Socratic Shell integration
-                this.activeTerminals.add(message.shellPid);
+                // Add to terminal registry for Ask Socratic Shell integration (only if we have a PID)
+                if (message.sender.shellPid) {
+                    this.activeTerminals.add(message.sender.shellPid);
+                }
                 this.outputChannel.appendLine(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
             } catch (error) {
                 this.outputChannel.appendLine(`Error handling polo message: ${error}`);
@@ -303,10 +312,13 @@ export class DaemonClient implements vscode.Disposable {
         } else if (message.type === 'goodbye') {
             // Handle Goodbye messages - MCP server announcing departure
             try {
-                this.outputChannel.appendLine(`[DISCOVERY] MCP server disconnected from terminal PID ${message.shellPid}`);
+                const shellPid = message.sender.shellPid || 'persistent';
+                this.outputChannel.appendLine(`[DISCOVERY] MCP server disconnected from terminal PID ${shellPid}`);
 
-                // Remove from terminal registry for Ask Socratic Shell integration
-                this.activeTerminals.delete(message.shellPid);
+                // Remove from terminal registry for Ask Socratic Shell integration (only if we have a PID)
+                if (message.sender.shellPid) {
+                    this.activeTerminals.delete(message.sender.shellPid);
+                }
                 this.outputChannel.appendLine(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
             } catch (error) {
                 this.outputChannel.appendLine(`Error handling goodbye message: ${error}`);
@@ -454,29 +466,43 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private extractShellPidFromMessage(message: IPCMessage): number | null {
-        return message.shellPid || null;
+        return message.sender.shellPid || null;
     }
 
-    private async isMessageForOurWindow(shellPid: number): Promise<boolean> {
+    private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
         try {
-            // Get all terminal PIDs in the current VSCode window
-            const terminals = vscode.window.terminals;
-
-            for (const terminal of terminals) {
-                try {
-                    const terminalPid = await terminal.processId;
-                    if (terminalPid === shellPid) {
-                        this.outputChannel.appendLine(`Debug: shell PID ${shellPid} is in our window`);
-                        return true;
-                    }
-                } catch (error) {
-                    // Some terminals might not have accessible PIDs, skip them
-                    continue;
-                }
+            // 1. Check if working directory is within our workspace
+            const workspaceMatch = vscode.workspace.workspaceFolders?.some(folder => 
+                sender.workingDirectory.startsWith(folder.uri.fsPath)
+            );
+            
+            if (!workspaceMatch) {
+                this.outputChannel.appendLine(`Debug: working directory ${sender.workingDirectory} not in our workspace`);
+                return false; // Directory not in our workspace
             }
-
-            this.outputChannel.appendLine(`Debug: shell PID ${shellPid} is not in our window`);
-            return false;
+            
+            // 2. If shellPid provided, verify it's one of our terminals
+            if (sender.shellPid) {
+                const terminals = vscode.window.terminals;
+                for (const terminal of terminals) {
+                    try {
+                        const terminalPid = await terminal.processId;
+                        if (terminalPid === sender.shellPid) {
+                            this.outputChannel.appendLine(`Debug: shell PID ${sender.shellPid} is in our window`);
+                            return true; // Precise PID match
+                        }
+                    } catch (error) {
+                        // Some terminals might not have accessible PIDs, skip them
+                        continue;
+                    }
+                }
+                this.outputChannel.appendLine(`Debug: shell PID ${sender.shellPid} not found in our terminals`);
+                return false; // shellPid provided but not found in our terminals
+            }
+            
+            // 3. If no shellPid (persistent agent case), accept based on directory match
+            this.outputChannel.appendLine(`Debug: accepting message from ${sender.workingDirectory} (persistent agent, no PID)`);
+            return true;
         } catch (error) {
             this.outputChannel.appendLine(`Error checking if message is for our window: ${error}`);
             // On error, default to processing the message (fail open)
@@ -639,9 +665,13 @@ export class DaemonClient implements vscode.Disposable {
 
         const responseMessage: IPCMessage = {
             type: 'response',
-            payload: response,
             id: messageId,
-            shellPid: 0,
+            sender: {
+                workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
+                shellPid: undefined,
+                taskspaceUuid: undefined
+            },
+            payload: response,
         };
 
         try {
@@ -778,10 +808,14 @@ export class DaemonClient implements vscode.Disposable {
         };
 
         const storeMessage: IPCMessage = {
-            shellPid,
             type: 'store_reference',
-            payload: storePayload,
-            id: crypto.randomUUID()
+            id: crypto.randomUUID(),
+            sender: {
+                workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
+                shellPid: shellPid,
+                taskspaceUuid: undefined
+            },
+            payload: storePayload
         };
 
         try {
@@ -952,10 +986,14 @@ export class DaemonClient implements vscode.Disposable {
         try {
             const messageId = crypto.randomUUID();
             const message: IPCMessage = {
-                shellPid: process.pid,
                 type: type,
+                id: messageId,
+                sender: {
+                    workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
+                    shellPid: process.pid,
+                    taskspaceUuid: undefined
+                },
                 payload: payload,
-                id: messageId
             };
 
             // Send the message

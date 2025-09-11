@@ -14,11 +14,17 @@ import { StructuredLogger } from './structuredLogger';
 
 
 // 💡: Types for IPC communication with MCP server
+interface MessageSender {
+    workingDirectory: string;      // Always present - reliable matching
+    taskspaceUuid?: string;        // Optional - for taskspace-specific routing
+    shellPid?: number;             // Optional - only when VSCode parent found
+}
+
 interface IPCMessage {
-    shellPid: number;
     type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | 'taskspace_roll_call' | 'register_taskspace_window' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
     id: string;
+    sender: MessageSender;
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
 }
 
 interface LogPayload {

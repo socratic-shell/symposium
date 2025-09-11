@@ -123,22 +123,37 @@ pub struct ResponsePayload {
     pub data: Option<serde_json::Value>,
 }
 
+/// Sender information for message routing
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MessageSender {
+    /// Working directory - always present for reliable matching
+    #[serde(rename = "workingDirectory")]
+    pub working_directory: String,
+
+    /// Optional taskspace UUID for taskspace-specific routing
+    #[serde(rename = "taskspaceUuid")]
+    pub taskspace_uuid: Option<String>,
+
+    /// Optional shell PID - only when VSCode parent found
+    #[serde(rename = "shellPid")]
+    pub shell_pid: Option<u32>,
+}
+
 /// IPC message sent from MCP server to VSCode extension
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct IPCMessage {
-    /// Shell PID for routing to correct VSCode window
-    #[serde(rename = "shellPid")]
-    pub shell_pid: u32,
-
     /// Message type identifier
     #[serde(rename = "type")]
     pub message_type: IPCMessageType,
 
-    /// Message payload - for store_reference: { key: string, value: arbitrary_json }
-    pub payload: serde_json::Value,
-
     /// Unique message ID for response tracking
     pub id: String,
+
+    /// Sender information for routing
+    pub sender: MessageSender,
+
+    /// Message payload - for store_reference: { key: string, value: arbitrary_json }
+    pub payload: serde_json::Value,
 }
 
 /// IPC message types
