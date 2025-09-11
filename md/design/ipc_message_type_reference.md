@@ -309,3 +309,41 @@ Messages are routed based on sender information:
 - **PID matching**: When `shellPid` is provided, messages are delivered to extensions that have a terminal with that PID
 - **Taskspace routing**: Messages with `taskspaceUuid` can be routed to specific taskspace-aware components
 
+## Core IPC Types
+
+The IPC message format is consistent across all components:
+
+### IPCMessage Structure
+
+**Rust (MCP Server)**:
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:ipc_message}}
+```
+
+**TypeScript (VSCode Extension)**:
+```typescript
+{{#include ../../ide/vscode/src/ipc.ts:ipc_message}}
+```
+
+**Swift (Symposium App)**:
+```swift
+{{#include ../../application/osx/Sources/Symposium/Models/IpcManager.swift:ipc_message}}
+```
+
+### MessageSender Structure
+
+**Rust (MCP Server)**:
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:message_sender}}
+```
+
+**TypeScript (VSCode Extension)**:
+```typescript
+{{#include ../../ide/vscode/src/ipc.ts:message_sender}}
+```
+
+**Swift (Symposium App)**:
+```swift
+{{#include ../../application/osx/Sources/Symposium/Models/IpcManager.swift:message_sender}}
+```
+

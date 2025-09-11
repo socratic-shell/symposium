@@ -5,6 +5,7 @@ import Foundation
 // MARK: - IPC Message Types
 
 /// Sender information for message routing
+// ANCHOR: message_sender
 struct MessageSender: Codable {
     let workingDirectory: String
     let taskspaceUuid: String?
@@ -16,6 +17,7 @@ struct MessageSender: Codable {
         case shellPid = "shellPid"
     }
 }
+// ANCHOR_END: message_sender
 
 /// Base IPC message structure for communication with VSCode extension via daemon
 // ANCHOR: ipc_message

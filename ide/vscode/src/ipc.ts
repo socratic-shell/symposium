@@ -6,18 +6,22 @@ import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 import { getCurrentTaskspaceUuid } from './extension';
 
+// ANCHOR: message_sender
 interface MessageSender {
     workingDirectory: string;      // Always present - reliable matching
     taskspaceUuid?: string;        // Optional - for taskspace-specific routing
     shellPid?: number;             // Optional - only when VSCode parent found
 }
+// ANCHOR_END: message_sender
 
+// ANCHOR: ipc_message
 interface IPCMessage {
     type: string;
     id: string;
     sender: MessageSender;
     payload: any;
 }
+// ANCHOR_END: ipc_message
 
 interface LogPayload {
     level: 'info' | 'error' | 'debug';

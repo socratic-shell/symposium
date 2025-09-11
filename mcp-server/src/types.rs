@@ -128,6 +128,7 @@ pub struct ResponsePayload {
 }
 
 /// Sender information for message routing
+// ANCHOR: message_sender
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MessageSender {
     /// Working directory - always present for reliable matching
@@ -142,8 +143,10 @@ pub struct MessageSender {
     #[serde(rename = "shellPid")]
     pub shell_pid: Option<u32>,
 }
+// ANCHOR_END: message_sender
 
 /// IPC message sent from MCP server to VSCode extension
+// ANCHOR: ipc_message
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct IPCMessage {
     /// Message type identifier
@@ -159,6 +162,7 @@ pub struct IPCMessage {
     /// Message payload - for store_reference: { key: string, value: arbitrary_json }
     pub payload: serde_json::Value,
 }
+// ANCHOR_END: ipc_message
 
 /// IPC message types
 #[derive(Debug, Clone, Deserialize, Serialize)]
