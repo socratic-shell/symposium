@@ -96,6 +96,37 @@ private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
 - **Robust Fallback**: Directory matching works across all execution models
 - **Multi-Window Safe**: Prevents cross-window message leakage
 
+### Sender Information by Component
+
+Different components populate sender information differently:
+
+**MCP Server (Agent Messages)**:
+```typescript
+sender: {
+    workingDirectory: "/path/to/workspace",  // Current working directory
+    taskspaceUuid: "task-ABC123",           // Extracted from directory structure
+    shellPid: 12345                        // Terminal shell PID (if available)
+}
+```
+
+**VSCode Extension Messages**:
+```typescript
+sender: {
+    workingDirectory: vscode.workspace.workspaceFolders[0].uri.fsPath,  // First workspace folder
+    taskspaceUuid: undefined,               // Extensions don't provide taskspace info
+    shellPid: process.pid                   // VSCode extension process PID (for requests)
+}
+```
+
+**Daemon Broadcast Messages**:
+```typescript
+sender: {
+    workingDirectory: "/tmp",               // Generic path for broadcasts
+    taskspaceUuid: undefined,
+    shellPid: undefined                     // No specific PID for broadcasts
+}
+```
+
 ## Message Buffering and Replay
 
 ### Buffering Architecture
