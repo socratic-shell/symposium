@@ -60,8 +60,10 @@ struct ProjectView: View {
                                 .font(.caption)
                                 .help("When enabled, clicking a taskspace positions all windows at the same location")
                                 .onChange(of: stackedWindowsEnabled) { newValue in
-                                    projectManager.setStackedWindowsEnabled(newValue)
-                                    Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled")")
+                                    if let projectManager = appDelegate.currentProjectManager {
+                                        projectManager.setStackedWindowsEnabled(newValue)
+                                        Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled")")
+                                    }
                                 }
 
                             Button(action: {
@@ -228,7 +230,8 @@ struct ProjectView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
                 
-                if let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
+                if let projectManager = appDelegate.currentProjectManager,
+                   let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
                     Text(taskspace.name)
                         .font(.headline)
                         .fontWeight(.semibold)
@@ -244,7 +247,8 @@ struct ProjectView: View {
             .background(Color.gray.opacity(0.1))
             
             // Expanded taskspace content
-            if let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
+            if let projectManager = appDelegate.currentProjectManager,
+               let taskspace = projectManager.currentProject?.taskspaces.first(where: { $0.id == taskspaceId }) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         // Taskspace header with screenshot and info
@@ -343,7 +347,8 @@ struct ProjectView: View {
     }
 
     private func reregisterWindows() {
-        guard let project = projectManager.currentProject else {
+        guard let projectManager = appDelegate.currentProjectManager,
+              let project = projectManager.currentProject else {
             Logger.shared.log("ProjectView: No current project for window re-registration")
             return
         }
@@ -354,7 +359,7 @@ struct ProjectView: View {
         for taskspace in project.taskspaces {
             // Send taskspace roll call message
             let payload = TaskspaceRollCallPayload(taskspaceUuid: taskspace.id.uuidString)
-            ipcManager.sendBroadcastMessage(type: "taskspace_roll_call", payload: payload)
+            projectManager.mcpStatus.sendBroadcastMessage(type: "taskspace_roll_call", payload: payload)
             Logger.shared.log("ProjectView: Sent roll call for taskspace: \(taskspace.name)")
         }
     }
