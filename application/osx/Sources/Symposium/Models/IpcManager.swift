@@ -4,18 +4,32 @@ import Foundation
 
 // MARK: - IPC Message Types
 
+/// Sender information for message routing
+struct MessageSender: Codable {
+    let workingDirectory: String
+    let taskspaceUuid: String?
+    let shellPid: Int?
+    
+    private enum CodingKeys: String, CodingKey {
+        case workingDirectory = "workingDirectory"
+        case taskspaceUuid = "taskspaceUuid"
+        case shellPid = "shellPid"
+    }
+}
+
 /// Base IPC message structure for communication with VSCode extension via daemon
+// ANCHOR: ipc_message
 struct IPCMessage: Codable {
     let type: String
     let payload: JsonBlob
     let id: String
-    let shellPid: Int?
-
+    let sender: MessageSender
+    
     private enum CodingKeys: String, CodingKey {
-        case type, payload, id
-        case shellPid = "shell_pid"
+        case type, payload, id, sender
     }
 }
+// ANCHOR_END: ipc_message
 
 /// Request from VSCode extension to determine if agent should launch for a taskspace
 struct GetTaskspaceStatePayload: Codable {
@@ -609,7 +623,11 @@ class IpcManager: ObservableObject {
                 type: "response",
                 payload: .object(responseFields),
                 id: messageId,
-                shellPid: nil
+                sender: MessageSender(
+                    workingDirectory: "/tmp",  // Generic path for Symposium app messages
+                    taskspaceUuid: nil,        // Response messages don't have specific taskspace
+                    shellPid: nil              // Symposium app doesn't have shell PID
+                )
             )
 
             let messageData = try JSONEncoder().encode(responseMessage)
@@ -642,7 +660,11 @@ class IpcManager: ObservableObject {
                 type: type,
                 payload: jsonBlobPayload,
                 id: UUID().uuidString,
-                shellPid: nil
+                sender: MessageSender(
+                    workingDirectory: "/tmp",  // Generic path for Symposium app broadcasts
+                    taskspaceUuid: nil,        // Broadcast messages don't have specific taskspace
+                    shellPid: nil              // Symposium app doesn't have shell PID
+                )
             )
 
             let messageData = try JSONEncoder().encode(message)
