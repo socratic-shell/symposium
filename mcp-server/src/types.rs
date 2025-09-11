@@ -87,10 +87,12 @@ pub struct GetSelectionResult {
 }
 
 /// Payload for Polo discovery messages (MCP server announces presence)
+// ANCHOR: polo_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PoloPayload {
     // Shell PID is now at top level in IPCMessage
 }
+// ANCHOR_END: polo_payload
 
 /// Payload for Goodbye discovery messages (MCP server announces departure)
 #[derive(Debug, Clone, Deserialize, Serialize)]
