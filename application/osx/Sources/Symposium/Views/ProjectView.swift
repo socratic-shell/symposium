@@ -59,7 +59,7 @@ struct ProjectView: View {
                             Toggle("Stack Windows", isOn: $stackedWindowsEnabled)
                                 .font(.caption)
                                 .help("When enabled, clicking a taskspace positions all windows at the same location")
-                                .onChange(of: stackedWindowsEnabled) { newValue in
+                                .onChange(of: stackedWindowsEnabled) { _, newValue in
                                     if let projectManager = appDelegate.currentProjectManager {
                                         projectManager.setStackedWindowsEnabled(newValue)
                                         Logger.shared.log("ProjectView: Stacked windows \(newValue ? "enabled" : "disabled")")

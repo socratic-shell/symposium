@@ -63,40 +63,38 @@ struct SymposiumApp: App {
 
         // Main project window
         WindowGroup(id: "open-project") {
-            if let projectManager = appDelegate.currentProjectManager {
-                ProjectWindow()
-                    .environmentObject(agentManager)
-                    .environmentObject(settingsManager)
-                    .environmentObject(permissionManager)
-                    .onAppear {
-                        Logger.shared.log("Project window opened")
+            ProjectWindow()
+                .environmentObject(agentManager)
+                .environmentObject(settingsManager)
+                .environmentObject(permissionManager)
+                .onAppear {
+                    Logger.shared.log("Project window opened")
+                }
+                .onReceive(
+                    NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)
+                ) { notification in
+                    Logger.shared.log("Received NSWindow.willCloseNotification")
+
+                    if let window = notification.object as? NSWindow,
+                        let identifier = window.identifier?.rawValue,
+                        identifier.hasPrefix("open-project")
+                    {
+                        Logger.shared.log(
+                            "Project window explicitly closed by user (identifier: \(identifier))")
+                        appDelegate.currentProjectManager = nil
+                        settingsManager.activeProjectPath = ""
+                        appStart()
+                    } else {
+                        Logger.shared.log("Window close notification for different window")
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
-                        Logger.shared.log("Received NSWindow.willCloseNotification")
-                        
-                        if let window = notification.object as? NSWindow,
-                           let identifier = window.identifier?.rawValue,
-                           identifier.hasPrefix("open-project") {
-                            Logger.shared.log("Project window explicitly closed by user (identifier: \(identifier))")
-                            appDelegate.currentProjectManager = nil
-                            settingsManager.activeProjectPath = ""
-                            appStart()
-                        } else {
-                            Logger.shared.log("Window close notification for different window")
-                        }
-                    }
-                    .onDisappear {
-                        // NOTE: We don't handle project cleanup here because onDisappear
-                        // fires both when user closes window AND when app quits.
-                        // We only want to clear the project on explicit user close,
-                        // so we use NSWindow.willCloseNotification above instead.
-                        Logger.shared.log("Project window disappeared")
-                    }
-            } else {
-                // Fallback if no project manager
-                Text("No project loaded")
-                    .frame(width: 400, height: 300)
-            }
+                }
+                .onDisappear {
+                    // NOTE: We don't handle project cleanup here because onDisappear
+                    // fires both when user closes window AND when app quits.
+                    // We only want to clear the project on explicit user close,
+                    // so we use NSWindow.willCloseNotification above instead.
+                    Logger.shared.log("Project window disappeared")
+                }
         }
         .windowResizability(.contentSize)
         .defaultAppStorage(.standard)
@@ -147,7 +145,7 @@ struct SymposiumApp: App {
     private func handleProjectSelected(_ path: String) {
         Logger.shared.log("App: Project selected at path: \(path)")
         settingsManager.activeProjectPath = path
-        
+
         // Delay closing the window to let the sheet dismiss first
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.closeWindow(id: "choose-project")
