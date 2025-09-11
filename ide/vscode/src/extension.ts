@@ -85,14 +85,18 @@ interface PresentWalkthroughPayload {
     base_uri: string;
 }
 
+// ANCHOR: taskspace_roll_call_payload
 interface TaskspaceRollCallPayload {
     taskspace_uuid: string;
 }
+// ANCHOR_END: taskspace_roll_call_payload
 
+// ANCHOR: register_taskspace_window_payload
 interface RegisterTaskspaceWindowPayload {
     window_title: string;
     taskspace_uuid: string;
 }
+// ANCHOR_END: register_taskspace_window_payload
 
 type WalkthroughElement =
     | string  // ResolvedMarkdownElement (now serialized as plain string)

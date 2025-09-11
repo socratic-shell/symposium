@@ -23,6 +23,7 @@ pub struct PresentWalkthroughParams {
 // ANCHOR_END: present_walkthrough_params
 
 /// Parameters for log messages sent via IPC
+// ANCHOR: log_params
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogParams {
     /// Log level
@@ -31,6 +32,7 @@ pub struct LogParams {
     /// Log message content
     pub message: String,
 }
+// ANCHOR_END: log_params
 
 /// Log levels for IPC communication
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -224,6 +226,7 @@ pub struct SyntheticPRPayload {
 }
 
 /// Payload for user feedback messages from VSCode extension
+// ANCHOR: user_feedback_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UserFeedbackPayload {
     pub review_id: String,
@@ -235,6 +238,7 @@ pub struct UserFeedbackPayload {
     pub additional_notes: Option<String>,
     pub context_lines: Option<Vec<String>>,
 }
+// ANCHOR_END: user_feedback_payload
 
 /// Parameters for presenting a review to the user
 #[derive(Debug, Clone, Deserialize, Serialize)]

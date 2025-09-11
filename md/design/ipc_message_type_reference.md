@@ -39,15 +39,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: VSCode extension
 **Purpose**: Store code references for later expansion by agents
 **Payload**: 
-```typescript
-{
-    relativePath: string;
-    selectedText: string;
-    selectionRange: {
-        start: { line: number; column: number };
-        end: { line: number; column: number };
-    };
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:store_reference_payload}}
 ```
 **Expected response**: `response` with success confirmation
 **Target**: MCP server
@@ -58,9 +51,7 @@ Response messages are special. They are sent in response to other messages and t
 **Purpose**: Query the current state of a taskspace
 **Payload**:
 ```typescript
-{
-    taskspace_uuid: string;
-}
+{{#include ../../ide/vscode/src/extension.ts:taskspace_roll_call_payload}}
 ```
 **Expected response**: `response` with `TaskspaceStateResponse`
 **Target**: Symposium app
@@ -71,9 +62,7 @@ Response messages are special. They are sent in response to other messages and t
 **Purpose**: Register a VSCode window with a specific taskspace
 **Payload**:
 ```typescript
-{
-    taskspace_uuid: string;
-}
+{{#include ../../ide/vscode/src/extension.ts:register_taskspace_window_payload}}
 ```
 **Expected response**: `response` with success confirmation
 **Target**: Symposium app
@@ -83,11 +72,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: MCP server
 **Purpose**: Display interactive code walkthrough in VSCode
 **Payload**:
-```typescript
-{
-    content: string;        // Markdown content with XML elements
-    baseUri: string;        // Base directory for file references
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:present_walkthrough_params}}
 ```
 **Expected response**: None (display command)
 **Target**: VSCode extension
@@ -97,11 +83,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: MCP server
 **Purpose**: Send log messages to VSCode output channel
 **Payload**:
-```typescript
-{
-    level: 'info' | 'error' | 'debug';
-    message: string;
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:log_params}}
 ```
 **Expected response**: None (logging command)
 **Target**: VSCode extension
@@ -178,11 +161,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: VSCode extension
 **Purpose**: Send user feedback (comments, review completion) to MCP server
 **Payload**:
-```typescript
-{
-    feedback_type: 'comment' | 'complete_review';
-    // Additional fields vary by feedback type
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:user_feedback_payload}}
 ```
 **Expected response**: `response` with acknowledgment
 **Target**: MCP server
@@ -191,7 +171,10 @@ Response messages are special. They are sent in response to other messages and t
 
 **Sent by**: MCP server
 **Purpose**: Request creation of a new taskspace
-**Payload**: Taskspace creation parameters
+**Payload**: 
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:spawn_taskspace_payload}}
+```
 **Expected response**: `response` with taskspace info
 **Target**: Symposium app
 
@@ -200,11 +183,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: MCP server
 **Purpose**: Report progress with visual indicators
 **Payload**:
-```typescript
-{
-    message: string;
-    category: 'info' | 'warn' | 'error' | 'milestone' | 'question';
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:log_progress_payload}}
 ```
 **Expected response**: None (display command)
 **Target**: Symposium app
@@ -214,10 +194,8 @@ Response messages are special. They are sent in response to other messages and t
 **Sent by**: MCP server
 **Purpose**: Request user attention for assistance
 **Payload**:
-```typescript
-{
-    message: string;
-}
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:signal_user_payload}}
 ```
 **Expected response**: None (notification)
 **Target**: Symposium app
@@ -226,7 +204,10 @@ Response messages are special. They are sent in response to other messages and t
 
 **Sent by**: MCP server
 **Purpose**: Update taskspace name and description
-**Payload**: Taskspace update data
+**Payload**: 
+```rust,no_run,noplayground
+{{#include ../../mcp-server/src/types.rs:update_taskspace_payload}}
+```
 **Expected response**: `response` with success confirmation
 **Target**: Symposium app
 
