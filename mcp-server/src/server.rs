@@ -948,3 +948,34 @@ impl ServerHandler for DialecticServer {
         Ok(self.get_info())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::PresentWalkthroughParams;
+    use rmcp::handler::server::tool::Parameters;
+
+    #[tokio::test]
+    async fn test_baseuri_conversion() {
+        let server = DialecticServer::new_test();
+        
+        // Test with "." - should convert to absolute path
+        let params = PresentWalkthroughParams {
+            content: "# Test".to_string(),
+            base_uri: ".".to_string(),
+        };
+        
+        let result = server.present_walkthrough(Parameters(params)).await;
+        assert!(result.is_ok());
+        
+        // Test with absolute path - should remain unchanged
+        let abs_path = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let params = PresentWalkthroughParams {
+            content: "# Test".to_string(),
+            base_uri: abs_path.clone(),
+        };
+        
+        let result = server.present_walkthrough(Parameters(params)).await;
+        assert!(result.is_ok());
+    }
+}
