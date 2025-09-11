@@ -1,18 +1,28 @@
 import SwiftUI
 import AppKit
 
+import SwiftUI
+import AppKit
+
 struct ProjectWindow: View {
-    let projectManager: ProjectManager
+    @EnvironmentObject var appDelegate: AppDelegate
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var permissionManager: PermissionManager
     
     var body: some View {
-        ProjectWindowContent(
-            projectManager: projectManager
-        )
-        .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
-        .navigationTitle(projectManager.currentProject?.name ?? "Project")
+        if let projectManager = appDelegate.currentProjectManager {
+            ProjectWindowContent(
+                projectManager: projectManager
+            )
+            .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
+            .navigationTitle(projectManager.currentProject?.name ?? "Project")
+        } else {
+            Text("No project selected")
+                .foregroundColor(.secondary)
+                .frame(minWidth: 300, minHeight: 400)
+                .navigationTitle("Symposium")
+        }
         .onAppear {
             positionWindow()
         }
