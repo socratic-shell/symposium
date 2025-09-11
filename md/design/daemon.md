@@ -118,14 +118,16 @@ sender: {
 }
 ```
 
-**Daemon Broadcast Messages**:
+**Daemon Shutdown Messages**:
 ```typescript
 sender: {
-    workingDirectory: "/tmp",               // Generic path for broadcasts
+    workingDirectory: "/tmp",               // Generic path for daemon messages
     taskspaceUuid: undefined,
-    shellPid: undefined                     // No specific PID for broadcasts
+    shellPid: undefined                     // No specific PID for daemon messages
 }
 ```
+
+The daemon sends `reload_window` messages to all clients when it shuts down.
 
 ## Message Buffering and Replay
 
