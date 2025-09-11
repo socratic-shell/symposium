@@ -64,7 +64,7 @@ struct SymposiumApp: App {
         // Main project window
         WindowGroup(id: "open-project") {
             if let projectManager = appDelegate.currentProjectManager {
-                ProjectWindow(projectManager: projectManager)
+                ProjectWindow()
                     .environmentObject(agentManager)
                     .environmentObject(settingsManager)
                     .environmentObject(permissionManager)
