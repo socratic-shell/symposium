@@ -23,9 +23,8 @@ stateDiagram-v2
     CheckProject --> OpenProject : Valid current project
     CheckProject --> ChooseProject : No current project
     ChooseProject --> AppStart : Window closed (no selection)
-    ChooseProject --> NewProject : New project created
-    ChooseProject --> OpenProject : Existing project selected
-    NewProject --> OpenProject : Project created
+    ChooseProject --> CheckProject : Project path set
+    CheckProject --> OpenProject : Valid project path
     OpenProject --> AppStart : Window closed (clears current project)
 ```
 
@@ -42,22 +41,18 @@ stateDiagram-v2
 - User configures available agents
 - When closed → AppStart (re-validates permissions)
 
-**CheckProject**: Validates the persisted current project
-- Checks if current project path exists and is valid
-- If valid project → OpenProject
-- If no/invalid project → ChooseProject
-
 **ChooseProject**: Project selection and creation interface
 - Lists available agents with refresh capability
 - Provides new project creation form
 - Provides "Open existing project" file picker
-- When project selected → NewProject or OpenProject
+- When project created or selected → sets `activeProjectPath` and dismisses
+- Main app flow detects path change → CheckProject
 - When closed without selection → AppStart
 
-**NewProject**: Creates project directory structure and metadata
-- Creates `.symposium` directory with `project.json`
-- Sets up initial project structure
-- Sets as current project → OpenProject
+**CheckProject**: Validates the persisted current project
+- Checks if current project path exists and is valid
+- If valid project → OpenProject
+- If no/invalid project → ChooseProject
 
 **OpenProject**: Main project workspace window
 - Displays project taskspaces and management interface
@@ -157,7 +152,30 @@ On startup, the application validates the current project:
 3. Check if version number is supported
 4. If any validation fails → clear current project, go to ChooseProject
 
-## Project Creation Flow
+## Project Creation and Opening Flow
+
+### Project Creation
+
+The ChooseProject window includes a comprehensive project creation form that:
+
+1. Collects project metadata (name, git URL, directory, agent, etc.)
+2. Creates the project directory structure and `project.json`
+3. Sets `activeProjectPath` to the new project directory
+4. Dismisses the dialog
+5. Main app flow detects the path change and validates/opens the project
+
+### Project Opening
+
+The project opening flow:
+
+1. User selects existing project directory via file picker
+2. Sets `activeProjectPath` to the selected directory  
+3. Dismisses the dialog
+4. Main app flow detects the path change and validates/opens the project
+
+### Single ProjectManager Creation Point
+
+This architecture ensures that ProjectManager instances are only created in one place - the main app flow when validating and opening projects. The dialogs are purely UI for collecting user input and setting the project path.
 
 ### New Project Form
 

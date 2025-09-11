@@ -31,7 +31,7 @@ struct SymposiumApp: App {
 
         // Project selection window
         WindowGroup(id: "choose-project") {
-            ProjectSelectionView()
+            ProjectSelectionView(onProjectSelected: handleProjectSelected)
                 .environmentObject(agentManager)
                 .environmentObject(settingsManager)
                 .environmentObject(permissionManager)
@@ -129,6 +129,17 @@ struct SymposiumApp: App {
         // Dismiss project selection window if it's open
         dismissWindow(id: "choose-project")
         openWindow(id: "open-project")
+    }
+
+    private func handleProjectSelected(_ path: String) {
+        Logger.shared.log("App: Project selected at path: \(path)")
+        settingsManager.activeProjectPath = path
+        
+        // Delay closing the window to let the sheet dismiss first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.closeWindow(id: "choose-project")
+        }
+        // appStart() will be called by onDisappear
     }
 
     private func closeWindow(id: String) {

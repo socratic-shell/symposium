@@ -5,7 +5,7 @@ struct ProjectSelectionView: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
-    @Environment(\.dismiss) private var dismiss
+    let onProjectSelected: (String) -> Void
     @State private var showingNewProjectDialog = false
     @State private var showingDirectoryPicker = false
 
@@ -24,9 +24,7 @@ struct ProjectSelectionView: View {
 
     private func openProject(at path: String) {
         Logger.shared.log("ProjectSelectionView.openProject called with path: \(path)")
-        // Save project path for next app launch
-        self.settingsManager.activeProjectPath = path
-        dismiss()
+        onProjectSelected(path)
     }
 
     private var canCreateProjects: Bool {
@@ -142,7 +140,7 @@ struct ProjectSelectionView: View {
             }
         }
         .sheet(isPresented: $showingNewProjectDialog) {
-            NewProjectDialog()
+            NewProjectDialog(onProjectSelected: onProjectSelected)
         }
     }
 }
@@ -151,6 +149,7 @@ struct NewProjectDialog: View {
     @EnvironmentObject var permissionManager: PermissionManager
     @EnvironmentObject var agentManager: AgentManager
     @EnvironmentObject var settingsManager: SettingsManager
+    let onProjectSelected: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var projectName = ""
@@ -296,7 +295,8 @@ struct NewProjectDialog: View {
             try createProject(
                 name: projectName, gitURL: gitURL, at: selectedDirectory,
                 agent: agent, defaultBranch: branch)
-            dismiss()
+            dismiss() // Dismiss the sheet first
+            onProjectSelected("\(selectedDirectory)/\(projectName).symposium")
         } catch {
             // Handle error - could show alert
         }
@@ -329,9 +329,5 @@ struct NewProjectDialog: View {
 
         // Save project.json
         try project.save()
-
-        // Set as current project
-        self.settingsManager.activeProjectPath = directoryPath
-        dismiss()
     }
 }
