@@ -21,6 +21,41 @@ graph TB
     style E fill:#e8f5e8
 ```
 
+## Architecture Principles
+
+### Single Source of Truth Pattern
+
+**Critical Design**: The application uses `AppDelegate.currentProjectManager` as the single owner of ProjectManager instances. This prevents reference leaks and ensures clean lifecycle management.
+
+```swift
+// ✅ All views observe the single source
+@EnvironmentObject var appDelegate: AppDelegate
+
+if let projectManager = appDelegate.currentProjectManager {
+    // Use projectManager
+} else {
+    // Show "No project selected" state
+}
+```
+
+**Benefits**:
+- Eliminates duplicate ProjectManager references
+- Automatic view updates when project changes
+- Clean cleanup when `currentProjectManager = nil`
+- Prevents IpcManager instance leaks
+
+### Component Ownership
+
+```
+AppDelegate (single owner)
+    ↓
+ProjectManager (owned by AppDelegate)
+    ↓
+IpcManager (owned by ProjectManager)
+```
+
+All views observe AppDelegate via `@EnvironmentObject` rather than holding direct references.
+
 ## Core Components
 
 ### Symposium App (Swift/macOS)

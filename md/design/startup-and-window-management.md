@@ -2,6 +2,41 @@
 
 Symposium maintains exactly one window open at any time, using three distinct window types for different application states.
 
+## Single Source of Truth Architecture
+
+**Critical Change**: The application now uses AppDelegate as the single source of truth for ProjectManager instances.
+
+### Key Principles
+
+1. **Single Owner**: Only `AppDelegate.currentProjectManager` stores the ProjectManager
+2. **Observer Pattern**: All views get ProjectManager via `@EnvironmentObject var appDelegate: AppDelegate`
+3. **Graceful Degradation**: Views handle `nil` ProjectManager by showing "No project selected" state
+4. **Clean Lifecycle**: Setting `currentProjectManager = nil` automatically updates all views
+
+### Component Architecture
+
+```swift
+// ✅ CORRECT: Single source of truth
+struct ProjectView: View {
+    @EnvironmentObject var appDelegate: AppDelegate
+    
+    var body: some View {
+        if let projectManager = appDelegate.currentProjectManager {
+            // Use projectManager here
+        } else {
+            Text("No project selected")
+        }
+    }
+}
+
+// ❌ OLD: Direct references create cleanup issues
+struct ProjectView: View {
+    let projectManager: ProjectManager  // Creates duplicate reference
+}
+```
+
+This architecture prevents reference leaks and ensures clean ProjectManager lifecycle management.
+
 ## Three-Window Architecture
 
 The application uses three distinct window types for different application states:
