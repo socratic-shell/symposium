@@ -15,37 +15,43 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private let selectedAgent: AgentType
     private let permissionManager: PermissionManager
 
+    private static var nextInstanceId = 1
+    private let instanceId: Int
+
     // Window associations for current project
     @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
-    
+
     // Window stacking state
     private var stackTracker: WindowStackTracker?
-    
+
     // Public access to settings manager for UI
     var settings: SettingsManager {
         return settingsManager
     }
-    
+
     /// Update stacked windows setting for current project
     func setStackedWindowsEnabled(_ enabled: Bool) {
         guard var project = currentProject else { return }
         project.stackedWindowsEnabled = enabled
         currentProject = project
-        
+
         // Stop tracking if disabling stacked windows
         if !enabled {
             stackTracker?.stopTracking()
         }
-        
+
         // Save the updated project
         do {
             try project.save()
-            Logger.shared.log("ProjectManager: Updated stacked windows setting to \(enabled) for project \(project.name)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Updated stacked windows setting to \(enabled) for project \(project.name)"
+            )
         } catch {
-            Logger.shared.log("ProjectManager: Failed to save stacked windows setting: \(error)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to save stacked windows setting: \(error)")
         }
     }
-    
+
     // Window close detection timer
     private var windowCloseTimer: Timer?
 
@@ -68,20 +74,28 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         agentManager: AgentManager, settingsManager: SettingsManager, selectedAgent: AgentType,
         permissionManager: PermissionManager
     ) {
+        self.instanceId = ProjectManager.nextInstanceId
+        ProjectManager.nextInstanceId += 1
+
         self.agentManager = agentManager
         self.settingsManager = settingsManager
         self.selectedAgent = selectedAgent
         self.permissionManager = permissionManager
 
+        Logger.shared.log("ProjectManager[\(instanceId)]: Created")
         // ScreenshotManager initialization is deferred via lazy var
     }
-    
+
     deinit {
+        Logger.shared.log("ProjectManager[\(instanceId)]: Cleaning up")
         stopWindowCloseDetection()
     }
 
     /// Create a new Symposium project
-    func createProject(name: String, gitURL: String, at directoryPath: String, agent: String? = nil, defaultBranch: String? = nil) throws {
+    func createProject(
+        name: String, gitURL: String, at directoryPath: String, agent: String? = nil,
+        defaultBranch: String? = nil
+    ) throws {
         isLoading = true
         defer { isLoading = false }
 
@@ -101,7 +115,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         )
 
         // Create project instance
-        let project = Project(name: name, gitURL: gitURL, directoryPath: projectDirPath, agent: agent, defaultBranch: defaultBranch)
+        let project = Project(
+            name: name, gitURL: gitURL, directoryPath: projectDirPath, agent: agent,
+            defaultBranch: defaultBranch)
 
         // Save project.json
         try project.save()
@@ -135,10 +151,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private func setCurrentProject(_ project: Project) {
         // Stop window detection for previous project
         stopWindowCloseDetection()
-        
+
         // Clear previous project state
         taskspaceWindows.removeAll()
-        
+
         self.currentProject = project
         self.errorMessage = nil
 
@@ -147,14 +163,18 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         // Register as IPC delegate for this project
         self.ipcManager.addDelegate(self)
-        Logger.shared.log("ProjectManager: Registered as IPC delegate for project: \(project.name)")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Registered as IPC delegate for project: \(project.name)"
+        )
 
         // Phase 30: Do NOT auto-launch VSCode - taskspaces start dormant until user activates them
-        Logger.shared.log("ProjectManager: Project opened with \(project.taskspaces.count) dormant taskspaces")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Project opened with \(project.taskspaces.count) dormant taskspaces"
+        )
 
         // Load existing screenshots from disk for visual persistence
         self.loadExistingScreenshots()
-        
+
         // Start automatic window close detection
         self.startWindowCloseDetection()
 
@@ -164,14 +184,16 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Launch VSCode for a specific taskspace (used for user-activated awakening)
     func launchVSCode(for taskspace: Taskspace) {
         guard let project = currentProject else {
-            Logger.shared.log("ProjectManager: Cannot launch VSCode - no current project")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot launch VSCode - no current project")
             return
         }
-        
+
         launchVSCode(for: taskspace, in: project.directoryPath)
-        Logger.shared.log("ProjectManager: User-activated VSCode for taskspace: \(taskspace.name)")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: User-activated VSCode for taskspace: \(taskspace.name)")
     }
-    
+
     // MARK: - Legacy method (no longer auto-launches on project open)
     // /// Launch VSCode for all active taskspaces (both hatchling and resume states)
     // private func launchVSCodeForActiveTaskspaces(in project: Project) {
@@ -222,10 +244,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Stop window stack tracking
         stackTracker?.stopTracking()
         stackTracker = nil
-        
+
         // Unregister as IPC delegate
         ipcManager.removeDelegate(self)
-        Logger.shared.log("ProjectManager: Unregistered as IPC delegate")
+        Logger.shared.log("ProjectManager[\(instanceId)]: Unregistered as IPC delegate")
 
         stopMCPClient()
         DispatchQueue.main.async {
@@ -235,7 +257,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     private func startMCPClient() {
-        Logger.shared.log("ProjectManager: Starting daemon client")
+        Logger.shared.log("ProjectManager[\(instanceId)]: Starting daemon client")
         // Stop any existing client first
         ipcManager.stopClient()
 
@@ -250,7 +272,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             if selectedAgentInfo.isInstalled && selectedAgentInfo.isMCPConfigured,
                 let mcpPath = selectedAgentInfo.mcpServerPath
             {
-                Logger.shared.log("ProjectManager: Starting daemon with path: \(mcpPath)")
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Starting daemon with path: \(mcpPath)")
                 ipcManager.startClient(mcpServerPath: mcpPath)
             } else {
                 Logger.shared.log(
@@ -258,7 +281,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                 )
             }
         } else {
-            Logger.shared.log("ProjectManager: No agent found with id: \(selectedAgent)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: No agent found with id: \(selectedAgent)")
             Logger.shared.log(
                 "ProjectManager: Available agents: \(agentManager.availableAgents.map { $0.id })")
         }
@@ -292,39 +316,40 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         defer { isLoading = false }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
-        
+
         // Get current branch name before removing worktree
         let branchName = try getCurrentBranch(in: taskspaceDir)
-        
+
         // Remove git worktree (this also removes the directory)
         let worktreeProcess = Process()
         worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         worktreeProcess.arguments = ["worktree", "remove", taskspaceDir, "--force"]
         worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
-        
+
         try worktreeProcess.run()
         worktreeProcess.waitUntilExit()
-        
+
         if worktreeProcess.terminationStatus != 0 {
-            Logger.shared.log("Warning: Failed to remove git worktree, falling back to directory removal")
+            Logger.shared.log(
+                "Warning: Failed to remove git worktree, falling back to directory removal")
             // Fallback: remove directory if worktree removal failed
             try FileManager.default.removeItem(atPath: taskspaceDir)
         }
-        
+
         // Optionally delete the branch
         if deleteBranch && !branchName.isEmpty {
             let branchProcess = Process()
             branchProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
             branchProcess.arguments = ["branch", "-D", branchName]
             branchProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
-            
+
             try branchProcess.run()
             branchProcess.waitUntilExit()
-            
+
             if branchProcess.terminationStatus != 0 {
                 Logger.shared.log("Warning: Failed to delete branch \(branchName)")
             } else {
-                Logger.shared.log("ProjectManager: Deleted branch \(branchName)")
+                Logger.shared.log("ProjectManager[\(instanceId)]: Deleted branch \(branchName)")
             }
         }
 
@@ -333,15 +358,16 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             var updatedProject = project
             updatedProject.taskspaces.removeAll { $0.id == taskspace.id }
             self.currentProject = updatedProject
-            Logger.shared.log("ProjectManager: Deleted taskspace \(taskspace.name)")
+            Logger.shared.log(
+                "ProjectManager[\(self.instanceId)]: Deleted taskspace \(taskspace.name)")
         }
     }
-    
+
     func getBranchName(for taskspace: Taskspace) -> String {
         guard let project = currentProject else {
             return ""
         }
-        
+
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
         do {
             return try getCurrentBranch(in: taskspaceDir)
@@ -350,50 +376,52 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             return ""
         }
     }
-    
+
     private func getCurrentBranch(in directory: String) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["branch", "--show-current"]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
-        
+
         let pipe = Pipe()
         process.standardOutput = pipe
-        
+
         try process.run()
         process.waitUntilExit()
-        
+
         guard process.terminationStatus == 0 else {
             return ""
         }
-        
+
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? ""
     }
 
     /// Create a new taskspace with default values
     /// Generate comprehensive initial prompt for new taskspaces
     func generateInitialPrompt(taskDescription: String) -> String {
         return """
-        Hi, welcome! You are a new agent just getting started as part of the project \(currentProject?.name ?? ""). \
-        This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
-        The user's description of the task to be done follows after this message. \
-        Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
-        Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.
+            Hi, welcome! You are a new agent just getting started as part of the project \(currentProject?.name ?? ""). \
+            This is a taskspace, a separate copy of the project's files where you can work undisturbed. \
+            The user's description of the task to be done follows after this message. \
+            Can you start by reading the description and using the 'update_taskspace' tool to provide a better name/description for the taskspace? \
+            Before doing any work on the task, be sure to ask the user clarifying questions to better understand their intent.
 
-        User's task description:
-        \(taskDescription)
-        """
+            User's task description:
+            \(taskDescription)
+            """
     }
 
     func createTaskspace() throws {
         try createTaskspace(
             name: "Unnamed taskspace",
-            description: "TBD", 
-            initialPrompt: "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
+            description: "TBD",
+            initialPrompt:
+                "This is a newly created taskspace. Figure out what the user wants to do and update the name/description appropriately using the `update_taskspace` tool."
         )
     }
-    
+
     /// Create a new taskspace with specified values
     func createTaskspace(name: String, description: String, initialPrompt: String) throws {
         guard let project = currentProject else {
@@ -420,30 +448,35 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         // Ensure bare repository exists (create if this is the first taskspace)
         if !bareRepositoryExists(in: project.directoryPath) {
-            Logger.shared.log("ProjectManager: Creating bare repository for first taskspace")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Creating bare repository for first taskspace")
             let bareProcess = Process()
             bareProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-            bareProcess.arguments = ["clone", "--bare", project.gitURL, "\(project.directoryPath)/.git"]
-            
+            bareProcess.arguments = [
+                "clone", "--bare", project.gitURL, "\(project.directoryPath)/.git",
+            ]
+
             try bareProcess.run()
             bareProcess.waitUntilExit()
-            
+
             if bareProcess.terminationStatus != 0 {
                 throw ProjectError.gitCloneFailed
             }
         } else {
-            Logger.shared.log("ProjectManager: Bare repository already exists")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Bare repository already exists")
         }
 
         // Create worktree for this taskspace with unique branch
         let branchName = "taskspace-\(taskspace.id.uuidString)"
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"
-        
+
         // Determine the base branch to start from
         let baseBranch = try getBaseBranch(for: project)
-        Logger.shared.log("ProjectManager: Creating worktree with branch \(branchName) from \(baseBranch)")
-        
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Creating worktree with branch \(branchName) from \(baseBranch)"
+        )
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["worktree", "add", worktreeDir, "-b", branchName, baseBranch]
@@ -460,7 +493,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         try taskspace.save(in: project.directoryPath)
 
         // Phase 30: Do NOT auto-launch VSCode - new taskspaces start dormant until user clicks
-        Logger.shared.log("ProjectManager: Created new taskspace '\(taskspace.name)' (dormant until activated)")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Created new taskspace '\(taskspace.name)' (dormant until activated)"
+        )
 
         // Add to current project
         DispatchQueue.main.async {
@@ -475,58 +510,62 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let url = gitURL.replacingOccurrences(of: ".git", with: "")
         return URL(string: url)?.lastPathComponent ?? "repo"
     }
-    
+
     /// Get the base branch for new taskspaces (from project.defaultBranch or auto-detect)
     private func getBaseBranch(for project: Project) throws -> String {
         // If project specifies a default branch, use it
         if let defaultBranch = project.defaultBranch, !defaultBranch.isEmpty {
             return defaultBranch
         }
-        
+
         // Auto-detect origin's default branch
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["symbolic-ref", "refs/remotes/origin/HEAD"]
         process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
-        
+
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        
+
         try process.run()
         process.waitUntilExit()
-        
+
         if process.terminationStatus == 0 {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+            if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            {
                 // Output is like "refs/remotes/origin/main", extract "origin/main"
                 if output.hasPrefix("refs/remotes/") {
                     return String(output.dropFirst("refs/remotes/".count))
                 }
             }
         }
-        
+
         // Fallback to origin/main
-        Logger.shared.log("ProjectManager: Could not detect origin's default branch, falling back to origin/main")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Could not detect origin's default branch, falling back to origin/main"
+        )
         return "origin/main"
     }
-    
+
     /// Check if a bare git repository exists at the project path
     private func bareRepositoryExists(in projectPath: String) -> Bool {
         let gitPath = "\(projectPath)/.git"
         let fileManager = FileManager.default
-        
+
         // Check if .git exists
         guard fileManager.fileExists(atPath: gitPath) else {
             return false
         }
-        
+
         // Check if it's a bare repository by looking for the 'bare' config
         let configPath = "\(gitPath)/config"
         guard let configContent = try? String(contentsOfFile: configPath) else {
             return false
         }
-        
+
         return configContent.contains("bare = true")
     }
 }
@@ -564,7 +603,8 @@ extension ProjectManager {
     /// Associate a window with a taskspace
     func associateWindow(_ windowID: CGWindowID, with taskspaceUuid: String) -> Bool {
         guard let uuid = UUID(uuidString: taskspaceUuid) else {
-            Logger.shared.log("ProjectManager: Invalid UUID format: \(taskspaceUuid)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Invalid UUID format: \(taskspaceUuid)")
             return false
         }
 
@@ -572,19 +612,21 @@ extension ProjectManager {
         guard let project = currentProject,
             project.findTaskspace(uuid: taskspaceUuid) != nil
         else {
-            Logger.shared.log("ProjectManager: Taskspace not found for UUID: \(taskspaceUuid)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Taskspace not found for UUID: \(taskspaceUuid)")
             return false
         }
 
         taskspaceWindows[uuid] = windowID
-        Logger.shared.log("ProjectManager: Associated window \(windowID) with taskspace \(uuid)")
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Associated window \(windowID) with taskspace \(uuid)")
 
         // Capture screenshot when window is first registered
         Logger.shared.log(
             "ProjectManager: Attempting screenshot capture for window \(windowID), taskspace \(uuid)"
         )
         Task { @MainActor in
-            Logger.shared.log("ProjectManager: Starting screenshot capture task")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Starting screenshot capture task")
             await captureAndCacheScreenshot(windowId: windowID, for: uuid)
         }
 
@@ -595,72 +637,89 @@ extension ProjectManager {
     func getWindow(for taskspaceUuid: UUID) -> CGWindowID? {
         return taskspaceWindows[taskspaceUuid]
     }
-    
+
     /// Focus an active taskspace's VSCode window
     func focusTaskspaceWindow(for taskspace: Taskspace) -> Bool {
         guard let windowID = taskspaceWindows[taskspace.id] else {
-            Logger.shared.log("ProjectManager: Cannot focus taskspace \(taskspace.name) - no registered window")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot focus taskspace \(taskspace.name) - no registered window"
+            )
             return false
         }
-        
+
         // Verify window still exists before trying to focus it
         guard isWindowStillOpen(windowID: windowID) else {
-            Logger.shared.log("ProjectManager: Cannot focus taskspace \(taskspace.name) - window no longer exists")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot focus taskspace \(taskspace.name) - window no longer exists"
+            )
             // Clean up stale window reference
             taskspaceWindows.removeValue(forKey: taskspace.id)
             return false
         }
-        
-        Logger.shared.log("ProjectManager: Focusing window \(windowID) for taskspace: \(taskspace.name)")
-        
+
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Focusing window \(windowID) for taskspace: \(taskspace.name)"
+        )
+
         // Check if stacked windows mode is enabled for this project
         if let project = currentProject, project.stackedWindowsEnabled {
-            Logger.shared.log("ProjectManager: Stacked windows mode enabled - positioning all taskspace windows")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Stacked windows mode enabled - positioning all taskspace windows"
+            )
             return focusWindowWithStacking(targetTaskspace: taskspace, targetWindowID: windowID)
         } else {
             // Use Core Graphics to focus the window normally
             let result = focusWindow(windowID: windowID)
-            
+
             if result {
-                Logger.shared.log("ProjectManager: Successfully focused window for taskspace: \(taskspace.name)")
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Successfully focused window for taskspace: \(taskspace.name)"
+                )
             } else {
-                Logger.shared.log("ProjectManager: Failed to focus window for taskspace: \(taskspace.name)")
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Failed to focus window for taskspace: \(taskspace.name)"
+                )
             }
-            
+
             return result
         }
     }
-    
+
     /// Focus a window by its CGWindowID using Core Graphics APIs
     private func focusWindow(windowID: CGWindowID) -> Bool {
         // Get window info to find the owning process
         let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
-        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+        guard
+            let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
+                as? [[String: Any]]
+        else {
             return false
         }
-        
-        guard let windowInfo = windowList.first(where: { window in
-            if let id = window[kCGWindowNumber as String] as? CGWindowID {
-                return id == windowID
-            }
-            return false
-        }) else {
+
+        guard
+            let windowInfo = windowList.first(where: { window in
+                if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                    return id == windowID
+                }
+                return false
+            })
+        else {
             return false
         }
-        
+
         // Get the process ID that owns this window
         guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
             return false
         }
-        
+
         // Get the running application for this process
         guard let app = NSRunningApplication(processIdentifier: ownerPID) else {
             return false
         }
-        
+
         // Activate the application (brings it to front)
         let success = app.activate()
-        
+
         if success {
             // Small delay to let the app activation complete
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -668,104 +727,118 @@ extension ProjectManager {
                 self.focusWindowViaAccessibility(windowID: windowID, processID: ownerPID)
             }
         }
-        
+
         return success
     }
-    
-    
+
     /// Focus a window with stacking - positions all other taskspace windows at the same location
-    private func focusWindowWithStacking(targetTaskspace: Taskspace, targetWindowID: CGWindowID) -> Bool {
+    private func focusWindowWithStacking(targetTaskspace: Taskspace, targetWindowID: CGWindowID)
+        -> Bool
+    {
         // First, focus the target window normally
         let focusResult = focusWindow(windowID: targetWindowID)
-        
+
         if !focusResult {
-            Logger.shared.log("ProjectManager: Failed to focus target window for stacking")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to focus target window for stacking")
             return false
         }
-        
+
         // Get the position and size of the target window
         guard let targetWindowInfo = getWindowInfo(for: targetWindowID) else {
-            Logger.shared.log("ProjectManager: Could not get target window info for stacking")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Could not get target window info for stacking")
             return focusResult
         }
-        
+
         let targetBounds = targetWindowInfo.bounds
-        Logger.shared.log("ProjectManager: Target window bounds: \(targetBounds)")
-        
+        Logger.shared.log("ProjectManager[\(instanceId)]: Target window bounds: \(targetBounds)")
+
         // Position all other taskspace windows at the same location (but behind)
         guard let project = currentProject else { return focusResult }
-        
+
         var followerWindowIDs: [CGWindowID] = []
-        
+
         for taskspace in project.taskspaces {
             // Skip the target taskspace
             if taskspace.id == targetTaskspace.id { continue }
-            
+
             // Skip taskspaces without registered windows
             guard let windowID = taskspaceWindows[taskspace.id] else { continue }
-            
+
             // Verify window still exists
             guard isWindowStillOpen(windowID: windowID) else {
                 taskspaceWindows.removeValue(forKey: taskspace.id)
                 continue
             }
-            
+
             // Position this window at the same location as the target
             positionWindow(windowID: windowID, to: targetBounds)
             followerWindowIDs.append(windowID)
-            Logger.shared.log("ProjectManager: Positioned window for taskspace \(taskspace.name) in stack")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Positioned window for taskspace \(taskspace.name) in stack"
+            )
         }
-        
+
         // Set up window stack tracking for drag following
         if stackTracker == nil {
             stackTracker = WindowStackTracker()
         }
-        stackTracker?.startTracking(leaderWindowID: targetWindowID, followerWindowIDs: followerWindowIDs)
-        
+        stackTracker?.startTracking(
+            leaderWindowID: targetWindowID, followerWindowIDs: followerWindowIDs)
+
         return focusResult
     }
-    
+
     /// Get window information including bounds
     private func getWindowInfo(for windowID: CGWindowID) -> (bounds: CGRect, processID: pid_t)? {
         let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
-        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+        guard
+            let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
+                as? [[String: Any]]
+        else {
             return nil
         }
-        
-        guard let windowInfo = windowList.first(where: { window in
-            if let id = window[kCGWindowNumber as String] as? CGWindowID {
-                return id == windowID
-            }
-            return false
-        }) else {
+
+        guard
+            let windowInfo = windowList.first(where: { window in
+                if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                    return id == windowID
+                }
+                return false
+            })
+        else {
             return nil
         }
-        
+
         guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-              let x = boundsDict["X"] as? CGFloat,
-              let y = boundsDict["Y"] as? CGFloat,
-              let width = boundsDict["Width"] as? CGFloat,
-              let height = boundsDict["Height"] as? CGFloat,
-              let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+            let x = boundsDict["X"] as? CGFloat,
+            let y = boundsDict["Y"] as? CGFloat,
+            let width = boundsDict["Width"] as? CGFloat,
+            let height = boundsDict["Height"] as? CGFloat,
+            let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t
+        else {
             return nil
         }
-        
+
         let bounds = CGRect(x: x, y: y, width: width, height: height)
         return (bounds: bounds, processID: processID)
     }
-    
+
     /// Use Accessibility APIs to focus a specific window within an application
     private func focusWindowViaAccessibility(windowID: CGWindowID, processID: pid_t) {
         let app = AXUIElementCreateApplication(processID)
-        
+
         var windowsRef: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef)
-        
+        let result = AXUIElementCopyAttributeValue(
+            app, kAXWindowsAttribute as CFString, &windowsRef)
+
         guard result == .success,
-              let windows = windowsRef as? [AXUIElement] else {
+            let windows = windowsRef as? [AXUIElement]
+        else {
             return
         }
-        
+
         // Find the window with matching CGWindowID
         for window in windows {
             if let axWindowID = getWindowID(from: window), axWindowID == windowID {
@@ -775,34 +848,37 @@ extension ProjectManager {
             }
         }
     }
-    
+
     /// Position a window to specific bounds using Accessibility APIs
     private func positionWindow(windowID: CGWindowID, to bounds: CGRect) {
         guard let windowInfo = getWindowInfo(for: windowID) else { return }
-        
+
         let app = AXUIElementCreateApplication(windowInfo.processID)
-        
+
         var windowsRef: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windowsRef)
-        
+        let result = AXUIElementCopyAttributeValue(
+            app, kAXWindowsAttribute as CFString, &windowsRef)
+
         guard result == .success,
-              let windows = windowsRef as? [AXUIElement] else {
+            let windows = windowsRef as? [AXUIElement]
+        else {
             return
         }
-        
+
         // Find the window with matching CGWindowID
         for window in windows {
             if let axWindowID = getWindowID(from: window), axWindowID == windowID {
                 // Set position
                 var position = CGPoint(x: bounds.origin.x, y: bounds.origin.y)
                 var positionValue = AXValueCreate(AXValueType.cgPoint, &position)
-                AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionValue!)
-                
+                AXUIElementSetAttributeValue(
+                    window, kAXPositionAttribute as CFString, positionValue!)
+
                 // Set size
                 var size = CGSize(width: bounds.size.width, height: bounds.size.height)
                 var sizeValue = AXValueCreate(AXValueType.cgSize, &size)
                 AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue!)
-                
+
                 break
             }
         }
@@ -812,144 +888,176 @@ extension ProjectManager {
     @MainActor
     private func captureAndCacheScreenshot(windowId: CGWindowID, for taskspaceId: UUID) async {
         let startTime = Date()
-        Logger.shared.log("ProjectManager: Starting screenshot capture for taskspace \(taskspaceId)")
-        
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Starting screenshot capture for taskspace \(taskspaceId)"
+        )
+
         // Use the screenshot manager to capture the screenshot directly
         if let screenshot = await screenshotManager.captureWindowScreenshot(windowId: windowId) {
             let captureTime = Date().timeIntervalSince(startTime)
-            Logger.shared.log("ProjectManager: Screenshot captured in \(String(format: "%.3f", captureTime))s")
-            
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Screenshot captured in \(String(format: "%.3f", captureTime))s"
+            )
+
             // Cache in memory for immediate UI updates
             taskspaceScreenshots[taskspaceId] = screenshot
-            
+
             // Save to disk for persistence across app restarts
             await saveScreenshotToDisk(screenshot: screenshot, taskspaceId: taskspaceId)
-            
+
             let totalTime = Date().timeIntervalSince(startTime)
-            Logger.shared.log("ProjectManager: Screenshot cached for taskspace \(taskspaceId) (total: \(String(format: "%.3f", totalTime))s)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Screenshot cached for taskspace \(taskspaceId) (total: \(String(format: "%.3f", totalTime))s)"
+            )
         } else {
             let failTime = Date().timeIntervalSince(startTime)
-            Logger.shared.log("ProjectManager: Failed to capture screenshot for taskspace \(taskspaceId) after \(String(format: "%.3f", failTime))s")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to capture screenshot for taskspace \(taskspaceId) after \(String(format: "%.3f", failTime))s"
+            )
         }
     }
-    
+
     /// Save screenshot to disk for persistence across app restarts
     private func saveScreenshotToDisk(screenshot: NSImage, taskspaceId: UUID) async {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: Cannot save screenshot - no current project")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot save screenshot - no current project")
             return
         }
-        
+
         // Find the taskspace to get its directory path
         guard let taskspace = currentProject.findTaskspace(uuid: taskspaceId.uuidString) else {
-            Logger.shared.log("ProjectManager: Cannot find taskspace for screenshot save: \(taskspaceId)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot find taskspace for screenshot save: \(taskspaceId)"
+            )
             return
         }
-        
+
         let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
         let screenshotPath = "\(taskspaceDir)/screenshot.png"
-        
+
         // Convert NSImage to PNG data
         guard let tiffData = screenshot.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
-            Logger.shared.log("ProjectManager: Failed to convert screenshot to PNG data")
+            let bitmapImage = NSBitmapImageRep(data: tiffData),
+            let pngData = bitmapImage.representation(using: .png, properties: [:])
+        else {
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to convert screenshot to PNG data")
             return
         }
-        
+
         do {
             try pngData.write(to: URL(fileURLWithPath: screenshotPath))
-            Logger.shared.log("ProjectManager: Screenshot saved to disk: \(screenshotPath)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Screenshot saved to disk: \(screenshotPath)")
         } catch {
-            Logger.shared.log("ProjectManager: Failed to save screenshot to disk: \(error)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to save screenshot to disk: \(error)")
         }
     }
-    
+
     /// Load existing screenshots from disk on project open for visual persistence
     private func loadExistingScreenshots() {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: Cannot load screenshots - no current project")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Cannot load screenshots - no current project")
             return
         }
-        
+
         var loadedCount = 0
-        
+
         for taskspace in currentProject.taskspaces {
             let taskspaceDir = taskspace.directoryPath(in: currentProject.directoryPath)
             let screenshotPath = "\(taskspaceDir)/screenshot.png"
-            
+
             if FileManager.default.fileExists(atPath: screenshotPath) {
                 if let screenshot = NSImage(contentsOfFile: screenshotPath) {
                     taskspaceScreenshots[taskspace.id] = screenshot
                     loadedCount += 1
-                    Logger.shared.log("ProjectManager: Loaded screenshot from disk for taskspace: \(taskspace.name)")
+                    Logger.shared.log(
+                        "ProjectManager[\(instanceId)]: Loaded screenshot from disk for taskspace: \(taskspace.name)"
+                    )
                 } else {
-                    Logger.shared.log("ProjectManager: Failed to load screenshot file: \(screenshotPath)")
+                    Logger.shared.log(
+                        "ProjectManager[\(instanceId)]: Failed to load screenshot file: \(screenshotPath)"
+                    )
                 }
             }
         }
-        
-        Logger.shared.log("ProjectManager: Loaded \(loadedCount) existing screenshots from disk")
+
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Loaded \(loadedCount) existing screenshots from disk")
     }
-    
+
     // MARK: - Window Close Detection
-    
+
     /// Start polling for closed windows to automatically transition taskspaces to Dormant state
     private func startWindowCloseDetection() {
         // Stop any existing timer
         stopWindowCloseDetection()
-        
-        Logger.shared.log("ProjectManager: Starting window close detection (polling every 3 seconds)")
-        
+
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Starting window close detection (polling every 3 seconds)"
+        )
+
         // Ensure timer is created on the main thread
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
-            self.windowCloseTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+
+            self.windowCloseTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) {
+                [weak self] _ in
                 self?.checkForClosedWindows()
             }
-            
-            Logger.shared.log("ProjectManager: Window close detection timer created successfully")
+
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Window close detection timer created successfully")
         }
     }
-    
+
     /// Stop window close detection timer
     private func stopWindowCloseDetection() {
         DispatchQueue.main.async { [weak self] in
             self?.windowCloseTimer?.invalidate()
             self?.windowCloseTimer = nil
-            Logger.shared.log("ProjectManager: Stopped window close detection")
+            Logger.shared.log(
+                "ProjectManager[\(self?.instanceId ?? -1)]: Stopped window close detection"
+            )
         }
     }
-    
+
     /// Check if any registered windows have been closed and update taskspace states
     private func checkForClosedWindows() {
         let windowsToCheck = taskspaceWindows
         var closedWindows: [UUID] = []
-        
+
         for (taskspaceId, windowId) in windowsToCheck {
             if !isWindowStillOpen(windowID: windowId) {
                 closedWindows.append(taskspaceId)
             }
         }
-        
+
         // Update state for closed windows
         for taskspaceId in closedWindows {
-            if let taskspaceName = currentProject?.taskspaces.first(where: { $0.id == taskspaceId })?.name {
-                Logger.shared.log("ProjectManager: Window closed for taskspace: \(taskspaceName)")
+            if let taskspaceName = currentProject?.taskspaces.first(where: { $0.id == taskspaceId }
+            )?.name {
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Window closed for taskspace: \(taskspaceName)")
                 taskspaceWindows.removeValue(forKey: taskspaceId)
                 // Note: UI automatically updates via @Published taskspaceWindows and hasRegisteredWindow computed property
             }
         }
     }
-    
+
     /// Check if a CGWindowID still exists in the system
     private func isWindowStillOpen(windowID: CGWindowID) -> Bool {
         let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
-        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+        guard
+            let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
+                as? [[String: Any]]
+        else {
             return false
         }
-        
+
         return windowList.contains { window in
             if let id = window[kCGWindowNumber as String] as? CGWindowID {
                 return id == windowID
@@ -967,7 +1075,8 @@ extension ProjectManager {
         -> MessageHandlingResult<TaskspaceStateResponse>
     {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: No current project for get_taskspace_state")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: No current project for get_taskspace_state")
             return .notForMe
         }
 
@@ -1010,7 +1119,8 @@ extension ProjectManager {
         -> MessageHandlingResult<SpawnTaskspaceResponse>
     {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: No current project for spawn_taskspace")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: No current project for spawn_taskspace")
             return .notForMe
         }
 
@@ -1029,14 +1139,14 @@ extension ProjectManager {
         do {
             // Generate comprehensive initial prompt using the user's task description from initialPrompt
             let comprehensivePrompt = generateInitialPrompt(taskDescription: payload.initialPrompt)
-            
+
             // Use the existing createTaskspace logic
             try createTaskspace(
                 name: payload.name,
-                description: payload.taskDescription, 
+                description: payload.taskDescription,
                 initialPrompt: comprehensivePrompt
             )
-            
+
             // Get the newly created taskspace (it will be the last one added)
             guard let newTaskspace = currentProject.taskspaces.last else {
                 throw ProjectError.failedToSaveProject
@@ -1047,7 +1157,7 @@ extension ProjectManager {
             return .handled(response)
 
         } catch {
-            Logger.shared.log("ProjectManager: Failed to create taskspace: \(error)")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Failed to create taskspace: \(error)")
             return .notForMe
         }
     }
@@ -1056,7 +1166,7 @@ extension ProjectManager {
         -> MessageHandlingResult<EmptyResponse>
     {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: No current project for log_progress")
+            Logger.shared.log("ProjectManager[\(instanceId)]: No current project for log_progress")
             return .notForMe
         }
 
@@ -1107,13 +1217,13 @@ extension ProjectManager {
             // Update UI
             DispatchQueue.main.async {
                 self.currentProject = updatedProject
-                Logger.shared.log("ProjectManager: Updated taskspace logs")
+                Logger.shared.log("ProjectManager[\(self.instanceId)]: Updated taskspace logs")
             }
 
             return .handled(EmptyResponse())
 
         } catch {
-            Logger.shared.log("ProjectManager: Failed to save log entry: \(error)")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Failed to save log entry: \(error)")
             return .notForMe
         }
     }
@@ -1122,7 +1232,7 @@ extension ProjectManager {
         -> MessageHandlingResult<EmptyResponse>
     {
         guard let currentProject = currentProject else {
-            Logger.shared.log("ProjectManager: No current project for signal_user")
+            Logger.shared.log("ProjectManager[\(instanceId)]: No current project for signal_user")
             return .notForMe
         }
 
@@ -1169,13 +1279,15 @@ extension ProjectManager {
                 // TODO: Update dock badge count
                 // TODO: Bring app to foreground or show notification
 
-                Logger.shared.log("ProjectManager: Added signal log for user attention")
+                Logger.shared.log(
+                    "ProjectManager[\(self.instanceId)]: Added signal log for user attention")
             }
 
             return .handled(EmptyResponse())
 
         } catch {
-            Logger.shared.log("ProjectManager: Failed to update taskspace attention: \(error)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to update taskspace attention: \(error)")
             return .notForMe
         }
     }
@@ -1214,13 +1326,15 @@ extension ProjectManager {
             // Update UI
             DispatchQueue.main.async {
                 self.currentProject = updatedProject
-                Logger.shared.log("ProjectManager: Updated taskspace: \(payload.name)")
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Updated taskspace: \(payload.name)")
             }
 
             return .handled(EmptyResponse())
 
         } catch {
-            Logger.shared.log("ProjectManager: Failed to save taskspace update: \(error)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to save taskspace update: \(error)")
             return .notForMe
         }
     }
@@ -1246,7 +1360,8 @@ extension ProjectManager {
                 return output
             }
         } catch {
-            Logger.shared.log("ProjectManager: Failed to check for code command: \(error)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to check for code command: \(error)")
         }
 
         return nil
@@ -1260,7 +1375,9 @@ extension ProjectManager {
 
         // Check if the working directory exists
         guard FileManager.default.fileExists(atPath: workingDir) else {
-            Logger.shared.log("ProjectManager: Working directory not found for taskspace: \(taskspace.name)")
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Working directory not found for taskspace: \(taskspace.name)"
+            )
             return
         }
 
@@ -1270,12 +1387,12 @@ extension ProjectManager {
             // Use 'code' command - opens each directory in a new window by default
             vscodeProcess.executableURL = URL(fileURLWithPath: codePath)
             vscodeProcess.arguments = [workingDir]
-            Logger.shared.log("ProjectManager: Using code command at: \(codePath)")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Using code command at: \(codePath)")
         } else {
             // Fallback to 'open' command
             vscodeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
             vscodeProcess.arguments = ["-a", "Visual Studio Code", workingDir]
-            Logger.shared.log("ProjectManager: Code command not found, using open")
+            Logger.shared.log("ProjectManager[\(instanceId)]: Code command not found, using open")
         }
 
         do {

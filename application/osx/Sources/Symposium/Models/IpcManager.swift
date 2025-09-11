@@ -139,8 +139,17 @@ class IpcManager: ObservableObject {
     private var inputPipe: Pipe?
     private var delegates: [IpcMessageDelegate] = []
     
+    private static var nextInstanceId = 1
+    private let instanceId: Int
+    
+    init() {
+        self.instanceId = IpcManager.nextInstanceId
+        IpcManager.nextInstanceId += 1
+        Logger.shared.log("IpcManager[\(instanceId)]: Created")
+    }
+    
     deinit {
-        Logger.shared.log("IpcManager: Cleaning up - terminating client process")
+        Logger.shared.log("IpcManager[\(instanceId)]: Cleaning up - terminating client process")
         clientProcess?.terminate()
         inputPipe = nil
     }
@@ -149,21 +158,21 @@ class IpcManager: ObservableObject {
     
     func addDelegate(_ delegate: IpcMessageDelegate) {
         delegates.append(delegate)
-        Logger.shared.log("IpcManager: Added delegate, now have \(delegates.count) delegates")
+        Logger.shared.log("IpcManager[\(instanceId)]: Added delegate, now have \(delegates.count) delegates")
     }
     
     func removeDelegate(_ delegate: IpcMessageDelegate) {
         delegates.removeAll { $0 === delegate }
-        Logger.shared.log("IpcManager: Removed delegate, now have \(delegates.count) delegates")
+        Logger.shared.log("IpcManager[\(instanceId)]: Removed delegate, now have \(delegates.count) delegates")
     }
     
     func startClient(mcpServerPath: String) {
         guard clientProcess == nil else { return }
         
         error = nil
-        Logger.shared.log("IpcManager: Starting symposium-mcp client...")
-        Logger.shared.log("IpcManager: Path: \(mcpServerPath)")
-        Logger.shared.log("IpcManager: Command: \(mcpServerPath) client")
+        Logger.shared.log("IpcManager[\(instanceId)]: Starting symposium-mcp client...")
+        Logger.shared.log("IpcManager[\(instanceId)]: Path: \(mcpServerPath)")
+        Logger.shared.log("IpcManager[\(instanceId)]: Command: \(mcpServerPath) client")
         
         DispatchQueue.global(qos: .userInitiated).async {
             self.launchClient(mcpServerPath: mcpServerPath)
@@ -203,8 +212,8 @@ class IpcManager: ObservableObject {
             
             DispatchQueue.main.async {
                 self.isConnected = true
-                Logger.shared.log("IpcManager: Client process started successfully")
-                Logger.shared.log("IpcManager: isConnected set to \(self.isConnected)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Client process started successfully")
+                Logger.shared.log("IpcManager[\(instanceId)]: isConnected set to \(self.isConnected)")
             }
             
             // Set up continuous message reading
@@ -215,7 +224,7 @@ class IpcManager: ObservableObject {
             
             DispatchQueue.main.async {
                 self.isConnected = false
-                Logger.shared.log("IpcManager: Client process exited with status \(process.terminationStatus)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Client process exited with status \(process.terminationStatus)")
                 if process.terminationStatus != 0 {
                     self.error = "Client exited with status \(process.terminationStatus)"
                 }
@@ -224,7 +233,7 @@ class IpcManager: ObservableObject {
         } catch {
             DispatchQueue.main.async {
                 self.error = "Failed to start client: \(error.localizedDescription)"
-                Logger.shared.log("IpcManager: Error starting client: \(error.localizedDescription)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Error starting client: \(error.localizedDescription)")
             }
         }
     }
@@ -257,10 +266,10 @@ class IpcManager: ObservableObject {
     }
     
     private func handleIncomingMessage(_ messageString: String) {
-        Logger.shared.log("IpcManager: Received message: \(messageString)")
+        Logger.shared.log("IpcManager[\(instanceId)]: Received message: \(messageString)")
         
         guard let messageData = messageString.data(using: .utf8) else {
-            Logger.shared.log("IpcManager: Failed to convert message to data")
+            Logger.shared.log("IpcManager[\(instanceId)]: Failed to convert message to data")
             return
         }
         
@@ -281,11 +290,11 @@ class IpcManager: ObservableObject {
             case "register_taskspace_window":
                 handleRegisterTaskspaceWindow(message: message)
             default:
-                Logger.shared.log("IpcManager: Unknown message type: \(message.type)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Unknown message type: \(message.type)")
             }
             
         } catch {
-            Logger.shared.log("IpcManager: Failed to parse message: \(error)")
+            Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse message: \(error)")
         }
     }
     
@@ -294,7 +303,7 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(GetTaskspaceStatePayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Get taskspace state for UUID: \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Get taskspace state for UUID: \(payload.taskspaceUuid)")
                 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
@@ -306,11 +315,11 @@ class IpcManager: ObservableObject {
                 }
                 
                 // No delegate handled the message
-                Logger.shared.log("IpcManager: No delegate handled get_taskspace_state for UUID: \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager[\(instanceId)]: No delegate handled get_taskspace_state for UUID: \(payload.taskspaceUuid)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse get_taskspace_state payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse get_taskspace_state payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as TaskspaceStateResponse?, error: "Invalid payload")
             }
         }
@@ -321,7 +330,7 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(SpawnTaskspacePayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Spawn taskspace: \(payload.name) in \(payload.projectPath)")
                 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
@@ -333,11 +342,11 @@ class IpcManager: ObservableObject {
                 }
                 
                 // No delegate handled the message
-                Logger.shared.log("IpcManager: No delegate handled spawn_taskspace for project: \(payload.projectPath)")
+                Logger.shared.log("IpcManager[\(instanceId)]: No delegate handled spawn_taskspace for project: \(payload.projectPath)")
                 sendResponse(to: message.id, success: false, data: nil as SpawnTaskspaceResponse?, error: "Project not found")
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse spawn_taskspace payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse spawn_taskspace payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as SpawnTaskspaceResponse?, error: "Invalid payload")
             }
         }
@@ -348,7 +357,7 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(UpdateTaskspacePayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Update taskspace \(payload.taskspaceUuid): \(payload.name)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Update taskspace \(payload.taskspaceUuid): \(payload.name)")
                 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
@@ -360,11 +369,11 @@ class IpcManager: ObservableObject {
                 }
                 
                 // No delegate handled the message
-                Logger.shared.log("IpcManager: No delegate handled update_taskspace message")
+                Logger.shared.log("IpcManager[\(instanceId)]: No delegate handled update_taskspace message")
                 sendResponse(to: message.id, success: false, data: nil as String?, error: "No handler available")
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse update_taskspace payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse update_taskspace payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as String?, error: "Invalid payload")
             }
         }
@@ -375,7 +384,7 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(LogProgressPayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Log progress for \(payload.taskspaceUuid): \(payload.message)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Log progress for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
@@ -387,11 +396,11 @@ class IpcManager: ObservableObject {
                 }
                 
                 // No delegate handled the message
-                Logger.shared.log("IpcManager: No delegate handled log_progress for UUID: \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager[\(instanceId)]: No delegate handled log_progress for UUID: \(payload.taskspaceUuid)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse log_progress payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse log_progress payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
@@ -402,7 +411,7 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(SignalUserPayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Signal user for \(payload.taskspaceUuid): \(payload.message)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Signal user for \(payload.taskspaceUuid): \(payload.message)")
                 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
@@ -414,11 +423,11 @@ class IpcManager: ObservableObject {
                 }
                 
                 // No delegate handled the message
-                Logger.shared.log("IpcManager: No delegate handled signal_user for UUID: \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager[\(instanceId)]: No delegate handled signal_user for UUID: \(payload.taskspaceUuid)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Taskspace not found")
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse signal_user payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse signal_user payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
@@ -429,10 +438,10 @@ class IpcManager: ObservableObject {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(RegisterTaskspaceWindowPayload.self, from: payloadData)
-                Logger.shared.log("IpcManager: Register window containing '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Register window containing '\(payload.windowTitle)' for taskspace \(payload.taskspaceUuid)")
                 
                 if let windowID = findWindowBySubstring(payload.windowTitle) {
-                    Logger.shared.log("IpcManager: Found window \(windowID) for taskspace \(payload.taskspaceUuid)")
+                    Logger.shared.log("IpcManager[\(instanceId)]: Found window \(windowID) for taskspace \(payload.taskspaceUuid)")
                     
                     // Store association via delegate
                     var success = false
@@ -450,12 +459,12 @@ class IpcManager: ObservableObject {
                         sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Failed to associate window")
                     }
                 } else {
-                    Logger.shared.log("IpcManager: Window not found containing: \(payload.windowTitle)")
+                    Logger.shared.log("IpcManager[\(instanceId)]: Window not found containing: \(payload.windowTitle)")
                     sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Window not found")
                 }
                 
             } catch {
-                Logger.shared.log("IpcManager: Failed to parse register_taskspace_window payload: \(error)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse register_taskspace_window payload: \(error)")
                 sendResponse(to: message.id, success: false, data: nil as EmptyResponse?, error: "Invalid payload")
             }
         }
@@ -487,7 +496,7 @@ class IpcManager: ObservableObject {
     
     func sendResponse<T: Codable>(to messageId: String, success: Bool, data: T? = nil, error: String? = nil) {
         guard let inputPipe = self.inputPipe else {
-            Logger.shared.log("IpcManager: Cannot send response - no input pipe")
+            Logger.shared.log("IpcManager[\(instanceId)]: Cannot send response - no input pipe")
             return
         }
         
@@ -526,17 +535,17 @@ class IpcManager: ObservableObject {
             
             if let stringData = messageString.data(using: String.Encoding.utf8) {
                 inputPipe.fileHandleForWriting.write(stringData)
-                Logger.shared.log("IpcManager: Sent response to \(messageId)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Sent response to \(messageId)")
             }
             
         } catch {
-            Logger.shared.log("IpcManager: Failed to send response: \(error)")
+            Logger.shared.log("IpcManager[\(instanceId)]: Failed to send response: \(error)")
         }
     }
     
     func sendBroadcastMessage<T: Codable>(type: String, payload: T) {
         guard let inputPipe = self.inputPipe else {
-            Logger.shared.log("IpcManager: Cannot send broadcast message - no input pipe")
+            Logger.shared.log("IpcManager[\(instanceId)]: Cannot send broadcast message - no input pipe")
             return
         }
         
@@ -558,11 +567,11 @@ class IpcManager: ObservableObject {
             
             if let stringData = messageString.data(using: String.Encoding.utf8) {
                 inputPipe.fileHandleForWriting.write(stringData)
-                Logger.shared.log("IpcManager: Sent broadcast message: \(type)")
+                Logger.shared.log("IpcManager[\(instanceId)]: Sent broadcast message: \(type)")
             }
             
         } catch {
-            Logger.shared.log("IpcManager: Failed to send broadcast message: \(error)")
+            Logger.shared.log("IpcManager[\(instanceId)]: Failed to send broadcast message: \(error)")
         }
     }
 }
