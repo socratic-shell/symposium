@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import Combine
 
 /// Manages project creation, loading, and operations
 class ProjectManager: ObservableObject, IpcMessageDelegate {
@@ -17,6 +18,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     private static var nextInstanceId = 1
     private let instanceId: Int
+    private var cancellables = Set<AnyCancellable>()
 
     // Window associations for current project
     @Published private var taskspaceWindows: [UUID: CGWindowID] = [:]
@@ -84,6 +86,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         Logger.shared.log("ProjectManager[\(instanceId)]: Created")
         // ScreenshotManager initialization is deferred via lazy var
+        
+        // Subscribe to IpcManager changes to republish them
+        ipcManager.objectWillChange
+            .sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     deinit {
