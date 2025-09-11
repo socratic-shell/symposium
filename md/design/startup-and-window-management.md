@@ -96,15 +96,27 @@ func appStart() {
 
 ### Window Close Handling
 
-All windows use `.onDisappear` to trigger state transitions:
+Window close handling requires careful distinction between "user clicked close button" and "window disappeared due to app shutdown":
 
 ```swift
+.onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
+    // Only clear project when user explicitly closes the window
+    if let window = notification.object as? NSWindow,
+       window.identifier?.rawValue == "open-project" {
+        // Clear project and return to startup flow
+        appDelegate.currentProjectManager = nil
+        settingsManager.activeProjectPath = ""
+        appStart()
+    }
+}
 .onDisappear {
-    appStart() // Always return to entry point
+    // NOTE: We don't handle project cleanup here because onDisappear
+    // fires both when user closes window AND when app quits.
+    // We only want to clear the project on explicit user close.
 }
 ```
 
-This ensures the application always re-validates its complete state when any window closes.
+This ensures the project path persists between app launches when the user quits the app, but gets cleared when they explicitly close the project window.
 
 ## Project Persistence
 

@@ -71,13 +71,26 @@ struct SymposiumApp: App {
                     .onAppear {
                         Logger.shared.log("Project window opened")
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { notification in
+                        Logger.shared.log("Received NSWindow.willCloseNotification")
+                        
+                        if let window = notification.object as? NSWindow,
+                           let identifier = window.identifier?.rawValue,
+                           identifier.hasPrefix("open-project") {
+                            Logger.shared.log("Project window explicitly closed by user (identifier: \(identifier))")
+                            appDelegate.currentProjectManager = nil
+                            settingsManager.activeProjectPath = ""
+                            appStart()
+                        } else {
+                            Logger.shared.log("Window close notification for different window")
+                        }
+                    }
                     .onDisappear {
-                        Logger.shared.log("Project window closed")
-                        // Clear current project manager when project window closes
-                        appDelegate.currentProjectManager = nil
-                        // Clear saved project path so it doesn't auto-restore on next startup
-                        settingsManager.activeProjectPath = ""
-                        appStart()
+                        // NOTE: We don't handle project cleanup here because onDisappear
+                        // fires both when user closes window AND when app quits.
+                        // We only want to clear the project on explicit user close,
+                        // so we use NSWindow.willCloseNotification above instead.
+                        Logger.shared.log("Project window disappeared")
                     }
             } else {
                 // Fallback if no project manager
