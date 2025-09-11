@@ -31,7 +31,7 @@ use uuid::Uuid;
 /// Traverses upward looking for `task-$UUID` directories and stops at `.symposium`.
 /// Uses the last UUID found during traversal.
 fn extract_project_info() -> Result<(String, String)> {
-    let current_dir = std::env::current_dir()
+    let current_dir = crate::workspace_dir::current_dir()
         .map_err(|e| IPCError::Other(format!("Failed to get current working directory: {}", e)))?;
     
     let mut dir = current_dir.as_path();

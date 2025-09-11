@@ -271,10 +271,17 @@ impl DialecticServer {
             )
         })?;
 
+        // Convert baseURI to absolute path, fallback to current working directory
+        let absolute_base_uri = std::path::Path::new(&params.base_uri)
+            .canonicalize()
+            .or_else(|_| crate::workspace_dir::current_dir())
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| params.base_uri.clone());
+
         // Create resolved walkthrough with HTML content
         let resolved = crate::ide::ResolvedWalkthrough {
             content: resolved_html,
-            base_uri: params.base_uri.clone(),
+            base_uri: absolute_base_uri,
         };
 
         // Send resolved walkthrough to VSCode extension

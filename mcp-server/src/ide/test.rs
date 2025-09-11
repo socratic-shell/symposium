@@ -520,7 +520,7 @@ async fn test_gitdiff_function() {
     interpreter.add_function::<crate::ide::GitDiff>();
     
     // Change to the temp repo directory
-    let original_dir = std::env::current_dir().unwrap();
+    let original_dir = crate::workspace_dir::current_dir().unwrap();
     std::env::set_current_dir(temp_repo.path()).unwrap();
     
     let result = interpreter.evaluate("gitDiff(\"HEAD~1..HEAD\")").await;
