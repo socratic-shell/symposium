@@ -12,19 +12,17 @@ struct ProjectWindow: View {
     
     var body: some View {
         if let projectManager = appDelegate.currentProjectManager {
-            ProjectWindowContent(
-                projectManager: projectManager
-            )
-            .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
-            .navigationTitle(projectManager.currentProject?.name ?? "Project")
+            ProjectWindowContent()
+                .frame(minWidth: 300, idealWidth: calculateSidebarWidth(), minHeight: 400, idealHeight: calculateSidebarHeight())
+                .navigationTitle(projectManager.currentProject?.name ?? "Project")
         } else {
             Text("No project selected")
                 .foregroundColor(.secondary)
                 .frame(minWidth: 300, minHeight: 400)
                 .navigationTitle("Symposium")
-        }
-        .onAppear {
-            positionWindow()
+                .onAppear {
+                    positionWindow()
+                }
         }
     }
     
@@ -81,16 +79,14 @@ struct ProjectWindow: View {
 }
 
 private struct ProjectWindowContent: View {
-    @ObservedObject var projectManager: ProjectManager
-    
-    init(projectManager: ProjectManager) {
-        self.projectManager = projectManager
-    }
+    @EnvironmentObject var appDelegate: AppDelegate
     
     var body: some View {
-        ProjectView(projectManager: projectManager)
+        ProjectView()
             .onAppear {
-                Logger.shared.log("ProjectWindow appeared for project: \(projectManager.currentProject?.name ?? "unknown")")
+                if let projectManager = appDelegate.currentProjectManager {
+                    Logger.shared.log("ProjectWindow appeared for project: \(projectManager.currentProject?.name ?? "unknown")")
+                }
             }
     }
 }

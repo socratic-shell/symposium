@@ -23,13 +23,6 @@ struct ProjectView: View {
     // Stacked windows state
     @State private var stackedWindowsEnabled = false
 
-    init(projectManager: ProjectManager, onCloseProject: (() -> Void)? = nil, onDismiss: (() -> Void)? = nil) {
-        self.projectManager = projectManager
-        self.ipcManager = projectManager.mcpStatus
-        self.onCloseProject = onCloseProject
-        self.onDismiss = onDismiss
-    }
-    
     // Step 7: Smart dismissal helper
     private func dismissPanel() {
         onDismiss?()
@@ -56,7 +49,7 @@ struct ProjectView: View {
 
                             Spacer()
 
-                            if let error = ipcManager.error {
+                            if let error = projectManager.mcpStatus.error {
                                 Text("• \(error)")
                                     .font(.caption)
                                     .foregroundColor(.red)
@@ -151,7 +144,7 @@ struct ProjectView: View {
                         )
                     }
                 }
-            } else if projectManager.isLoading {
+            } else if let projectManager = appDelegate.currentProjectManager, projectManager.isLoading {
                 VStack {
                     ProgressView()
                     Text("Loading project...")
@@ -165,7 +158,8 @@ struct ProjectView: View {
         .frame(minHeight: 400)
         .onAppear {
             // Initialize stacked windows state from project
-            if let project = projectManager.currentProject {
+            if let projectManager = appDelegate.currentProjectManager,
+               let project = projectManager.currentProject {
                 stackedWindowsEnabled = project.stackedWindowsEnabled
                 Logger.shared.log("ProjectView: Initialized stacked windows state: \(stackedWindowsEnabled) for project \(project.name)")
             }
@@ -181,13 +175,15 @@ struct ProjectView: View {
             
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(taskspaceWidth)), count: columns), spacing: 16) {
-                    ForEach(projectManager.currentProject?.taskspaces ?? []) { taskspace in
-                        TaskspaceCard(
-                            taskspace: taskspace, 
-                            projectManager: projectManager,
-                            onExpand: { expandedTaskspace = taskspace.id },
-                            onDismiss: dismissPanel
-                        )
+                    if let projectManager = appDelegate.currentProjectManager {
+                        ForEach(projectManager.currentProject?.taskspaces ?? []) { taskspace in
+                            TaskspaceCard(
+                                taskspace: taskspace, 
+                                projectManager: projectManager,
+                                onExpand: { expandedTaskspace = taskspace.id },
+                                onDismiss: dismissPanel
+                            )
+                        }
                     }
                 }
                 .padding()
