@@ -592,6 +592,16 @@ struct TaskspaceCard: View {
             unmergedCommits = branchInfo.unmergedCommits
             deleteBranch = (unmergedCommits == 0)  // Default to checked if no unmerged commits
         }
+        .onChange(of: showingDeleteConfirmation) { isShowing in
+            if isShowing {
+                // Refresh branch info when delete dialog is about to be shown
+                let branchInfo = projectManager.getTaskspaceBranchInfo(for: taskspace)
+                branchName = branchInfo.branchName
+                isMerged = branchInfo.isMerged
+                unmergedCommits = branchInfo.unmergedCommits
+                deleteBranch = (unmergedCommits == 0)  // Update default based on fresh info
+            }
+        }
         .onChange(of: taskspace.pendingDeletion) { pending in
             if pending {
                 showingDeleteConfirmation = true
