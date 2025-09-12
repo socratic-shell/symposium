@@ -595,6 +595,11 @@ extension ProjectManager {
         Logger.shared.log(
             "ProjectManager[\(instanceId)]: Associated window \(windowID) with taskspace \(uuid)")
 
+        // If stacked windows is enabled, position the new window to match existing stack
+        if let project = currentProject, project.stackedWindowsEnabled {
+            positionNewWindowInStack(windowID: windowID, taskspaceId: uuid)
+        }
+
         // Capture screenshot when window is first registered
         Logger.shared.log(
             "ProjectManager: Attempting screenshot capture for window \(windowID), taskspace \(uuid)"
@@ -763,6 +768,42 @@ extension ProjectManager {
         stackTracker?.startTracking(windowIDs: allWindowIDs)
 
         return focusResult
+    }
+    
+    /// Position a newly registered window to match existing stacked windows
+    private func positionNewWindowInStack(windowID: CGWindowID, taskspaceId: UUID) {
+        guard currentProject != nil else { return }
+        
+        // Find any existing window to use as reference for positioning
+        var referenceWindowID: CGWindowID?
+        for (id, existingWindowID) in taskspaceWindows {
+            if id != taskspaceId && isWindowStillOpen(windowID: existingWindowID) {
+                referenceWindowID = existingWindowID
+                break
+            }
+        }
+        
+        guard let refWindowID = referenceWindowID,
+              let refWindowInfo = getWindowInfo(for: refWindowID) else {
+            Logger.shared.log("ProjectManager[\(instanceId)]: No reference window found for stacking new window")
+            return
+        }
+        
+        // Position the new window to match the reference window
+        positionWindow(windowID: windowID, to: refWindowInfo.bounds)
+        Logger.shared.log("ProjectManager[\(instanceId)]: Positioned new window \(windowID) to match stack")
+        
+        // Update the stack tracker to include the new window
+        if stackTracker != nil {
+            var allWindowIDs: [CGWindowID] = []
+            for (_, existingWindowID) in taskspaceWindows {
+                if isWindowStillOpen(windowID: existingWindowID) {
+                    allWindowIDs.append(existingWindowID)
+                }
+            }
+            stackTracker?.startTracking(windowIDs: allWindowIDs)
+            Logger.shared.log("ProjectManager[\(instanceId)]: Updated stack tracker with new window")
+        }
     }
 
     /// Get window information including bounds
