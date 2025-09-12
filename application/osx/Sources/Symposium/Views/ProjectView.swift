@@ -371,6 +371,8 @@ struct TaskspaceCard: View {
     @State private var showingDeleteConfirmation = false
     @State private var deleteBranch = false
     @State private var branchName = ""
+    @State private var isMerged = false
+    @State private var unmergedCommits = 0
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
@@ -567,6 +569,8 @@ struct TaskspaceCard: View {
             DeleteTaskspaceDialog(
                 taskspaceName: taskspace.name,
                 branchName: branchName,
+                isMerged: isMerged,
+                unmergedCommits: unmergedCommits,
                 deleteBranch: $deleteBranch,
                 onConfirm: {
                     do {
@@ -582,7 +586,11 @@ struct TaskspaceCard: View {
             )
         }
         .onAppear {
-            branchName = projectManager.getBranchName(for: taskspace)
+            let branchInfo = projectManager.getTaskspaceBranchInfo(for: taskspace)
+            branchName = branchInfo.branchName
+            isMerged = branchInfo.isMerged
+            unmergedCommits = branchInfo.unmergedCommits
+            deleteBranch = branchInfo.isMerged  // Default to checked if merged
         }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -594,6 +602,8 @@ struct TaskspaceCard: View {
 struct DeleteTaskspaceDialog: View {
     let taskspaceName: String
     let branchName: String
+    let isMerged: Bool
+    let unmergedCommits: Int
     @Binding var deleteBranch: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
@@ -607,9 +617,22 @@ struct DeleteTaskspaceDialog: View {
                 .multilineTextAlignment(.center)
             
             if !branchName.isEmpty {
-                HStack {
-                    Toggle("Also delete the branch `\(branchName)` from git", isOn: $deleteBranch)
-                    Spacer()
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Toggle("Also delete the branch `\(branchName)` from git", isOn: $deleteBranch)
+                        Spacer()
+                    }
+                    
+                    if !isMerged && unmergedCommits > 0 {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("\(unmergedCommits) commit\(unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch. Are you sure you want to delete the taskspace?")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.leading, 20)
+                    }
                 }
             }
             

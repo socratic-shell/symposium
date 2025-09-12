@@ -362,6 +362,66 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
 
+    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int) {
+        guard let project = currentProject else {
+            return ("", false, 0)
+        }
+
+        let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        let branchName = getTaskspaceBranch(for: taskspaceDir)
+        
+        if branchName.isEmpty {
+            return ("", false, 0)
+        }
+
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        
+        do {
+            let baseBranch = try getBaseBranch(for: project)
+            let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            let unmergedCommits = isMerged ? 0 : try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            
+            return (branchName, isMerged, unmergedCommits)
+        } catch {
+            Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
+            return (branchName, false, 0)
+        }
+    }
+
+    private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["merge-base", "--is-ancestor", branchName, "origin/\(baseBranch)"]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        try process.run()
+        process.waitUntilExit()
+
+        return process.terminationStatus == 0
+    }
+
+    private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", "origin/\(baseBranch)"]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            return 0
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0"
+        return Int(output) ?? 0
+    }
+
     private func getCurrentBranch(in directory: String) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
