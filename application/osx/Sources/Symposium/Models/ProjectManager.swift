@@ -382,8 +382,6 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
             let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
             
-            Logger.shared.log("Branch info debug: branch=\(branchName), baseBranch=\(baseBranch), isMerged=\(isMerged), unmergedCommits=\(unmergedCommits)")
-            
             return (branchName, isMerged, unmergedCommits)
         } catch {
             Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
@@ -404,14 +402,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
-        Logger.shared.log("getUnmergedCommitCount: Starting for branch=\(branchName), baseBranch=\(baseBranch), directory=\(directory)")
-        
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["rev-list", "--count", "\(branchName)", "--not", baseBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
-
-        Logger.shared.log("getUnmergedCommitCount: Running command: git \(process.arguments!.joined(separator: " "))")
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -420,22 +414,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         try process.run()
         process.waitUntilExit()
 
-        Logger.shared.log("getUnmergedCommitCount: Process exit status: \(process.terminationStatus)")
-
         guard process.terminationStatus == 0 else {
-            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: errorData, encoding: .utf8) ?? "unknown error"
-            Logger.shared.log("getUnmergedCommitCount: Command failed with error: \(errorOutput)")
             return 0
         }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0"
-        let count = Int(output) ?? 0
-        
-        Logger.shared.log("getUnmergedCommitCount: Raw output: '\(output)', parsed count: \(count)")
-        
-        return count
+        return Int(output) ?? 0
     }
 
     private func getCurrentBranch(in directory: String) throws -> String {
