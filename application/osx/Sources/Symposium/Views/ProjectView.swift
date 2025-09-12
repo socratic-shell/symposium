@@ -634,6 +634,16 @@ struct DeleteTaskspaceDialog: View {
                         Spacer()
                     }
                     
+                    // Show merge status
+                    HStack {
+                        Image(systemName: isMerged ? "checkmark.circle.fill" : "clock.fill")
+                            .foregroundColor(isMerged ? .green : .blue)
+                        Text(isMerged ? "This branch has been merged into the main branch" : "This branch has not been merged yet")
+                            .font(.caption)
+                            .foregroundColor(isMerged ? .green : .blue)
+                    }
+                    .padding(.leading, 20)
+                    
                     if !isMerged && unmergedCommits > 0 {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
