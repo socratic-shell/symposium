@@ -590,7 +590,7 @@ struct TaskspaceCard: View {
             branchName = branchInfo.branchName
             isMerged = branchInfo.isMerged
             unmergedCommits = branchInfo.unmergedCommits
-            deleteBranch = branchInfo.isMerged  // Default to checked if merged
+            deleteBranch = (unmergedCommits == 0)  // Default to checked if no unmerged commits
         }
         .onChange(of: taskspace.pendingDeletion) { pending in
             if pending {
@@ -634,23 +634,22 @@ struct DeleteTaskspaceDialog: View {
                         Spacer()
                     }
                     
-                    // Show merge status
-                    HStack {
-                        Image(systemName: isMerged ? "checkmark.circle.fill" : "clock.fill")
-                            .foregroundColor(isMerged ? .green : .blue)
-                        Text(isMerged ? "This branch has been merged into the main branch" : "This branch has not been merged yet")
-                            .font(.caption)
-                            .foregroundColor(isMerged ? .green : .blue)
-                    }
-                    .padding(.leading, 20)
-                    
-                    if !isMerged && unmergedCommits > 0 {
+                    if unmergedCommits > 0 {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)
                             Text("\(unmergedCommits) commit\(unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch. Are you sure you want to delete the taskspace?")
                                 .font(.caption)
                                 .foregroundColor(.orange)
+                        }
+                        .padding(.leading, 20)
+                    } else {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("This branch is safe to delete (no unmerged commits)")
+                                .font(.caption)
+                                .foregroundColor(.green)
                         }
                         .padding(.leading, 20)
                     }
