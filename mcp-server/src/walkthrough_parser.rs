@@ -121,6 +121,14 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                         output_events.push(Event::Start(Tag::HtmlBlock));
                     }
                 }
+                Event::Start(Tag::CodeBlock(kind)) => {
+                    if self.is_special_code_block(&kind) {
+                        self.process_code_block(kind, &mut input_events, &mut output_events)
+                            .await?;
+                    } else {
+                        output_events.push(Event::Start(Tag::CodeBlock(kind)));
+                    }
+                }
                 _ => output_events.push(event),
             }
         }
@@ -147,6 +155,70 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         } else {
             false
         }
+    }
+
+    /// Check if code block is one of our special types (mermaid, comment, etc.)
+    fn is_special_code_block(&self, kind: &pulldown_cmark::CodeBlockKind) -> bool {
+        match kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => {
+                lang.starts_with("mermaid")
+            }
+            _ => false,
+        }
+    }
+
+    /// Process special code blocks (mermaid, comment, etc.)
+    async fn process_code_block<'a>(
+        &mut self,
+        kind: pulldown_cmark::CodeBlockKind<'a>,
+        input_events: &mut VecDeque<Event<'a>>,
+        output_events: &mut Vec<Event<'a>>,
+    ) -> Result<(), anyhow::Error> {
+        // Extract the language/parameters from the code block
+        let (element_type, _params) = match &kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => {
+                if lang.starts_with("mermaid") {
+                    ("mermaid", "")
+                } else {
+                    return Ok(()); // Not a special block, shouldn't happen
+                }
+            }
+            _ => return Ok(()), // Not a fenced code block
+        };
+
+        // Collect the content from the code block
+        let mut content = String::new();
+        while let Some(event) = input_events.pop_front() {
+            match event {
+                Event::Text(text) => {
+                    content.push_str(&text);
+                }
+                Event::End(TagEnd::CodeBlock) => {
+                    break; // End of code block
+                }
+                _ => {
+                    // Unexpected event in code block, add it back and break
+                    input_events.push_front(event);
+                    break;
+                }
+            }
+        }
+
+        // Create the appropriate XML element
+        match element_type {
+            "mermaid" => {
+                let xml_element = XmlElement::Mermaid { content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_mermaid_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            _ => {
+                // Unknown element type, shouldn't happen
+                return Ok(());
+            }
+        }
+
+        Ok(())
     }
 
     /// Process inline XML elements (opening tag, content, closing tag)
@@ -883,5 +955,28 @@ More text"#,
             }
             _ => panic!("Expected Mermaid element"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_parse_mermaid_code_block() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's a mermaid diagram:
+
+```mermaid
+flowchart TD
+    A[Start] --> B[End]
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the mermaid HTML element
+        assert!(result.contains("<mermaid>"));
+        assert!(result.contains("flowchart TD"));
+        assert!(result.contains("A[Start] --> B[End]"));
+        assert!(result.contains("</mermaid>"));
     }
 }
