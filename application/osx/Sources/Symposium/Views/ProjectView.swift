@@ -607,7 +607,7 @@ struct DeleteTaskspaceDialog: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
-    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int) {
+    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUnstagedChanges: Bool) {
         projectManager.getTaskspaceBranchInfo(for: taskspace)
     }
     
@@ -626,20 +626,47 @@ struct DeleteTaskspaceDialog: View {
                         Spacer()
                     }
                     
-                    if branchInfo.unmergedCommits > 0 {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text("\(branchInfo.unmergedCommits) commit\(branchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch. Are you sure you want to delete the taskspace?")
-                                .font(.caption)
-                                .foregroundColor(.orange)
+                    if branchInfo.unmergedCommits > 0 || branchInfo.hasUnstagedChanges {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if branchInfo.unmergedCommits > 0 {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("\(branchInfo.unmergedCommits) commit\(branchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch.")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.leading, 20)
+                            }
+                            
+                            if branchInfo.hasUnstagedChanges {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("This taskspace contains unstaged changes that have not been committed.")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.leading, 20)
+                            }
+                            
+                            if branchInfo.unmergedCommits > 0 || branchInfo.hasUnstagedChanges {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Are you sure you want to delete the taskspace?")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.leading, 20)
+                            }
                         }
-                        .padding(.leading, 20)
                     } else {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("This branch is safe to delete (no unmerged commits)")
+                            Text("This branch is safe to delete (no unmerged commits or unstaged changes)")
                                 .font(.caption)
                                 .foregroundColor(.green)
                         }
@@ -665,7 +692,7 @@ struct DeleteTaskspaceDialog: View {
         }
         .onAppear {
             // Set default deleteBranch value when dialog appears
-            deleteBranch = (branchInfo.unmergedCommits == 0)
+            deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUnstagedChanges)
         }
         .padding()
         .frame(width: 400)

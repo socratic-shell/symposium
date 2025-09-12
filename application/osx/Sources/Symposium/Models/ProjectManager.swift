@@ -362,16 +362,16 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
 
-    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int) {
+    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUnstagedChanges: Bool) {
         guard let project = currentProject else {
-            return ("", false, 0)
+            return ("", false, 0, false)
         }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
         let branchName = getTaskspaceBranch(for: taskspaceDir)
         
         if branchName.isEmpty {
-            return ("", false, 0)
+            return ("", false, 0, false)
         }
 
         let repoName = extractRepoName(from: project.gitURL)
@@ -383,13 +383,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
             let hasUnstagedChanges = try hasUnstagedChanges(in: worktreeDir)
             
-            // If there are unstaged changes, treat as having "uncommitted work"
-            let effectiveUnmergedCommits = hasUnstagedChanges ? max(unmergedCommits, 1) : unmergedCommits
-            
-            return (branchName, isMerged, effectiveUnmergedCommits)
+            return (branchName, isMerged, unmergedCommits, hasUnstagedChanges)
         } catch {
             Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
-            return (branchName, false, 0)
+            return (branchName, false, 0, false)
         }
     }
 
