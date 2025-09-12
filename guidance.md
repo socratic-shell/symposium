@@ -1,26 +1,58 @@
-# AI Assistant Guidelines for Dialectic
+# AI Assistant Guidelines for Socratic Shell walkthroughs
 
-Dialectic offers tools to aid you in developing and discussing code with the user.
+The `present_walkthrough` tool for the Socratic Shell MCP server expects markdown augmented with special code blocks and links that let you interact more easily with the user.
 
 ## Quick Reference
 
-**Core Code Block Elements:**
-- ````comment(location="EXPR", icon="ICON")` - Code comments
-- ````gitdiff(range="COMMIT_RANGE")` - Show code changes
-- ````action(button="TEXT")` - Interactive buttons
-- ````mermaid` - Architecture diagrams
+### Notable tools
 
-**Common expressions:**
+There are other tools that can be more effective 
+- `ide_operation` for code navigation and search; this is preferred to using bash commands like grep and awk
+- `present_walkthrough` for creating interactive code tours; useful for explaining the flow of code or for presenting code that you wrote to the user for them to review.
+
+### Special code blocks for `present_walkthrough`
+
+The `present_walkthrough` tool expects markdown annotated with special codeblocks.
+
+You can write a mermaid block to show flowcharts, sequence diagrams, and so forth:
+
+````markdown
+```mermaid
+flowchart TD
+    ...
+```
+````
+
+You can add comments onto particular code by using the "comment" blocks. The "EXPR" and "ICON" formats are defined later. These comments are rendered inline in the editor and users have the option to reply to them.
+
+````markdown
+```comment(location="EXPR", icon="ICON")
+```
+````
+
+You can include git history with "gitdiff" blocks:
+
+````markdown
+```gitdiff(range="COMMIT_RANGE")
+```
+````
+
+You can include actions with "action" blocks. These render as a button with text that will be sent to you if the user clicks it:
+
+````markdown
+```action(button="TEXT")
+```
+````
+
+### Expressions
+
+The `ide_operation` tool as well as comment location expressions accept expressions like the following:
+
 - `findDefinition("symbol")` - Find where symbol is defined
 - `findReferences("symbol")` - Find all uses of symbol
 - `search("file.rs", "pattern")` - Search file for regex pattern
 - `search("dir", "pattern", ".rs")` - Search directory for pattern in .rs files
 - `lines("file.rs", 10, 20)` - Select specific line range (use sparingly)
-
-**Tool Selection:**
-- `ide_operation` for code navigation and search
-- `fs_read` for reading file contents
-- `present_walkthrough` for creating interactive code tours
 
 # Socratic Shell references
 
@@ -42,15 +74,6 @@ You SHOULD leverage the `ide_operation` tool to navigate the code rather than us
 - Searching for patterns in code
 - Navigating code structure
 
-**Use `fs_read` when:**
-- Reading file contents for analysis
-- Examining configuration files
-- Reviewing documentation
-
-**Use both together for:**
-- Complex code analysis (find locations with `ide_operation`, then read content with `fs_read`)
-- Comprehensive code reviews (search for patterns, then examine specific files)
-
 <!-- ANCHOR: walkthrough_format -->
 # Walkthrough Format Specification
 
@@ -60,7 +83,7 @@ You SHOULD leverage the `ide_operation` tool to navigate the code rather than us
 
 Here's a complete walkthrough showing the authentication system changes:
 
-```markdown
+````markdown
 # Authentication System Updates
 
 We've refactored the token validation system to improve performance and security.
@@ -111,9 +134,9 @@ Run the authentication test suite to verify the changes work correctly.
 ```action(button="Update documentation")
 The API documentation needs to reflect the new default token lifetime.
 ```
-```
+````
 
-This walkthrough combines regular markdown with specialized code block elements: ````mermaid`, ````comment`, ````gitdiff`, and ````action`.
+This walkthrough combines regular markdown with specialized code block elements: `mermaid`, `comment`, `gitdiff`, and `action`.
 
 ## Code Block Elements
 
