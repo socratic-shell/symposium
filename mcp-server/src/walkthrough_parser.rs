@@ -138,12 +138,8 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
     /// Check if HTML content is one of our XML elements
     fn is_xml_element(&self, html: &str) -> bool {
-        html.trim_start().starts_with("<comment")
-            || html.trim_start().starts_with("<gitdiff")
-            || html.trim_start().starts_with("<action")
-            || html.trim_start().starts_with("</comment")
-            || html.trim_start().starts_with("</gitdiff")
-            || html.trim_start().starts_with("</action")
+        // No XML elements supported anymore - only code blocks
+        false
     }
 
     /// Check if upcoming events contain XML block content
@@ -996,63 +992,6 @@ More text"#,
                 <p><comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>This has <em>emphasis</em> and <strong>bold</strong> text</comment></p>
             "#]],
         );
-    }
-    #[test]
-    fn test_parse_comment_element() {
-        let parser = create_test_parser();
-        let xml = r#"<comment location="findDefinitions(`User`)" icon="lightbulb">This is a comment</comment>"#;
-
-        let element = parser.parse_xml_element(xml).unwrap();
-
-        match element {
-            XmlElement::Comment {
-                location,
-                icon,
-                content,
-            } => {
-                assert_eq!(location, "findDefinitions(`User`)");
-                assert_eq!(icon, Some("lightbulb".to_string()));
-                assert_eq!(content, "This is a comment");
-            }
-            _ => panic!("Expected Comment element"),
-        }
-    }
-
-    #[test]
-    fn test_parse_self_closing_gitdiff() {
-        let parser = create_test_parser();
-        let xml = r#"<gitdiff range="HEAD~2..HEAD" exclude-unstaged="true" />"#;
-
-        let element = parser.parse_xml_element(xml).unwrap();
-
-        match element {
-            XmlElement::GitDiff {
-                range,
-                exclude_unstaged,
-                exclude_staged,
-            } => {
-                assert_eq!(range, "HEAD~2..HEAD");
-                assert!(exclude_unstaged);
-                assert!(!exclude_staged);
-            }
-            _ => panic!("Expected GitDiff element"),
-        }
-    }
-
-    #[test]
-    fn test_parse_action_element() {
-        let parser = create_test_parser();
-        let xml = r#"<action button="Test the changes">Run the test suite</action>"#;
-
-        let element = parser.parse_xml_element(xml).unwrap();
-
-        match element {
-            XmlElement::Action { button, message } => {
-                assert_eq!(button, "Test the changes");
-                assert_eq!(message, "Run the test suite");
-            }
-            _ => panic!("Expected Action element"),
-        }
     }
 
     #[tokio::test]
