@@ -637,7 +637,7 @@ struct NewTaskspaceDialog: View {
     @ObservedObject var projectManager: ProjectManager
     @Environment(\.dismiss) private var dismiss
     
-    @State private var taskDescription = ""
+    @AppStorage("newTaskspaceDialogText") private var taskDescription = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -689,6 +689,7 @@ struct NewTaskspaceDialog: View {
                 description: "Getting started...",
                 initialPrompt: projectManager.generateInitialPrompt(taskDescription: trimmedDescription)
             )
+            taskDescription = "" // Clear persisted text after successful creation
             dismiss()
         } catch {
             Logger.shared.log("Failed to create taskspace: \(error)")
