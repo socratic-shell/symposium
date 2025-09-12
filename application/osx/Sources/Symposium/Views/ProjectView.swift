@@ -370,9 +370,6 @@ struct TaskspaceCard: View {
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
     @State private var deleteBranch = false
-    @State private var branchName = ""
-    @State private var isMerged = false
-    @State private var unmergedCommits = 0
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
@@ -568,9 +565,8 @@ struct TaskspaceCard: View {
         .sheet(isPresented: $showingDeleteConfirmation) {
             DeleteTaskspaceDialog(
                 taskspaceName: taskspace.name,
-                branchName: branchName,
-                isMerged: isMerged,
-                unmergedCommits: unmergedCommits,
+                taskspace: taskspace,
+                projectManager: projectManager,
                 deleteBranch: $deleteBranch,
                 onConfirm: {
                     do {
@@ -584,22 +580,10 @@ struct TaskspaceCard: View {
                     showingDeleteConfirmation = false
                 }
             )
-        }
-        .onAppear {
-            let branchInfo = projectManager.getTaskspaceBranchInfo(for: taskspace)
-            branchName = branchInfo.branchName
-            isMerged = branchInfo.isMerged
-            unmergedCommits = branchInfo.unmergedCommits
-            deleteBranch = (unmergedCommits == 0)  // Default to checked if no unmerged commits
-        }
-        .onChange(of: showingDeleteConfirmation) { isShowing in
-            if isShowing {
-                // Refresh branch info when delete dialog is about to be shown
+            .onAppear {
+                // Set default deleteBranch value when dialog appears
                 let branchInfo = projectManager.getTaskspaceBranchInfo(for: taskspace)
-                branchName = branchInfo.branchName
-                isMerged = branchInfo.isMerged
-                unmergedCommits = branchInfo.unmergedCommits
-                deleteBranch = (unmergedCommits == 0)  // Update default based on fresh info
+                deleteBranch = (branchInfo.unmergedCommits == 0)
             }
         }
         .onChange(of: taskspace.pendingDeletion) { pending in
@@ -622,12 +606,15 @@ struct TaskspaceCard: View {
 
 struct DeleteTaskspaceDialog: View {
     let taskspaceName: String
-    let branchName: String
-    let isMerged: Bool
-    let unmergedCommits: Int
+    let taskspace: Taskspace
+    let projectManager: ProjectManager
     @Binding var deleteBranch: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
+    
+    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int) {
+        projectManager.getTaskspaceBranchInfo(for: taskspace)
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -637,18 +624,18 @@ struct DeleteTaskspaceDialog: View {
             Text("Are you sure you want to delete '\(taskspaceName)'? This will permanently remove all files and cannot be undone.")
                 .multilineTextAlignment(.center)
             
-            if !branchName.isEmpty {
+            if !branchInfo.branchName.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Toggle("Also delete the branch `\(branchName)` from git", isOn: $deleteBranch)
+                        Toggle("Also delete the branch `\(branchInfo.branchName)` from git", isOn: $deleteBranch)
                         Spacer()
                     }
                     
-                    if unmergedCommits > 0 {
+                    if branchInfo.unmergedCommits > 0 {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)
-                            Text("\(unmergedCommits) commit\(unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch. Are you sure you want to delete the taskspace?")
+                            Text("\(branchInfo.unmergedCommits) commit\(branchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch. Are you sure you want to delete the taskspace?")
                                 .font(.caption)
                                 .foregroundColor(.orange)
                         }
