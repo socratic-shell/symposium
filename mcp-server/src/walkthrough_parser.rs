@@ -141,11 +141,9 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         html.trim_start().starts_with("<comment")
             || html.trim_start().starts_with("<gitdiff")
             || html.trim_start().starts_with("<action")
-            || html.trim_start().starts_with("<mermaid")
             || html.trim_start().starts_with("</comment")
             || html.trim_start().starts_with("</gitdiff")
             || html.trim_start().starts_with("</action")
-            || html.trim_start().starts_with("</mermaid")
     }
 
     /// Check if upcoming events contain XML block content
@@ -542,7 +540,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 button: attributes.get("button").unwrap_or(&String::new()).clone(),
                 message: content,
             }),
-            "mermaid" => Ok(XmlElement::Mermaid { content }),
             _ => Err(anyhow::anyhow!("Unknown XML element: {}", element_name)),
         }
     }
@@ -553,7 +550,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             "comment" => self.create_comment_html(resolved),
             "action" => self.create_action_html(resolved),
             "gitdiff" => self.create_gitdiff_html(resolved),
-            "mermaid" => self.create_mermaid_html(resolved),
             _ => {
                 // Fallback to original XML format for unknown types
                 let mut attrs = String::new();
@@ -937,23 +933,6 @@ More text"#,
                 assert_eq!(message, "Run the test suite");
             }
             _ => panic!("Expected Action element"),
-        }
-    }
-
-    #[test]
-    fn test_parse_mermaid_element() {
-        let parser = create_test_parser();
-        let xml = r#"<mermaid>flowchart TD
-    A[Start] --> B[End]</mermaid>"#;
-
-        let element = parser.parse_xml_element(xml).unwrap();
-
-        match element {
-            XmlElement::Mermaid { content } => {
-                assert!(content.contains("flowchart TD"));
-                assert!(content.contains("A[Start] --> B[End]"));
-            }
-            _ => panic!("Expected Mermaid element"),
         }
     }
 
