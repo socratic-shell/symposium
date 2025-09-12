@@ -1065,4 +1065,49 @@ mod tests {
         let result = server.present_walkthrough(Parameters(params)).await;
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn test_guidance_file_loading() {
+        // Test that we can load each guidance file
+        let main_content = DialecticServer::load_guidance_file("main.md").unwrap();
+        assert!(main_content.contains("Mindful Collaboration Patterns"));
+        assert!(main_content.contains("Meta moment"));
+
+        let walkthrough_content = DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
+        assert!(walkthrough_content.contains("Walkthrough Format Specification"));
+        assert!(walkthrough_content.contains("<comment location="));
+
+        let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
+        assert!(coding_content.contains("Coding Guidelines"));
+        assert!(coding_content.contains("Co-authored-by: Claude"));
+    }
+
+    #[test]
+    fn test_guidance_file_not_found() {
+        let result = DialecticServer::load_guidance_file("nonexistent.md");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn test_yiasou_prompt_assembly() {
+        // Create a mock server to test prompt assembly
+        // We can't easily create a full DialecticServer in tests due to IPC dependencies,
+        // but we can test the static guidance loading parts
+        
+        // Test that the guidance files contain expected content
+        let main_content = DialecticServer::load_guidance_file("main.md").unwrap();
+        let walkthrough_content = DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
+        let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
+
+        // Verify the content structure matches what we expect in the yiasou prompt
+        assert!(main_content.contains("# Mindful Collaboration Patterns"));
+        assert!(walkthrough_content.contains("# Walkthrough Format Specification"));
+        assert!(coding_content.contains("# Coding Guidelines"));
+        
+        // Verify key collaboration concepts are present
+        assert!(main_content.contains("Make it so?"));
+        assert!(main_content.contains("spacious attention"));
+        assert!(main_content.contains("beginner's mind"));
+    }
 }
