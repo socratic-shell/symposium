@@ -39,6 +39,7 @@
 # Work in Progress
 
 - [Startup Window Management Implementation](./work-in-progress/startup-window-management.md)
+- [Triple-Tickification: XML to Markdown Code Blocks](./work-in-progress/triple-tickification.md)
 - [Big picture plans](./work-in-progress/big-picture.md)
     - [Architecture](./work-in-progress/big-picture/architecture.md)
     - [Experiments](./work-in-progress/big-picture/experiments.md)
