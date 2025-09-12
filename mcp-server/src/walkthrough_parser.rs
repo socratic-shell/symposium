@@ -1114,6 +1114,14 @@ More content here."#;
         assert!(result.contains("action-button"));
         assert!(result.contains("Run Tests"));
         assert!(result.contains("Should we run the test suite now?"));
+
+        expect_test::expect![[r#"
+            <h1>Test Walkthrough</h1>
+            <p>Here's an action:</p>
+            <button class="action-button" data-tell-agent="Should we run the test suite now?
+            " style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Run Tests</button>
+            <p>More content here.</p>
+        "#]].assert_eq(&result);
     }
 
     #[tokio::test]
@@ -1132,9 +1140,21 @@ More content here."#;
         let result = parser.parse_and_normalize(markdown).await.unwrap();
         
         // Should contain the comment HTML element
-        assert!(result.contains("data-comment"));
-        assert!(result.contains("This explains the foo function"));
-        assert!(result.contains("findDefinition('foo')"));
-        assert!(result.contains("💡")); // lightbulb icon
+        expect_test::expect![[r#"
+            <h1>Test Walkthrough</h1>
+            <p>Here's a comment:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the foo function\n&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinition('foo')</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the foo function
+            </div>
+                                </div>
+                            </div>
+                        </div>
+            <p>More content here.</p>
+        "#]].assert_eq(&result);
     }
 }
