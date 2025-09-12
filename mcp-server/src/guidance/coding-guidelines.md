@@ -1,3 +1,8 @@
+---
+name: "Coding Guidelines"
+description: "Development best practices and standards for the Symposium project"
+---
+
 # Coding Guidelines
 
 Agent MUST follow the following guidance:

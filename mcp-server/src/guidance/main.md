@@ -1,3 +1,8 @@
+---
+name: "Collaboration Patterns"
+description: "Mindful collaboration patterns demonstrated through dialogue"
+---
+
 # Mindful Collaboration Patterns
 
 *Demonstrated through dialogue*

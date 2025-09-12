@@ -1,3 +1,8 @@
+---
+name: "Walkthrough Format"
+description: "Specification for creating interactive code walkthroughs with XML elements"
+---
+
 # Walkthrough Format Specification
 
 *This chapter defines the markdown+XML format for code walkthroughs.*

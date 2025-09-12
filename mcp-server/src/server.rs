@@ -999,6 +999,39 @@ impl DialecticServer {
     }
 }
 
+impl DialecticServer {
+    fn parse_yaml_metadata(content: &str) -> (Option<String>, Option<String>) {
+        if !content.starts_with("---\n") {
+            return (None, None);
+        }
+        
+        let end_marker = content[4..].find("\n---\n");
+        if let Some(end_pos) = end_marker {
+            let yaml_content = &content[4..end_pos + 4];
+            
+            let mut name = None;
+            let mut description = None;
+            
+            for line in yaml_content.lines() {
+                if let Some(colon_pos) = line.find(':') {
+                    let key = line[..colon_pos].trim();
+                    let value = line[colon_pos + 1..].trim().trim_matches('"');
+                    
+                    match key {
+                        "name" => name = Some(value.to_string()),
+                        "description" => description = Some(value.to_string()),
+                        _ => {}
+                    }
+                }
+            }
+            
+            (name, description)
+        } else {
+            (None, None)
+        }
+    }
+}
+
 #[tool_handler]
 impl ServerHandler for DialecticServer {
     fn get_info(&self) -> ServerInfo {
@@ -1040,38 +1073,25 @@ impl ServerHandler for DialecticServer {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, McpError> {
-        let resources = vec![
-            Resource {
-                raw: RawResource {
-                    uri: "main.md".into(),
-                    name: "Collaboration Patterns".into(),
-                    description: Some("Mindful collaboration patterns demonstrated through dialogue".into()),
-                    mime_type: Some("text/markdown".into()),
-                    size: None,
-                },
-                annotations: None,
-            },
-            Resource {
-                raw: RawResource {
-                    uri: "walkthrough-format.md".into(),
-                    name: "Walkthrough Format".into(),
-                    description: Some("Specification for creating interactive code walkthroughs".into()),
-                    mime_type: Some("text/markdown".into()),
-                    size: None,
-                },
-                annotations: None,
-            },
-            Resource {
-                raw: RawResource {
-                    uri: "coding-guidelines.md".into(),
-                    name: "Coding Guidelines".into(),
-                    description: Some("Development best practices and standards".into()),
-                    mime_type: Some("text/markdown".into()),
-                    size: None,
-                },
-                annotations: None,
-            },
-        ];
+        let mut resources = Vec::new();
+        
+        for file_path in GuidanceFiles::iter() {
+            if let Some(file) = GuidanceFiles::get(&file_path) {
+                let content = String::from_utf8_lossy(&file.data);
+                let (name, description) = Self::parse_yaml_metadata(&content);
+                
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: file_path.to_string(),
+                        name: name.unwrap_or_else(|| file_path.to_string()),
+                        description,
+                        mime_type: Some("text/markdown".into()),
+                        size: Some(file.data.len() as u32),
+                    },
+                    annotations: None,
+                });
+            }
+        }
 
         Ok(ListResourcesResult { 
             resources,
@@ -1084,21 +1104,10 @@ impl ServerHandler for DialecticServer {
         request: ReadResourceRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResult, McpError> {
-        let content = match request.uri.as_str() {
-            "main.md" => GuidanceFiles::get("main.md")
-                .ok_or_else(|| McpError::resource_not_found("Resource not found: main.md", None))?
-                .data
-                .into_owned(),
-            "walkthrough-format.md" => GuidanceFiles::get("walkthrough-format.md")
-                .ok_or_else(|| McpError::resource_not_found("Resource not found: walkthrough-format.md", None))?
-                .data
-                .into_owned(),
-            "coding-guidelines.md" => GuidanceFiles::get("coding-guidelines.md")
-                .ok_or_else(|| McpError::resource_not_found("Resource not found: coding-guidelines.md", None))?
-                .data
-                .into_owned(),
-            _ => return Err(McpError::resource_not_found(format!("Unknown resource: {}", request.uri), None)),
-        };
+        let content = GuidanceFiles::get(&request.uri)
+            .ok_or_else(|| McpError::resource_not_found(format!("Resource not found: {}", request.uri), None))?
+            .data
+            .into_owned();
 
         let content_str = String::from_utf8(content)
             .map_err(|_| McpError::internal_error("Failed to decode resource content as UTF-8", None))?;
@@ -1211,6 +1220,28 @@ mod tests {
             }
             _ => panic!("Expected TextResourceContents"),
         }
+    }
+
+    #[test]
+    fn test_yaml_metadata_parsing() {
+        let content_with_yaml = r#"---
+name: "Test Resource"
+description: "A test resource for testing"
+---
+
+# Test Content
+
+This is test content."#;
+
+        let (name, description) = DialecticServer::parse_yaml_metadata(content_with_yaml);
+        assert_eq!(name, Some("Test Resource".to_string()));
+        assert_eq!(description, Some("A test resource for testing".to_string()));
+
+        // Test content without YAML
+        let content_without_yaml = "# Just a heading\n\nSome content.";
+        let (name, description) = DialecticServer::parse_yaml_metadata(content_without_yaml);
+        assert_eq!(name, None);
+        assert_eq!(description, None);
     }
 
     #[test]
