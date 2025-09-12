@@ -1165,41 +1165,6 @@ More content here."#;
     }
 
     #[tokio::test]
-    async fn test_parse_comment_code_block() {
-        let mut parser = create_test_parser();
-        let markdown = r#"# Test Walkthrough
-
-Here's a comment:
-
-```comment(location="findDefinition('foo')", icon="lightbulb")
-This explains the foo function
-```
-
-More content here."#;
-
-        let result = parser.parse_and_normalize(markdown).await.unwrap();
-        
-        // Should contain the comment HTML element
-        expect_test::expect![[r#"
-            <h1>Test Walkthrough</h1>
-            <p>Here's a comment:</p>
-            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the foo function\n&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
-                            <div style="display: flex; align-items: flex-start;">
-                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
-                                <div class="comment-content" style="flex: 1;">
-                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinition('foo')</div>
-                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
-                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the foo function
-            </div>
-                                </div>
-                            </div>
-                        </div>
-            <p>More content here.</p>
-        "#]].assert_eq(&result);
-    }
-
-
-    #[tokio::test]
     async fn test_walkthrough_from_2025_09_12() {
         let mut parser = create_test_parser();
         let markdown = "# Testing Triple-Tickification After Restart\n\nLet's test if the new code block syntax is working now!\n\n## Mermaid Test\n```mermaid\nflowchart LR\n    A[Old XML] --> B[Triple-Tickification]\n    B --> C[New Code Blocks]\n    C --> D[Success!]\n```\n\n## Comment Test\n```comment(location=\"findDefinition(`WalkthroughParser`)\", icon=\"rocket\")\nThis should now render as a proper comment box instead of raw markdown!\nThe parser should recognize this as a special code block and convert it to HTML.\n```\n\n## GitDiff Test\n```gitdiff(range=\"HEAD~3..HEAD\")\n```\n\n## Action Test\n```action(button=\"It's working!\")\nClick this if you see a proper button instead of raw markdown text.\n```\n\nIf you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉";
