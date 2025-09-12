@@ -607,7 +607,7 @@ struct DeleteTaskspaceDialog: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
-    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUnstagedChanges: Bool) {
+    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
         projectManager.getTaskspaceBranchInfo(for: taskspace)
     }
     
@@ -626,7 +626,7 @@ struct DeleteTaskspaceDialog: View {
                         Spacer()
                     }
                     
-                    if branchInfo.unmergedCommits > 0 || branchInfo.hasUnstagedChanges {
+                    if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
                         VStack(alignment: .leading, spacing: 4) {
                             if branchInfo.unmergedCommits > 0 {
                                 HStack {
@@ -639,18 +639,18 @@ struct DeleteTaskspaceDialog: View {
                                 .padding(.leading, 20)
                             }
                             
-                            if branchInfo.hasUnstagedChanges {
+                            if branchInfo.hasUncommittedChanges {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
-                                    Text("This taskspace contains unstaged changes that have not been committed.")
+                                    Text("This taskspace contains uncommitted changes.")
                                         .font(.caption)
                                         .foregroundColor(.orange)
                                 }
                                 .padding(.leading, 20)
                             }
                             
-                            if branchInfo.unmergedCommits > 0 || branchInfo.hasUnstagedChanges {
+                            if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
@@ -666,7 +666,7 @@ struct DeleteTaskspaceDialog: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("This branch is safe to delete (no unmerged commits or unstaged changes)")
+                            Text("This branch is safe to delete (no unmerged commits or uncommitted changes)")
                                 .font(.caption)
                                 .foregroundColor(.green)
                         }
@@ -692,7 +692,7 @@ struct DeleteTaskspaceDialog: View {
         }
         .onAppear {
             // Set default deleteBranch value when dialog appears
-            deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUnstagedChanges)
+            deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUncommittedChanges)
         }
         .padding()
         .frame(width: 400)

@@ -362,7 +362,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
 
-    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUnstagedChanges: Bool) {
+    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
         guard let project = currentProject else {
             return ("", false, 0, false)
         }
@@ -381,9 +381,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             let baseBranch = try getBaseBranch(for: project)
             let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
             let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
-            let hasUnstagedChanges = try hasUnstagedChanges(in: worktreeDir)
+            let hasUncommittedChanges = try hasUncommittedChanges(in: worktreeDir)
             
-            return (branchName, isMerged, unmergedCommits, hasUnstagedChanges)
+            return (branchName, isMerged, unmergedCommits, hasUncommittedChanges)
         } catch {
             Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
             return (branchName, false, 0, false)
@@ -424,7 +424,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return Int(output) ?? 0
     }
     
-    private func hasUnstagedChanges(in directory: String) throws -> Bool {
+    private func hasUncommittedChanges(in directory: String) throws -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["status", "--porcelain"]
