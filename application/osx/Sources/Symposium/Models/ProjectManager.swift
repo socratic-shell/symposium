@@ -346,8 +346,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        
         do {
-            return try getCurrentBranch(in: taskspaceDir)
+            return try getCurrentBranch(in: worktreeDir)
         } catch {
             Logger.shared.log("Failed to get branch name for taskspace \(taskspace.name): \(error)")
             return ""
