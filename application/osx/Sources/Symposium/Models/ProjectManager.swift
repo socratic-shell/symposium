@@ -380,7 +380,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         do {
             let baseBranch = try getBaseBranch(for: project)
             let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
-            let unmergedCommits = isMerged ? 0 : try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            
+            Logger.shared.log("Branch info debug: branch=\(branchName), baseBranch=\(baseBranch), isMerged=\(isMerged), unmergedCommits=\(unmergedCommits)")
             
             return (branchName, isMerged, unmergedCommits)
         } catch {
@@ -392,7 +394,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["merge-base", "--is-ancestor", branchName, "origin/\(baseBranch)"]
+        process.arguments = ["merge-base", "--is-ancestor", branchName, baseBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
         try process.run()
@@ -402,24 +404,38 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
+        Logger.shared.log("getUnmergedCommitCount: Starting for branch=\(branchName), baseBranch=\(baseBranch), directory=\(directory)")
+        
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", "origin/\(baseBranch)"]
+        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", baseBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        Logger.shared.log("getUnmergedCommitCount: Running command: git \(process.arguments!.joined(separator: " "))")
 
         let pipe = Pipe()
         process.standardOutput = pipe
+        process.standardError = pipe
 
         try process.run()
         process.waitUntilExit()
 
+        Logger.shared.log("getUnmergedCommitCount: Process exit status: \(process.terminationStatus)")
+
         guard process.terminationStatus == 0 else {
+            let errorData = pipe.fileHandleForReading.readDataToEndOfFile()
+            let errorOutput = String(data: errorData, encoding: .utf8) ?? "unknown error"
+            Logger.shared.log("getUnmergedCommitCount: Command failed with error: \(errorOutput)")
             return 0
         }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0"
-        return Int(output) ?? 0
+        let count = Int(output) ?? 0
+        
+        Logger.shared.log("getUnmergedCommitCount: Raw output: '\(output)', parsed count: \(count)")
+        
+        return count
     }
 
     private func getCurrentBranch(in directory: String) throws -> String {
