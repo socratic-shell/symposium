@@ -198,11 +198,11 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         }
     }
 
-    /// Parse parameter string like 'param1="value1", param2="value2"'
+    /// Parse parameter string like 'param1="value1", param2="value2", flag1, flag2'
     fn parse_parameters(&self, params_str: &str) -> HashMap<String, String> {
         let mut params = HashMap::new();
         
-        // Simple parser for comma-separated key="value" pairs
+        // Simple parser for comma-separated key="value" pairs and boolean flags
         let mut current_param = String::new();
         let mut in_quotes = false;
         let mut escape_next = false;
@@ -219,9 +219,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 current_param.push(ch);
             } else if ch == ',' && !in_quotes {
                 // End of parameter
-                if let Some((key, value)) = self.parse_single_parameter(&current_param) {
-                    params.insert(key, value);
-                }
+                self.parse_and_add_parameter(&current_param, &mut params);
                 current_param.clear();
             } else {
                 current_param.push(ch);
@@ -230,18 +228,21 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         
         // Handle last parameter
         if !current_param.trim().is_empty() {
-            if let Some((key, value)) = self.parse_single_parameter(&current_param) {
-                params.insert(key, value);
-            }
+            self.parse_and_add_parameter(&current_param, &mut params);
         }
         
         params
     }
 
-    /// Parse a single parameter like 'key="value"'
-    fn parse_single_parameter(&self, param: &str) -> Option<(String, String)> {
+    /// Parse and add a single parameter (either key="value" or boolean flag)
+    fn parse_and_add_parameter(&self, param: &str, params: &mut HashMap<String, String>) {
         let param = param.trim();
+        if param.is_empty() {
+            return;
+        }
+        
         if let Some(eq_pos) = param.find('=') {
+            // Key-value parameter
             let key = param[..eq_pos].trim().to_string();
             let value_part = param[eq_pos + 1..].trim();
             
@@ -252,9 +253,10 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 value_part.to_string()
             };
             
-            Some((key, value))
+            params.insert(key, value);
         } else {
-            None
+            // Boolean flag (no value)
+            params.insert(param.to_string(), String::new());
         }
     }
 
@@ -309,6 +311,22 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 let xml_element = XmlElement::Comment { location, icon, content };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_comment_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "gitdiff" => {
+                let range = params.get("range").cloned().unwrap_or_default();
+                let exclude_unstaged = params.contains_key("exclude-unstaged");
+                let exclude_staged = params.contains_key("exclude-staged");
+                let xml_element = XmlElement::GitDiff { range, exclude_unstaged, exclude_staged };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_gitdiff_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "action" => {
+                let button = params.get("button").cloned().unwrap_or("Action".to_string());
+                let xml_element = XmlElement::Action { button, message: content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_action_html(&resolved);
                 output_events.push(Event::InlineHtml(html.into()));
             }
             _ => {
@@ -1100,9 +1118,63 @@ More content here."#;
         let params = parser.parse_parameters(r#"button="Click me""#);
         assert_eq!(params.get("button").unwrap(), "Click me");
         
+        // Test boolean flags
+        let params = parser.parse_parameters(r#"range="HEAD~2", exclude-unstaged, exclude-staged"#);
+        assert_eq!(params.get("range").unwrap(), "HEAD~2");
+        assert!(params.contains_key("exclude-unstaged"));
+        assert!(params.contains_key("exclude-staged"));
+        assert_eq!(params.get("exclude-unstaged").unwrap(), ""); // Boolean flags have empty values
+        
+        // Test mixed parameters and flags
+        let params = parser.parse_parameters(r#"location="test", readonly, icon="info""#);
+        assert_eq!(params.get("location").unwrap(), "test");
+        assert_eq!(params.get("icon").unwrap(), "info");
+        assert!(params.contains_key("readonly"));
+        
         // Test empty parameters
         let params = parser.parse_parameters("");
         assert!(params.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_parse_gitdiff_code_block() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's a git diff:
+
+```gitdiff(range="HEAD~2..HEAD", exclude-unstaged, exclude-staged)
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the gitdiff HTML element
+        assert!(result.contains("gitdiff-container"));
+        assert!(result.contains("HEAD~2..HEAD"));
+        assert!(result.contains("GitDiff rendering"));
+    }
+
+    #[tokio::test]
+    async fn test_parse_action_code_block() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's an action:
+
+```action(button="Run Tests")
+Should we run the test suite now?
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the action HTML element
+        assert!(result.contains("action-button"));
+        assert!(result.contains("Run Tests"));
+        assert!(result.contains("Should we run the test suite now?"));
     }
 
     #[tokio::test]
