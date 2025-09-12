@@ -105,22 +105,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
         while let Some(event) = input_events.pop_front() {
             match event {
-                Event::InlineHtml(html) => {
-                    if self.is_xml_element(&html) {
-                        self.process_inline_xml(html, &mut input_events, &mut output_events)
-                            .await?;
-                    } else {
-                        output_events.push(Event::InlineHtml(html));
-                    }
-                }
-                Event::Start(Tag::HtmlBlock) => {
-                    if self.is_xml_block(&input_events) {
-                        self.process_xml_block(&mut input_events, &mut output_events)
-                            .await?;
-                    } else {
-                        output_events.push(Event::Start(Tag::HtmlBlock));
-                    }
-                }
                 Event::Start(Tag::CodeBlock(kind)) => {
                     if self.is_special_code_block(&kind) {
                         self.process_code_block(kind, &mut input_events, &mut output_events)
@@ -134,21 +118,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         }
 
         Ok(output_events)
-    }
-
-    /// Check if HTML content is one of our XML elements
-    fn is_xml_element(&self, _html: &str) -> bool {
-        // No XML elements supported anymore - only code blocks
-        false
-    }
-
-    /// Check if upcoming events contain XML block content
-    fn is_xml_block(&self, upcoming_events: &VecDeque<Event>) -> bool {
-        if let Some(Event::Html(html)) = upcoming_events.front() {
-            self.is_xml_element(html)
-        } else {
-            false
-        }
     }
 
     /// Check if code block is one of our special types (mermaid, comment, etc.)
@@ -176,7 +145,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 break;
             } else if let Some((key, value)) = trimmed.split_once(':') {
                 if key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
-                    // YAML parameter line
+                    // YAML parameter line looks like `foo: ...`
                     let key = key.trim().to_string();
                     let value = value.trim().to_string();
                     params.insert(key, value);
@@ -269,123 +238,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 // Unknown element type, shouldn't happen
                 return Ok(());
             }
-        }
-
-        Ok(())
-    }
-
-    /// Process inline XML elements (opening tag, content, closing tag)
-    async fn process_inline_xml<'a>(
-        &mut self,
-        html: CowStr<'a>,
-        input_events: &mut VecDeque<Event<'a>>,
-        output_events: &mut Vec<Event<'a>>,
-    ) -> Result<(), anyhow::Error> {
-        // If this is a self-closing tag, handle it directly
-        if html.contains("/>") {
-            let xml_content = html.to_string();
-            if let Ok(xml_element) = self.parse_xml_element(&xml_content) {
-                let resolved = self.resolve_single_element(xml_element).await?;
-                let normalized_xml = self.create_normalized_xml(&resolved);
-                output_events.push(Event::InlineHtml(normalized_xml.into()));
-            } else {
-                output_events.push(Event::InlineHtml(html));
-            }
-            return Ok(());
-        }
-
-        // If this is a closing tag, pass it through (shouldn't happen in our flow)
-        if html.starts_with("</") {
-            output_events.push(Event::InlineHtml(html));
-            return Ok(());
-        }
-
-        // This is an opening tag - collect all events until closing tag
-        let mut content_events = Vec::new();
-
-        while let Some(event) = input_events.pop_front() {
-            match event {
-                Event::InlineHtml(closing_html) if closing_html.starts_with("</") => {
-                    // Found closing tag - render collected content and create complete XML
-                    let mut content_html = String::new();
-                    html::push_html(&mut content_html, content_events.iter().cloned());
-
-                    // Try to parse just the opening tag to get attributes
-                    if let Ok(xml_element) =
-                        self.parse_xml_element(&format!("{}</{}>", html, &closing_html[2..]))
-                    {
-                        let resolved = self.resolve_single_element(xml_element).await?;
-
-                        // Create the resolved XML with the rendered content
-                        let mut attrs = String::new();
-                        let resolved_json =
-                            serde_json::to_string(&resolved.resolved_data).unwrap_or_default();
-                        attrs.push_str(&format!(" data-resolved='{}'", resolved_json));
-
-                        for (key, value) in &resolved.attributes {
-                            attrs.push_str(&format!(" {}=\"{}\"", key, value));
-                        }
-
-                        let tag_name = resolved.element_type;
-                        let normalized_xml =
-                            format!("<{}{}>{}{}", tag_name, attrs, content_html, closing_html);
-                        output_events.push(Event::InlineHtml(normalized_xml.into()));
-                    } else {
-                        // If parsing fails, pass through original
-                        output_events.push(Event::InlineHtml(html));
-                        output_events.extend(content_events);
-                        output_events.push(Event::InlineHtml(closing_html));
-                    }
-                    return Ok(());
-                }
-                _ => {
-                    // Collect all events between opening and closing tags
-                    content_events.push(event);
-                }
-            }
-        }
-
-        // If we get here, no closing tag was found - pass through original
-        output_events.push(Event::InlineHtml(html));
-        output_events.extend(content_events);
-        Ok(())
-    }
-
-    /// Process block-level XML elements
-    async fn process_xml_block<'a>(
-        &mut self,
-        input_events: &mut VecDeque<Event<'a>>,
-        output_events: &mut Vec<Event<'a>>,
-    ) -> Result<(), anyhow::Error> {
-        let mut xml_content = String::new();
-
-        // Collect all HTML events until End(HtmlBlock)
-        while let Some(event) = input_events.pop_front() {
-            match event {
-                Event::Html(html) => xml_content.push_str(&html),
-                Event::End(TagEnd::HtmlBlock) => break,
-                _ => {
-                    // Put back unexpected event and break
-                    input_events.push_front(event);
-                    break;
-                }
-            }
-        }
-
-        // Parse and resolve the complete XML block
-        if let Ok(xml_element) = self.parse_xml_element(&xml_content) {
-            let resolved = self.resolve_single_element(xml_element).await?;
-            let normalized_xml = self.create_normalized_xml(&resolved);
-
-            // Emit as HTML block
-            output_events.push(Event::Start(Tag::HtmlBlock));
-            output_events.push(Event::Html(normalized_xml.into()));
-            output_events.push(Event::End(TagEnd::HtmlBlock));
-        } else {
-            // If parsing fails, pass through original
-            output_events.push(Event::Start(Tag::HtmlBlock));
-            output_events.push(Event::Html(xml_content.into()));
-            output_events.push(Event::End(TagEnd::HtmlBlock));
         }
 
         Ok(())
