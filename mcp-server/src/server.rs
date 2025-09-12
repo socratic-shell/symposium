@@ -1030,6 +1030,30 @@ impl DialecticServer {
             (None, None)
         }
     }
+
+    fn generate_resources() -> Vec<Resource> {
+        let mut resources = Vec::new();
+        
+        for file_path in GuidanceFiles::iter() {
+            if let Some(file) = GuidanceFiles::get(&file_path) {
+                let content = String::from_utf8_lossy(&file.data);
+                let (name, description) = Self::parse_yaml_metadata(&content);
+                
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: file_path.to_string(),
+                        name: name.unwrap_or_else(|| file_path.to_string()),
+                        description,
+                        mime_type: Some("text/markdown".into()),
+                        size: Some(file.data.len() as u32),
+                    },
+                    annotations: None,
+                });
+            }
+        }
+        
+        resources
+    }
 }
 
 #[tool_handler]
@@ -1073,26 +1097,8 @@ impl ServerHandler for DialecticServer {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, McpError> {
-        let mut resources = Vec::new();
+        let resources = Self::generate_resources();
         
-        for file_path in GuidanceFiles::iter() {
-            if let Some(file) = GuidanceFiles::get(&file_path) {
-                let content = String::from_utf8_lossy(&file.data);
-                let (name, description) = Self::parse_yaml_metadata(&content);
-                
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: file_path.to_string(),
-                        name: name.unwrap_or_else(|| file_path.to_string()),
-                        description,
-                        mime_type: Some("text/markdown".into()),
-                        size: Some(file.data.len() as u32),
-                    },
-                    annotations: None,
-                });
-            }
-        }
-
         Ok(ListResourcesResult { 
             resources,
             next_cursor: None,
@@ -1242,6 +1248,29 @@ This is test content."#;
         let (name, description) = DialecticServer::parse_yaml_metadata(content_without_yaml);
         assert_eq!(name, None);
         assert_eq!(description, None);
+    }
+
+    #[test]
+    fn test_list_resources_output() {
+        // Test the actual resource generation logic used by list_resources
+        let resources = DialecticServer::generate_resources();
+
+        // Verify we have the expected files
+        assert_eq!(resources.len(), 3);
+        
+        // Check that all files have proper metadata
+        let main_resource = resources.iter().find(|r| r.raw.uri == "main.md").unwrap();
+        assert_eq!(main_resource.raw.name, "Collaboration Patterns");
+        assert_eq!(main_resource.raw.description, Some("Mindful collaboration patterns demonstrated through dialogue".to_string()));
+        assert!(main_resource.raw.size.unwrap() > 0);
+        
+        let walkthrough_resource = resources.iter().find(|r| r.raw.uri == "walkthrough-format.md").unwrap();
+        assert_eq!(walkthrough_resource.raw.name, "Walkthrough Format");
+        assert_eq!(walkthrough_resource.raw.description, Some("Specification for creating interactive code walkthroughs with XML elements".to_string()));
+        
+        let coding_resource = resources.iter().find(|r| r.raw.uri == "coding-guidelines.md").unwrap();
+        assert_eq!(coding_resource.raw.name, "Coding Guidelines");
+        assert_eq!(coding_resource.raw.description, Some("Development best practices and standards for the Symposium project".to_string()));
     }
 
     #[test]
