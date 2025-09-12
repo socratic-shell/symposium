@@ -292,7 +292,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
 
         // Get current branch name before removing worktree
-        let branchName = try getCurrentBranch(in: taskspaceDir)
+        // The actual git repository is in taskspaceDir/repoName, not taskspaceDir itself
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        let branchName = try getCurrentBranch(in: worktreeDir)
 
         // Remove git worktree (this also removes the directory)
         let worktreeProcess = Process()

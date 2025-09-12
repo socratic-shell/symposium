@@ -447,7 +447,8 @@ class IpcManager: ObservableObject {
                 let payload = try JSONDecoder().decode(
                     DeleteTaskspacePayload.self, from: payloadData)
 
-                if let delegate = delegate {
+                // Try each delegate until one handles the message
+                for delegate in delegates {
                     let result = await delegate.handleDeleteTaskspace(
                         payload, messageId: message.id)
 
@@ -455,16 +456,18 @@ class IpcManager: ObservableObject {
                     case .handled(let response):
                         sendResponse(
                             to: message.id, success: true, data: response, error: nil)
+                        return
                     case .notForMe:
-                        sendResponse(
-                            to: message.id, success: false, data: nil as String?,
-                            error: "No handler available")
+                        continue
                     }
-                } else {
-                    sendResponse(
-                        to: message.id, success: false, data: nil as String?,
-                        error: "No handler available")
                 }
+
+                // No delegate handled the message
+                Logger.shared.log(
+                    "IpcManager[\(instanceId)]: No delegate handled delete_taskspace for UUID: \(payload.taskspaceUuid)")
+                sendResponse(
+                    to: message.id, success: false, data: nil as String?,
+                    error: "No handler available")
 
             } catch {
                 Logger.shared.log(
