@@ -1444,29 +1444,17 @@ extension ProjectManager {
             return .notForMe
         }
 
-        let taskspace = project.taskspaces[taskspaceIndex]
+        // Set the pendingDeletion flag to trigger UI confirmation dialog
+        var updatedProject = project
+        updatedProject.taskspaces[taskspaceIndex].pendingDeletion = true
         
-        do {
-            // Use existing deletion logic
-            try deleteTaskspace(taskspace, deleteBranch: true)
-            
-            // Remove from project
-            var updatedProject = project
-            updatedProject.taskspaces.remove(at: taskspaceIndex)
-            
-            DispatchQueue.main.async {
-                self.currentProject = updatedProject
-                Logger.shared.log(
-                    "ProjectManager[\(self.instanceId)]: Deleted taskspace: \(taskspace.name)")
-            }
-            
-            return .handled(EmptyResponse())
-            
-        } catch {
+        DispatchQueue.main.async {
+            self.currentProject = updatedProject
             Logger.shared.log(
-                "ProjectManager[\(instanceId)]: Failed to delete taskspace: \(error)")
-            return .notForMe
+                "ProjectManager[\(self.instanceId)]: Triggered deletion dialog for taskspace: \(updatedProject.taskspaces[taskspaceIndex].name)")
         }
+        
+        return .handled(EmptyResponse())
     }
 
     /// Check if VSCode 'code' command is available and return its path

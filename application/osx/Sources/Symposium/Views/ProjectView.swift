@@ -592,6 +592,17 @@ struct TaskspaceCard: View {
             unmergedCommits = branchInfo.unmergedCommits
             deleteBranch = branchInfo.isMerged  // Default to checked if merged
         }
+        .onChange(of: taskspace.pendingDeletion) { pending in
+            if pending {
+                showingDeleteConfirmation = true
+                // Clear the flag after showing dialog
+                if var updatedProject = projectManager.currentProject,
+                   let taskspaceIndex = updatedProject.taskspaces.firstIndex(where: { $0.id == taskspace.id }) {
+                    updatedProject.taskspaces[taskspaceIndex].pendingDeletion = false
+                    projectManager.currentProject = updatedProject
+                }
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(taskspace.needsAttention ? Color.orange : Color.clear, lineWidth: 2)
