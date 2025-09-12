@@ -183,6 +183,8 @@ pub enum IPCMessageType {
     TaskspaceRollCall,
     /// Register VSCode window with taskspace
     RegisterTaskspaceWindow,
+    /// Delete current taskspace
+    DeleteTaskspace,
 }
 
 // ANCHOR: store_reference_payload
@@ -294,5 +296,14 @@ pub struct UpdateTaskspacePayload {
     pub description: String,
 }
 // ANCHOR_END: update_taskspace_payload
+
+/// Payload for delete_taskspace messages
+// ANCHOR: delete_taskspace_payload
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct DeleteTaskspacePayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
+}
+// ANCHOR_END: delete_taskspace_payload
 
 

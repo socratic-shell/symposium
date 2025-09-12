@@ -910,6 +910,44 @@ impl DialecticServer {
             }
         }
     }
+
+    #[tool(
+        description = "Delete the current taskspace. This will remove the taskspace directory, \
+                       close associated VSCode windows, and clean up git worktrees."
+    )]
+    async fn delete_taskspace(&self) -> Result<CallToolResult, McpError> {
+        self.ipc
+            .send_log(LogLevel::Info, "Deleting current taskspace".to_string())
+            .await;
+
+        // Send delete_taskspace message to Symposium app via daemon
+        match self.ipc.delete_taskspace().await {
+            Ok(()) => {
+                self.ipc
+                    .send_log(LogLevel::Info, "Taskspace deletion initiated".to_string())
+                    .await;
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    "Taskspace deletion initiated successfully".to_string(),
+                )]))
+            }
+            Err(e) => {
+                self.ipc
+                    .send_log(
+                        LogLevel::Error,
+                        format!("Failed to delete taskspace: {}", e),
+                    )
+                    .await;
+
+                Err(McpError::internal_error(
+                    "Failed to delete taskspace",
+                    Some(serde_json::json!({
+                        "error": e.to_string()
+                    })),
+                ))
+            }
+        }
+    }
 }
 
 #[tool_handler]

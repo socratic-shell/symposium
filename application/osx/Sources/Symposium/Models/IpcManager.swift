@@ -64,6 +64,17 @@ struct UpdateTaskspacePayload: Codable {
     }
 }
 
+/// Request to delete current taskspace
+struct DeleteTaskspacePayload: Codable {
+    let taskspaceUuid: String
+    let projectPath: String
+
+    private enum CodingKeys: String, CodingKey {
+        case taskspaceUuid = "taskspace_uuid"
+        case projectPath = "project_path"
+    }
+}
+
 /// Progress update from MCP tool for taskspace activity logs
 struct LogProgressPayload: Codable {
     let projectPath: String
@@ -124,6 +135,8 @@ protocol IpcMessageDelegate: AnyObject {
     func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async
         -> MessageHandlingResult<SpawnTaskspaceResponse>
     func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async
+        -> MessageHandlingResult<EmptyResponse>
+    func handleDeleteTaskspace(_ payload: DeleteTaskspacePayload, messageId: String) async
         -> MessageHandlingResult<EmptyResponse>
     func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async
         -> MessageHandlingResult<EmptyResponse>
@@ -297,6 +310,8 @@ class IpcManager: ObservableObject {
                 handleSpawnTaskspace(message: message)
             case "update_taskspace":
                 handleUpdateTaskspace(message: message)
+            case "delete_taskspace":
+                handleDeleteTaskspace(message: message)
             case "log_progress":
                 handleLogProgress(message: message)
             case "signal_user":
@@ -419,6 +434,41 @@ class IpcManager: ObservableObject {
             } catch {
                 Logger.shared.log(
                     "IpcManager[\(instanceId)]: Failed to parse update_taskspace payload: \(error)")
+                sendResponse(
+                    to: message.id, success: false, data: nil as String?, error: "Invalid payload")
+            }
+        }
+    }
+
+    private func handleDeleteTaskspace(message: IPCMessage) {
+        Task {
+            do {
+                let payloadData = try JSONEncoder().encode(message.payload)
+                let payload = try JSONDecoder().decode(
+                    DeleteTaskspacePayload.self, from: payloadData)
+
+                if let delegate = delegate {
+                    let result = await delegate.handleDeleteTaskspace(
+                        payload, messageId: message.id)
+
+                    switch result {
+                    case .handled(let response):
+                        sendResponse(
+                            to: message.id, success: true, data: response, error: nil)
+                    case .notForMe:
+                        sendResponse(
+                            to: message.id, success: false, data: nil as String?,
+                            error: "No handler available")
+                    }
+                } else {
+                    sendResponse(
+                        to: message.id, success: false, data: nil as String?,
+                        error: "No handler available")
+                }
+
+            } catch {
+                Logger.shared.log(
+                    "IpcManager[\(instanceId)]: Failed to parse delete_taskspace payload: \(error)")
                 sendResponse(
                     to: message.id, success: false, data: nil as String?, error: "Invalid payload")
             }

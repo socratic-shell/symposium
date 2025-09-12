@@ -41,6 +41,21 @@ fn test_spawn_taskspace_payload_serialization() {
 }
 
 #[test]
+fn test_delete_taskspace_payload_serialization() {
+    let payload = DeleteTaskspacePayload {
+        project_path: "/path/to/project".to_string(),
+        taskspace_uuid: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+    };
+
+    // Should serialize and deserialize correctly
+    let json = serde_json::to_string(&payload).expect("Failed to serialize");
+    let deserialized: DeleteTaskspacePayload = serde_json::from_str(&json).expect("Failed to deserialize");
+    
+    assert_eq!(payload.project_path, deserialized.project_path);
+    assert_eq!(payload.taskspace_uuid, deserialized.taskspace_uuid);
+}
+
+#[test]
 fn test_log_progress_payload_serialization() {
     let payload = LogProgressPayload {
         project_path: "/path/to/project".to_string(),
@@ -140,9 +155,11 @@ fn test_ipc_message_types_include_taskspace_operations() {
     let spawn_type = IPCMessageType::SpawnTaskspace;
     let log_type = IPCMessageType::LogProgress;
     let signal_type = IPCMessageType::SignalUser;
+    let delete_type = IPCMessageType::DeleteTaskspace;
 
     // Should serialize without errors
     assert!(serde_json::to_string(&spawn_type).is_ok());
     assert!(serde_json::to_string(&log_type).is_ok());
     assert!(serde_json::to_string(&signal_type).is_ok());
+    assert!(serde_json::to_string(&delete_type).is_ok());
 }

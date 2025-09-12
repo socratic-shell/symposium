@@ -1355,6 +1355,49 @@ extension ProjectManager {
         }
     }
 
+    func handleDeleteTaskspace(_ payload: DeleteTaskspacePayload, messageId: String) async
+        -> MessageHandlingResult<EmptyResponse>
+    {
+        guard let project = currentProject else {
+            return .notForMe
+        }
+
+        // Find the taskspace by UUID
+        guard
+            let taskspaceIndex = project.taskspaces.firstIndex(where: {
+                $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased()
+            })
+        else {
+            Logger.shared.log(
+                "ProjectManager: Taskspace not found for UUID: \(payload.taskspaceUuid)")
+            return .notForMe
+        }
+
+        let taskspace = project.taskspaces[taskspaceIndex]
+        
+        do {
+            // Use existing deletion logic
+            try deleteTaskspace(taskspace, deleteBranch: true)
+            
+            // Remove from project
+            var updatedProject = project
+            updatedProject.taskspaces.remove(at: taskspaceIndex)
+            
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                Logger.shared.log(
+                    "ProjectManager[\(self.instanceId)]: Deleted taskspace: \(taskspace.name)")
+            }
+            
+            return .handled(EmptyResponse())
+            
+        } catch {
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to delete taskspace: \(error)")
+            return .notForMe
+        }
+    }
+
     /// Check if VSCode 'code' command is available and return its path
     private func getCodeCommandPath() -> String? {
         let process = Process()
