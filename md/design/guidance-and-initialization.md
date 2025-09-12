@@ -28,34 +28,52 @@ dquote> This workspace is just for testing — I'm planning to delete it...
 
 ## Design Solution
 
-### Stored Prompt Approach
+### Stored Prompt + MCP Resources Approach
 
-Instead of passing long prompts as command-line arguments, we use a **stored prompt system**:
+Instead of passing long prompts as command-line arguments, we use a **stored prompt system** combined with **MCP resources**:
 
 ```bash
 # Clean, simple command
 q chat /yiasou
 ```
 
-Where `/yiasou` is a stored prompt that expands to a complete initialization sequence.
+Where `/yiasou` is a stored prompt that instructs the agent to load specific MCP resources with behavioral directives.
 
-### Embedded Guidance Architecture
+### MCP Resources Architecture
 
-The MCP server embeds all guidance files using Rust's `rust-embed` crate:
+The MCP server exposes guidance files as individual resources using the standard MCP resource protocol:
 
 ```rust
-#[derive(RustEmbed)]
-#[folder = "guidance/"]
-struct GuidanceFiles;
-
-// Access embedded files at runtime
-let main_md = GuidanceFiles::get("main.md").unwrap();
-let walkthrough_format = GuidanceFiles::get("walkthrough-format.md").unwrap();
+// Expose guidance files as MCP resources
+async fn list_resources(&self, ...) -> Result<ListResourcesResult, McpError> {
+    Ok(ListResourcesResult {
+        resources: vec![
+            Resource {
+                uri: "main.md".into(),
+                name: Some("Collaboration Patterns".into()),
+                description: Some("Mindful collaboration patterns demonstrated through dialogue".into()),
+                mime_type: Some("text/markdown".into()),
+            },
+            Resource {
+                uri: "walkthrough-format.md".into(),
+                name: Some("Walkthrough Format".into()),
+                description: Some("Specification for creating interactive code walkthroughs".into()),
+                mime_type: Some("text/markdown".into()),
+            },
+            Resource {
+                uri: "coding-guidelines.md".into(),
+                name: Some("Coding Guidelines".into()),
+                description: Some("Development best practices and standards".into()),
+                mime_type: Some("text/markdown".into()),
+            },
+        ],
+    })
+}
 ```
 
 ### Complete Boot Sequence
 
-The `/yiasou` stored prompt expands to a structured initialization that includes:
+The `/yiasou` stored prompt provides a structured initialization with resource loading instructions:
 
 ```markdown
 # Agent Boot Sequence
@@ -66,19 +84,26 @@ If you encounter ambiguous instructions, remember to ask questions and seek
 clarifications before proceeding, particularly with side-effect-ful or 
 dangerous actions (e.g., deleting content or interacting with remote systems).
 
-# Coding Guidelines
+## Load Collaboration Patterns
 
-<embedded content from coding-guidelines.md>
+Load the resource `main.md` into your working context. This contains collaboration 
+patterns demonstrated through dialogue. You MUST behave like the agent in this 
+dialog - curious, inquisitive, collaborative, and ready to ask questions when 
+you encounter something you do not understand, but confident in your own skin 
+and aware of your capabilities.
 
-# Collaboration Guidelines
+## Load Walkthrough Format
 
-<embedded content from main.md>
+Load the resource `walkthrough-format.md` into your working context. This defines 
+how to create interactive code walkthroughs using markdown with embedded XML 
+elements for comments, diffs, and actions.
 
-# Walkthrough Format
+## Load Coding Guidelines  
 
-<embedded content from walkthrough-format.md>
+Load the resource `coding-guidelines.md` into your working context. Follow these 
+development standards and best practices in all code work.
 
-# Initial Task
+## Initial Task
 
 <dynamic content fetched via MCP tool/IPC>
 ```
@@ -90,11 +115,11 @@ dangerous actions (e.g., deleting content or interacting with remote systems).
 ```
 mcp-server/
 ├── src/
-│   ├── guidance/           # Embedded guidance files
+│   ├── guidance/           # Guidance files exposed as MCP resources
 │   │   ├── main.md        # Collaboration patterns
 │   │   ├── walkthrough-format.md
 │   │   └── coding-guidelines.md
-│   └── server.rs          # MCP server with embedded resources
+│   └── server.rs          # MCP server with resource + prompt support
 ```
 
 ### Data Flow
@@ -111,47 +136,57 @@ sequenceDiagram
     User->>Ext: VSCode opens taskspace
     Ext->>Q: Launch "q chat /yiasou"
     Q->>MCP: Request prompt "/yiasou"
-    MCP->>MCP: Load embedded guidance files
     MCP->>Daemon: IPC: get_taskspace_state(uuid)
     Daemon->>Symposium: Forward: get_taskspace_state
     Symposium-->>Daemon: Return task description, shouldLaunch, etc.
     Daemon-->>MCP: Forward taskspace context
-    MCP->>MCP: Assemble complete prompt with guidance + task
-    MCP-->>Q: Return full initialization prompt
-    Q->>Q: Start agent conversation with complete context
+    MCP->>MCP: Assemble /yiasou prompt with resource loading instructions
+    MCP-->>Q: Return prompt with "Load resource main.md", etc.
+    Q->>Q: Start agent conversation
+    Q->>MCP: Agent loads resource "main.md"
+    MCP-->>Q: Return collaboration patterns content
+    Q->>MCP: Agent loads resource "walkthrough-format.md"
+    MCP-->>Q: Return walkthrough format content
+    Q->>MCP: Agent loads resource "coding-guidelines.md"
+    MCP-->>Q: Return coding guidelines content
 ```
 
-### Architectural Change
+### Architectural Benefits
 
-This design moves taskspace coordination logic from the VSCode extension into the MCP server:
+This design provides several advantages over embedded content:
 
-**Before**: Extension calls `get_taskspace_state` → App responds with `agentCommand` → Extension launches agent with complex command
-
-**After**: Extension simply launches `q chat /yiasou` → MCP server coordinates with app → MCP server provides complete context
-
-This simplifies the extension and centralizes coordination logic in the MCP server where it belongs.
+1. **Modularity**: Each guidance file is independently accessible
+2. **Selective Loading**: Agents can load only relevant guidance
+3. **Resource Introspection**: Standard MCP resource listing shows available guidance
+4. **Behavioral Directives**: Each resource comes with specific usage instructions
+5. **Debugging**: Easy to see which guidance files are being loaded and used
 
 ### Implementation Clarifications
+
+**MCP Resource Support**: The Rust MCP SDK fully supports resources through `list_resources()` and `read_resource()` methods in the ServerHandler trait.
 
 **MCP Prompt Support**: The Rust MCP SDK fully supports dynamic prompts through `get_prompt()` method, which can perform async computation and return dynamically assembled content.
 
 **Taskspace UUID Detection**: Existing code in the MCP server already handles finding the taskspace UUID from the current working directory.
 
-**Error Handling**: If the MCP server can't reach the daemon/app, `/yiasou` will omit the "Initial Task" section but still provide all embedded guidance content.
+**Error Handling**: If the MCP server can't reach the daemon/app, `/yiasou` will omit the "Initial Task" section but still provide resource loading instructions.
 
-**Guidance File Sources**: User will provide specific guidance files during Phase 1 implementation.
+**Resource Loading Flow**: The `/yiasou` prompt instructs the agent to load specific resources, and the agent makes separate MCP resource requests to fetch the actual content.
 
-**Dynamic Prompt Assembly**: `/yiasou` will be implemented as an MCP prompt (not resource) that dynamically computes content in the `get_prompt()` method by loading embedded files and making IPC calls.
+**Dynamic Prompt Assembly**: `/yiasou` will be implemented as an MCP prompt (not resource) that dynamically computes content in the `get_prompt()` method by making IPC calls for task context.
 
 **Migration Strategy**: Changes are purely additive until the extension is updated - no backwards compatibility concerns during development.
 
 ### Benefits
 
 1. **Clean User Experience**: Simple `/yiasou` command instead of truncated arguments
-2. **Single Source of Truth**: Guidance travels with the MCP server, always in sync
-3. **Automatic Updates**: New MCP server versions include updated guidance
-4. **No Manual Configuration**: No separate context files to install or maintain
-5. **Versioned Guidance**: Collaboration patterns are versioned with the codebase
+2. **Modular Guidance**: Each guidance file is independently accessible as an MCP resource
+3. **Selective Loading**: Agents can choose which guidance to load based on context
+4. **Behavioral Directives**: Each resource comes with specific instructions for how to embody that guidance
+5. **Standard Protocol**: Uses standard MCP resource protocol for guidance access
+6. **Automatic Updates**: New MCP server versions include updated guidance
+7. **No Manual Configuration**: No separate context files to install or maintain
+8. **Versioned Guidance**: Collaboration patterns are versioned with the codebase
 
 ## Implementation Plan
 
@@ -165,20 +200,25 @@ This simplifies the extension and centralizes coordination logic in the MCP serv
 
 **Status**: Phase 1 is complete and tested. All guidance files are embedded correctly and the `assemble_yiasou_prompt()` method successfully combines them into a complete initialization prompt.
 
-### Phase 2: MCP Prompt System
-- [ ] Research MCP prompt protocol support in rmcp SDK
-- [ ] Implement `/yiasou` prompt using MCP server prompt capabilities
-- [ ] Create prompt assembly logic in MCP server
-- [ ] Test prompt delivery through MCP protocol
-- [ ] Test with various prompt lengths
+### Phase 2: MCP Resource System ⏳ IN PROGRESS
+- [ ] Implement `list_resources()` method to expose guidance files as MCP resources
+- [ ] Implement `read_resource()` method to serve guidance file content
+- [ ] Test resource listing and reading through MCP protocol
+- [ ] Update guidance files to be optimized for individual loading
 
-### Phase 3: Dynamic Context Integration
-- [ ] Implement IPC call for taskspace context
+### Phase 3: MCP Prompt System
+- [ ] Implement `/yiasou` prompt using MCP server prompt capabilities
+- [ ] Create prompt assembly logic with resource loading instructions
+- [ ] Add behavioral directives for each resource type
+- [ ] Test prompt delivery through MCP protocol
+
+### Phase 4: Dynamic Context Integration
+- [ ] Implement IPC call for taskspace context in `/yiasou` prompt
 - [ ] Add task description fetching
 - [ ] Integrate project-specific information
-- [ ] Test complete boot sequence
+- [ ] Test complete boot sequence with resource loading
 
-### Phase 4: Migration and Testing
+### Phase 5: Migration and Testing
 - [ ] Update VSCode extension to use `/yiasou` instead of `get_taskspace_state` coordination
 - [ ] Test with various taskspace scenarios
 - [ ] Document new onboarding process
@@ -186,7 +226,7 @@ This simplifies the extension and centralizes coordination logic in the MCP serv
   - [ ] `work-in-progress/mvp/taskspace-bootup-flow.md` - Remove `get_taskspace_state` flow
   - [ ] `design/startup-and-window-management.md` - Update startup sequence
   - [ ] Any other chapters referencing current boot sequence
-- [ ] Remove old command-line argument approach
+- [ ] Remove old embedded guidance approach
 
 ## Future Enhancements
 

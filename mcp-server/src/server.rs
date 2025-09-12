@@ -1004,7 +1004,7 @@ impl ServerHandler for DialecticServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            capabilities: ServerCapabilities::builder().enable_tools().enable_resources().build(),
             server_info: Implementation {
                 name: "symposium-mcp".to_string(),
                 version: "0.1.0".to_string(),
@@ -1033,6 +1033,79 @@ impl ServerHandler for DialecticServer {
     ) -> Result<InitializeResult, McpError> {
         info!("MCP client connected and initialized");
         Ok(self.get_info())
+    }
+
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, McpError> {
+        let resources = vec![
+            Resource {
+                raw: RawResource {
+                    uri: "main.md".into(),
+                    name: "Collaboration Patterns".into(),
+                    description: Some("Mindful collaboration patterns demonstrated through dialogue".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+            Resource {
+                raw: RawResource {
+                    uri: "walkthrough-format.md".into(),
+                    name: "Walkthrough Format".into(),
+                    description: Some("Specification for creating interactive code walkthroughs".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+            Resource {
+                raw: RawResource {
+                    uri: "coding-guidelines.md".into(),
+                    name: "Coding Guidelines".into(),
+                    description: Some("Development best practices and standards".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+        ];
+
+        Ok(ListResourcesResult { 
+            resources,
+            next_cursor: None,
+        })
+    }
+
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResult, McpError> {
+        let content = match request.uri.as_str() {
+            "main.md" => GuidanceFiles::get("main.md")
+                .ok_or_else(|| McpError::resource_not_found("Resource not found: main.md", None))?
+                .data
+                .into_owned(),
+            "walkthrough-format.md" => GuidanceFiles::get("walkthrough-format.md")
+                .ok_or_else(|| McpError::resource_not_found("Resource not found: walkthrough-format.md", None))?
+                .data
+                .into_owned(),
+            "coding-guidelines.md" => GuidanceFiles::get("coding-guidelines.md")
+                .ok_or_else(|| McpError::resource_not_found("Resource not found: coding-guidelines.md", None))?
+                .data
+                .into_owned(),
+            _ => return Err(McpError::resource_not_found(format!("Unknown resource: {}", request.uri), None)),
+        };
+
+        let content_str = String::from_utf8(content)
+            .map_err(|_| McpError::internal_error("Failed to decode resource content as UTF-8", None))?;
+
+        Ok(ReadResourceResult {
+            contents: vec![ResourceContents::text(content_str, request.uri)],
+        })
     }
 }
 
@@ -1064,6 +1137,80 @@ mod tests {
         
         let result = server.present_walkthrough(Parameters(params)).await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_resource_definitions() {
+        // Test that we can create the resource definitions correctly
+        let resources = vec![
+            Resource {
+                raw: RawResource {
+                    uri: "main.md".into(),
+                    name: "Collaboration Patterns".into(),
+                    description: Some("Mindful collaboration patterns demonstrated through dialogue".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+            Resource {
+                raw: RawResource {
+                    uri: "walkthrough-format.md".into(),
+                    name: "Walkthrough Format".into(),
+                    description: Some("Specification for creating interactive code walkthroughs".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+            Resource {
+                raw: RawResource {
+                    uri: "coding-guidelines.md".into(),
+                    name: "Coding Guidelines".into(),
+                    description: Some("Development best practices and standards".into()),
+                    mime_type: Some("text/markdown".into()),
+                    size: None,
+                },
+                annotations: None,
+            },
+        ];
+
+        assert_eq!(resources.len(), 3);
+        assert_eq!(resources[0].raw.uri, "main.md");
+        assert_eq!(resources[0].raw.name, "Collaboration Patterns");
+        assert_eq!(resources[1].raw.uri, "walkthrough-format.md");
+        assert_eq!(resources[2].raw.uri, "coding-guidelines.md");
+    }
+
+    #[test]
+    fn test_resource_content_loading() {
+        // Test that we can load the guidance files
+        let main_content = GuidanceFiles::get("main.md").unwrap();
+        let main_str = String::from_utf8(main_content.data.into_owned()).unwrap();
+        assert!(main_str.contains("Mindful Collaboration Patterns"));
+
+        let walkthrough_content = GuidanceFiles::get("walkthrough-format.md").unwrap();
+        let walkthrough_str = String::from_utf8(walkthrough_content.data.into_owned()).unwrap();
+        assert!(walkthrough_str.contains("Walkthrough Format"));
+
+        let coding_content = GuidanceFiles::get("coding-guidelines.md").unwrap();
+        let coding_str = String::from_utf8(coding_content.data.into_owned()).unwrap();
+        assert!(coding_str.contains("Coding Guidelines"));
+    }
+
+    #[test]
+    fn test_resource_contents_creation() {
+        // Test that we can create ResourceContents correctly
+        let content = ResourceContents::text("Hello world", "test.md");
+        
+        match content {
+            ResourceContents::TextResourceContents { uri, text, mime_type } => {
+                assert_eq!(uri, "test.md");
+                assert_eq!(text, "Hello world");
+                assert_eq!(mime_type, Some("text".to_string()));
+            }
+            _ => panic!("Expected TextResourceContents"),
+        }
     }
 
     #[test]
