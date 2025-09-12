@@ -165,34 +165,36 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     /// Returns (parameters, remaining_content)
     fn parse_yaml_parameters(&self, content: &str) -> (HashMap<String, String>, String) {
         let mut params = HashMap::new();
-        let mut lines = content.lines();
-        let mut content_lines = Vec::new();
-        let mut in_yaml = true;
-
-        for line in lines {
+        let lines: Vec<&str> = content.lines().collect();
+        let mut content_start_idx = 0;
+        
+        // Parse YAML parameters from the beginning
+        for (i, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
             
-            if in_yaml && (trimmed.is_empty() || trimmed.contains(':')) {
-                if trimmed.is_empty() {
-                    // Empty line marks end of YAML section
-                    in_yaml = false;
-                } else if let Some((key, value)) = trimmed.split_once(':') {
-                    let key = key.trim().to_string();
-                    let value = value.trim().to_string();
-                    params.insert(key, value);
-                } else {
-                    // Line doesn't contain ':', treat as content
-                    in_yaml = false;
-                    content_lines.push(line);
-                }
+            if trimmed.is_empty() {
+                // Empty line marks end of YAML section
+                content_start_idx = i + 1;
+                break;
+            } else if let Some((key, value)) = trimmed.split_once(':') {
+                // YAML parameter line
+                let key = key.trim().to_string();
+                let value = value.trim().to_string();
+                params.insert(key, value);
             } else {
-                // We're in content section
-                in_yaml = false;
-                content_lines.push(line);
+                // Line doesn't contain ':', this is content
+                content_start_idx = i;
+                break;
             }
         }
-
-        let remaining_content = content_lines.join("\n").trim().to_string();
+        
+        // Collect remaining content
+        let remaining_content = if content_start_idx < lines.len() {
+            lines[content_start_idx..].join("\n").trim().to_string()
+        } else {
+            String::new()
+        };
+        
         (params, remaining_content)
     }
 
