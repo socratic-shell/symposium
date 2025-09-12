@@ -290,6 +290,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         defer { isLoading = false }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
 
         // Get current branch name before removing worktree
         let branchName = getTaskspaceBranch(for: taskspaceDir)
@@ -297,7 +299,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Remove git worktree (this also removes the directory)
         let worktreeProcess = Process()
         worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        worktreeProcess.arguments = ["worktree", "remove", taskspaceDir, "--force"]
+        worktreeProcess.arguments = ["worktree", "remove", worktreeDir, "--force"]
         worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
 
         try worktreeProcess.run()
