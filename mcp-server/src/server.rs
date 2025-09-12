@@ -11,6 +11,7 @@ use rmcp::{
     service::RequestContext,
     tool, tool_handler, tool_router,
 };
+use rust_embed::RustEmbed;
 use serde_json;
 use std::future::Future;
 use std::sync::Arc;
@@ -24,6 +25,11 @@ use crate::synthetic_pr::{
 };
 use crate::types::{LogLevel, PresentWalkthroughParams};
 use serde::{Deserialize, Serialize};
+
+/// Embedded guidance files for agent initialization
+#[derive(RustEmbed)]
+#[folder = "src/guidance/"]
+struct GuidanceFiles;
 
 /// Parameters for the expand_reference tool
 // ANCHOR: expand_reference_params
@@ -101,6 +107,73 @@ pub struct DialecticServer {
 
 #[tool_router]
 impl DialecticServer {
+    /// Load embedded guidance file content
+    fn load_guidance_file(filename: &str) -> Result<String> {
+        let file = GuidanceFiles::get(filename)
+            .ok_or_else(|| anyhow::anyhow!("Guidance file '{}' not found", filename))?;
+        let content = std::str::from_utf8(file.data.as_ref())
+            .map_err(|e| anyhow::anyhow!("Invalid UTF-8 in guidance file '{}': {}", filename, e))?;
+        Ok(content.to_string())
+    }
+
+    /// Assemble the complete /yiasou initialization prompt
+    pub async fn assemble_yiasou_prompt(&self) -> Result<String> {
+        let mut prompt = String::new();
+        
+        prompt.push_str("# Agent Boot Sequence\n\n");
+        prompt.push_str("This prompt defines the agent boot sequence.\n\n");
+        prompt.push_str("If you encounter ambiguous instructions, remember to ask questions and seek ");
+        prompt.push_str("clarifications before proceeding, particularly with side-effect-ful or ");
+        prompt.push_str("dangerous actions (e.g., deleting content or interacting with remote systems).\n\n");
+
+        // Add coding guidelines
+        if let Ok(coding_guidelines) = Self::load_guidance_file("coding-guidelines.md") {
+            prompt.push_str("# Coding Guidelines\n\n");
+            prompt.push_str(&coding_guidelines);
+            prompt.push_str("\n\n");
+        }
+
+        // Add collaboration patterns
+        if let Ok(collaboration_patterns) = Self::load_guidance_file("main.md") {
+            prompt.push_str("# Collaboration Guidelines\n\n");
+            prompt.push_str(&collaboration_patterns);
+            prompt.push_str("\n\n");
+        }
+
+        // Add walkthrough format
+        if let Ok(walkthrough_format) = Self::load_guidance_file("walkthrough-format.md") {
+            prompt.push_str("# Walkthrough Format\n\n");
+            prompt.push_str(&walkthrough_format);
+            prompt.push_str("\n\n");
+        }
+
+        // Try to get taskspace context via IPC
+        // If this fails, we'll gracefully omit the Initial Task section
+        match self.get_taskspace_context().await {
+            Ok(Some(task_description)) => {
+                prompt.push_str("# Initial Task\n\n");
+                prompt.push_str(&task_description);
+                prompt.push_str("\n");
+            }
+            Ok(None) => {
+                // No taskspace context available, skip Initial Task section
+            }
+            Err(e) => {
+                // Log the error but don't fail the entire prompt assembly
+                tracing::warn!("Failed to get taskspace context for /yiasou prompt: {}", e);
+            }
+        }
+
+        Ok(prompt)
+    }
+
+    /// Get taskspace context via IPC (placeholder for now)
+    async fn get_taskspace_context(&self) -> Result<Option<String>> {
+        // TODO: Implement IPC call to get taskspace state
+        // For now, return None to gracefully omit the Initial Task section
+        Ok(None)
+    }
+
     pub async fn new() -> Result<Self> {
         // First, discover VSCode PID by walking up the process tree
         let current_pid = std::process::id();
@@ -234,6 +307,20 @@ impl DialecticServer {
     /// Display a code walkthrough in VSCode
     ///
     /// Walkthroughs are structured guides with introduction, highlights, changes, and actions.
+    /// Test tool to verify guidance loading by returning the assembled /yiasou prompt
+    #[tool(
+        description = "Test guidance loading by returning the assembled /yiasou prompt (temporary for Phase 1)"
+    )]
+    async fn test_yiasou_prompt(&self) -> Result<CallToolResult, McpError> {
+        match self.assemble_yiasou_prompt().await {
+            Ok(prompt) => Ok(CallToolResult::success(vec![Content::text(prompt)])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
+                "Failed to assemble yiasou prompt: {}",
+                e
+            ))])),
+        }
+    }
+
     /// Display a code walkthrough in VSCode using markdown with embedded XML elements.
     /// Accepts markdown content with special XML tags (comment, gitdiff, action, mermaid)
     /// as described in the dialectic guidance documentation.
