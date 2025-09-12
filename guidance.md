@@ -4,11 +4,11 @@ Dialectic offers tools to aid you in developing and discussing code with the use
 
 ## Quick Reference
 
-**Core XML Elements:**
-- `<comment location="EXPR" icon="ICON">content</comment>` - Code comments
-- `<gitdiff range="COMMIT_RANGE" />` - Show code changes
-- `<action button="TEXT">message</action>` - Interactive buttons
-- `<mermaid>diagram</mermaid>` - Architecture diagrams
+**Core Code Block Elements:**
+- ````comment(location="EXPR", icon="ICON")` - Code comments
+- ````gitdiff(range="COMMIT_RANGE")` - Show code changes
+- ````action(button="TEXT")` - Interactive buttons
+- ````mermaid` - Architecture diagrams
 
 **Common expressions:**
 - `findDefinition("symbol")` - Find where symbol is defined
@@ -69,7 +69,7 @@ We've refactored the token validation system to improve performance and security
 
 The new validation architecture works as follows:
 
-<mermaid>
+```mermaid
 flowchart TD
     A[Client Request] --> B{Token Valid?}
     B -->|Check Expiration First| C[Validate Expiration]
@@ -77,56 +77,55 @@ flowchart TD
     C -->|Valid| E[Validate Signature]
     E -->|Invalid| D
     E -->|Valid| F[Process Request]
-</mermaid>
+```
 
 ## Key Changes
 
 The main improvement is in how we handle token expiration:
 
-<comment location="findDefinition(`validateToken`)" icon="lightbulb">
+```comment(location="findDefinition(`validateToken`)", icon="lightbulb")
 This function now checks expiration before signature validation. This avoids expensive 
 cryptographic operations on tokens that are already expired.
-</comment>
+```
 
 We also updated the login flow to use shorter-lived tokens by default:
 
-<comment location="search(`src/auth.rs`, `async fn login`)">
+```comment(location="search(`src/auth.rs`, `async fn login`)")
 The default token lifetime is now 1 hour instead of 24 hours. Users can still 
 request longer-lived tokens through the `remember_me` parameter.
-</comment>
+```
 
 ## What Changed
 
 Here are all the files that were modified:
 
-<gitdiff range="HEAD~2..HEAD" />
+```gitdiff(range="HEAD~2..HEAD")
+```
 
 ## Next Steps
 
-<action button="Test the changes">
+```action(button="Test the changes")
 Run the authentication test suite to verify the changes work correctly.
-</action>
-
-<action button="Update documentation">
-The API documentation needs to reflect the new default token lifetime.
-</action>
 ```
 
-This walkthrough combines regular markdown with specialized XML elements: `<mermaid>`, `<comment>`, `<gitdiff>`, and `<action>`.
+```action(button="Update documentation")
+The API documentation needs to reflect the new default token lifetime.
+```
+```
 
-## XML Elements
+This walkthrough combines regular markdown with specialized code block elements: ````mermaid`, ````comment`, ````gitdiff`, and ````action`.
+
+## Code Block Elements
 
 ### Mermaid
 
 Render mermaid graphs and diagrams to visualize architecture, flows, or relationships:
 
-```xml
-<mermaid>
+```mermaid
 flowchart TD
     A[Start] --> B{Decision}
     B -->|Yes| C[Action 1]
     B -->|No| D[Action 2]
-</mermaid>
 ```
 
 **Use when:** Explaining system architecture, data flow, or complex relationships that benefit from visual representation.
@@ -135,11 +134,9 @@ flowchart TD
 
 Place contextual comments at specific code locations to highlight important details, decisions, or areas needing attention. Users can "reply" to comments using the GUI and have those messages forwarded to you in the chat.
 
-```xml
-<comment location="DIALECT_EXPRESSION" icon="question">
+```comment(location="DIALECT_EXPRESSION", icon="question")
 Markdown content explaining this code location.
 Can include **formatting** and [links](https://example.com).
-</comment>
 ```
 
 **Attributes:**
@@ -164,9 +161,10 @@ Can include **formatting** and [links](https://example.com).
 
 Embed git diffs showing code changes:
 
-```xml
-<gitdiff range="HEAD~2..HEAD" />
-<gitdiff range="abc123" exclude-unstaged exclude-staged />
+```gitdiff(range="HEAD~2..HEAD")
+```
+
+```gitdiff(range="abc123", exclude-unstaged, exclude-staged)
 ```
 
 **Attributes:**
@@ -182,10 +180,8 @@ Embed git diffs showing code changes:
 
 Provide interactive buttons for user actions:
 
-```xml
-<action button="Fix the validation logic">
+```action(button="Fix the validation logic")
 How should I handle expired tokens differently?
-</action>
 ```
 
 **Attributes:**
@@ -204,30 +200,30 @@ How should I handle expired tokens differently?
 Expressions in `location` attributes target specific code locations. Here are the main functions:
 
 ### Symbol-based targeting
-```xml
+```markdown
 <!-- Find where a symbol is defined -->
-<comment location="findDefinition(`MyClass`)">
+```comment(location="findDefinition(`MyClass`)")
 
 <!-- Find all references to a symbol -->
-<comment location="findReferences(`validateToken`)">
+```comment(location="findReferences(`validateToken`)")
 ```
 
 ### Search-based targeting
-```xml
+```markdown
 <!-- Search specific file for pattern -->
-<comment location="search(`src/auth.rs`, `async fn`)">
+```comment(location="search(`src/auth.rs`, `async fn`)")
 
 <!-- Search directory for pattern in specific file types -->
-<comment location="search(`src`, `struct.*User`, `.rs`)">
+```comment(location="search(`src`, `struct.*User`, `.rs`)")
 
 <!-- Search all files in directory -->
-<comment location="search(`tests`, `#\[test\]`)">
+```comment(location="search(`tests`, `#\[test\]`)")
 ```
 
 ### Line-based targeting
-```xml
+```markdown
 <!-- Target specific line range (use sparingly) -->
-<comment location="lines(`src/main.rs`, 10, 15)">
+```comment(location="lines(`src/main.rs`, 10, 15)")
 ```
 
 **Best practices:**
@@ -267,7 +263,7 @@ Expressions in `location` attributes target specific code locations. Here are th
 ### Anti-Patterns to Avoid
 
 **Comments:**
-- Don't comment obvious code: `<comment>This function returns a string</comment>`
+- Don't comment obvious code: ````comment` This function returns a string```
 - Don't use for simple navigation: Use direct links instead of comment buttons
 - Don't create comments without specific location targeting
 
@@ -297,10 +293,10 @@ When expressions in `location` attributes fail:
 - **File not found** - Verify paths are relative to project root
 
 **Recovery patterns:**
-```xml
+```markdown
 <!-- If specific search fails, try broader pattern -->
-<comment location="search(`src/auth.rs`, `validateToken`)">
-<!-- Fallback: <comment location="search(`src`, `validateToken`, `.rs`)"> -->
+```comment(location="search(`src/auth.rs`, `validateToken`)")
+<!-- Fallback: ```comment(location="search(`src`, `validateToken`, `.rs`)") -->
 ```
 
 ### Performance Considerations
@@ -312,12 +308,12 @@ When expressions in `location` attributes fail:
 - Avoid overly broad patterns that match many files
 
 **Examples:**
-```xml
+```markdown
 <!-- Good: Specific and targeted -->
-<comment location="search(`src/auth/mod.rs`, `pub fn login`)">
+```comment(location="search(`src/auth/mod.rs`, `pub fn login`)")
 
 <!-- Avoid: Too broad, may be slow -->
-<comment location="search(`src`, `.*`, `.rs`)">
+```comment(location="search(`src`, `.*`, `.rs`)")
 ```
 
 ### Tool Orchestration Patterns
@@ -349,7 +345,7 @@ When expressions in `location` attributes fail:
 - Try simpler patterns first, then add complexity
 
 **Walkthrough not displaying properly:**
-- Ensure all XML elements are properly closed
+- Ensure all code block elements use proper syntax
 - Check that Dialect expressions use correct quoting (backticks recommended)
 - Verify mermaid syntax is valid
 
