@@ -137,7 +137,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     }
 
     /// Check if HTML content is one of our XML elements
-    fn is_xml_element(&self, html: &str) -> bool {
+    fn is_xml_element(&self, _html: &str) -> bool {
         // No XML elements supported anymore - only code blocks
         false
     }
@@ -165,35 +165,32 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     /// Returns (parameters, remaining_content)
     fn parse_yaml_parameters(&self, content: &str) -> (HashMap<String, String>, String) {
         let mut params = HashMap::new();
-        let lines: Vec<&str> = content.lines().collect();
-        let mut content_start_idx = 0;
+        let mut lines: VecDeque<&str> = content.lines().collect();
         
         // Parse YAML parameters from the beginning
-        for (i, line) in lines.iter().enumerate() {
+        while let Some(line) = lines.pop_front() {
             let trimmed = line.trim();
             
             if trimmed.is_empty() {
                 // Empty line marks end of YAML section
-                content_start_idx = i + 1;
                 break;
             } else if let Some((key, value)) = trimmed.split_once(':') {
-                // YAML parameter line
-                let key = key.trim().to_string();
-                let value = value.trim().to_string();
-                params.insert(key, value);
-            } else {
-                // Line doesn't contain ':', this is content
-                content_start_idx = i;
-                break;
+                if key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                    // YAML parameter line
+                    let key = key.trim().to_string();
+                    let value = value.trim().to_string();
+                    params.insert(key, value);
+                    continue;
+                }
             }
+
+            // Line doesn't contain ':', this is content
+            lines.push_front(line);
+            break;
         }
         
         // Collect remaining content
-        let remaining_content = if content_start_idx < lines.len() {
-            lines[content_start_idx..].join("\n").trim().to_string()
-        } else {
-            String::new()
-        };
+        let remaining_content = lines.into_iter().collect::<Vec<_>>().join("\n");
         
         (params, remaining_content)
     }
@@ -839,17 +836,35 @@ mod tests {
     #[test]
     fn test_simple_comment_resolution() {
         check(
-            r#"<comment location="findDefinitions(`User`)">User struct</comment>"#,
+            r#"
+```comment
+location: findDefinitions(`User`)
+
+User struct
+```
+"#,
             expect![[r#"
-                <p><comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>User struct</comment></p>
-            "#]],
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">User struct</div>
+                                    </div>
+                                </div>
+                            </div>"#]],
         );
     }
 
     #[test]
     fn test_self_closing_gitdiff() {
         check(
-            r#"<gitdiff range="HEAD~1..HEAD" />"#,
+            r#"
+```gitdiff
+range: HEAD~1..HEAD
+```
+"#,
             expect![[r#"
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
@@ -862,7 +877,7 @@ mod tests {
         check(
             r#"<action button="Next Step">What should we do next?</action>"#,
             expect![[r#"
-                <p><action data-resolved='{"button_text":"Next Step"}' button="Next Step">What should we do next?</action></p>
+                <p><action button="Next Step">What should we do next?</action></p>
             "#]],
         );
     }
@@ -874,15 +889,25 @@ mod tests {
 
 This is some markdown content.
 
-<comment location="findDefinitions(`User`)" icon="lightbulb">
+```comment
+location: findDefinitions(`User`)
+icon: lightbulb
+
 This explains the User struct
-</comment>
+```
 
 More markdown here.
 
-<gitdiff range="HEAD~1..HEAD" />
+```gitdiff
+range: HEAD~1..HEAD
+```
 
-<action button="Next Step">What should we do next?</action>"#,
+```action
+button: Next Step
+
+What should we do next?
+```
+"#,
             expect![[r#"
                 <h1>My Walkthrough</h1>
                 <p>This is some markdown content.</p>
@@ -899,9 +924,7 @@ More markdown here.
                 <p>More markdown here.</p>
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
-                            </div>
-                <p><action data-resolved='{"button_text":"Next Step"}' button="Next Step">What should we do next?</action></p>
-            "#]],
+                            </div><button class="action-button" data-tell-agent="What should we do next?" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Next Step</button>"#]],
         );
     }
 
@@ -910,19 +933,34 @@ More markdown here.
         check(
             r#"# Title
 Some text before
-<comment location="findDefinitions(`User`)">User comment</comment>
+```comment
+location: findDefinitions(`User`)
+
+User comment
+```
 Some text after
-<gitdiff range="HEAD" />
+```gitdiff
+range:HEAD
+```
 More text"#,
             expect![[r#"
                 <h1>Title</h1>
-                <p>Some text before
-                <comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>User comment</comment>
-                Some text after
+                <p>Some text before</p>
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;User comment&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">User comment</div>
+                                    </div>
+                                </div>
+                            </div>
+                <p>Some text after</p>
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD</div>
                             </div>
-                More text</p>
+                <p>More text</p>
             "#]],
         );
     }
@@ -930,10 +968,23 @@ More text"#,
     #[test]
     fn test_markdown_inside_xml_elements() {
         check(
-            r#"<comment location="findDefinitions(`User`)">This has *emphasis* and **bold** text</comment>"#,
+            r#"
+```comment
+location:findDefinitions(`User`)
+
+This has *emphasis* and **bold** text
+```"#,
             expect![[r#"
-                <p><comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>This has <em>emphasis</em> and <strong>bold</strong> text</comment></p>
-            "#]],
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This has *emphasis* and **bold** text&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This has *emphasis* and **bold** text</div>
+                                    </div>
+                                </div>
+                            </div>"#]],
         );
     }
 
@@ -1075,7 +1126,41 @@ More content here."#;
     #[tokio::test]
     async fn test_walkthrough_from_2025_09_12() {
         let mut parser = create_test_parser();
-        let markdown = "# Testing Triple-Tickification After Restart\n\nLet's test if the new code block syntax is working now!\n\n## Mermaid Test\n```mermaid\nflowchart LR\n    A[Old XML] --> B[Triple-Tickification]\n    B --> C[New Code Blocks]\n    C --> D[Success!]\n```\n\n## Comment Test\n```comment(location=\"findDefinition(`WalkthroughParser`)\", icon=\"rocket\")\nThis should now render as a proper comment box instead of raw markdown!\nThe parser should recognize this as a special code block and convert it to HTML.\n```\n\n## GitDiff Test\n```gitdiff(range=\"HEAD~3..HEAD\")\n```\n\n## Action Test\n```action(button=\"It's working!\")\nClick this if you see a proper button instead of raw markdown text.\n```\n\nIf you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉";
+        let markdown = r#"# Testing Triple-Tickification After Restart
+
+Let's test if the new code block syntax is working now!
+
+## Mermaid Test
+```mermaid
+flowchart LR
+    A[Old XML] --> B[Triple-Tickification]
+    B --> C[New Code Blocks]
+    C --> D[Success!]
+```
+
+## Comment Test
+```comment
+location: findDefinition(`WalkthroughParser`)
+icon: rocket
+
+This should now render as a proper comment box instead of raw markdown!
+The parser should recognize this as a special code block and convert it to HTML.
+```
+
+## GitDiff Test
+```gitdiff
+range:"HEAD~3..HEAD"
+
+```
+
+## Action Test
+```action
+button: It's working!
+
+Click this if you see a proper button instead of raw markdown text.
+```
+
+If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉"#;
 
         let result = parser.parse_and_normalize(markdown).await.unwrap();
         
@@ -1090,16 +1175,23 @@ More content here."#;
                 C --> D[Success!]
             </mermaid>
             <h2>Comment Test</h2>
-            <p>```comment(location="findDefinition(<code>WalkthroughParser</code>)", icon="rocket")
-            This should now render as a proper comment box instead of raw markdown!
-            The parser should recognize this as a special code block and convert it to HTML.</p>
-            <pre><code>
-            ## GitDiff Test
-            ```gitdiff(range="HEAD~3..HEAD")
-            </code></pre>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This should now render as a proper comment box instead of raw markdown!\nThe parser should recognize this as a special code block and convert it to HTML.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`WalkthroughParser`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This should now render as a proper comment box instead of raw markdown!
+            The parser should recognize this as a special code block and convert it to HTML.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>GitDiff Test</h2>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: "HEAD~3..HEAD"</div>
+                        </div>
             <h2>Action Test</h2>
-            <button class="action-button" data-tell-agent="Click this if you see a proper button instead of raw markdown text.
-            " style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">It's working!</button>
+            <button class="action-button" data-tell-agent="Click this if you see a proper button instead of raw markdown text." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">It's working!</button>
             <p>If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉</p>
         "#]].assert_eq(&result);
     }
