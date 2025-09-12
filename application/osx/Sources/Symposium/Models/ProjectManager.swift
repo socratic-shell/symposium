@@ -292,10 +292,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
 
         // Get current branch name before removing worktree
-        // The actual git repository is in taskspaceDir/repoName, not taskspaceDir itself
-        let repoName = extractRepoName(from: project.gitURL)
-        let worktreeDir = "\(taskspaceDir)/\(repoName)"
-        let branchName = try getCurrentBranch(in: worktreeDir)
+        let branchName = getTaskspaceBranch(for: taskspaceDir)
 
         // Remove git worktree (this also removes the directory)
         let worktreeProcess = Process()
@@ -346,13 +343,21 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        return getTaskspaceBranch(for: taskspaceDir)
+    }
+
+    private func getTaskspaceBranch(for taskspaceDir: String) -> String {
+        guard let project = currentProject else {
+            return ""
+        }
+        
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"
         
         do {
             return try getCurrentBranch(in: worktreeDir)
         } catch {
-            Logger.shared.log("Failed to get branch name for taskspace \(taskspace.name): \(error)")
+            Logger.shared.log("Failed to get branch name for taskspace dir \(taskspaceDir): \(error)")
             return ""
         }
     }
