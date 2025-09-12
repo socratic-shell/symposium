@@ -155,105 +155,45 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     fn is_special_code_block(&self, kind: &pulldown_cmark::CodeBlockKind) -> bool {
         match kind {
             pulldown_cmark::CodeBlockKind::Fenced(lang) => {
-                self.parse_code_block_language(lang).is_some()
+                matches!(lang.trim(), "mermaid" | "comment" | "gitdiff" | "action")
             }
             _ => false,
         }
     }
 
-    /// Parse code block language into identifier and parameters
-    /// Supports: "identifier" or "identifier(param1="value1", param2="value2")"
-    fn parse_code_block_language(&self, lang: &str) -> Option<(String, HashMap<String, String>)> {
-        let lang = lang.trim();
-        
-        // Check if it has parameters (contains parentheses)
-        if let Some(paren_pos) = lang.find('(') {
-            let identifier = lang[..paren_pos].trim().to_string();
-            
-            // Only process known identifiers
-            if !matches!(identifier.as_str(), "mermaid" | "comment" | "gitdiff" | "action") {
-                return None;
-            }
-            
-            // Extract parameter string (everything between parentheses)
-            if let Some(close_paren) = lang.rfind(')') {
-                let params_str = &lang[paren_pos + 1..close_paren];
-                let params = self.parse_parameters(params_str);
-                Some((identifier, params))
-            } else {
-                // Missing closing parenthesis
-                None
-            }
-        } else {
-            // No parameters, just identifier
-            if matches!(lang, "mermaid" | "comment" | "gitdiff" | "action") {
-                Some((lang.to_string(), HashMap::new()))
-            } else {
-                None
-            }
-        }
-    }
-
-    /// Parse parameter string like 'param1="value1", param2="value2", flag1, flag2'
-    fn parse_parameters(&self, params_str: &str) -> HashMap<String, String> {
+    /// Parse YAML-style parameters from code block content
+    /// Returns (parameters, remaining_content)
+    fn parse_yaml_parameters(&self, content: &str) -> (HashMap<String, String>, String) {
         let mut params = HashMap::new();
-        
-        // Simple parser for comma-separated key="value" pairs and boolean flags
-        let mut current_param = String::new();
-        let mut in_quotes = false;
-        let mut escape_next = false;
-        
-        for ch in params_str.chars() {
-            if escape_next {
-                current_param.push(ch);
-                escape_next = false;
-            } else if ch == '\\' {
-                escape_next = true;
-                current_param.push(ch);
-            } else if ch == '"' {
-                in_quotes = !in_quotes;
-                current_param.push(ch);
-            } else if ch == ',' && !in_quotes {
-                // End of parameter
-                self.parse_and_add_parameter(&current_param, &mut params);
-                current_param.clear();
+        let mut lines = content.lines();
+        let mut content_lines = Vec::new();
+        let mut in_yaml = true;
+
+        for line in lines {
+            let trimmed = line.trim();
+            
+            if in_yaml && (trimmed.is_empty() || trimmed.contains(':')) {
+                if trimmed.is_empty() {
+                    // Empty line marks end of YAML section
+                    in_yaml = false;
+                } else if let Some((key, value)) = trimmed.split_once(':') {
+                    let key = key.trim().to_string();
+                    let value = value.trim().to_string();
+                    params.insert(key, value);
+                } else {
+                    // Line doesn't contain ':', treat as content
+                    in_yaml = false;
+                    content_lines.push(line);
+                }
             } else {
-                current_param.push(ch);
+                // We're in content section
+                in_yaml = false;
+                content_lines.push(line);
             }
         }
-        
-        // Handle last parameter
-        if !current_param.trim().is_empty() {
-            self.parse_and_add_parameter(&current_param, &mut params);
-        }
-        
-        params
-    }
 
-    /// Parse and add a single parameter (either key="value" or boolean flag)
-    fn parse_and_add_parameter(&self, param: &str, params: &mut HashMap<String, String>) {
-        let param = param.trim();
-        if param.is_empty() {
-            return;
-        }
-        
-        if let Some(eq_pos) = param.find('=') {
-            // Key-value parameter
-            let key = param[..eq_pos].trim().to_string();
-            let value_part = param[eq_pos + 1..].trim();
-            
-            // Remove quotes if present
-            let value = if value_part.starts_with('"') && value_part.ends_with('"') && value_part.len() >= 2 {
-                value_part[1..value_part.len() - 1].to_string()
-            } else {
-                value_part.to_string()
-            };
-            
-            params.insert(key, value);
-        } else {
-            // Boolean flag (no value)
-            params.insert(param.to_string(), String::new());
-        }
+        let remaining_content = content_lines.join("\n").trim().to_string();
+        (params, remaining_content)
     }
 
     /// Process special code blocks (mermaid, comment, etc.)
@@ -263,15 +203,9 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         input_events: &mut VecDeque<Event<'a>>,
         output_events: &mut Vec<Event<'a>>,
     ) -> Result<(), anyhow::Error> {
-        // Extract the language/parameters from the code block
-        let (element_type, params) = match &kind {
-            pulldown_cmark::CodeBlockKind::Fenced(lang) => {
-                if let Some((id, params)) = self.parse_code_block_language(lang) {
-                    (id, params)
-                } else {
-                    return Ok(()); // Not a special block, shouldn't happen
-                }
-            }
+        // Extract the language from the code block
+        let element_type = match &kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => lang.trim().to_string(),
             _ => return Ok(()), // Not a fenced code block
         };
 
@@ -293,10 +227,17 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             }
         }
 
+        // Parse YAML parameters from content (except for mermaid)
+        let (params, remaining_content) = if element_type == "mermaid" {
+            (HashMap::new(), content)
+        } else {
+            self.parse_yaml_parameters(&content)
+        };
+
         // Create the appropriate XML element
         match element_type.as_str() {
             "mermaid" => {
-                let xml_element = XmlElement::Mermaid { content };
+                let xml_element = XmlElement::Mermaid { content: remaining_content };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_mermaid_html(&resolved);
                 output_events.push(Event::InlineHtml(html.into()));
@@ -304,15 +245,15 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             "comment" => {
                 let location = params.get("location").cloned().unwrap_or_default();
                 let icon = params.get("icon").cloned();
-                let xml_element = XmlElement::Comment { location, icon, content };
+                let xml_element = XmlElement::Comment { location, icon, content: remaining_content };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_comment_html(&resolved);
                 output_events.push(Event::InlineHtml(html.into()));
             }
             "gitdiff" => {
                 let range = params.get("range").cloned().unwrap_or_default();
-                let exclude_unstaged = params.contains_key("exclude-unstaged");
-                let exclude_staged = params.contains_key("exclude-staged");
+                let exclude_unstaged = params.get("exclude-unstaged").is_some() || params.get("exclude_unstaged").is_some();
+                let exclude_staged = params.get("exclude-staged").is_some() || params.get("exclude_staged").is_some();
                 let xml_element = XmlElement::GitDiff { range, exclude_unstaged, exclude_staged };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_gitdiff_html(&resolved);
@@ -320,7 +261,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             }
             "action" => {
                 let button = params.get("button").cloned().unwrap_or("Action".to_string());
-                let xml_element = XmlElement::Action { button, message: content };
+                let xml_element = XmlElement::Action { button, message: remaining_content };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_action_html(&resolved);
                 output_events.push(Event::InlineHtml(html.into()));
@@ -994,6 +935,32 @@ More text"#,
         );
     }
 
+    #[test]
+    fn test_parse_yaml_parameters() {
+        let parser = create_test_parser();
+        
+        // Test simple parameters
+        let content = "location: findDefinition(`test`)\nicon: lightbulb\n\nThis is the content";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert_eq!(params.get("location").unwrap(), "findDefinition(`test`)");
+        assert_eq!(params.get("icon").unwrap(), "lightbulb");
+        assert_eq!(remaining, "This is the content");
+        
+        // Test boolean flags
+        let content = "range: HEAD~2\nexclude_unstaged: true\nexclude_staged: true\n";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert_eq!(params.get("range").unwrap(), "HEAD~2");
+        assert_eq!(params.get("exclude_unstaged").unwrap(), "true");
+        assert_eq!(params.get("exclude_staged").unwrap(), "true");
+        assert_eq!(remaining, "");
+        
+        // Test content only (no parameters)
+        let content = "This is just content\nwith multiple lines";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert!(params.is_empty());
+        assert_eq!(remaining, "This is just content\nwith multiple lines");
+    }
+
     #[tokio::test]
     async fn test_parse_mermaid_code_block() {
         let mut parser = create_test_parser();
@@ -1015,6 +982,77 @@ More content here."#;
         assert!(result.contains("flowchart TD"));
         assert!(result.contains("A[Start] --> B[End]"));
         assert!(result.contains("</mermaid>"));
+    }
+
+    #[tokio::test]
+    async fn test_parse_comment_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's a comment:
+
+```comment
+location: findDefinition(`foo`)
+icon: lightbulb
+
+This explains the foo function
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        assert!(result.contains("data-comment"));
+        assert!(result.contains("This explains the foo function"));
+        assert!(result.contains("findDefinition(`foo`)"));
+        assert!(result.contains("💡")); // lightbulb icon
+    }
+
+    #[tokio::test]
+    async fn test_parse_gitdiff_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's a git diff:
+
+```gitdiff
+range: HEAD~2..HEAD
+exclude_unstaged: true
+exclude_staged: true
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the gitdiff HTML element
+        assert!(result.contains("gitdiff-container"));
+        assert!(result.contains("HEAD~2..HEAD"));
+        assert!(result.contains("GitDiff rendering"));
+    }
+
+    #[tokio::test]
+    async fn test_parse_action_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's an action:
+
+```action
+button: Run Tests
+
+Should we run the test suite now?
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the action HTML element
+        assert!(result.contains("action-button"));
+        assert!(result.contains("Run Tests"));
+        assert!(result.contains("Should we run the test suite now?"));
     }
 
     #[test]
@@ -1155,6 +1193,39 @@ More content here."#;
                             </div>
                         </div>
             <p>More content here.</p>
+        "#]].assert_eq(&result);
+    }
+
+
+    #[tokio::test]
+    async fn test_walkthrough_from_2025_09_12() {
+        let mut parser = create_test_parser();
+        let markdown = "# Testing Triple-Tickification After Restart\n\nLet's test if the new code block syntax is working now!\n\n## Mermaid Test\n```mermaid\nflowchart LR\n    A[Old XML] --> B[Triple-Tickification]\n    B --> C[New Code Blocks]\n    C --> D[Success!]\n```\n\n## Comment Test\n```comment(location=\"findDefinition(`WalkthroughParser`)\", icon=\"rocket\")\nThis should now render as a proper comment box instead of raw markdown!\nThe parser should recognize this as a special code block and convert it to HTML.\n```\n\n## GitDiff Test\n```gitdiff(range=\"HEAD~3..HEAD\")\n```\n\n## Action Test\n```action(button=\"It's working!\")\nClick this if you see a proper button instead of raw markdown text.\n```\n\nIf you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉";
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        expect_test::expect![[r#"
+            <h1>Testing Triple-Tickification After Restart</h1>
+            <p>Let's test if the new code block syntax is working now!</p>
+            <h2>Mermaid Test</h2>
+            <mermaid>flowchart LR
+                A[Old XML] --> B[Triple-Tickification]
+                B --> C[New Code Blocks]
+                C --> D[Success!]
+            </mermaid>
+            <h2>Comment Test</h2>
+            <p>```comment(location="findDefinition(<code>WalkthroughParser</code>)", icon="rocket")
+            This should now render as a proper comment box instead of raw markdown!
+            The parser should recognize this as a special code block and convert it to HTML.</p>
+            <pre><code>
+            ## GitDiff Test
+            ```gitdiff(range="HEAD~3..HEAD")
+            </code></pre>
+            <h2>Action Test</h2>
+            <button class="action-button" data-tell-agent="Click this if you see a proper button instead of raw markdown text.
+            " style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">It's working!</button>
+            <p>If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉</p>
         "#]].assert_eq(&result);
     }
 }
