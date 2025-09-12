@@ -381,8 +381,12 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             let baseBranch = try getBaseBranch(for: project)
             let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
             let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            let hasUnstagedChanges = try hasUnstagedChanges(in: worktreeDir)
             
-            return (branchName, isMerged, unmergedCommits)
+            // If there are unstaged changes, treat as having "uncommitted work"
+            let effectiveUnmergedCommits = hasUnstagedChanges ? max(unmergedCommits, 1) : unmergedCommits
+            
+            return (branchName, isMerged, effectiveUnmergedCommits)
         } catch {
             Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
             return (branchName, false, 0)
@@ -421,6 +425,28 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0"
         return Int(output) ?? 0
+    }
+    
+    private func hasUnstagedChanges(in directory: String) throws -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["status", "--porcelain"]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            return false
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return !output.isEmpty
     }
 
     private func getCurrentBranch(in directory: String) throws -> String {
