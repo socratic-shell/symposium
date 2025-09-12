@@ -1047,4 +1047,222 @@ If you see rendered elements (diagram, comment box, diff container, button) inst
             <p>If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉</p>
         "#]].assert_eq(&result);
     }
+
+    #[tokio::test]
+    async fn test_walkthrough_from_2025_09_12_2() {
+        let mut parser = create_test_parser();
+
+        let markdown = r#"# Triple-Tickification: Complete Implementation Walkthrough
+
+We've successfully implemented the complete transition from XML syntax to markdown code blocks! Let's walk through all the key components.
+
+## Architecture Overview
+
+The new YAML-style parsing architecture handles all four element types:
+
+```mermaid
+flowchart TD
+    A[Markdown Input] --> B{Code Block?}
+    B -->|Regular| C[Standard Markdown]
+    B -->|Special| D[Parse Language ID]
+    D --> E{Known Element?}
+    E -->|mermaid| F[Direct Content]
+    E -->|comment/gitdiff/action| G[Parse YAML Parameters]
+    F --> H[Create XML Element]
+    G --> H
+    H --> I[Resolve & Generate HTML]
+    C --> J[Final HTML Output]
+    I --> J
+```
+
+## Core Implementation: YAML Parameter Parser
+
+The heart of the new system parses YAML-style parameters cleanly:
+
+```comment
+location: findDefinition(`parse_yaml_parameters`)
+icon: gear
+
+This function separates YAML parameters from content by processing lines sequentially.
+It stops at the first empty line or non-YAML line, ensuring clean parameter extraction.
+The key fix was replacing the flawed logic that mixed parameters with content.
+```
+
+## Element Processing Pipeline
+
+Each code block type gets processed through a unified pipeline:
+
+```comment
+location: findDefinition(`process_code_block`)
+icon: arrow-right
+
+The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)
+with a unified approach. YAML parameters are extracted first, then the appropriate
+XML element is created and resolved through the existing HTML generation system.
+```
+
+## New Syntax Examples
+
+Here are examples of all four element types in the new YAML-style format:
+
+```comment
+location: search(`guidance.md`, `comment`)
+icon: lightbulb
+```
+
+Comments now use clean YAML parameters:
+
+```comment
+location: findDefinition(`User`)
+icon: rocket
+
+This explains the User struct
+```
+
+GitDiff elements support boolean flags:
+```gitdiff
+range: HEAD~3..HEAD
+exclude_unstaged: true
+exclude_staged: true
+```
+
+Actions have simple button parameters:
+```action
+button: Run Tests
+
+Should we execute the test suite now?
+```
+
+## What We Accomplished
+
+Here's the complete diff of our changes:
+
+```gitdiff
+range: HEAD~15..HEAD
+```
+
+## Key Benefits Achieved
+
+```action
+button: Better Markdown Compatibility
+
+The simple language identifiers (comment, gitdiff, action, mermaid) work perfectly 
+with standard markdown parsers, fixing the compatibility issues we had with 
+complex function-call syntax.
+```
+
+```action
+button: Cleaner Syntax
+
+YAML-style parameters are much more readable and maintainable than the old 
+function-call syntax with complex escaping.
+```
+
+```action
+button: Unified Implementation
+
+All elements now use the same YAML parameter parsing approach, making the 
+codebase more consistent and easier to extend.
+```
+
+## Testing the Implementation
+
+The new system passes all core functionality tests and works seamlessly with the VSCode extension. The HTML output remains identical, so no changes were needed to the frontend!
+
+🎉 **Triple-tickification is complete and working!**"#;
+
+ let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        expect_test::expect![[r#"
+            <h1>Triple-Tickification: Complete Implementation Walkthrough</h1>
+            <p>We've successfully implemented the complete transition from XML syntax to markdown code blocks! Let's walk through all the key components.</p>
+            <h2>Architecture Overview</h2>
+            <p>The new YAML-style parsing architecture handles all four element types:</p>
+            <mermaid>flowchart TD
+                A[Markdown Input] --> B{Code Block?}
+                B -->|Regular| C[Standard Markdown]
+                B -->|Special| D[Parse Language ID]
+                D --> E{Known Element?}
+                E -->|mermaid| F[Direct Content]
+                E -->|comment/gitdiff/action| G[Parse YAML Parameters]
+                F --> H[Create XML Element]
+                G --> H
+                H --> I[Resolve & Generate HTML]
+                C --> J[Final HTML Output]
+                I --> J
+            </mermaid>
+            <h2>Core Implementation: YAML Parameter Parser</h2>
+            <p>The heart of the new system parses YAML-style parameters cleanly:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This function separates YAML parameters from content by processing lines sequentially.\nIt stops at the first empty line or non-YAML line, ensuring clean parameter extraction.\nThe key fix was replacing the flawed logic that mixed parameters with content.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">⚙️</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`parse_yaml_parameters`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This function separates YAML parameters from content by processing lines sequentially.
+            It stops at the first empty line or non-YAML line, ensuring clean parameter extraction.
+            The key fix was replacing the flawed logic that mixed parameters with content.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>Element Processing Pipeline</h2>
+            <p>Each code block type gets processed through a unified pipeline:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)\nwith a unified approach. YAML parameters are extracted first, then the appropriate\nXML element is created and resolved through the existing HTML generation system.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`process_code_block`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)
+            with a unified approach. YAML parameters are extracted first, then the appropriate
+            XML element is created and resolved through the existing HTML generation system.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>New Syntax Examples</h2>
+            <p>Here are examples of all four element types in the new YAML-style format:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">/comment/</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;"></div>
+                                </div>
+                            </div>
+                        </div>
+            <p>Comments now use clean YAML parameters:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`User`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the User struct</div>
+                                </div>
+                            </div>
+                        </div>
+            <p>GitDiff elements support boolean flags:</p>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~3..HEAD</div>
+                        </div>
+            <p>Actions have simple button parameters:</p>
+            <button class="action-button" data-tell-agent="Should we execute the test suite now?" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Run Tests</button>
+            <h2>What We Accomplished</h2>
+            <p>Here's the complete diff of our changes:</p>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~15..HEAD</div>
+                        </div>
+            <h2>Key Benefits Achieved</h2>
+            <button class="action-button" data-tell-agent="The simple language identifiers (comment, gitdiff, action, mermaid) work perfectly 
+            with standard markdown parsers, fixing the compatibility issues we had with 
+            complex function-call syntax." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Better Markdown Compatibility</button><button class="action-button" data-tell-agent="YAML-style parameters are much more readable and maintainable than the old 
+            function-call syntax with complex escaping." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Cleaner Syntax</button><button class="action-button" data-tell-agent="All elements now use the same YAML parameter parsing approach, making the 
+            codebase more consistent and easier to extend." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Unified Implementation</button>
+            <h2>Testing the Implementation</h2>
+            <p>The new system passes all core functionality tests and works seamlessly with the VSCode extension. The HTML output remains identical, so no changes were needed to the frontend!</p>
+            <p>🎉 <strong>Triple-tickification is complete and working!</strong></p>
+        "#]].assert_eq(&result);
+    }
 }
