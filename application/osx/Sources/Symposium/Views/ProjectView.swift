@@ -580,11 +580,6 @@ struct TaskspaceCard: View {
                     showingDeleteConfirmation = false
                 }
             )
-            .onAppear {
-                // Set default deleteBranch value when dialog appears
-                let branchInfo = projectManager.getTaskspaceBranchInfo(for: taskspace)
-                deleteBranch = (branchInfo.unmergedCommits == 0)
-            }
         }
         .onChange(of: taskspace.pendingDeletion) { pending in
             if pending {
@@ -667,6 +662,10 @@ struct DeleteTaskspaceDialog: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return)
             }
+        }
+        .onAppear {
+            // Set default deleteBranch value when dialog appears
+            deleteBranch = (branchInfo.unmergedCommits == 0)
         }
         .padding()
         .frame(width: 400)
