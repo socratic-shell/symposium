@@ -754,12 +754,13 @@ extension ProjectManager {
             )
         }
 
-        // Set up window stack tracking for drag following
+        // Set up window stack tracking for drag and resize following
         if stackTracker == nil {
             stackTracker = WindowStackTracker()
         }
-        stackTracker?.startTracking(
-            leaderWindowID: targetWindowID, followerWindowIDs: followerWindowIDs)
+        var allWindowIDs = [targetWindowID]
+        allWindowIDs.append(contentsOf: followerWindowIDs)
+        stackTracker?.startTracking(windowIDs: allWindowIDs)
 
         return focusResult
     }

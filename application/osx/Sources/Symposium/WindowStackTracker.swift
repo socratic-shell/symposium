@@ -2,13 +2,14 @@ import Foundation
 import ApplicationServices
 import AppKit
 
-/// Tracks window movement for stacked windows using AeroSpace-inspired approach
+/// Tracks window movement and resizing for stacked windows using AeroSpace-inspired approach
 class WindowStackTracker {
     private var eventTap: CFMachPort?
     private var trackingTimer: Timer?
-    private var leaderWindowID: CGWindowID?
-    private var followerWindowIDs: [CGWindowID] = []
-    private var lastLeaderPosition: CGPoint?
+    private var trackedWindowIDs: [CGWindowID] = []
+    private var activeWindowID: CGWindowID?
+    private var lastActivePosition: CGPoint?
+    private var lastActiveSize: CGSize?
     
     init() {
         setupEventTap()
@@ -21,28 +22,30 @@ class WindowStackTracker {
         }
     }
     
-    /// Start tracking a leader window with its followers
-    func startTracking(leaderWindowID: CGWindowID, followerWindowIDs: [CGWindowID]) {
-        self.leaderWindowID = leaderWindowID
-        self.followerWindowIDs = followerWindowIDs
-        self.lastLeaderPosition = getWindowPosition(windowID: leaderWindowID)
+    /// Start tracking all windows in the stack
+    func startTracking(windowIDs: [CGWindowID]) {
+        self.trackedWindowIDs = windowIDs
+        self.activeWindowID = nil
+        self.lastActivePosition = nil
+        self.lastActiveSize = nil
         
-        Logger.shared.log("WindowStackTracker: Started tracking leader \(leaderWindowID) with \(followerWindowIDs.count) followers")
+        Logger.shared.log("WindowStackTracker: Started tracking \(windowIDs.count) windows in stack")
     }
     
     /// Stop tracking all windows
     func stopTracking() {
         trackingTimer?.invalidate()
         trackingTimer = nil
-        leaderWindowID = nil
-        followerWindowIDs.removeAll()
-        lastLeaderPosition = nil
+        trackedWindowIDs.removeAll()
+        activeWindowID = nil
+        lastActivePosition = nil
+        lastActiveSize = nil
         
         Logger.shared.log("WindowStackTracker: Stopped tracking")
     }
     
     /// Sets up a system-wide event tap to detect mouse clicks and drags
-    /// This allows us to detect when the user starts dragging the leader window
+    /// This allows us to detect when the user starts dragging or resizing any tracked window
     /// without relying on unreliable AXObserver notifications
     private func setupEventTap() {
         let eventMask: CGEventMask = (1 << CGEventType.leftMouseDown.rawValue) |
@@ -70,57 +73,78 @@ class WindowStackTracker {
     }
     
     private func handleMouseEvent(type: CGEventType, event: CGEvent) {
-        guard let leaderWindowID = leaderWindowID else { return }
+        guard !trackedWindowIDs.isEmpty else { return }
         
         switch type {
         case .leftMouseDown:
-            // Check if click is on leader window
+            // Check if click is on any tracked window
             let clickedWindowID = getWindowAtPoint(event.location)
-            if clickedWindowID == leaderWindowID {
-                startDragTracking()
+            if let windowID = clickedWindowID, trackedWindowIDs.contains(windowID) {
+                startTracking(activeWindow: windowID)
             }
             
         case .leftMouseUp:
-            stopDragTracking()
+            stopActiveTracking()
             
         default:
             break
         }
     }
     
-    private func startDragTracking() {
+    private func startTracking(activeWindow: CGWindowID) {
         guard trackingTimer == nil else { return }
         
-        Logger.shared.log("WindowStackTracker: Started drag tracking")
+        self.activeWindowID = activeWindow
+        self.lastActivePosition = getWindowPosition(windowID: activeWindow)
+        self.lastActiveSize = getWindowSize(windowID: activeWindow)
+        
+        Logger.shared.log("WindowStackTracker: Started tracking active window \(activeWindow)")
         
         trackingTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            self?.updateFollowerPositions()
+            self?.updateOtherWindows()
         }
     }
     
-    private func stopDragTracking() {
+    private func stopActiveTracking() {
         trackingTimer?.invalidate()
         trackingTimer = nil
+        activeWindowID = nil
+        lastActivePosition = nil
+        lastActiveSize = nil
         
-        Logger.shared.log("WindowStackTracker: Stopped drag tracking")
+        Logger.shared.log("WindowStackTracker: Stopped active tracking")
     }
     
-    private func updateFollowerPositions() {
-        guard let leaderWindowID = leaderWindowID,
-              let currentPosition = getWindowPosition(windowID: leaderWindowID),
-              let lastPosition = lastLeaderPosition else { return }
+    private func updateOtherWindows() {
+        guard let activeWindowID = activeWindowID,
+              let currentPosition = getWindowPosition(windowID: activeWindowID),
+              let currentSize = getWindowSize(windowID: activeWindowID),
+              let lastPosition = lastActivePosition,
+              let lastSize = lastActiveSize else { return }
         
-        let delta = CGPoint(x: currentPosition.x - lastPosition.x, y: currentPosition.y - lastPosition.y)
+        let positionDelta = CGPoint(x: currentPosition.x - lastPosition.x, y: currentPosition.y - lastPosition.y)
+        let sizeDelta = CGSize(width: currentSize.width - lastSize.width, height: currentSize.height - lastSize.height)
         
-        // Only update if there's actual movement
-        guard abs(delta.x) > 1 || abs(delta.y) > 1 else { return }
+        // Only update if there's actual change
+        let hasMovement = abs(positionDelta.x) > 1 || abs(positionDelta.y) > 1
+        let hasResize = abs(sizeDelta.width) > 1 || abs(sizeDelta.height) > 1
         
-        // Move all follower windows by the same delta
-        for followerID in followerWindowIDs {
-            moveWindow(windowID: followerID, by: delta)
+        guard hasMovement || hasResize else { return }
+        
+        // Update all other windows in the stack
+        let otherWindowIDs = trackedWindowIDs.filter { $0 != activeWindowID }
+        for windowID in otherWindowIDs {
+            if hasMovement && hasResize {
+                moveAndResizeWindow(windowID: windowID, positionDelta: positionDelta, newSize: currentSize)
+            } else if hasMovement {
+                moveWindow(windowID: windowID, by: positionDelta)
+            } else if hasResize {
+                resizeWindow(windowID: windowID, to: currentSize)
+            }
         }
         
-        lastLeaderPosition = currentPosition
+        lastActivePosition = currentPosition
+        lastActiveSize = currentSize
     }
     
     private func getWindowAtPoint(_ point: CGPoint) -> CGWindowID? {
@@ -168,11 +192,10 @@ class WindowStackTracker {
         return CGPoint(x: x, y: y)
     }
     
-    private func moveWindow(windowID: CGWindowID, by delta: CGPoint) {
-        // Get window info to find the owning process
+    private func getWindowSize(windowID: CGWindowID) -> CGSize? {
         let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
         guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return
+            return nil
         }
         
         guard let windowInfo = windowList.first(where: { window in
@@ -180,9 +203,32 @@ class WindowStackTracker {
                 return id == windowID
             }
             return false
-        }) else { return }
+        }) else { return nil }
         
-        guard let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else { return }
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat else {
+            return nil
+        }
+        
+        return CGSize(width: width, height: height)
+    }
+    
+    private func getWindowElement(for windowID: CGWindowID) -> AXUIElement? {
+        // Get window info to find the owning process
+        let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements)
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+        
+        guard let windowInfo = windowList.first(where: { window in
+            if let id = window[kCGWindowNumber as String] as? CGWindowID {
+                return id == windowID
+            }
+            return false
+        }) else { return nil }
+        
+        guard let processID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else { return nil }
         
         let app = AXUIElementCreateApplication(processID)
         
@@ -191,28 +237,66 @@ class WindowStackTracker {
         
         guard result == .success,
               let windows = windowsRef as? [AXUIElement] else {
-            return
+            return nil
         }
         
         // Find the window with matching CGWindowID
         for window in windows {
             if let axWindowID = getWindowID(from: window), axWindowID == windowID {
-                // Get current position
-                var positionRef: CFTypeRef?
-                guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionRef) == .success,
-                      let positionValue = positionRef else { continue }
-                
-                var currentPos = CGPoint.zero
-                AXValueGetValue(positionValue as! AXValue, .cgPoint, &currentPos)
-                
-                // Calculate new position
-                var newPos = CGPoint(x: currentPos.x + delta.x, y: currentPos.y + delta.y)
-                let newPosValue = AXValueCreate(.cgPoint, &newPos)!
-                
-                // Set new position
-                AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, newPosValue)
-                break
+                return window
             }
         }
+        
+        return nil
+    }
+    
+    private func resizeWindow(windowID: CGWindowID, to newSize: CGSize) {
+        guard let windowElement = getWindowElement(for: windowID) else { return }
+        
+        var sizeValue = newSize
+        let axSizeValue = AXValueCreate(.cgSize, &sizeValue)!
+        AXUIElementSetAttributeValue(windowElement, kAXSizeAttribute as CFString, axSizeValue)
+    }
+    
+    private func moveWindow(windowID: CGWindowID, by delta: CGPoint) {
+        guard let windowElement = getWindowElement(for: windowID) else { return }
+        
+        // Get current position
+        var positionRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(windowElement, kAXPositionAttribute as CFString, &positionRef) == .success,
+              let positionValue = positionRef else { return }
+        
+        var currentPos = CGPoint.zero
+        AXValueGetValue(positionValue as! AXValue, .cgPoint, &currentPos)
+        
+        // Calculate new position
+        var newPos = CGPoint(x: currentPos.x + delta.x, y: currentPos.y + delta.y)
+        let newPosValue = AXValueCreate(.cgPoint, &newPos)!
+        
+        // Set new position
+        AXUIElementSetAttributeValue(windowElement, kAXPositionAttribute as CFString, newPosValue)
+    }
+    
+    private func moveAndResizeWindow(windowID: CGWindowID, positionDelta: CGPoint, newSize: CGSize) {
+        guard let windowElement = getWindowElement(for: windowID) else { return }
+        
+        // Get current position
+        var positionRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(windowElement, kAXPositionAttribute as CFString, &positionRef) == .success,
+              let positionValue = positionRef else { return }
+        
+        var currentPos = CGPoint.zero
+        AXValueGetValue(positionValue as! AXValue, .cgPoint, &currentPos)
+        
+        // Calculate new position
+        var newPos = CGPoint(x: currentPos.x + positionDelta.x, y: currentPos.y + positionDelta.y)
+        let newPosValue = AXValueCreate(.cgPoint, &newPos)!
+        
+        // Set new position and size
+        AXUIElementSetAttributeValue(windowElement, kAXPositionAttribute as CFString, newPosValue)
+        
+        var sizeValue = newSize
+        let axSizeValue = AXValueCreate(.cgSize, &sizeValue)!
+        AXUIElementSetAttributeValue(windowElement, kAXSizeAttribute as CFString, axSizeValue)
     }
 }
