@@ -302,6 +302,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         worktreeProcess.arguments = ["worktree", "remove", worktreeDir, "--force"]
         worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
 
+        Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
+
         try worktreeProcess.run()
         worktreeProcess.waitUntilExit()
 
@@ -310,6 +312,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                 "Warning: Failed to remove git worktree, falling back to directory removal")
             // Fallback: remove directory if worktree removal failed
             try FileManager.default.removeItem(atPath: taskspaceDir)
+        } else {
+            Logger.shared.log("Successfully removed git worktree: \(worktreeDir)")
         }
 
         // Optionally delete the branch
