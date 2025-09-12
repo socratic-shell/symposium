@@ -159,9 +159,102 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
     fn is_special_code_block(&self, kind: &pulldown_cmark::CodeBlockKind) -> bool {
         match kind {
             pulldown_cmark::CodeBlockKind::Fenced(lang) => {
-                lang.starts_with("mermaid")
+                self.parse_code_block_language(lang).is_some()
             }
             _ => false,
+        }
+    }
+
+    /// Parse code block language into identifier and parameters
+    /// Supports: "identifier" or "identifier(param1="value1", param2="value2")"
+    fn parse_code_block_language(&self, lang: &str) -> Option<(String, HashMap<String, String>)> {
+        let lang = lang.trim();
+        
+        // Check if it has parameters (contains parentheses)
+        if let Some(paren_pos) = lang.find('(') {
+            let identifier = lang[..paren_pos].trim().to_string();
+            
+            // Only process known identifiers
+            if !matches!(identifier.as_str(), "mermaid" | "comment" | "gitdiff" | "action") {
+                return None;
+            }
+            
+            // Extract parameter string (everything between parentheses)
+            if let Some(close_paren) = lang.rfind(')') {
+                let params_str = &lang[paren_pos + 1..close_paren];
+                let params = self.parse_parameters(params_str);
+                Some((identifier, params))
+            } else {
+                // Missing closing parenthesis
+                None
+            }
+        } else {
+            // No parameters, just identifier
+            if matches!(lang, "mermaid" | "comment" | "gitdiff" | "action") {
+                Some((lang.to_string(), HashMap::new()))
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Parse parameter string like 'param1="value1", param2="value2"'
+    fn parse_parameters(&self, params_str: &str) -> HashMap<String, String> {
+        let mut params = HashMap::new();
+        
+        // Simple parser for comma-separated key="value" pairs
+        let mut current_param = String::new();
+        let mut in_quotes = false;
+        let mut escape_next = false;
+        
+        for ch in params_str.chars() {
+            if escape_next {
+                current_param.push(ch);
+                escape_next = false;
+            } else if ch == '\\' {
+                escape_next = true;
+                current_param.push(ch);
+            } else if ch == '"' {
+                in_quotes = !in_quotes;
+                current_param.push(ch);
+            } else if ch == ',' && !in_quotes {
+                // End of parameter
+                if let Some((key, value)) = self.parse_single_parameter(&current_param) {
+                    params.insert(key, value);
+                }
+                current_param.clear();
+            } else {
+                current_param.push(ch);
+            }
+        }
+        
+        // Handle last parameter
+        if !current_param.trim().is_empty() {
+            if let Some((key, value)) = self.parse_single_parameter(&current_param) {
+                params.insert(key, value);
+            }
+        }
+        
+        params
+    }
+
+    /// Parse a single parameter like 'key="value"'
+    fn parse_single_parameter(&self, param: &str) -> Option<(String, String)> {
+        let param = param.trim();
+        if let Some(eq_pos) = param.find('=') {
+            let key = param[..eq_pos].trim().to_string();
+            let value_part = param[eq_pos + 1..].trim();
+            
+            // Remove quotes if present
+            let value = if value_part.starts_with('"') && value_part.ends_with('"') && value_part.len() >= 2 {
+                value_part[1..value_part.len() - 1].to_string()
+            } else {
+                value_part.to_string()
+            };
+            
+            Some((key, value))
+        } else {
+            None
         }
     }
 
@@ -173,10 +266,10 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         output_events: &mut Vec<Event<'a>>,
     ) -> Result<(), anyhow::Error> {
         // Extract the language/parameters from the code block
-        let (element_type, _params) = match &kind {
+        let (element_type, params) = match &kind {
             pulldown_cmark::CodeBlockKind::Fenced(lang) => {
-                if lang.starts_with("mermaid") {
-                    ("mermaid", "")
+                if let Some((id, params)) = self.parse_code_block_language(lang) {
+                    (id, params)
                 } else {
                     return Ok(()); // Not a special block, shouldn't happen
                 }
@@ -203,11 +296,19 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         }
 
         // Create the appropriate XML element
-        match element_type {
+        match element_type.as_str() {
             "mermaid" => {
                 let xml_element = XmlElement::Mermaid { content };
                 let resolved = self.resolve_single_element(xml_element).await?;
                 let html = self.create_mermaid_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "comment" => {
+                let location = params.get("location").cloned().unwrap_or_default();
+                let icon = params.get("icon").cloned();
+                let xml_element = XmlElement::Comment { location, icon, content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_comment_html(&resolved);
                 output_events.push(Event::InlineHtml(html.into()));
             }
             _ => {
@@ -957,5 +1058,72 @@ More content here."#;
         assert!(result.contains("flowchart TD"));
         assert!(result.contains("A[Start] --> B[End]"));
         assert!(result.contains("</mermaid>"));
+    }
+
+    #[test]
+    fn test_parse_code_block_language() {
+        let parser = create_test_parser();
+        
+        // Test simple identifier
+        let (id, params) = parser.parse_code_block_language("mermaid").unwrap();
+        assert_eq!(id, "mermaid");
+        assert!(params.is_empty());
+        
+        // Test identifier with parameters
+        let (id, params) = parser.parse_code_block_language(r#"comment(location="findDefinition('foo')", icon="lightbulb")"#).unwrap();
+        assert_eq!(id, "comment");
+        assert_eq!(params.get("location").unwrap(), "findDefinition('foo')");
+        assert_eq!(params.get("icon").unwrap(), "lightbulb");
+        
+        // Test unknown identifier
+        assert!(parser.parse_code_block_language("unknown").is_none());
+        
+        // Test malformed parameters
+        assert!(parser.parse_code_block_language("comment(missing_close").is_none());
+    }
+
+    #[test]
+    fn test_parse_parameters() {
+        let parser = create_test_parser();
+        
+        // Test simple parameters
+        let params = parser.parse_parameters(r#"location="test", icon="info""#);
+        assert_eq!(params.get("location").unwrap(), "test");
+        assert_eq!(params.get("icon").unwrap(), "info");
+        
+        // Test parameters with complex values
+        let params = parser.parse_parameters(r#"location="findDefinition('MyClass')", icon="lightbulb""#);
+        assert_eq!(params.get("location").unwrap(), "findDefinition('MyClass')");
+        assert_eq!(params.get("icon").unwrap(), "lightbulb");
+        
+        // Test single parameter
+        let params = parser.parse_parameters(r#"button="Click me""#);
+        assert_eq!(params.get("button").unwrap(), "Click me");
+        
+        // Test empty parameters
+        let params = parser.parse_parameters("");
+        assert!(params.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_parse_comment_code_block() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's a comment:
+
+```comment(location="findDefinition('foo')", icon="lightbulb")
+This explains the foo function
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        assert!(result.contains("data-comment"));
+        assert!(result.contains("This explains the foo function"));
+        assert!(result.contains("findDefinition('foo')"));
+        assert!(result.contains("💡")); // lightbulb icon
     }
 }
