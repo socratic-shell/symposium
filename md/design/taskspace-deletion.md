@@ -2,202 +2,106 @@
 
 ## Overview
 
-Taskspace deletion is a complex operation that involves multiple safety checks, git cleanup, and coordination between the Swift app and VSCode extension. This document describes the complete deletion workflow and the subtleties involved.
+Taskspace deletion is a complex operation that involves multiple safety checks, git cleanup, and coordination between the Swift app and VSCode extension. This document describes the architectural design and key insights.
 
-## Safety Checking System
+## System Architecture
 
-### Branch Information Detection
+### Safety-First Design
 
-Before showing the deletion dialog, the system computes fresh branch information:
+The deletion system prioritizes preventing data loss through a multi-layered safety approach:
 
-```swift
-func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool)
-```
+1. **Fresh Branch Analysis**: Computes git status when the deletion dialog opens (not when cached)
+2. **Risk-Based Warnings**: Shows specific warnings for different types of uncommitted work
+3. **Smart Defaults**: Auto-configures branch deletion toggle based on detected risks
+4. **Graceful Fallbacks**: Continues deletion even if git operations fail
 
-**Key Components:**
+**Key Insight**: Branch information must be computed fresh when the dialog appears, not when the app loads, because users may make commits between app startup and deletion attempts.
 
-1. **Branch Name Detection**: Uses `git branch --show-current` in the worktree directory
-2. **Merge Status**: Uses `git merge-base --is-ancestor <branch> origin/main` 
-3. **Unmerged Commits**: Uses `git rev-list --count <branch> --not origin/main`
-4. **Uncommitted Changes**: Uses `git status --porcelain` (detects both staged and unstaged)
+### Cross-Process Coordination
 
-### Critical Git Command Fix
+The system coordinates between multiple processes:
+- **Swift App**: Manages deletion workflow and safety checks
+- **VSCode Extension**: Receives deletion broadcasts and closes windows gracefully  
+- **Git Commands**: Handle worktree and branch cleanup operations
 
-**Problem**: Initial implementation used `origin/origin/main` instead of `origin/main`
-- `getBaseBranch()` returns `"origin/main"` (includes origin/ prefix)
-- Git commands were adding another `origin/` prefix
-- Result: `git merge-base --is-ancestor branch origin/origin/main` (invalid)
+**Planned Enhancement**: Broadcast `taskspace_will_delete` messages before file removal to allow VSCode windows to close gracefully, preventing "file not found" errors.
 
-**Solution**: Use `baseBranch` directly without adding `origin/` prefix
+## Git Worktree Integration
 
-### Timing of Branch Info Computation
+### Architectural Constraints
 
-**Key Insight**: Branch info is computed **when the dialog appears**, not when the app loads.
+The system works within git worktree constraints:
+- **Bare Repository**: All git operations must run from the main repository directory
+- **Worktree Paths**: Include repository name (e.g., `task-UUID/reponame/`)
+- **Shared Metadata**: Multiple worktrees share one `.git` directory
 
-```swift
-// In DeleteTaskspaceDialog
-private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
-    projectManager.getTaskspaceBranchInfo(for: taskspace) // Fresh computation
-}
-```
+**Critical Design Decision**: All git commands execute from `project.directoryPath` (bare repo) rather than individual worktree directories, because worktrees only contain symlinks to the main git metadata.
 
-**Why this matters:**
-- User might make commits between app load and deletion attempt
-- Stale branch info could show incorrect warnings
-- Fresh computation ensures accurate safety warnings
-
-## User Interface Warnings
-
-### Warning Types
-
-The system shows different warnings based on detected issues:
-
-1. **Unmerged Commits**: "N commits from this branch do not appear in the main branch"
-2. **Uncommitted Changes**: "This taskspace contains uncommitted changes" 
-3. **Both Issues**: Shows both warnings separately
-4. **Safe Case**: "This branch is safe to delete (no unmerged commits or uncommitted changes)"
-
-### Default Toggle Behavior
-
-The "Also delete branch" toggle defaults based on safety:
-
-```swift
-deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUncommittedChanges)
-```
-
-- **Safe branches**: Toggle checked by default (encourage cleanup)
-- **Risky branches**: Toggle unchecked by default (prevent accidental loss)
-
-## Git Worktree Structure
-
-### Directory Layout
-
+### Directory Structure
 ```
 project/
-├── .git/                           # Bare repository
+├── .git/                    # Bare repository (command execution context)
 ├── task-UUID1/
-│   └── reponame/                   # Git worktree directory
-│       ├── .git -> ../../.git/worktrees/...
-│       └── [source files]
+│   └── reponame/           # Git worktree (target for removal)
 └── task-UUID2/
-    └── reponame/                   # Another worktree
-        └── [source files]
+    └── reponame/           # Another worktree
 ```
 
-### Path Resolution Subtlety
+## Design Principles
 
-**Critical**: Worktree path includes the repository name:
+1. **Safety First**: Always warn about potential data loss before proceeding
+2. **Fresh Data**: Compute branch info when needed, not when cached  
+3. **Clear Communication**: Provide specific warnings for different risk types
+4. **Graceful Degradation**: Continue deletion even when git operations fail
+5. **User Control**: Let users choose branch deletion behavior based on clear information
 
-```swift
-let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)  // /path/task-UUID
-let repoName = extractRepoName(from: project.gitURL)                   // "symposium"  
-let worktreeDir = "\(taskspaceDir)/\(repoName)"                       // /path/task-UUID/symposium
-```
-
-**Git commands must use `worktreeDir`, not `taskspaceDir`**
-
-## Deletion Workflow
-
-### Current Implementation
-
-1. **Compute paths** (taskspaceDir, worktreeDir, branchName)
-2. **Remove git worktree**: `git worktree remove <worktreeDir> --force`
-3. **Fallback on failure**: `FileManager.removeItem(taskspaceDir)`
-4. **Optionally delete branch**: `git branch -D <branchName>` (if user chose to)
-5. **Update UI**: Remove taskspace from project model
-
-### Git Command Execution Context
-
-All git commands run from the **bare repository directory** (`project.directoryPath`):
-
-```swift
-process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
-```
-
-This is crucial because:
-- Bare repository contains all git metadata
-- Worktree directories only have symlinks to main .git
-- Branch operations must run from the main repository
-
-## Remaining Issues
-
-### Git Cleanup Warnings
-
-Despite path corrections, deletion still shows:
-```
-Warning: Failed to remove git worktree, falling back to directory removal
-Warning: Failed to delete branch taskspace-UUID
-```
-
-**Hypothesis**: Timing issue or permission problem with git operations
-
-**Debug approach**: Added logging to see actual paths being used:
-```swift
-Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
-```
-
-## Planned Enhancements
-
-### Window Closure Coordination
-
-**Problem**: VSCode windows remain open after taskspace deletion, showing "file not found" errors
-
-**Solution**: Broadcast deletion intent before removing files:
-
-```swift
-// Before deletion
-IpcManager.shared.broadcast(message: [
-    "type": "taskspace_will_delete", 
-    "taskspace_uuid": taskspace.id.uuidString
-])
-
-// VSCode extension closes window gracefully
-vscode.commands.executeCommand('workbench.action.closeWindow')
-```
-
-## Architecture Insights
+## Complexity Drivers
 
 ### Why This System is Complex
 
-1. **Git Worktree Management**: Multiple worktrees sharing one repository
-2. **Safety vs Convenience**: Balance between preventing data loss and smooth UX  
-3. **Timing Dependencies**: Fresh data computation vs performance
-4. **Cross-Process Coordination**: Swift app + VSCode extension + git commands
-5. **Error Recovery**: Graceful fallbacks when git operations fail
+1. **Git Worktree Management**: Multiple worktrees sharing one repository with complex path relationships
+2. **Safety vs Convenience**: Balance between preventing data loss and smooth user experience
+3. **Timing Dependencies**: Fresh computation requirements vs performance considerations  
+4. **Cross-Process Coordination**: Swift app + VSCode extension + git subprocess coordination
+5. **Error Recovery**: Graceful fallbacks when git operations fail due to various reasons
 
-### Design Principles
+### Key Architectural Insights
 
-1. **Safety First**: Always warn about potential data loss
-2. **Fresh Data**: Compute branch info when needed, not when cached
-3. **Clear Communication**: Specific warnings for different risk types
-4. **Graceful Degradation**: Fallback to directory removal if git fails
-5. **User Control**: Let users choose branch deletion behavior
+1. **Fresh computation** of branch info prevents stale warnings that could mislead users
+2. **Correct path resolution** is critical - git commands must target actual worktree paths
+3. **Separate warning types** improve user understanding of different risks
+4. **Execution context matters** - git commands must run from bare repository directory
 
-## Testing Scenarios
+## Testing Strategy
 
-### Test Cases to Verify
+### Critical Test Scenarios
 
-1. **Clean branch**: No commits, no changes → Green "safe to delete"
-2. **Unmerged commits**: Commits not in main → Orange warning + count
-3. **Uncommitted changes**: Modified files → Orange "uncommitted changes" warning  
-4. **Both issues**: Show both warnings separately
-5. **Git cleanup**: Verify worktree and branch removal work without warnings
-6. **Window closure**: VSCode windows close gracefully during deletion
+1. **Clean State**: No commits, no changes → Should show "safe to delete" 
+2. **Unmerged Work**: Commits not in main → Should warn with commit count
+3. **Uncommitted Work**: Modified files → Should warn about uncommitted changes
+4. **Mixed State**: Both unmerged and uncommitted → Should show both warnings
+5. **Git Operations**: Verify worktree and branch removal work without errors
+6. **Window Coordination**: VSCode windows should close gracefully during deletion
 
-### Edge Cases
+### Edge Cases to Consider
 
-1. **Detached HEAD**: How does branch detection work?
-2. **Merge conflicts**: What if worktree has unresolved conflicts?
-3. **Permission issues**: What if git commands fail due to permissions?
-4. **Concurrent access**: What if multiple processes access the same worktree?
+1. **Detached HEAD**: How does branch detection behave?
+2. **Merge Conflicts**: What happens with unresolved conflicts in worktree?
+3. **Permission Issues**: How does system handle git command failures?
+4. **Concurrent Access**: What if multiple processes access same worktree?
+5. **Network Issues**: How does remote branch checking handle connectivity problems?
 
-## Conclusion
+## Implementation References
 
-The taskspace deletion system demonstrates the complexity of managing git worktrees safely while providing a smooth user experience. The key insights are:
+**Key Methods** (see code comments for implementation details):
+- `ProjectManager.getTaskspaceBranchInfo()` - Branch safety analysis
+- `ProjectManager.deleteTaskspace()` - Main deletion workflow  
+- `DeleteTaskspaceDialog` - UI warning logic and user interaction
 
-1. **Fresh computation** of branch info prevents stale warnings
-2. **Correct path resolution** is critical for git operations  
-3. **Separate warnings** for different risk types improve user understanding
-4. **Graceful fallbacks** ensure deletion works even when git operations fail
+**Critical Path Resolution** (see `deleteTaskspace()` comments):
+- Worktree path calculation and git command targeting
+- Execution context setup for git operations
 
-The system successfully prevents accidental data loss while maintaining usability.
+**Safety Checking** (see `getTaskspaceBranchInfo()` comments):
+- Git command details and error handling
+- Fresh computation timing and rationale

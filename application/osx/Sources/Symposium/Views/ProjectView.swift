@@ -607,6 +607,11 @@ struct DeleteTaskspaceDialog: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
+    /// Computed property that gets fresh branch info when dialog renders
+    /// 
+    /// CRITICAL: This computes fresh data every time the dialog appears, not cached data.
+    /// Users may make commits between app startup and deletion, so stale info could 
+    /// show incorrect warnings leading to accidental data loss.
     private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
         projectManager.getTaskspaceBranchInfo(for: taskspace)
     }
@@ -691,7 +696,9 @@ struct DeleteTaskspaceDialog: View {
             }
         }
         .onAppear {
-            // Set default deleteBranch value when dialog appears
+            // Set default deleteBranch toggle based on safety analysis
+            // Safe branches (no unmerged commits, no uncommitted changes): checked by default (encourage cleanup)
+            // Risky branches: unchecked by default (prevent accidental loss)
             deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUncommittedChanges)
         }
         .padding()

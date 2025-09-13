@@ -281,6 +281,20 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     /// Delete a taskspace and its directory
+    /// Delete a taskspace including git worktree and optionally the branch
+    ///
+    /// Deletion workflow:
+    /// 1. Compute paths: taskspaceDir (task-UUID) vs worktreeDir (task-UUID/reponame)
+    /// 2. Get branch name before removal (needed for optional branch deletion)
+    /// 3. Remove git worktree using worktreeDir (not taskspaceDir!) 
+    /// 4. Fallback to directory removal if git worktree remove fails
+    /// 5. Optionally delete branch if user chose to and branch exists
+    /// 6. Update UI by removing taskspace from project model
+    ///
+    /// CRITICAL PATH RESOLUTION:
+    /// - taskspaceDir = /path/task-UUID (taskspace directory)
+    /// - worktreeDir = /path/task-UUID/reponame (actual git worktree)
+    /// - Git commands must target worktreeDir and run from project.directoryPath (bare repo)
     func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
@@ -291,12 +305,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
         let repoName = extractRepoName(from: project.gitURL)
-        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"  // CRITICAL: Include repo name in path
 
-        // Get current branch name before removing worktree
+        // Get current branch name before removing worktree (needed for optional branch deletion)
         let branchName = getTaskspaceBranch(for: taskspaceDir)
 
-        // Remove git worktree (this also removes the directory)
+        // Remove git worktree - MUST use worktreeDir (includes repo name), not taskspaceDir
+        // Command must run from bare repository directory (project.directoryPath)
         let worktreeProcess = Process()
         worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         worktreeProcess.arguments = ["worktree", "remove", worktreeDir, "--force"]
@@ -368,6 +383,17 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
 
+    /// Get comprehensive branch information for taskspace deletion safety checking
+    /// 
+    /// This method computes fresh branch info when called (not cached) because users may
+    /// make commits between app startup and deletion attempts. Stale info could show
+    /// incorrect warnings and lead to accidental data loss.
+    ///
+    /// Returns tuple with:
+    /// - branchName: Current branch name from `git branch --show-current`
+    /// - isMerged: Whether branch is merged into main via `git merge-base --is-ancestor`
+    /// - unmergedCommits: Count of commits not in main via `git rev-list --count --not`
+    /// - hasUncommittedChanges: Whether worktree has staged/unstaged changes via `git status --porcelain`
     func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
         guard let project = currentProject else {
             return ("", false, 0, false)
@@ -396,6 +422,11 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
     }
 
+    /// Check if branch is merged into base branch
+    /// 
+    /// CRITICAL: Use baseBranch directly, don't add "origin/" prefix!
+    /// getBaseBranch() already returns "origin/main", adding another "origin/" 
+    /// creates invalid "origin/origin/main" causing command failures.
     private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -408,6 +439,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return process.terminationStatus == 0
     }
 
+    /// Count commits in branch that are not in base branch
+    ///
+    /// Uses `git rev-list --count <branch> --not <baseBranch>` to count unmerged commits.
+    /// CRITICAL: Use baseBranch directly - it already includes "origin/" prefix from getBaseBranch().
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -430,6 +465,14 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return Int(output) ?? 0
     }
     
+    /// Check for uncommitted changes (both staged and unstaged)
+    ///
+    /// Uses `git status --porcelain` which detects:
+    /// - Modified files (staged or unstaged)  
+    /// - New files (staged or unstaged)
+    /// - Deleted files (staged or unstaged)
+    /// - Renamed files (staged or unstaged)
+    /// Any output indicates uncommitted work that could be lost.
     private func hasUncommittedChanges(in directory: String) throws -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
