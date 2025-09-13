@@ -36,10 +36,12 @@ struct TaskspaceStateResponse: Codable {
     let name: String?         // User-visible taskspace name
     let description: String?  // User-visible taskspace description  
     let initialPrompt: String? // LLM task description (cleared after updates)
+    let agentCommand: [String] // Command to launch the appropriate agent
     
     private enum CodingKeys: String, CodingKey {
         case name, description
         case initialPrompt = "initial_prompt"
+        case agentCommand = "agent_command"
     }
 }
 

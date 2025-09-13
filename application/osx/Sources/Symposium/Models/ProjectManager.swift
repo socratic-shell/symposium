@@ -1153,14 +1153,25 @@ extension ProjectManager {
             Logger.shared.log("ProjectManager: Returning initial_prompt for read operation")
         }
 
+        // Get agent command based on taskspace state and selected agent
+        guard
+            let agentCommand = agentManager.getAgentCommand(
+                for: taskspace, selectedAgent: selectedAgent)
+        else {
+            Logger.shared.log(
+                "ProjectManager: No valid agent command for taskspace \(taskspace.name)")
+            return .notForMe
+        }
+
         let response = TaskspaceStateResponse(
             name: taskspace.name,
             description: taskspace.description,
-            initialPrompt: initialPrompt
+            initialPrompt: initialPrompt,
+            agentCommand: agentCommand
         )
 
         Logger.shared.log(
-            "ProjectManager: Responding with name=\(taskspace.name), description=\(taskspace.description), initialPrompt=\(initialPrompt != nil ? "present" : "nil")")
+            "ProjectManager: Responding with name=\(taskspace.name), description=\(taskspace.description), initialPrompt=\(initialPrompt != nil ? "present" : "nil"), agentCommand=\(agentCommand)")
         return .handled(response)
     }
 

@@ -77,6 +77,8 @@ interface TaskspaceStateResponse {
     description?: string;
     /** LLM task description (present only during initial agent startup) */
     initial_prompt?: string;
+    /** Command to launch the appropriate agent */
+    agent_command: string[];
 }
 
 interface SyntheticPRPayload {
@@ -273,18 +275,16 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
         } else {
             outputChannel.appendLine('Resuming existing taskspace');
         }
-        await launchAIAgent(outputChannel, bus, taskspaceUuid);
+        outputChannel.appendLine(`Launching agent: ${response.agent_command.join(' ')}`);
+        await launchAIAgent(outputChannel, bus, response.agent_command, taskspaceUuid);
     } else {
         outputChannel.appendLine('No taskspace state received from app');
     }
 }
 
-// 💡: Launch AI agent in terminal with Q CLI and yiasou initialization
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceUuid: string): Promise<void> {
+// 💡: Launch AI agent in terminal with provided command
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
-        // Use Q CLI with expand_reference for dynamic initialization
-        const agentCommand = ['q', 'chat', '@yiasou'];
-
         outputChannel.appendLine(`Launching agent with command: ${agentCommand.join(' ')}`);
 
         // Create new terminal for the agent
@@ -299,7 +299,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, task
         // Send the agent command - Q CLI will use MCP server to get yiasou prompt
         terminal.sendText(agentCommand.join(' '));
 
-        outputChannel.appendLine('Agent launched successfully - Q CLI will initialize with @yiasou prompt');
+        outputChannel.appendLine('Agent launched successfully');
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
