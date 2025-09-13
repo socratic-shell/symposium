@@ -1009,9 +1009,12 @@ impl DialecticServer {
         use indoc::indoc;
         
         let mut prompt = indoc! {"
-            # Agent Boot Sequence
-
-            This prompt defines the agent boot sequence.
+            Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+            This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
+            The user's description of the task to be done follows after this message. Can you start by 
+            reading the description and using the 'update_taskspace' tool to provide a better 
+            name/description for the taskspace? Before doing any work on the task, be sure to ask the 
+            user clarifying questions to better understand their intent.
 
             If you encounter ambiguous instructions, remember to ask questions and seek 
             clarifications before proceeding, particularly with side-effect-ful or 
@@ -1306,7 +1309,10 @@ This is test content."#;
         let prompt = server.assemble_yiasou_prompt().await.unwrap();
         
         // Verify the prompt contains the expected sections
-        assert!(prompt.contains("# Agent Boot Sequence"));
+        assert!(prompt.contains("Hi, welcome! You are a new agent"));
+        assert!(prompt.contains("project Symposium"));
+        assert!(prompt.contains("This is a taskspace"));
+        assert!(prompt.contains("update_taskspace"));
         assert!(prompt.contains("## Load Collaboration Patterns"));
         assert!(prompt.contains("## Load Walkthrough Format"));
         assert!(prompt.contains("## Load Coding Guidelines"));
