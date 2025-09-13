@@ -118,7 +118,7 @@ impl DialecticServer {
 
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
-    async fn get_taskspace_context(&self) -> Result<Option<String>> {
+    async fn get_taskspace_context(&self) -> Result<(Option<String>, Option<String>, Option<String>)> {
         info!("Attempting to get taskspace context via IPC...");
         
         match self.ipc.get_taskspace_state().await {
@@ -126,34 +126,13 @@ impl DialecticServer {
                 info!("IPC call successful: name={:?}, description={:?}, initial_prompt={:?}", 
                           state.name, state.description, state.initial_prompt.as_ref().map(|s| s.len()));
                 
-                // Combine available information into a context string
-                let mut context_parts = Vec::new();
-                
-                if let Some(name) = state.name {
-                    context_parts.push(format!("Taskspace: {}", name));
-                }
-                
-                if let Some(description) = state.description {
-                    context_parts.push(format!("Description: {}", description));
-                }
-                
-                if let Some(task) = state.initial_prompt {
-                    context_parts.push(format!("Task: {}", task));
-                }
-                
-                if context_parts.is_empty() {
-                    info!("No taskspace context available (empty response)");
-                    Ok(None)
-                } else {
-                    info!("Taskspace context assembled: {} parts", context_parts.len());
-                    Ok(Some(context_parts.join("\n\n")))
-                }
+                Ok((state.name, state.description, state.initial_prompt))
             }
             Err(e) => {
                 warn!("Failed to get taskspace context via IPC: {}", e);
                 // Log the error but don't fail the prompt assembly
                 tracing::warn!("Failed to get taskspace context: {}", e);
-                Ok(None)
+                Ok((None, None, None))
             }
         }
     }
@@ -1104,20 +1083,15 @@ impl DialecticServer {
     async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
         use indoc::indoc;
 
-        // Check if we're in a taskspace and if we have task context
+        // Check if we're in a taskspace and get context components
         let is_in_taskspace = self.is_in_taskspace();
-        let taskspace_context = self.get_taskspace_context().await.ok().flatten();
+        let (taskspace_name, taskspace_description, initial_prompt) = self.get_taskspace_context().await.ok().unwrap_or((None, None, None));
 
         // Debug logging
-        info!("Yiasou prompt assembly: is_in_taskspace={}, taskspace_context={:?}", 
-                   is_in_taskspace, taskspace_context.as_ref().map(|s| s.len()));
-        
-        if let Some(ref context) = taskspace_context {
-            info!("Taskspace context preview: {}", 
-                       &context.chars().take(100).collect::<String>());
-        }
+        info!("Yiasou prompt assembly: is_in_taskspace={}, name={:?}, description={:?}, initial_prompt={:?}", 
+                   is_in_taskspace, taskspace_name, taskspace_description, initial_prompt.as_ref().map(|s| s.len()));
 
-        let intro = match (is_in_taskspace, taskspace_context.as_ref()) {
+        let intro = match (is_in_taskspace, initial_prompt.as_ref()) {
             (true, Some(_)) => {
                 // In taskspace with task - full introduction
                 indoc! {"
@@ -1173,9 +1147,24 @@ impl DialecticServer {
 
         "});
 
-        // Add task context if available
-        if let Some(task_description) = taskspace_context {
+        // Add task context if available, otherwise add taskspace info
+        if let Some(task_description) = initial_prompt {
             prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
+        } else if taskspace_name.is_some() || taskspace_description.is_some() {
+            prompt.push_str("## Taskspace Context\n\n");
+            
+            if let Some(name) = taskspace_name {
+                prompt.push_str(&format!("You are in a taskspace named \"{}\"", name));
+                if taskspace_description.is_some() {
+                    prompt.push_str(".\n\n");
+                } else {
+                    prompt.push_str(".\n");
+                }
+            }
+            
+            if let Some(description) = taskspace_description {
+                prompt.push_str(&format!("The description the user gave is as follows: {}\n", description));
+            }
         }
 
         Ok(prompt)
