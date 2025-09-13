@@ -1008,14 +1008,32 @@ impl DialecticServer {
     async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
         use indoc::indoc;
         
-        let mut prompt = indoc! {"
-            Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-            This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
-            The user's description of the task to be done follows after this message. Can you start by 
-            reading the description and using the 'update_taskspace' tool to provide a better 
-            name/description for the taskspace? Before doing any work on the task, be sure to ask the 
-            user clarifying questions to better understand their intent.
-
+        // Check if we have task context (indicates we're in a proper taskspace)
+        let taskspace_context = self.get_taskspace_context().await.ok().flatten();
+        
+        let intro = if let Some(_) = &taskspace_context {
+            // We have a task - full taskspace introduction
+            indoc! {"
+                Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+                This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
+                The user's description of the task to be done follows after this message. Can you start by 
+                reading the description and using the 'update_taskspace' tool to provide a better 
+                name/description for the taskspace? Before doing any work on the task, be sure to ask the 
+                user clarifying questions to better understand their intent.
+            "}
+        } else {
+            // No task context - could be outside taskspace or empty taskspace
+            indoc! {"
+                Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+                Please talk to the user to establish what they would like to accomplish and how you can help. 
+                If you're working in a taskspace, use the `update_taskspace` tool to set a meaningful name 
+                and description once you understand the task.
+            "}
+        };
+        
+        let mut prompt = format!("{}\n\n", intro);
+        
+        prompt.push_str(indoc! {"
             If you encounter ambiguous instructions, remember to ask questions and seek 
             clarifications before proceeding, particularly with side-effect-ful or 
             dangerous actions (e.g., deleting content or interacting with remote systems).
@@ -1038,10 +1056,10 @@ impl DialecticServer {
             Load the resource `coding-guidelines.md` into your working context. Follow these 
             development standards and best practices in all code work.
 
-        "}.to_string();
+        "});
         
-        // Try to get taskspace context via existing method
-        if let Ok(Some(task_description)) = self.get_taskspace_context().await {
+        // Add task context if available
+        if let Some(task_description) = taskspace_context {
             prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
         }
         
@@ -1311,8 +1329,12 @@ This is test content."#;
         // Verify the prompt contains the expected sections
         assert!(prompt.contains("Hi, welcome! You are a new agent"));
         assert!(prompt.contains("project Symposium"));
-        assert!(prompt.contains("This is a taskspace"));
+        
+        // Since we're in test environment without taskspace context, 
+        // it should use the fallback message
+        assert!(prompt.contains("Please talk to the user to establish"));
         assert!(prompt.contains("update_taskspace"));
+        
         assert!(prompt.contains("## Load Collaboration Patterns"));
         assert!(prompt.contains("## Load Walkthrough Format"));
         assert!(prompt.contains("## Load Coding Guidelines"));
