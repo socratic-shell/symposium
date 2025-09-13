@@ -709,7 +709,7 @@ impl IPCCommunicator {
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::DeleteTaskspace,
             payload: serde_json::to_value(DeleteTaskspacePayload {
@@ -1337,7 +1337,7 @@ mod test {
 
         // Create an IPC message like the server would
         let message = IPCMessage {
-            shell_pid: 12345,
+            shell_pid: Some(12345),
             message_type: IPCMessageType::PresentReview,
             payload: serde_json::to_value(&params).unwrap(),
             id: Uuid::new_v4().to_string(),
