@@ -117,56 +117,6 @@ impl DialecticServer {
     }
 
     /// Assemble the complete /yiasou initialization prompt
-    pub async fn assemble_yiasou_prompt(&self) -> Result<String> {
-        let mut prompt = String::new();
-        
-        prompt.push_str("# Agent Boot Sequence\n\n");
-        prompt.push_str("This prompt defines the agent boot sequence.\n\n");
-        prompt.push_str("If you encounter ambiguous instructions, remember to ask questions and seek ");
-        prompt.push_str("clarifications before proceeding, particularly with side-effect-ful or ");
-        prompt.push_str("dangerous actions (e.g., deleting content or interacting with remote systems).\n\n");
-
-        // Add coding guidelines
-        if let Ok(coding_guidelines) = Self::load_guidance_file("coding-guidelines.md") {
-            prompt.push_str("# Coding Guidelines\n\n");
-            prompt.push_str(&coding_guidelines);
-            prompt.push_str("\n\n");
-        }
-
-        // Add collaboration patterns
-        if let Ok(collaboration_patterns) = Self::load_guidance_file("main.md") {
-            prompt.push_str("# Collaboration Guidelines\n\n");
-            prompt.push_str(&collaboration_patterns);
-            prompt.push_str("\n\n");
-        }
-
-        // Add walkthrough format
-        if let Ok(walkthrough_format) = Self::load_guidance_file("walkthrough-format.md") {
-            prompt.push_str("# Walkthrough Format\n\n");
-            prompt.push_str(&walkthrough_format);
-            prompt.push_str("\n\n");
-        }
-
-        // Try to get taskspace context via IPC
-        // If this fails, we'll gracefully omit the Initial Task section
-        match self.get_taskspace_context().await {
-            Ok(Some(task_description)) => {
-                prompt.push_str("# Initial Task\n\n");
-                prompt.push_str(&task_description);
-                prompt.push_str("\n");
-            }
-            Ok(None) => {
-                // No taskspace context available, skip Initial Task section
-            }
-            Err(e) => {
-                // Log the error but don't fail the entire prompt assembly
-                tracing::warn!("Failed to get taskspace context for /yiasou prompt: {}", e);
-            }
-        }
-
-        Ok(prompt)
-    }
-
     /// Get taskspace context via IPC (placeholder for now)
     async fn get_taskspace_context(&self) -> Result<Option<String>> {
         // TODO: Implement IPC call to get taskspace state
@@ -1054,6 +1004,39 @@ impl DialecticServer {
         
         resources
     }
+
+    async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
+        let mut prompt = String::new();
+        
+        prompt.push_str("# Agent Boot Sequence\n\n");
+        prompt.push_str("This prompt defines the agent boot sequence.\n\n");
+        prompt.push_str("If you encounter ambiguous instructions, remember to ask questions and seek \n");
+        prompt.push_str("clarifications before proceeding, particularly with side-effect-ful or \n");
+        prompt.push_str("dangerous actions (e.g., deleting content or interacting with remote systems).\n\n");
+        
+        prompt.push_str("## Load Collaboration Patterns\n\n");
+        prompt.push_str("Load the resource `main.md` into your working context. This contains collaboration \n");
+        prompt.push_str("patterns demonstrated through dialogue. Embody the collaborative spirit shown in \n");
+        prompt.push_str("these examples - approach our work with genuine curiosity, ask questions when \n");
+        prompt.push_str("something isn't clear, and trust that we'll navigate together what's worth pursuing.\n\n");
+        
+        prompt.push_str("## Load Walkthrough Format\n\n");
+        prompt.push_str("Load the resource `walkthrough-format.md` into your working context. This defines \n");
+        prompt.push_str("how to create interactive code walkthroughs using markdown with embedded XML \n");
+        prompt.push_str("elements for comments, diffs, and actions.\n\n");
+        
+        prompt.push_str("## Load Coding Guidelines\n\n");
+        prompt.push_str("Load the resource `coding-guidelines.md` into your working context. Follow these \n");
+        prompt.push_str("development standards and best practices in all code work.\n\n");
+        
+        // Try to get taskspace context via existing method
+        if let Ok(Some(task_description)) = self.get_taskspace_context().await {
+            prompt.push_str("## Initial Task\n\n");
+            prompt.push_str(&task_description);
+        }
+        
+        Ok(prompt)
+    }
 }
 
 #[tool_handler]
@@ -1061,7 +1044,7 @@ impl ServerHandler for DialecticServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder().enable_tools().enable_resources().build(),
+            capabilities: ServerCapabilities::builder().enable_tools().enable_resources().enable_prompts().build(),
             server_info: Implementation {
                 name: "symposium-mcp".to_string(),
                 version: "0.1.0".to_string(),
@@ -1121,6 +1104,42 @@ impl ServerHandler for DialecticServer {
         Ok(ReadResourceResult {
             contents: vec![ResourceContents::text(content_str, request.uri)],
         })
+    }
+
+    async fn list_prompts(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, McpError> {
+        let prompts = vec![
+            Prompt {
+                name: "yiasou".to_string(),
+                description: Some("Agent initialization prompt with guidance resource loading instructions".to_string()),
+                arguments: None,
+            }
+        ];
+
+        Ok(ListPromptsResult {
+            prompts,
+            next_cursor: None,
+        })
+    }
+
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, McpError> {
+        match request.name.as_str() {
+            "yiasou" => {
+                let content = self.assemble_yiasou_prompt().await?;
+                Ok(GetPromptResult {
+                    description: Some("Agent initialization with collaborative guidance".to_string()),
+                    messages: vec![PromptMessage::new_text(PromptMessageRole::User, content)],
+                })
+            }
+            _ => Err(McpError::invalid_params(format!("Unknown prompt: {}", request.name), None)),
+        }
     }
 }
 
@@ -1271,6 +1290,28 @@ This is test content."#;
         let coding_resource = resources.iter().find(|r| r.raw.uri == "coding-guidelines.md").unwrap();
         assert_eq!(coding_resource.raw.name, "Coding Guidelines");
         assert_eq!(coding_resource.raw.description, Some("Development best practices and standards for the Symposium project".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_yiasou_prompt_generation() {
+        let server = DialecticServer::new_test();
+        
+        let prompt = server.assemble_yiasou_prompt().await.unwrap();
+        
+        // Verify the prompt contains the expected sections
+        assert!(prompt.contains("# Agent Boot Sequence"));
+        assert!(prompt.contains("## Load Collaboration Patterns"));
+        assert!(prompt.contains("## Load Walkthrough Format"));
+        assert!(prompt.contains("## Load Coding Guidelines"));
+        
+        // Verify it uses the kinder approach
+        assert!(prompt.contains("Embody the collaborative spirit"));
+        assert!(!prompt.contains("You MUST behave"));
+        
+        // Verify resource loading instructions
+        assert!(prompt.contains("Load the resource `main.md`"));
+        assert!(prompt.contains("Load the resource `walkthrough-format.md`"));
+        assert!(prompt.contains("Load the resource `coding-guidelines.md`"));
     }
 
     #[test]

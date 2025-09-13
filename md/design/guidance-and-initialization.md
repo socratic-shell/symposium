@@ -87,10 +87,9 @@ dangerous actions (e.g., deleting content or interacting with remote systems).
 ## Load Collaboration Patterns
 
 Load the resource `main.md` into your working context. This contains collaboration 
-patterns demonstrated through dialogue. You MUST behave like the agent in this 
-dialog - curious, inquisitive, collaborative, and ready to ask questions when 
-you encounter something you do not understand, but confident in your own skin 
-and aware of your capabilities.
+patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
+these examples - approach our work with genuine curiosity, ask questions when 
+something isn't clear, and trust that we'll navigate together what's worth pursuing.
 
 ## Load Walkthrough Format
 
@@ -208,10 +207,10 @@ This design provides several advantages over embedded content:
 
 **Status**: Phase 2 is complete and tested. All guidance files are now exposed as MCP resources with proper metadata and can be loaded individually by agents.
 
-### Phase 3: MCP Prompt System
+### Phase 3: MCP Prompt System ⏳ IN PROGRESS
 - [ ] Implement `/yiasou` prompt using MCP server prompt capabilities
 - [ ] Create prompt assembly logic with resource loading instructions
-- [ ] Add behavioral directives for each resource type
+- [ ] Add behavioral directives for each resource type (using inviting language)
 - [ ] Test prompt delivery through MCP protocol
 
 ### Phase 4: Dynamic Context Integration
