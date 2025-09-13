@@ -30,7 +30,7 @@ use uuid::Uuid;
 /// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
 /// Traverses upward looking for `task-$UUID` directories and stops at `.symposium`.
 /// Uses the last UUID found during traversal.
-fn extract_project_info() -> Result<(String, String)> {
+pub fn extract_project_info() -> Result<(String, String)> {
     let current_dir = crate::workspace_dir::current_dir()
         .map_err(|e| IPCError::Other(format!("Failed to get current working directory: {}", e)))?;
     

@@ -124,6 +124,11 @@ impl DialecticServer {
         Ok(None)
     }
 
+    /// Check if we're currently in a taskspace by looking for task-UUID directory structure
+    fn is_in_taskspace(&self) -> bool {
+        crate::ipc::extract_project_info().is_ok()
+    }
+
     pub async fn new() -> Result<Self> {
         // First, discover VSCode PID by walking up the process tree
         let current_pid = std::process::id();
@@ -1008,27 +1013,38 @@ impl DialecticServer {
     async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
         use indoc::indoc;
         
-        // Check if we have task context (indicates we're in a proper taskspace)
+        // Check if we're in a taskspace and if we have task context
+        let is_in_taskspace = self.is_in_taskspace();
         let taskspace_context = self.get_taskspace_context().await.ok().flatten();
         
-        let intro = if let Some(_) = &taskspace_context {
-            // We have a task - full taskspace introduction
-            indoc! {"
-                Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-                This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
-                The user's description of the task to be done follows after this message. Can you start by 
-                reading the description and using the 'update_taskspace' tool to provide a better 
-                name/description for the taskspace? Before doing any work on the task, be sure to ask the 
-                user clarifying questions to better understand their intent.
-            "}
-        } else {
-            // No task context - could be outside taskspace or empty taskspace
-            indoc! {"
-                Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-                Please talk to the user to establish what they would like to accomplish and how you can help. 
-                If you're working in a taskspace, use the `update_taskspace` tool to set a meaningful name 
-                and description once you understand the task.
-            "}
+        let intro = match (is_in_taskspace, taskspace_context.as_ref()) {
+            (true, Some(_)) => {
+                // In taskspace with task - full introduction
+                indoc! {"
+                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+                    This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
+                    The user's description of the task to be done follows after this message. Can you start by 
+                    reading the description and using the 'update_taskspace' tool to provide a better 
+                    name/description for the taskspace? Before doing any work on the task, be sure to ask the 
+                    user clarifying questions to better understand their intent.
+                "}
+            }
+            (true, None) => {
+                // In taskspace but no task - ask user to establish task
+                indoc! {"
+                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+                    This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
+                    Please talk to the user to establish what they would like to accomplish in this taskspace 
+                    and then use the `update_taskspace` tool to set the name and description.
+                "}
+            }
+            (false, _) => {
+                // Not in taskspace - general introduction
+                indoc! {"
+                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
+                    Please talk to the user to establish what they would like to accomplish and how you can help.
+                "}
+            }
         };
         
         let mut prompt = format!("{}\n\n", intro);
