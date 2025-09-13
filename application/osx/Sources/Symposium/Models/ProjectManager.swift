@@ -567,17 +567,18 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Save taskspace metadata
         try taskspace.save(in: project.directoryPath)
 
-        // Phase 30: Do NOT auto-launch VSCode - new taskspaces start dormant until user clicks
-        Logger.shared.log(
-            "ProjectManager[\(instanceId)]: Created new taskspace '\(taskspace.name)' (dormant until activated)"
-        )
-
         // Add to current project
         DispatchQueue.main.async {
             var updatedProject = project
             updatedProject.taskspaces.append(taskspace)
             self.currentProject = updatedProject
         }
+
+        // Auto-activate new taskspace by launching VSCode
+        launchVSCode(for: taskspace, in: project.directoryPath)
+        Logger.shared.log(
+            "ProjectManager[\(instanceId)]: Created and activated new taskspace '\(taskspace.name)'"
+        )
     }
 
     /// Extract repository name from git URL
