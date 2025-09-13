@@ -115,11 +115,36 @@ development standards and best practices in all code work.
 mcp-server/
 ├── src/
 │   ├── guidance/           # Guidance files exposed as MCP resources
-│   │   ├── main.md        # Collaboration patterns
-│   │   ├── walkthrough-format.md
-│   │   └── coding-guidelines.md
-│   └── server.rs          # MCP server with resource + prompt support
+│   │   ├── main.md        # Collaboration patterns → @../../../mcp-server/src/guidance/main.md
+│   │   ├── walkthrough-format.md → @../../../mcp-server/src/guidance/walkthrough-format.md
+│   │   └── coding-guidelines.md → @../../../mcp-server/src/guidance/coding-guidelines.md
+│   ├── server.rs          # MCP server with resource + prompt support → @../../../mcp-server/src/server.rs
+│   ├── types.rs           # IPC message types and payloads → @../../../mcp-server/src/types.rs
+│   └── ipc.rs             # IPC communication layer → @../../../mcp-server/src/ipc.rs
 ```
+
+### Key Implementation Files
+
+**MCP Server Core** → @../../../mcp-server/src/server.rs
+- `list_resources()` - Exposes guidance files as MCP resources
+- `read_resource()` - Serves guidance file content  
+- `get_prompt()` - Implements `/yiasou` stored prompt
+- `assemble_yiasou_prompt()` - Dynamic prompt assembly with taskspace context
+- `expand_reference()` - Enhanced tool supporting guidance files and `yiasou` reference
+
+**IPC Communication** → @../../../mcp-server/src/ipc.rs  
+- `get_taskspace_state()` - Fetches real taskspace context from daemon/app
+- Message routing and error handling for dynamic context integration
+
+**Type Definitions** → @../../../mcp-server/src/types.rs
+- `GetTaskspaceStatePayload` - IPC request structure
+- `TaskspaceStateResponse` - Taskspace context response
+- `IPCMessageType::GetTaskspaceState` - Message type for context fetching
+
+**Embedded Guidance Files**
+- **Collaboration Patterns** → @../../../mcp-server/src/guidance/main.md
+- **Walkthrough Format** → @../../../mcp-server/src/guidance/walkthrough-format.md  
+- **Coding Guidelines** → @../../../mcp-server/src/guidance/coding-guidelines.md
 
 ### Data Flow
 
