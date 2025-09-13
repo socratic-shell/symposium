@@ -17,7 +17,7 @@ import { StructuredLogger } from './structuredLogger';
 interface IPCMessage {
     shellPid: number;
     type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | 'taskspace_roll_call' | 'register_taskspace_window' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | GetTaskspaceStatePayload | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | TaskspaceStateRequest | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
     id: string;
 }
 
@@ -52,19 +52,31 @@ interface ResponsePayload {
     data?: any;
 }
 
-interface GetTaskspaceStatePayload {
-    taskspaceUuid: string;
+/**
+ * Request for taskspace state operations (unified get/update)
+ */
+interface TaskspaceStateRequest {
+    /** Path to .symposium project directory */
+    project_path: string;
+    /** UUID of the taskspace */
+    taskspace_uuid: string;
+    /** New name to set (null = don't update) */
+    name: string | null;
+    /** New description to set (null = don't update) */
+    description: string | null;
 }
 
 /**
  * Response from Symposium app when querying taskspace state
- * Used to determine if and how to launch an AI agent for a taskspace
+ * Contains taskspace metadata for agent initialization
  */
 interface TaskspaceStateResponse {
-    /** Command and arguments to execute in terminal (e.g., ['q', 'chat', '--resume']) */
-    agentCommand: string[];
-    /** Whether the agent should be launched (false for completed/unknown taskspaces) */
-    shouldLaunch: boolean;
+    /** User-visible taskspace name */
+    name?: string;
+    /** User-visible taskspace description */
+    description?: string;
+    /** LLM task description (present only during initial agent startup) */
+    initial_prompt?: string;
 }
 
 interface SyntheticPRPayload {
@@ -244,26 +256,36 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
 
     outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
 
-    // Send get_taskspace_state message as documented in the flow
-    const payload: GetTaskspaceStatePayload = { taskspaceUuid };
-    const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('get_taskspace_state', payload);
+    // Send taskspace_state message to get current taskspace information
+    const payload: TaskspaceStateRequest = { 
+        project_path: getProjectPath(),
+        taskspace_uuid: taskspaceUuid,
+        name: null,        // Read-only operation
+        description: null  // Read-only operation
+    };
+    const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('taskspace_state', payload);
     outputChannel.appendLine(`App responded with ${JSON.stringify(response)}`);
 
-    if (response && response.shouldLaunch) {
-        outputChannel.appendLine(`Launching agent: ${response.agentCommand.join(' ')}`);
-        await launchAIAgent(outputChannel, bus, response.agentCommand, taskspaceUuid);
+    if (response) {
+        outputChannel.appendLine(`Taskspace: ${response.name || 'Unnamed'} - ${response.description || 'No description'}`);
+        if (response.initial_prompt) {
+            outputChannel.appendLine('Initial prompt available - launching agent for first-time setup');
+        } else {
+            outputChannel.appendLine('Resuming existing taskspace');
+        }
+        await launchAIAgent(outputChannel, bus, taskspaceUuid);
     } else {
-        outputChannel.appendLine('App indicated agent should not be launched');
+        outputChannel.appendLine('No taskspace state received from app');
     }
 }
 
-// 💡: Launch AI agent in terminal with provided command
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
+// 💡: Launch AI agent in terminal with Q CLI and yiasou initialization
+async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, taskspaceUuid: string): Promise<void> {
     try {
-        // Use shell-quote library for proper escaping
-        const escapedCommand = quote(agentCommand);
+        // Use Q CLI with expand_reference for dynamic initialization
+        const agentCommand = ['q', 'chat', '@yiasou'];
 
-        outputChannel.appendLine(`Launching agent with command: ${escapedCommand}`);
+        outputChannel.appendLine(`Launching agent with command: ${agentCommand.join(' ')}`);
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
@@ -274,10 +296,10 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         // Show the terminal
         terminal.show();
 
-        // Send the agent command
-        terminal.sendText(escapedCommand);
+        // Send the agent command - Q CLI will use MCP server to get yiasou prompt
+        terminal.sendText(agentCommand.join(' '));
 
-        outputChannel.appendLine('Agent launched successfully');
+        outputChannel.appendLine('Agent launched successfully - Q CLI will initialize with @yiasou prompt');
 
     } catch (error) {
         outputChannel.appendLine(`Error launching AI agent: ${error}`);
@@ -677,6 +699,31 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
 
     outputChannel.appendLine('Multiple terminals found, but none are AI-enabled or named appropriately');
     return null;
+}
+
+/**
+ * Get the project path (.symposium directory) for the current workspace
+ * Returns project path if valid, empty string otherwise
+ */
+function getProjectPath(): string {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+        return '';
+    }
+
+    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    
+    // Walk up the directory tree looking for .symposium directory
+    let currentDir = workspaceRoot;
+    while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
+        const symposiumDir = path.join(currentDir, '.symposium');
+        if (fs.existsSync(symposiumDir)) {
+            return currentDir;
+        }
+        currentDir = path.dirname(currentDir);
+    }
+
+    return '';
 }
 
 // 💡: Phase 5 - Create compact reference for selection context
