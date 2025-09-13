@@ -296,8 +296,11 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         // Show the terminal
         terminal.show();
 
-        // Send the agent command - Q CLI will use MCP server to get yiasou prompt
-        terminal.sendText(agentCommand.join(' '));
+        // Send the agent command - properly quote arguments with spaces
+        const quotedCommand = agentCommand.map(arg => 
+            arg.includes(' ') ? `"${arg.replace(/"/g, '\\"')}"` : arg
+        ).join(' ');
+        terminal.sendText(quotedCommand);
 
         outputChannel.appendLine('Agent launched successfully');
 
