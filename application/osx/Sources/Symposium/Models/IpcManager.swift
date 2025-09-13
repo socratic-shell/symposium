@@ -17,15 +17,30 @@ struct IPCMessage: Codable {
     }
 }
 
-/// Request from VSCode extension to determine if agent should launch for a taskspace
-struct GetTaskspaceStatePayload: Codable {
+/// Unified request for taskspace state operations (get/update)
+struct TaskspaceStateRequest: Codable {
+    let projectPath: String
     let taskspaceUuid: String
+    let name: String?        // None = don't update, Some = set new value
+    let description: String? // None = don't update, Some = set new value
+    
+    private enum CodingKeys: String, CodingKey {
+        case projectPath = "project_path"
+        case taskspaceUuid = "taskspace_uuid"
+        case name, description
+    }
 }
 
-/// Response to get_taskspace_state with agent launch decision
+/// Response for taskspace state operations
 struct TaskspaceStateResponse: Codable {
-    let agentCommand: [String]
-    let shouldLaunch: Bool
+    let name: String?         // User-visible taskspace name
+    let description: String?  // User-visible taskspace description  
+    let initialPrompt: String? // LLM task description (cleared after updates)
+    
+    private enum CodingKeys: String, CodingKey {
+        case name, description
+        case initialPrompt = "initial_prompt"
+    }
 }
 
 /// Request from MCP tool to create a new taskspace
@@ -48,20 +63,6 @@ struct SpawnTaskspacePayload: Codable {
 /// Response to spawn_taskspace with new taskspace UUID
 struct SpawnTaskspaceResponse: Codable {
     let newTaskspaceUuid: String
-}
-
-/// Request to update taskspace name and description
-struct UpdateTaskspacePayload: Codable {
-    let taskspaceUuid: String
-    let name: String
-    let description: String
-    let projectPath: String
-
-    private enum CodingKeys: String, CodingKey {
-        case taskspaceUuid = "taskspace_uuid"
-        case name, description
-        case projectPath = "project_path"
-    }
 }
 
 /// Progress update from MCP tool for taskspace activity logs
@@ -119,12 +120,10 @@ enum MessageHandlingResult<T: Codable> {
 
 /// Protocol for objects that can handle IPC messages (typically one per active project)
 protocol IpcMessageDelegate: AnyObject {
-    func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async
+    func handleTaskspaceState(_ payload: TaskspaceStateRequest, messageId: String) async
         -> MessageHandlingResult<TaskspaceStateResponse>
     func handleSpawnTaskspace(_ payload: SpawnTaskspacePayload, messageId: String) async
         -> MessageHandlingResult<SpawnTaskspaceResponse>
-    func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async
-        -> MessageHandlingResult<EmptyResponse>
     func handleLogProgress(_ payload: LogProgressPayload, messageId: String) async
         -> MessageHandlingResult<EmptyResponse>
     func handleSignalUser(_ payload: SignalUserPayload, messageId: String) async
@@ -291,12 +290,10 @@ class IpcManager: ObservableObject {
             let message = try JSONDecoder().decode(IPCMessage.self, from: messageData)
 
             switch message.type {
-            case "get_taskspace_state":
-                handleGetTaskspaceState(message: message)
+            case "taskspace_state":
+                handleTaskspaceState(message: message)
             case "spawn_taskspace":
                 handleSpawnTaskspace(message: message)
-            case "update_taskspace":
-                handleUpdateTaskspace(message: message)
             case "log_progress":
                 handleLogProgress(message: message)
             case "signal_user":
@@ -313,19 +310,19 @@ class IpcManager: ObservableObject {
         }
     }
 
-    private func handleGetTaskspaceState(message: IPCMessage) {
+    private func handleTaskspaceState(message: IPCMessage) {
         Task {
             do {
                 let payloadData = try JSONEncoder().encode(message.payload)
                 let payload = try JSONDecoder().decode(
-                    GetTaskspaceStatePayload.self, from: payloadData)
+                    TaskspaceStateRequest.self, from: payloadData)
                 Logger.shared.log(
-                    "IpcManager[\(instanceId)]: Get taskspace state for UUID: \(payload.taskspaceUuid)"
+                    "IpcManager[\(instanceId)]: Taskspace state operation for UUID: \(payload.taskspaceUuid)"
                 )
 
                 // Try each delegate until one handles the message
                 for delegate in delegates {
-                    let result = await delegate.handleGetTaskspaceState(
+                    let result = await delegate.handleTaskspaceState(
                         payload, messageId: message.id)
                     if case .handled(let responseData) = result {
                         sendResponse(to: message.id, success: true, data: responseData)
@@ -385,42 +382,6 @@ class IpcManager: ObservableObject {
                 sendResponse(
                     to: message.id, success: false, data: nil as SpawnTaskspaceResponse?,
                     error: "Invalid payload")
-            }
-        }
-    }
-
-    private func handleUpdateTaskspace(message: IPCMessage) {
-        Task {
-            do {
-                let payloadData = try JSONEncoder().encode(message.payload)
-                let payload = try JSONDecoder().decode(
-                    UpdateTaskspacePayload.self, from: payloadData)
-                Logger.shared.log(
-                    "IpcManager[\(instanceId)]: Update taskspace \(payload.taskspaceUuid): \(payload.name)"
-                )
-
-                // Try each delegate until one handles the message
-                for delegate in delegates {
-                    let result = await delegate.handleUpdateTaskspace(
-                        payload, messageId: message.id)
-                    if case .handled(let responseData) = result {
-                        sendResponse(to: message.id, success: true, data: responseData)
-                        return
-                    }
-                }
-
-                // No delegate handled the message
-                Logger.shared.log(
-                    "IpcManager[\(instanceId)]: No delegate handled update_taskspace message")
-                sendResponse(
-                    to: message.id, success: false, data: nil as String?,
-                    error: "No handler available")
-
-            } catch {
-                Logger.shared.log(
-                    "IpcManager[\(instanceId)]: Failed to parse update_taskspace payload: \(error)")
-                sendResponse(
-                    to: message.id, success: false, data: nil as String?, error: "Invalid payload")
             }
         }
     }

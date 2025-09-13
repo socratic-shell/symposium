@@ -30,6 +30,16 @@ struct Taskspace: Codable, Identifiable {
         return "\(projectPath)/task-\(id.uuidString)"
     }
     
+    /// Get the initial prompt if taskspace is in hatchling state
+    var initialPrompt: String? {
+        switch state {
+        case .hatchling(let prompt):
+            return prompt
+        case .resume:
+            return nil
+        }
+    }
+    
     /// Path to taskspace.json file
     func taskspaceFilePath(in projectPath: String) -> String {
         return "\(directoryPath(in: projectPath))/taskspace.json"

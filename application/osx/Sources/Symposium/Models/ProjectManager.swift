@@ -1087,47 +1087,80 @@ extension ProjectManager {
 
 extension ProjectManager {
 
-    func handleGetTaskspaceState(_ payload: GetTaskspaceStatePayload, messageId: String) async
+    func handleTaskspaceState(_ payload: TaskspaceStateRequest, messageId: String) async
         -> MessageHandlingResult<TaskspaceStateResponse>
     {
         guard let currentProject = currentProject else {
             Logger.shared.log(
-                "ProjectManager[\(instanceId)]: No current project for get_taskspace_state")
+                "ProjectManager[\(instanceId)]: No current project for taskspace_state")
             return .notForMe
         }
 
         // Look for taskspace with matching UUID in current project
-        guard let taskspace = currentProject.findTaskspace(uuid: payload.taskspaceUuid) else {
+        guard let taskspaceIndex = currentProject.taskspaces.firstIndex(where: { 
+            $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased() 
+        }) else {
             Logger.shared.log(
                 "ProjectManager: Taskspace \(payload.taskspaceUuid) not found in project \(currentProject.name)"
             )
             return .notForMe
         }
 
+        var updatedProject = currentProject
+        var taskspace = updatedProject.taskspaces[taskspaceIndex]
+
         Logger.shared.log(
             "ProjectManager: Found taskspace \(taskspace.name) for UUID: \(payload.taskspaceUuid)")
 
-        // Get agent command based on taskspace state and selected agent
-        guard
-            let agentCommand = agentManager.getAgentCommand(
-                for: taskspace, selectedAgent: selectedAgent)
-        else {
-            Logger.shared.log(
-                "ProjectManager: No valid agent command for taskspace \(taskspace.name)")
-            return .notForMe
+        // Handle update operation if name or description provided
+        var hasUpdates = false
+        if let newName = payload.name {
+            taskspace.name = newName
+            hasUpdates = true
+            Logger.shared.log("ProjectManager: Updated taskspace name to: \(newName)")
+        }
+        
+        if let newDescription = payload.description {
+            taskspace.description = newDescription
+            hasUpdates = true
+            Logger.shared.log("ProjectManager: Updated taskspace description to: \(newDescription)")
         }
 
-        // Determine if agent should launch based on taskspace state
-        // For now, always launch since we don't have a complete state
-        let shouldLaunch = true
+        // Determine initial_prompt based on operation type
+        let initialPrompt: String?
+        if hasUpdates {
+            // This is an update operation - clear initial_prompt by transitioning state
+            if case .hatchling = taskspace.state {
+                taskspace.state = .resume
+                Logger.shared.log("ProjectManager: Transitioned taskspace from hatchling to resume state")
+            }
+            initialPrompt = nil
+            Logger.shared.log("ProjectManager: Clearing initial_prompt after update operation")
+            
+            // Save changes to disk and update UI
+            updatedProject.taskspaces[taskspaceIndex] = taskspace
+            do {
+                try taskspace.save(in: currentProject.directoryPath)
+                DispatchQueue.main.async {
+                    self.currentProject = updatedProject
+                }
+            } catch {
+                Logger.shared.log("ProjectManager: Failed to save taskspace changes: \(error)")
+            }
+        } else {
+            // This is a read operation - return current initial_prompt
+            initialPrompt = taskspace.initialPrompt
+            Logger.shared.log("ProjectManager: Returning initial_prompt for read operation")
+        }
 
         let response = TaskspaceStateResponse(
-            agentCommand: agentCommand,
-            shouldLaunch: shouldLaunch
+            name: taskspace.name,
+            description: taskspace.description,
+            initialPrompt: initialPrompt
         )
 
         Logger.shared.log(
-            "ProjectManager: Responding with shouldLaunch=\(shouldLaunch), command=\(agentCommand)")
+            "ProjectManager: Responding with name=\(taskspace.name), description=\(taskspace.description), initialPrompt=\(initialPrompt != nil ? "present" : "nil")")
         return .handled(response)
     }
 
@@ -1304,53 +1337,6 @@ extension ProjectManager {
         } catch {
             Logger.shared.log(
                 "ProjectManager[\(instanceId)]: Failed to update taskspace attention: \(error)")
-            return .notForMe
-        }
-    }
-
-    func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async
-        -> MessageHandlingResult<EmptyResponse>
-    {
-        guard let project = currentProject else {
-            return .notForMe
-        }
-
-        // Find the taskspace by UUID
-        guard
-            let taskspaceIndex = project.taskspaces.firstIndex(where: {
-                $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased()
-            })
-        else {
-            Logger.shared.log(
-                "ProjectManager: Taskspace not found for UUID: \(payload.taskspaceUuid)")
-            return .notForMe
-        }
-
-        var updatedProject = project
-        updatedProject.taskspaces[taskspaceIndex].name = payload.name
-        updatedProject.taskspaces[taskspaceIndex].description = payload.description
-
-        // Transition from Hatchling state if needed
-        if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
-            updatedProject.taskspaces[taskspaceIndex].state = .resume
-        }
-
-        do {
-            // Save updated taskspace to disk
-            try updatedProject.taskspaces[taskspaceIndex].save(in: project.directoryPath)
-
-            // Update UI
-            DispatchQueue.main.async {
-                self.currentProject = updatedProject
-                Logger.shared.log(
-                    "ProjectManager[\(self.instanceId)]: Updated taskspace: \(payload.name)")
-            }
-
-            return .handled(EmptyResponse())
-
-        } catch {
-            Logger.shared.log(
-                "ProjectManager[\(instanceId)]: Failed to save taskspace update: \(error)")
             return .notForMe
         }
     }
