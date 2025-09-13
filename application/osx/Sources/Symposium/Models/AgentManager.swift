@@ -350,7 +350,7 @@ struct AgentInfo: Identifiable {
         case .qcli:
             return [
                 "q", "chat",
-                "to load initial instructions, use the Symposium `expand_reference` tool with the argument 'yiasou'",
+                "You're working in a Symposium taskspace. To get your initialization instructions and project context, use the expand_reference tool with the argument 'yiasou'.",
             ]
         case .claude:
             // TODO: Implement claude-code hatchling command
