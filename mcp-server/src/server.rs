@@ -119,13 +119,8 @@ impl DialecticServer {
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
     async fn get_taskspace_context(&self) -> Result<(Option<String>, Option<String>, Option<String>)> {
-        info!("Attempting to get taskspace context via IPC...");
-        
         match self.ipc.get_taskspace_state().await {
             Ok(state) => {
-                info!("IPC call successful: name={:?}, description={:?}, initial_prompt={:?}", 
-                          state.name, state.description, state.initial_prompt.as_ref().map(|s| s.len()));
-                
                 Ok((state.name, state.description, state.initial_prompt))
             }
             Err(e) => {
@@ -140,7 +135,6 @@ impl DialecticServer {
     /// Check if we're currently in a taskspace by looking for task-UUID directory structure
     fn is_in_taskspace(&self) -> bool {
         let result = crate::ipc::extract_project_info().is_ok();
-        info!("is_in_taskspace check: {}", result);
         if !result {
             if let Err(e) = crate::ipc::extract_project_info() {
                 warn!("extract_project_info failed: {}", e);
