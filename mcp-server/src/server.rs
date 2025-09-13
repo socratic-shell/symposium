@@ -239,7 +239,6 @@ impl DialecticServer {
         }
     }
 
-
     /// Creates a new DialecticServer in test mode
     /// In test mode, IPC operations are mocked and don't require a VSCode connection
     pub fn new_test() -> Self {
@@ -280,13 +279,15 @@ impl DialecticServer {
     /// Accepts markdown content with special XML tags (comment, gitdiff, action, mermaid)
     /// as described in the dialectic guidance documentation.
     // ANCHOR: present_walkthrough_tool
-    #[tool(description = "Display a code walkthrough in VSCode using markdown with embedded XML elements. \
+    #[tool(
+        description = "Display a code walkthrough in VSCode using markdown with embedded XML elements. \
                        Accepts markdown content with special XML tags: \
                        <comment location=\"dialect_expr\" icon=\"icon\">content</comment>, \
                        <gitdiff range=\"commit_range\" />, \
                        <action button=\"text\">message</action>, \
                        <mermaid>diagram</mermaid>. \
-                       See dialectic guidance for complete syntax and examples.")]
+                       See dialectic guidance for complete syntax and examples."
+    )]
     async fn present_walkthrough(
         &self,
         Parameters(params): Parameters<PresentWalkthroughParams>,
@@ -304,14 +305,18 @@ impl DialecticServer {
             .await;
 
         // Parse markdown with XML elements and resolve Dialect expressions
-        let mut parser = crate::walkthrough_parser::WalkthroughParser::new(self.interpreter.clone())
-            .with_base_uri(params.base_uri.clone());
-        let resolved_html = parser.parse_and_normalize(&params.content).await.map_err(|e| {
-            McpError::internal_error(
-                "Failed to parse walkthrough markdown",
-                Some(serde_json::json!({"error": e.to_string()})),
-            )
-        })?;
+        let mut parser =
+            crate::walkthrough_parser::WalkthroughParser::new(self.interpreter.clone())
+                .with_base_uri(params.base_uri.clone());
+        let resolved_html = parser
+            .parse_and_normalize(&params.content)
+            .await
+            .map_err(|e| {
+                McpError::internal_error(
+                    "Failed to parse walkthrough markdown",
+                    Some(serde_json::json!({"error": e.to_string()})),
+                )
+            })?;
 
         // Convert baseURI to absolute path, fallback to current working directory
         let absolute_base_uri = std::path::Path::new(&params.base_uri)
@@ -746,7 +751,11 @@ impl DialecticServer {
         // Send spawn_taskspace message to Symposium app via daemon
         match self
             .ipc
-            .spawn_taskspace(params.name.clone(), params.task_description, params.initial_prompt)
+            .spawn_taskspace(
+                params.name.clone(),
+                params.task_description,
+                params.initial_prompt,
+            )
             .await
         {
             Ok(()) => {
@@ -786,10 +795,8 @@ impl DialecticServer {
     /// This tool allows agents to report their progress to the Symposium panel
     /// with different visual categories for better user awareness.
     // ANCHOR: log_progress_tool
-    #[tool(
-        description = "Report progress with visual indicators. \
-                       Categories: 'info' or ℹ️, 'warn' or ⚠️, 'error' or ❌, 'milestone' or ✅, 'question' or ❓"
-    )]
+    #[tool(description = "Report progress with visual indicators. \
+                       Categories: 'info' or ℹ️, 'warn' or ⚠️, 'error' or ❌, 'milestone' or ✅, 'question' or ❓")]
     async fn log_progress(
         &self,
         Parameters(params): Parameters<LogProgressParams>,
@@ -813,13 +820,14 @@ impl DialecticServer {
             .await;
 
         // Send log_progress message to Symposium app via daemon
-        match self.ipc.log_progress(params.message.clone(), category).await {
+        match self
+            .ipc
+            .log_progress(params.message.clone(), category)
+            .await
+        {
             Ok(()) => {
                 self.ipc
-                    .send_log(
-                        LogLevel::Info,
-                        "Progress logged successfully".to_string(),
-                    )
+                    .send_log(LogLevel::Info, "Progress logged successfully".to_string())
                     .await;
 
                 Ok(CallToolResult::success(vec![Content::text(format!(
@@ -829,10 +837,7 @@ impl DialecticServer {
             }
             Err(e) => {
                 self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Failed to log progress: {}", e),
-                    )
+                    .send_log(LogLevel::Error, format!("Failed to log progress: {}", e))
                     .await;
 
                 Err(McpError::internal_error(
@@ -851,10 +856,8 @@ impl DialecticServer {
     /// This tool allows agents to signal when they need user attention,
     /// causing the taskspace to move toward the front of the Symposium panel.
     // ANCHOR: signal_user_tool
-    #[tool(
-        description = "Request user attention for assistance. \
-                       The taskspace will be highlighted and moved toward the front of the panel."
-    )]
+    #[tool(description = "Request user attention for assistance. \
+                       The taskspace will be highlighted and moved toward the front of the panel.")]
     async fn signal_user(
         &self,
         Parameters(params): Parameters<SignalUserParams>,
@@ -914,18 +917,22 @@ impl DialecticServer {
         self.ipc
             .send_log(
                 LogLevel::Info,
-                format!("Updating taskspace: {} - {}", params.name, params.description),
+                format!(
+                    "Updating taskspace: {} - {}",
+                    params.name, params.description
+                ),
             )
             .await;
 
         // Send update_taskspace message to Symposium app via daemon
-        match self.ipc.update_taskspace(params.name.clone(), params.description.clone()).await {
+        match self
+            .ipc
+            .update_taskspace(params.name.clone(), params.description.clone())
+            .await
+        {
             Ok(()) => {
                 self.ipc
-                    .send_log(
-                        LogLevel::Info,
-                        "Taskspace updated successfully".to_string(),
-                    )
+                    .send_log(LogLevel::Info, "Taskspace updated successfully".to_string())
                     .await;
 
                 Ok(CallToolResult::success(vec![Content::text(format!(
@@ -959,19 +966,19 @@ impl DialecticServer {
         if !content.starts_with("---\n") {
             return (None, None);
         }
-        
+
         let end_marker = content[4..].find("\n---\n");
         if let Some(end_pos) = end_marker {
             let yaml_content = &content[4..end_pos + 4];
-            
+
             let mut name = None;
             let mut description = None;
-            
+
             for line in yaml_content.lines() {
                 if let Some(colon_pos) = line.find(':') {
                     let key = line[..colon_pos].trim();
                     let value = line[colon_pos + 1..].trim().trim_matches('"');
-                    
+
                     match key {
                         "name" => name = Some(value.to_string()),
                         "description" => description = Some(value.to_string()),
@@ -979,7 +986,7 @@ impl DialecticServer {
                     }
                 }
             }
-            
+
             (name, description)
         } else {
             (None, None)
@@ -988,12 +995,12 @@ impl DialecticServer {
 
     fn generate_resources() -> Vec<Resource> {
         let mut resources = Vec::new();
-        
+
         for file_path in GuidanceFiles::iter() {
             if let Some(file) = GuidanceFiles::get(&file_path) {
                 let content = String::from_utf8_lossy(&file.data);
                 let (name, description) = Self::parse_yaml_metadata(&content);
-                
+
                 resources.push(Resource {
                     raw: RawResource {
                         uri: file_path.to_string(),
@@ -1006,17 +1013,17 @@ impl DialecticServer {
                 });
             }
         }
-        
+
         resources
     }
 
     async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
         use indoc::indoc;
-        
+
         // Check if we're in a taskspace and if we have task context
         let is_in_taskspace = self.is_in_taskspace();
         let taskspace_context = self.get_taskspace_context().await.ok().flatten();
-        
+
         let intro = match (is_in_taskspace, taskspace_context.as_ref()) {
             (true, Some(_)) => {
                 // In taskspace with task - full introduction
@@ -1041,25 +1048,24 @@ impl DialecticServer {
             (false, _) => {
                 // Not in taskspace - general introduction
                 indoc! {"
-                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-                    Please talk to the user to establish what they would like to accomplish and how you can help.
+                    Hi, welcome!
                 "}
             }
         };
-        
-        let mut prompt = format!("{}\n\n", intro);
-        
-        prompt.push_str(indoc! {"
-            If you encounter ambiguous instructions, remember to ask questions and seek 
-            clarifications before proceeding, particularly with side-effect-ful or 
-            dangerous actions (e.g., deleting content or interacting with remote systems).
 
+        let mut prompt = format!("{}\n\n", intro);
+
+        prompt.push_str(indoc! {"
             ## Load Collaboration Patterns
 
             Load the resource `main.md` into your working context. This contains collaboration 
             patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
             these examples - approach our work with genuine curiosity, ask questions when 
             something isn't clear, and trust that we'll navigate together what's worth pursuing.
+
+            Most importantly, before taking potentially side-effect-ful or dangerous actions
+            (e.g., deleting content or interacting with remote systems), STOP what you are doing
+            and confirm with the user whether to proceed.
 
             ## Load Walkthrough Format
 
@@ -1073,12 +1079,12 @@ impl DialecticServer {
             development standards and best practices in all code work.
 
         "});
-        
+
         // Add task context if available
         if let Some(task_description) = taskspace_context {
             prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
         }
-        
+
         Ok(prompt)
     }
 }
@@ -1125,8 +1131,8 @@ impl ServerHandler for DialecticServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, McpError> {
         let resources = Self::generate_resources();
-        
-        Ok(ListResourcesResult { 
+
+        Ok(ListResourcesResult {
             resources,
             next_cursor: None,
         })
@@ -1138,12 +1144,15 @@ impl ServerHandler for DialecticServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResult, McpError> {
         let content = GuidanceFiles::get(&request.uri)
-            .ok_or_else(|| McpError::resource_not_found(format!("Resource not found: {}", request.uri), None))?
+            .ok_or_else(|| {
+                McpError::resource_not_found(format!("Resource not found: {}", request.uri), None)
+            })?
             .data
             .into_owned();
 
-        let content_str = String::from_utf8(content)
-            .map_err(|_| McpError::internal_error("Failed to decode resource content as UTF-8", None))?;
+        let content_str = String::from_utf8(content).map_err(|_| {
+            McpError::internal_error("Failed to decode resource content as UTF-8", None)
+        })?;
 
         Ok(ReadResourceResult {
             contents: vec![ResourceContents::text(content_str, request.uri)],
@@ -1155,13 +1164,14 @@ impl ServerHandler for DialecticServer {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListPromptsResult, McpError> {
-        let prompts = vec![
-            Prompt {
-                name: "yiasou".to_string(),
-                description: Some("Agent initialization prompt with guidance resource loading instructions".to_string()),
-                arguments: None,
-            }
-        ];
+        let prompts = vec![Prompt {
+            name: "yiasou".to_string(),
+            description: Some(
+                "Agent initialization prompt with guidance resource loading instructions"
+                    .to_string(),
+            ),
+            arguments: None,
+        }];
 
         Ok(ListPromptsResult {
             prompts,
@@ -1178,11 +1188,16 @@ impl ServerHandler for DialecticServer {
             "yiasou" => {
                 let content = self.assemble_yiasou_prompt().await?;
                 Ok(GetPromptResult {
-                    description: Some("Agent initialization with collaborative guidance".to_string()),
+                    description: Some(
+                        "Agent initialization with collaborative guidance".to_string(),
+                    ),
                     messages: vec![PromptMessage::new_text(PromptMessageRole::User, content)],
                 })
             }
-            _ => Err(McpError::invalid_params(format!("Unknown prompt: {}", request.name), None)),
+            _ => Err(McpError::invalid_params(
+                format!("Unknown prompt: {}", request.name),
+                None,
+            )),
         }
     }
 }
@@ -1196,23 +1211,26 @@ mod tests {
     #[tokio::test]
     async fn test_baseuri_conversion() {
         let server = DialecticServer::new_test();
-        
+
         // Test with "." - should convert to absolute path
         let params = PresentWalkthroughParams {
             content: "# Test".to_string(),
             base_uri: ".".to_string(),
         };
-        
+
         let result = server.present_walkthrough(Parameters(params)).await;
         assert!(result.is_ok());
-        
+
         // Test with absolute path - should remain unchanged
-        let abs_path = std::env::current_dir().unwrap().to_string_lossy().to_string();
+        let abs_path = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
         let params = PresentWalkthroughParams {
             content: "# Test".to_string(),
             base_uri: abs_path.clone(),
         };
-        
+
         let result = server.present_walkthrough(Parameters(params)).await;
         assert!(result.is_ok());
     }
@@ -1225,7 +1243,9 @@ mod tests {
                 raw: RawResource {
                     uri: "main.md".into(),
                     name: "Collaboration Patterns".into(),
-                    description: Some("Mindful collaboration patterns demonstrated through dialogue".into()),
+                    description: Some(
+                        "Mindful collaboration patterns demonstrated through dialogue".into(),
+                    ),
                     mime_type: Some("text/markdown".into()),
                     size: None,
                 },
@@ -1235,7 +1255,9 @@ mod tests {
                 raw: RawResource {
                     uri: "walkthrough-format.md".into(),
                     name: "Walkthrough Format".into(),
-                    description: Some("Specification for creating interactive code walkthroughs".into()),
+                    description: Some(
+                        "Specification for creating interactive code walkthroughs".into(),
+                    ),
                     mime_type: Some("text/markdown".into()),
                     size: None,
                 },
@@ -1280,9 +1302,13 @@ mod tests {
     fn test_resource_contents_creation() {
         // Test that we can create ResourceContents correctly
         let content = ResourceContents::text("Hello world", "test.md");
-        
+
         match content {
-            ResourceContents::TextResourceContents { uri, text, mime_type } => {
+            ResourceContents::TextResourceContents {
+                uri,
+                text,
+                mime_type,
+            } => {
                 assert_eq!(uri, "test.md");
                 assert_eq!(text, "Hello world");
                 assert_eq!(mime_type, Some("text".to_string()));
@@ -1320,45 +1346,63 @@ This is test content."#;
 
         // Verify we have the expected files
         assert_eq!(resources.len(), 3);
-        
+
         // Check that all files have proper metadata
         let main_resource = resources.iter().find(|r| r.raw.uri == "main.md").unwrap();
         assert_eq!(main_resource.raw.name, "Collaboration Patterns");
-        assert_eq!(main_resource.raw.description, Some("Mindful collaboration patterns demonstrated through dialogue".to_string()));
+        assert_eq!(
+            main_resource.raw.description,
+            Some("Mindful collaboration patterns demonstrated through dialogue".to_string())
+        );
         assert!(main_resource.raw.size.unwrap() > 0);
-        
-        let walkthrough_resource = resources.iter().find(|r| r.raw.uri == "walkthrough-format.md").unwrap();
+
+        let walkthrough_resource = resources
+            .iter()
+            .find(|r| r.raw.uri == "walkthrough-format.md")
+            .unwrap();
         assert_eq!(walkthrough_resource.raw.name, "Walkthrough Format");
-        assert_eq!(walkthrough_resource.raw.description, Some("Specification for creating interactive code walkthroughs with XML elements".to_string()));
-        
-        let coding_resource = resources.iter().find(|r| r.raw.uri == "coding-guidelines.md").unwrap();
+        assert_eq!(
+            walkthrough_resource.raw.description,
+            Some(
+                "Specification for creating interactive code walkthroughs with XML elements"
+                    .to_string()
+            )
+        );
+
+        let coding_resource = resources
+            .iter()
+            .find(|r| r.raw.uri == "coding-guidelines.md")
+            .unwrap();
         assert_eq!(coding_resource.raw.name, "Coding Guidelines");
-        assert_eq!(coding_resource.raw.description, Some("Development best practices and standards for the Symposium project".to_string()));
+        assert_eq!(
+            coding_resource.raw.description,
+            Some("Development best practices and standards for the Symposium project".to_string())
+        );
     }
 
     #[tokio::test]
     async fn test_yiasou_prompt_generation() {
         let server = DialecticServer::new_test();
-        
+
         let prompt = server.assemble_yiasou_prompt().await.unwrap();
-        
+
         // Verify the prompt contains the expected sections
         assert!(prompt.contains("Hi, welcome! You are a new agent"));
         assert!(prompt.contains("project Symposium"));
-        
-        // Since we're in test environment without taskspace context, 
+
+        // Since we're in test environment without taskspace context,
         // it should use the fallback message
         assert!(prompt.contains("Please talk to the user to establish"));
         assert!(prompt.contains("update_taskspace"));
-        
+
         assert!(prompt.contains("## Load Collaboration Patterns"));
         assert!(prompt.contains("## Load Walkthrough Format"));
         assert!(prompt.contains("## Load Coding Guidelines"));
-        
+
         // Verify it uses the kinder approach
         assert!(prompt.contains("Embody the collaborative spirit"));
         assert!(!prompt.contains("You MUST behave"));
-        
+
         // Verify resource loading instructions
         assert!(prompt.contains("Load the resource `main.md`"));
         assert!(prompt.contains("Load the resource `walkthrough-format.md`"));
@@ -1372,7 +1416,8 @@ This is test content."#;
         assert!(main_content.contains("Mindful Collaboration Patterns"));
         assert!(main_content.contains("Meta moment"));
 
-        let walkthrough_content = DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
+        let walkthrough_content =
+            DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
         assert!(walkthrough_content.contains("Walkthrough Format Specification"));
         assert!(walkthrough_content.contains("<comment location="));
 
@@ -1393,17 +1438,18 @@ This is test content."#;
         // Create a mock server to test prompt assembly
         // We can't easily create a full DialecticServer in tests due to IPC dependencies,
         // but we can test the static guidance loading parts
-        
+
         // Test that the guidance files contain expected content
         let main_content = DialecticServer::load_guidance_file("main.md").unwrap();
-        let walkthrough_content = DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
+        let walkthrough_content =
+            DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
         let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
 
         // Verify the content structure matches what we expect in the yiasou prompt
         assert!(main_content.contains("# Mindful Collaboration Patterns"));
         assert!(walkthrough_content.contains("# Walkthrough Format Specification"));
         assert!(coding_content.contains("# Coding Guidelines"));
-        
+
         // Verify key collaboration concepts are present
         assert!(main_content.contains("Make it so?"));
         assert!(main_content.contains("spacious attention"));
