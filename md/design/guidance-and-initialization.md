@@ -254,6 +254,150 @@ This design provides several advantages over embedded content:
   - [ ] Any other chapters referencing current boot sequence
 - [ ] Remove old embedded guidance approach
 
+## Taskspace State Protocol
+
+The taskspace state protocol enables dynamic agent initialization and taskspace management through a unified IPC message system. This protocol is used by the `/yiasou` prompt system to fetch real taskspace context and by the `update_taskspace` tool to modify taskspace properties.
+
+### Protocol Overview
+
+**Message Type:** `IPCMessageType::TaskspaceState`
+
+**Request Structure:** `TaskspaceStateRequest`
+```rust
+{
+    project_path: String,        // Path to .symposium project
+    taskspace_uuid: String,      // UUID of the taskspace
+    name: Option<String>,        // None = don't update, Some(value) = set new name
+    description: Option<String>, // None = don't update, Some(value) = set new description
+}
+```
+
+**Response Structure:** `TaskspaceStateResponse`
+```rust
+{
+    name: Option<String>,         // Current taskspace name (user-visible)
+    description: Option<String>,  // Current taskspace description (user-visible)
+    initial_prompt: Option<String>, // LLM task description (cleared after updates)
+}
+```
+
+### Field Semantics
+
+**Request Fields:**
+- `project_path`: Absolute path to the `.symposium` project directory
+- `taskspace_uuid`: Unique identifier for the taskspace (extracted from directory structure)
+- `name`: Optional new name to set (None = read-only operation)
+- `description`: Optional new description to set (None = read-only operation)
+
+**Response Fields:**
+- `name`: User-visible taskspace name displayed in GUI tabs, window titles, etc.
+- `description`: User-visible summary shown in GUI tooltips, status bars, etc.
+- `initial_prompt`: Task description provided to LLM during agent initialization
+
+### Operation Types
+
+#### Read Operation (Get Taskspace State)
+```rust
+TaskspaceStateRequest {
+    project_path: "/path/to/project.symposium".to_string(),
+    taskspace_uuid: "task-abc123...".to_string(),
+    name: None,        // Don't update name
+    description: None, // Don't update description
+}
+```
+
+Used by:
+- `/yiasou` prompt assembly to fetch taskspace context
+- Agent initialization to get current state
+
+#### Write Operation (Update Taskspace)
+```rust
+TaskspaceStateRequest {
+    project_path: "/path/to/project.symposium".to_string(),
+    taskspace_uuid: "task-abc123...".to_string(),
+    name: Some("New Taskspace Name".to_string()),
+    description: Some("Updated description".to_string()),
+}
+```
+
+Used by:
+- `update_taskspace` MCP tool when agent modifies taskspace properties
+- GUI application when user changes taskspace settings
+
+### Lifecycle Management
+
+The protocol implements automatic `initial_prompt` cleanup:
+
+1. **Agent Initialization:**
+   - Agent requests taskspace state (read operation)
+   - Receives `initial_prompt` with task description
+   - Uses prompt content for initialization context
+
+2. **Agent Updates Taskspace:**
+   - Agent calls `update_taskspace` tool (write operation)
+   - GUI application processes the update
+   - GUI automatically clears `initial_prompt` field
+   - Returns updated state with `initial_prompt: None`
+
+3. **Natural Cleanup:**
+   - Initial prompt is only available during first agent startup
+   - Subsequent operations don't include stale initialization data
+   - No manual cleanup required
+
+### Implementation Details
+
+**MCP Server Methods:**
+- `get_taskspace_state()` → @../../../mcp-server/src/ipc.rs (read operation)
+- `update_taskspace()` → @../../../mcp-server/src/ipc.rs (write operation)
+
+**Message Flow:**
+```
+Agent → MCP Server → Daemon → GUI Application
+                              ↓
+Agent ← MCP Server ← Daemon ← GUI Application
+```
+
+**Error Handling:**
+- Taskspace detection failure → `extract_project_info()` error
+- Daemon unreachable → IPC timeout/connection error
+- GUI application unavailable → Empty response or error
+- Graceful degradation in `/yiasou` prompt assembly
+
+### Benefits
+
+**Unified Protocol:**
+- Single message type for all taskspace state operations
+- Consistent request/response pattern
+- Reduced protocol complexity
+
+**Automatic Lifecycle Management:**
+- Natural `initial_prompt` cleanup on updates
+- No manual state management required
+- Clear separation between initialization and runtime data
+
+**Dynamic Agent Initialization:**
+- Real taskspace context in `/yiasou` prompts
+- Context-aware agent startup
+- Seamless integration with MCP resource system
+
+### Usage Examples
+
+**Agent Initialization (via `/yiasou` prompt):**
+```rust
+// MCP server calls during prompt assembly
+let state = ipc.get_taskspace_state().await?;
+// Returns: { name: "Feature X", description: "Add new API", initial_prompt: "Implement REST endpoint..." }
+```
+
+**Agent Updates Taskspace:**
+```rust
+// Agent calls update_taskspace tool
+let updated_state = ipc.update_taskspace("Feature X v2", "Updated API design").await?;
+// Returns: { name: "Feature X v2", description: "Updated API design", initial_prompt: None }
+```
+
+This protocol enables the complete dynamic agent initialization system while maintaining clean separation between user-visible properties and LLM-specific initialization data.
+
 ## Future Enhancements
 
 ### Customizable Guidance
