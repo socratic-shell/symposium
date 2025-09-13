@@ -179,6 +179,8 @@ pub enum IPCMessageType {
     SignalUser,
     /// Update taskspace name and description
     UpdateTaskspace,
+    /// Get taskspace state (name, description, task)
+    GetTaskspaceState,
     /// Broadcast to discover active taskspaces for window registration
     TaskspaceRollCall,
     /// Register VSCode window with taskspace
@@ -294,5 +296,20 @@ pub struct UpdateTaskspacePayload {
     pub description: String,
 }
 // ANCHOR_END: update_taskspace_payload
+
+/// Payload for get_taskspace_state messages
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetTaskspaceStatePayload {
+    pub project_path: String,
+    pub taskspace_uuid: String,
+}
+
+/// Response for get_taskspace_state messages
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TaskspaceStateResponse {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub task_description: Option<String>,
+}
 
 

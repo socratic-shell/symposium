@@ -117,11 +117,37 @@ impl DialecticServer {
     }
 
     /// Assemble the complete /yiasou initialization prompt
-    /// Get taskspace context via IPC (placeholder for now)
+    /// Get taskspace context via IPC
     async fn get_taskspace_context(&self) -> Result<Option<String>> {
-        // TODO: Implement IPC call to get taskspace state
-        // For now, return None to gracefully omit the Initial Task section
-        Ok(None)
+        match self.ipc.get_taskspace_state().await {
+            Ok(state) => {
+                // Combine available information into a context string
+                let mut context_parts = Vec::new();
+                
+                if let Some(name) = state.name {
+                    context_parts.push(format!("Taskspace: {}", name));
+                }
+                
+                if let Some(description) = state.description {
+                    context_parts.push(format!("Description: {}", description));
+                }
+                
+                if let Some(task) = state.task_description {
+                    context_parts.push(format!("Task: {}", task));
+                }
+                
+                if context_parts.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(context_parts.join("\n\n")))
+                }
+            }
+            Err(e) => {
+                // Log the error but don't fail the prompt assembly
+                tracing::warn!("Failed to get taskspace context: {}", e);
+                Ok(None)
+            }
+        }
     }
 
     /// Check if we're currently in a taskspace by looking for task-UUID directory structure

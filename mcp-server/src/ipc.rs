@@ -634,6 +634,30 @@ impl IPCCommunicator {
         self.send_message_without_reply(ipc_message).await
     }
 
+    pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
+        use crate::types::{GetTaskspaceStatePayload, IPCMessageType, TaskspaceStateResponse};
+        
+        let (project_path, taskspace_uuid) = extract_project_info()?;
+        
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        let ipc_message = IPCMessage {
+            shell_pid,
+            id: Uuid::new_v4().to_string(),
+            message_type: IPCMessageType::GetTaskspaceState,
+            payload: serde_json::to_value(GetTaskspaceStatePayload {
+                project_path,
+                taskspace_uuid,
+            })?,
+        };
+
+        let taskspace_state: TaskspaceStateResponse = self.send_message_with_reply(ipc_message).await?;
+        Ok(taskspace_state)
+    }
+
     /// Gracefully shutdown the IPC communicator, sending Goodbye discovery message
     pub async fn shutdown(&self) -> Result<()> {
         if self.test_mode {
