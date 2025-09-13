@@ -15,7 +15,7 @@ use rust_embed::RustEmbed;
 use serde_json;
 use std::future::Future;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::dialect::DialectInterpreter;
 use crate::ipc::IPCCommunicator;
@@ -119,8 +119,13 @@ impl DialecticServer {
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
     async fn get_taskspace_context(&self) -> Result<Option<String>> {
+        info!("Attempting to get taskspace context via IPC...");
+        
         match self.ipc.get_taskspace_state().await {
             Ok(state) => {
+                info!("IPC call successful: name={:?}, description={:?}, initial_prompt={:?}", 
+                          state.name, state.description, state.initial_prompt.as_ref().map(|s| s.len()));
+                
                 // Combine available information into a context string
                 let mut context_parts = Vec::new();
                 
@@ -137,12 +142,15 @@ impl DialecticServer {
                 }
                 
                 if context_parts.is_empty() {
+                    info!("No taskspace context available (empty response)");
                     Ok(None)
                 } else {
+                    info!("Taskspace context assembled: {} parts", context_parts.len());
                     Ok(Some(context_parts.join("\n\n")))
                 }
             }
             Err(e) => {
+                warn!("Failed to get taskspace context via IPC: {}", e);
                 // Log the error but don't fail the prompt assembly
                 tracing::warn!("Failed to get taskspace context: {}", e);
                 Ok(None)
@@ -152,7 +160,14 @@ impl DialecticServer {
 
     /// Check if we're currently in a taskspace by looking for task-UUID directory structure
     fn is_in_taskspace(&self) -> bool {
-        crate::ipc::extract_project_info().is_ok()
+        let result = crate::ipc::extract_project_info().is_ok();
+        info!("is_in_taskspace check: {}", result);
+        if !result {
+            if let Err(e) = crate::ipc::extract_project_info() {
+                warn!("extract_project_info failed: {}", e);
+            }
+        }
+        result
     }
 
     pub async fn new() -> Result<Self> {
@@ -1092,6 +1107,15 @@ impl DialecticServer {
         // Check if we're in a taskspace and if we have task context
         let is_in_taskspace = self.is_in_taskspace();
         let taskspace_context = self.get_taskspace_context().await.ok().flatten();
+
+        // Debug logging
+        info!("Yiasou prompt assembly: is_in_taskspace={}, taskspace_context={:?}", 
+                   is_in_taskspace, taskspace_context.as_ref().map(|s| s.len()));
+        
+        if let Some(ref context) = taskspace_context {
+            info!("Taskspace context preview: {}", 
+                       &context.chars().take(100).collect::<String>());
+        }
 
         let intro = match (is_in_taskspace, taskspace_context.as_ref()) {
             (true, Some(_)) => {
