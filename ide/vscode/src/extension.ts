@@ -296,10 +296,8 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         // Show the terminal
         terminal.show();
 
-        // Send the agent command - properly quote arguments with spaces
-        const quotedCommand = agentCommand.map(arg => 
-            arg.includes(' ') ? `"${arg.replace(/"/g, '\\"')}"` : arg
-        ).join(' ');
+        // Send the agent command - use shell-quote for proper escaping
+        const quotedCommand = quote(agentCommand);
         terminal.sendText(quotedCommand);
 
         outputChannel.appendLine('Agent launched successfully');
