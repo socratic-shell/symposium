@@ -662,7 +662,8 @@ impl DialecticServer {
     #[tool(description = "
         Expand a compact reference (denoted as `<symposium-ref id='..'/>`) to get full context. \
         Invoke with the contents of `id` attribute. Also supports loading guidance files by \
-        filename (e.g., 'main.md', 'walkthrough-format.md', 'coding-guidelines.md'). \
+        filename (e.g., 'main.md', 'walkthrough-format.md', 'coding-guidelines.md') and the \
+        special 'yiasou' reference for agent initialization. \
         Returns structured JSON with all available context data. \
     ")]
     async fn expand_reference(
@@ -723,6 +724,30 @@ impl DialecticServer {
                 .await;
 
             return Ok(CallToolResult::success(vec![Content::text(content.to_string())]));
+        }
+
+        // Special case: "yiasou" returns the same content as @yiasou stored prompt
+        if params.id == "yiasou" {
+            match self.assemble_yiasou_prompt().await {
+                Ok(prompt_content) => {
+                    self.ipc
+                        .send_log(
+                            LogLevel::Info,
+                            "Yiasou prompt assembled successfully via expand_reference".to_string(),
+                        )
+                        .await;
+
+                    return Ok(CallToolResult::success(vec![Content::text(prompt_content)]));
+                }
+                Err(e) => {
+                    return Err(McpError::internal_error(
+                        "Failed to assemble yiasou prompt",
+                        Some(serde_json::json!({
+                            "error": e.to_string()
+                        })),
+                    ));
+                }
+            }
         }
 
         // Not found in either store
@@ -1418,6 +1443,21 @@ This is test content."#;
         assert!(prompt.contains("Use the `expand_reference` tool to fetch `main.md`"));
         assert!(prompt.contains("Use the `expand_reference` tool to fetch `walkthrough-format.md`"));
         assert!(prompt.contains("Use the `expand_reference` tool to fetch `coding-guidelines.md`"));
+    }
+
+    #[tokio::test]
+    async fn test_expand_reference_yiasou() {
+        let server = DialecticServer::new_test();
+        
+        // Test that expand_reference with "yiasou" returns the same content as the stored prompt
+        let params = ExpandReferenceParams { id: "yiasou".to_string() };
+        let result = server.expand_reference(Parameters(params)).await.unwrap();
+        
+        // Should be successful
+        assert!(matches!(result, CallToolResult { is_error: Some(false), .. }));
+        
+        // Should have content
+        assert!(!result.content.is_empty());
     }
 
     #[test]
