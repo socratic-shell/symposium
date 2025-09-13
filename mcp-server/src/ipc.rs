@@ -638,18 +638,27 @@ impl IPCCommunicator {
     /// 
     /// This is a key method in the dynamic agent initialization system. It enables
     /// the MCP server to retrieve real taskspace information (name, description, 
-    /// task details) which gets included in the `/yiasou` prompt for agent boot.
+    /// initial_prompt) which gets included in the `/yiasou` prompt for agent boot.
     /// 
     /// **System Role:**
     /// - Called by `get_taskspace_context()` in server.rs during prompt assembly
     /// - Bridges MCP server ↔ Symposium daemon ↔ Symposium app communication
     /// - Enables dynamic, context-aware agent initialization vs static prompts
     /// 
+    /// **Field Semantics:**
+    /// - `name`: User-visible taskspace name (GUI display)
+    /// - `description`: User-visible summary (GUI tooltips, etc.)
+    /// - `initial_prompt`: LLM task description (cleared after agent startup)
+    /// 
+    /// **Lifecycle Integration:**
+    /// - First call: Returns initial_prompt for agent initialization
+    /// - After update_taskspace: GUI app clears initial_prompt (natural cleanup)
+    /// 
     /// **Flow:**
     /// 1. Extract taskspace UUID from current directory structure
     /// 2. Send GetTaskspaceState IPC message to daemon with project/taskspace info
     /// 3. Daemon forwards request to Symposium app
-    /// 4. App returns current taskspace state (name, description, task)
+    /// 4. App returns current taskspace state (name, description, initial_prompt)
     /// 5. Response flows back through daemon to MCP server
     /// 
     /// **Error Handling:**

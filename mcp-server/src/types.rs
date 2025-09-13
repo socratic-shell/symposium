@@ -305,11 +305,30 @@ pub struct GetTaskspaceStatePayload {
 }
 
 /// Response for get_taskspace_state messages
+/// 
+/// This structure represents the complete state of a taskspace as managed by the
+/// Symposium GUI application. It's used for dynamic agent initialization and
+/// taskspace management.
+/// 
+/// **Field Usage:**
+/// - `name`: User-visible taskspace name (shown in GUI, tabs, etc.)
+/// - `description`: Short user-visible summary (shown in GUI, tooltips, etc.)  
+/// - `initial_prompt`: Task description given to LLM during agent initialization
+/// 
+/// **Lifecycle:**
+/// 1. GUI app creates taskspace with name, description, initial_prompt
+/// 2. Agent requests state via get_taskspace_state → receives all fields
+/// 3. Agent uses initial_prompt for initialization context
+/// 4. Agent calls update_taskspace → GUI app returns same struct with initial_prompt=None
+/// 5. This naturally clears the initial prompt after agent startup
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TaskspaceStateResponse {
+    /// User-visible taskspace name (displayed in GUI)
     pub name: Option<String>,
+    /// User-visible short summary (displayed in GUI)
     pub description: Option<String>,
-    pub task_description: Option<String>,
+    /// Task description for LLM initialization (cleared after agent startup)
+    pub initial_prompt: Option<String>,
 }
 
 

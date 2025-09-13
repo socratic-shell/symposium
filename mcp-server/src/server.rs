@@ -132,7 +132,7 @@ impl DialecticServer {
                     context_parts.push(format!("Description: {}", description));
                 }
                 
-                if let Some(task) = state.task_description {
+                if let Some(task) = state.initial_prompt {
                     context_parts.push(format!("Task: {}", task));
                 }
                 
