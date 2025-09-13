@@ -203,7 +203,7 @@ impl IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::PresentWalkthrough,
             payload,
             id: Uuid::new_v4().to_string(),
@@ -250,7 +250,7 @@ impl IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::GetSelection,
             payload: serde_json::json!({}),
             id: Uuid::new_v4().to_string(),
@@ -293,7 +293,7 @@ impl IPCCommunicator {
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::Log,
             payload,
             id: Uuid::new_v4().to_string(),
@@ -317,7 +317,7 @@ impl IPCCommunicator {
         }
 
         let message = IPCMessage {
-            shell_pid: 0, // Marco messages are broadcasts, no specific shell PID
+            shell_pid: Some(0), // Marco messages are broadcasts, no specific shell PID
             message_type: IPCMessageType::Marco,
             payload: serde_json::json!({}),
             id: Uuid::new_v4().to_string(),
@@ -339,7 +339,7 @@ impl IPCCommunicator {
 
         let payload = PoloPayload {};
         let message = IPCMessage {
-            shell_pid: terminal_shell_pid,
+            shell_pid: Some(terminal_shell_pid),
             message_type: IPCMessageType::Polo,
             payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
@@ -364,7 +364,7 @@ impl IPCCommunicator {
 
         let payload = GoodbyePayload {};
         let message = IPCMessage {
-            shell_pid: terminal_shell_pid,
+            shell_pid: Some(terminal_shell_pid),
             message_type: IPCMessageType::Goodbye,
             payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
@@ -409,7 +409,7 @@ impl IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::CreateSyntheticPr,
             payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
@@ -509,7 +509,7 @@ impl IPCCommunicator {
         let payload = serde_json::to_value(review)?;
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::UpdateSyntheticPr,
             payload,
             id: Uuid::new_v4().to_string(),
@@ -538,7 +538,7 @@ impl IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SpawnTaskspace,
             payload: serde_json::to_value(SpawnTaskspacePayload {
@@ -569,7 +569,7 @@ impl IPCCommunicator {
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::LogProgress,
             payload: serde_json::to_value(LogProgressPayload {
@@ -595,7 +595,7 @@ impl IPCCommunicator {
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::SignalUser,
             payload: serde_json::to_value(SignalUserPayload { 
@@ -620,7 +620,7 @@ impl IPCCommunicator {
         };
 
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::TaskspaceState,
             payload: serde_json::to_value(TaskspaceStateRequest {
@@ -681,7 +681,7 @@ impl IPCCommunicator {
 
         // Construct IPC message requesting taskspace state
         let ipc_message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             id: Uuid::new_v4().to_string(),
             message_type: IPCMessageType::TaskspaceState,
             payload: serde_json::to_value(TaskspaceStateRequest {
@@ -1212,7 +1212,7 @@ impl crate::ide::IpcClient for IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::ResolveSymbolByName,
             payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),
@@ -1245,7 +1245,7 @@ impl crate::ide::IpcClient for IPCCommunicator {
         };
 
         let message = IPCMessage {
-            shell_pid,
+            shell_pid: Some(shell_pid),
             message_type: IPCMessageType::FindAllReferences,
             payload: serde_json::to_value(payload)?,
             id: Uuid::new_v4().to_string(),

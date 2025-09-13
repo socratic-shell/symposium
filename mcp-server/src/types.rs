@@ -126,9 +126,9 @@ pub struct ResponsePayload {
 /// IPC message sent from MCP server to VSCode extension
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct IPCMessage {
-    /// Shell PID for routing to correct VSCode window
+    /// Shell PID for routing to correct VSCode window (optional for response messages)
     #[serde(rename = "shellPid")]
-    pub shell_pid: u32,
+    pub shell_pid: Option<u32>,
 
     /// Message type identifier
     #[serde(rename = "type")]

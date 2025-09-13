@@ -286,7 +286,7 @@ async fn run_message_bus_with_shutdown_signal(
                 use uuid::Uuid;
 
                 let reload_message = IPCMessage {
-                    shell_pid: 0, // Use 0 for broadcast messages
+                    shell_pid: Some(0), // Use 0 for broadcast messages
                     message_type: IPCMessageType::ReloadWindow,
                     payload: json!({}), // Empty payload
                     id: Uuid::new_v4().to_string(),
