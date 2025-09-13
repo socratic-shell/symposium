@@ -661,7 +661,8 @@ impl DialecticServer {
     // ANCHOR: expand_reference_tool
     #[tool(description = "
         Expand a compact reference (denoted as `<symposium-ref id='..'/>`) to get full context. \
-        Invoke with the contents of `id` attribute. \
+        Invoke with the contents of `id` attribute. Also supports loading guidance files by \
+        filename (e.g., 'main.md', 'walkthrough-format.md', 'coding-guidelines.md'). \
         Returns structured JSON with all available context data. \
     ")]
     async fn expand_reference(
@@ -676,6 +677,7 @@ impl DialecticServer {
             )
             .await;
 
+        // First, try to get from reference store (existing behavior)
         match self.reference_store.get_json(&params.id).await {
             Ok(Some(context)) => {
                 self.ipc
@@ -685,7 +687,7 @@ impl DialecticServer {
                     )
                     .await;
 
-                Ok(CallToolResult::success(vec![Content::text(
+                return Ok(CallToolResult::success(vec![Content::text(
                     serde_json::to_string_pretty(&context).map_err(|e| {
                         McpError::internal_error(
                             "Failed to serialize reference context",
@@ -694,37 +696,46 @@ impl DialecticServer {
                             })),
                         )
                     })?,
-                )]))
+                )]));
             }
             Ok(None) => {
-                self.ipc
-                    .send_log(LogLevel::Info, format!("Reference {} not found", params.id))
-                    .await;
-
-                Err(McpError::invalid_params(
-                    "Reference not found",
-                    Some(serde_json::json!({
-                        "reference_id": params.id
-                    })),
-                ))
+                // Not found in reference store, try guidance files
             }
             Err(e) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Error expanding reference {}: {}", params.id, e),
-                    )
-                    .await;
-
-                Err(McpError::internal_error(
-                    "Failed to expand reference",
+                return Err(McpError::internal_error(
+                    "Failed to query reference store",
                     Some(serde_json::json!({
-                        "error": e.to_string(),
-                        "reference_id": params.id
+                        "error": e.to_string()
                     })),
-                ))
+                ));
             }
         }
+
+        // Try to load as guidance file
+        if let Some(file) = GuidanceFiles::get(&params.id) {
+            let content = String::from_utf8_lossy(&file.data);
+            
+            self.ipc
+                .send_log(
+                    LogLevel::Info,
+                    format!("Guidance file {} loaded successfully", params.id),
+                )
+                .await;
+
+            return Ok(CallToolResult::success(vec![Content::text(content.to_string())]));
+        }
+
+        // Not found in either store
+        self.ipc
+            .send_log(LogLevel::Info, format!("Reference {} not found", params.id))
+            .await;
+
+        Err(McpError::invalid_params(
+            "Reference not found",
+            Some(serde_json::json!({
+                "reference_id": params.id
+            })),
+        ))
     }
 
     /// Create a new taskspace with initial prompt
@@ -1058,8 +1069,8 @@ impl DialecticServer {
         prompt.push_str(indoc! {"
             ## Load Collaboration Patterns
 
-            Load the resource `main.md` into your working context. This contains collaboration 
-            patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
+            Use the `expand_reference` tool to fetch `main.md` into your working context. This contains 
+            collaboration patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
             these examples - approach our work with genuine curiosity, ask questions when 
             something isn't clear, and trust that we'll navigate together what's worth pursuing.
 
@@ -1069,13 +1080,13 @@ impl DialecticServer {
 
             ## Load Walkthrough Format
 
-            Load the resource `walkthrough-format.md` into your working context. This defines 
-            how to create interactive code walkthroughs using markdown with embedded XML 
+            Use the `expand_reference` tool to fetch `walkthrough-format.md` into your working context. 
+            This defines how to create interactive code walkthroughs using markdown with embedded XML 
             elements for comments, diffs, and actions.
 
             ## Load Coding Guidelines
 
-            Load the resource `coding-guidelines.md` into your working context. Follow these 
+            Use the `expand_reference` tool to fetch `coding-guidelines.md` into your working context. Follow these 
             development standards and best practices in all code work.
 
         "});
@@ -1403,10 +1414,10 @@ This is test content."#;
         assert!(prompt.contains("Embody the collaborative spirit"));
         assert!(!prompt.contains("You MUST behave"));
 
-        // Verify resource loading instructions
-        assert!(prompt.contains("Load the resource `main.md`"));
-        assert!(prompt.contains("Load the resource `walkthrough-format.md`"));
-        assert!(prompt.contains("Load the resource `coding-guidelines.md`"));
+        // Verify resource loading instructions using expand_reference tool
+        assert!(prompt.contains("Use the `expand_reference` tool to fetch `main.md`"));
+        assert!(prompt.contains("Use the `expand_reference` tool to fetch `walkthrough-format.md`"));
+        assert!(prompt.contains("Use the `expand_reference` tool to fetch `coding-guidelines.md`"));
     }
 
     #[test]
