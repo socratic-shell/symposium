@@ -989,15 +989,25 @@ impl DialecticServer {
             .update_taskspace(params.name.clone(), params.description.clone())
             .await
         {
-            Ok(()) => {
+            Ok(state) => {
                 self.ipc
                     .send_log(LogLevel::Info, "Taskspace updated successfully".to_string())
                     .await;
 
-                Ok(CallToolResult::success(vec![Content::text(format!(
-                    "Taskspace updated: {} - {}",
-                    params.name, params.description
-                ))]))
+                // Note: GUI app automatically clears initial_prompt on update
+                let status_msg = if state.initial_prompt.is_none() {
+                    format!(
+                        "Taskspace updated: {} - {} (initial prompt cleared)",
+                        params.name, params.description
+                    )
+                } else {
+                    format!(
+                        "Taskspace updated: {} - {}",
+                        params.name, params.description
+                    )
+                };
+
+                Ok(CallToolResult::success(vec![Content::text(status_msg)]))
             }
             Err(e) => {
                 self.ipc

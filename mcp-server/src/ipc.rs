@@ -609,8 +609,8 @@ impl IPCCommunicator {
     }
 
     /// Send update_taskspace message to update taskspace metadata
-    pub async fn update_taskspace(&self, name: String, description: String) -> Result<()> {
-        use crate::types::{UpdateTaskspacePayload, IPCMessageType};
+    pub async fn update_taskspace(&self, name: String, description: String) -> Result<crate::types::TaskspaceStateResponse> {
+        use crate::types::{TaskspaceStateRequest, IPCMessageType, TaskspaceStateResponse};
         
         let (project_path, taskspace_uuid) = extract_project_info()?;
         
@@ -622,16 +622,17 @@ impl IPCCommunicator {
         let ipc_message = IPCMessage {
             shell_pid,
             id: Uuid::new_v4().to_string(),
-            message_type: IPCMessageType::UpdateTaskspace,
-            payload: serde_json::to_value(UpdateTaskspacePayload {
+            message_type: IPCMessageType::TaskspaceState,
+            payload: serde_json::to_value(TaskspaceStateRequest {
                 project_path,
                 taskspace_uuid,
-                name,
-                description,
+                name: Some(name),
+                description: Some(description),
             })?,
         };
 
-        self.send_message_without_reply(ipc_message).await
+        let taskspace_state: TaskspaceStateResponse = self.send_message_with_reply(ipc_message).await?;
+        Ok(taskspace_state)
     }
 
     /// Fetch current taskspace state from the Symposium daemon/app
@@ -667,7 +668,7 @@ impl IPCCommunicator {
     /// - If app unavailable → daemon returns empty/error response
     /// - Caller (get_taskspace_context) handles errors gracefully
     pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
-        use crate::types::{GetTaskspaceStatePayload, IPCMessageType, TaskspaceStateResponse};
+        use crate::types::{TaskspaceStateRequest, IPCMessageType, TaskspaceStateResponse};
         
         // Extract taskspace UUID from directory structure (task-UUID/.symposium pattern)
         let (project_path, taskspace_uuid) = extract_project_info()?;
@@ -682,10 +683,12 @@ impl IPCCommunicator {
         let ipc_message = IPCMessage {
             shell_pid,
             id: Uuid::new_v4().to_string(),
-            message_type: IPCMessageType::GetTaskspaceState,
-            payload: serde_json::to_value(GetTaskspaceStatePayload {
+            message_type: IPCMessageType::TaskspaceState,
+            payload: serde_json::to_value(TaskspaceStateRequest {
                 project_path,
                 taskspace_uuid,
+                name: None,
+                description: None,
             })?,
         };
 

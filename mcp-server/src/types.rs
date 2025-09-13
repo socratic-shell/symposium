@@ -179,8 +179,8 @@ pub enum IPCMessageType {
     SignalUser,
     /// Update taskspace name and description
     UpdateTaskspace,
-    /// Get taskspace state (name, description, task)
-    GetTaskspaceState,
+    /// Get/update taskspace state - unified operation that can both read and write
+    TaskspaceState,
     /// Broadcast to discover active taskspaces for window registration
     TaskspaceRollCall,
     /// Register VSCode window with taskspace
@@ -296,6 +296,27 @@ pub struct UpdateTaskspacePayload {
     pub description: String,
 }
 // ANCHOR_END: update_taskspace_payload
+
+/// Unified payload for taskspace state operations (get/update)
+/// 
+/// This message type handles both reading and writing taskspace state.
+/// - For read-only: Send with name=None, description=None  
+/// - For update: Send with new name/description values
+/// - Response: Always returns complete TaskspaceStateResponse
+/// 
+/// **Benefits of unified approach:**
+/// - Single message type for all taskspace state operations
+/// - GUI app can clear initial_prompt on any update operation
+/// - Simpler protocol with consistent request/response pattern
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TaskspaceStateRequest {
+    pub project_path: String,
+    pub taskspace_uuid: String,
+    /// New name to set (None = don't update)
+    pub name: Option<String>,
+    /// New description to set (None = don't update)  
+    pub description: Option<String>,
+}
 
 /// Payload for get_taskspace_state messages
 #[derive(Debug, Clone, Deserialize, Serialize)]
