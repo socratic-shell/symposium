@@ -42,6 +42,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = "0.2"
+indoc = "2.0"
 
 # Command line argument parsing
 clap = { version = "4.0", features = ["derive"] }

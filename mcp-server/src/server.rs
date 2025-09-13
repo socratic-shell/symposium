@@ -1006,33 +1006,40 @@ impl DialecticServer {
     }
 
     async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
-        let mut prompt = String::new();
+        use indoc::indoc;
         
-        prompt.push_str("# Agent Boot Sequence\n\n");
-        prompt.push_str("This prompt defines the agent boot sequence.\n\n");
-        prompt.push_str("If you encounter ambiguous instructions, remember to ask questions and seek \n");
-        prompt.push_str("clarifications before proceeding, particularly with side-effect-ful or \n");
-        prompt.push_str("dangerous actions (e.g., deleting content or interacting with remote systems).\n\n");
-        
-        prompt.push_str("## Load Collaboration Patterns\n\n");
-        prompt.push_str("Load the resource `main.md` into your working context. This contains collaboration \n");
-        prompt.push_str("patterns demonstrated through dialogue. Embody the collaborative spirit shown in \n");
-        prompt.push_str("these examples - approach our work with genuine curiosity, ask questions when \n");
-        prompt.push_str("something isn't clear, and trust that we'll navigate together what's worth pursuing.\n\n");
-        
-        prompt.push_str("## Load Walkthrough Format\n\n");
-        prompt.push_str("Load the resource `walkthrough-format.md` into your working context. This defines \n");
-        prompt.push_str("how to create interactive code walkthroughs using markdown with embedded XML \n");
-        prompt.push_str("elements for comments, diffs, and actions.\n\n");
-        
-        prompt.push_str("## Load Coding Guidelines\n\n");
-        prompt.push_str("Load the resource `coding-guidelines.md` into your working context. Follow these \n");
-        prompt.push_str("development standards and best practices in all code work.\n\n");
+        let mut prompt = indoc! {"
+            # Agent Boot Sequence
+
+            This prompt defines the agent boot sequence.
+
+            If you encounter ambiguous instructions, remember to ask questions and seek 
+            clarifications before proceeding, particularly with side-effect-ful or 
+            dangerous actions (e.g., deleting content or interacting with remote systems).
+
+            ## Load Collaboration Patterns
+
+            Load the resource `main.md` into your working context. This contains collaboration 
+            patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
+            these examples - approach our work with genuine curiosity, ask questions when 
+            something isn't clear, and trust that we'll navigate together what's worth pursuing.
+
+            ## Load Walkthrough Format
+
+            Load the resource `walkthrough-format.md` into your working context. This defines 
+            how to create interactive code walkthroughs using markdown with embedded XML 
+            elements for comments, diffs, and actions.
+
+            ## Load Coding Guidelines
+
+            Load the resource `coding-guidelines.md` into your working context. Follow these 
+            development standards and best practices in all code work.
+
+        "}.to_string();
         
         // Try to get taskspace context via existing method
         if let Ok(Some(task_description)) = self.get_taskspace_context().await {
-            prompt.push_str("## Initial Task\n\n");
-            prompt.push_str(&task_description);
+            prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
         }
         
         Ok(prompt)
