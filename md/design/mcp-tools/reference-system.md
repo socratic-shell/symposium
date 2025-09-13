@@ -10,4 +10,4 @@
 {{#include ../../../mcp-server/src/server.rs:expand_reference_tool}}
 ```
 
-**Use case**: Retrieve stored context for compact references
+**Use case**: Retrieve stored context for compact references. Also retrieves the bootup prompt ("yiasou") and the various guidance files that are embedded (e.g., "main.md").

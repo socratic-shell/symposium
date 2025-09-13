@@ -764,8 +764,8 @@ impl DialecticServer {
             return Ok(CallToolResult::success(vec![Content::text(content.to_string())]));
         }
 
-        // Special case: "yiasou" returns the same content as @yiasou stored prompt
-        if params.id == "yiasou" {
+        // Special case: "yiasou" or "hi" returns the same content as @yiasou stored prompt
+        if params.id == "yiasou" || params.id == "hi" {
             match self.assemble_yiasou_prompt().await {
                 Ok(prompt_content) => {
                     self.ipc
@@ -1257,14 +1257,24 @@ impl ServerHandler for DialecticServer {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListPromptsResult, McpError> {
-        let prompts = vec![Prompt {
-            name: "yiasou".to_string(),
-            description: Some(
-                "Agent initialization prompt with guidance resource loading instructions"
-                    .to_string(),
-            ),
-            arguments: None,
-        }];
+        let prompts = vec![
+            Prompt {
+                name: "yiasou".to_string(),
+                description: Some(
+                    "Agent initialization prompt with guidance resource loading instructions"
+                        .to_string(),
+                ),
+                arguments: None,
+            },
+            Prompt {
+                name: "hi".to_string(),
+                description: Some(
+                    "Agent initialization prompt (alias for yiasou)"
+                        .to_string(),
+                ),
+                arguments: None,
+            },
+        ];
 
         Ok(ListPromptsResult {
             prompts,
@@ -1278,7 +1288,7 @@ impl ServerHandler for DialecticServer {
         _context: RequestContext<RoleServer>,
     ) -> Result<GetPromptResult, McpError> {
         match request.name.as_str() {
-            "yiasou" => {
+            "yiasou" | "hi" => {
                 let content = self.assemble_yiasou_prompt().await?;
                 Ok(GetPromptResult {
                     description: Some(
