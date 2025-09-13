@@ -215,28 +215,28 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
      */
     private async clearWalkthrough(): Promise<void> {
         console.log('[WALKTHROUGH] Clearing walkthrough and comments');
-        
+
         // Clear any active comment threads
         if (this.commentController) {
             // Dispose all comment threads
             this.commentController.dispose();
-            
+
             // Recreate the comment controller for future use
             this.commentController = vscode.comments.createCommentController(
                 'symposium-walkthrough',
                 'Dialectic Walkthrough'
             );
-            
+
             // Set options to enable submit button
             this.commentController.options = {
                 prompt: 'Ask Socratic Shell...',
                 placeHolder: 'Type your question or comment here...'
             };
         }
-        
+
         // Clear placement memory
         this.placementMemory.clear();
-        
+
         this.bus.outputChannel.appendLine('Walkthrough cleared');
     }
 
@@ -271,7 +271,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         const thread = await this.createCommentThread(selectedLocation.path, selectedLocation, comment);
         if (thread) {
             this.commentThreads.set(comment.id, thread);
-            
+
             // Store placement state for ambiguous comments
             if (comment.locations.length > 1) {
                 this.setPlacementState(comment.id, {
@@ -279,11 +279,11 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     chosenLocation: selectedLocation,
                     wasAmbiguous: true
                 });
-                
+
                 // Update sidebar to show chosen location
                 this.updateCommentDisplay(comment.id, selectedLocation);
             }
-            
+
             await this.navigateToThread(thread);
         }
     }
@@ -302,7 +302,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 editor.selection = new vscode.Selection(position, position);
                 editor.revealRange(range);
             }
-            
+
             // Ensure comment thread is visible
             thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
         } catch (error) {
@@ -346,14 +346,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             const newThread = await this.createCommentThread(selected.location.path, selected.location, comment);
             if (newThread) {
                 this.commentThreads.set(comment.id, newThread);
-                
+
                 // Update placement state
                 this.setPlacementState(comment.id, {
                     isPlaced: true,
                     chosenLocation: selected.location,
                     wasAmbiguous: true
                 });
-                
+
                 // Update sidebar to show new chosen location
                 this.updateCommentDisplay(comment.id, selected.location);
             }
@@ -366,7 +366,9 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
     private async pickLocation(locations: any[], placeholder: string): Promise<any> {
         const locationItems = locations.map((loc: any) => ({
             label: `${loc.path}:${loc.start.line}`,
-            description: loc.content.substring(0, 80) + (loc.content.length > 80 ? '...' : ''),
+            description: loc.content ?
+                loc.content.substring(0, 80) + (loc.content.length > 80 ? '...' : '') :
+                'No content available',
             location: loc
         }));
 
@@ -429,7 +431,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     'symposium-walkthrough',
                     'Dialectic Walkthrough Comments'
                 );
-                
+
                 // Set options with custom reply command instead of text area
                 this.commentController.options = {
                     // Remove prompt and placeHolder to eliminate embedded text area
@@ -459,11 +461,11 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     range: { start: { line: startLine + 1 }, end: { line: endLine + 1 } },
                     comment: commentText
                 }))})`;
-                
+
                 const commentBody = new vscode.MarkdownString(commentWithReply);
                 commentBody.isTrusted = true; // Allow command execution
                 commentBody.supportThemeIcons = true; // Enable theme icons if needed
-                
+
                 const vscodeComment: vscode.Comment = {
                     body: commentBody,
                     mode: vscode.CommentMode.Preview,
@@ -488,9 +490,9 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
      */
     private updateCommentDisplay(commentId: string, chosenLocation: any): void {
         if (!this._view) return;
-        
+
         console.log(`[WALKTHROUGH] Updating comment display for ${commentId}:`, chosenLocation);
-        
+
         // Send update to webview
         this._view.webview.postMessage({
             type: 'updateCommentDisplay',
@@ -691,14 +693,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         this.bus.outputChannel.appendLine('[WALKTHROUGH] resolveWebviewView called');
         console.log('Current offscreenHtmlContent length:', this.offscreenHtmlContent?.length || 0);
         this.bus.outputChannel.appendLine(`[WALKTHROUGH] Current offscreenHtmlContent length: ${this.offscreenHtmlContent?.length || 0}`);
-        
+
         this._view = webviewView;
 
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri]
         };
-        
+
         // Note: retainContextWhenHidden is not available on WebviewView
         // The webview will be recreated when hidden/shown, so we rely on
         // the offscreenHtmlContent mechanism to restore content
@@ -717,7 +719,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         if (this.offscreenHtmlContent) {
             console.log('Sending offscreen HTML content');
             this.bus.outputChannel.appendLine('[WALKTHROUGH] Sending offscreen HTML content');
-            
+
             // Small delay to ensure webview is fully initialized
             setTimeout(() => {
                 console.log('Posting offscreen content to webview (delayed)');
@@ -737,6 +739,8 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
     public showWalkthroughHtml(htmlContent: string) {
         console.log('WalkthroughWebviewProvider.showWalkthroughHtml called with content length:', htmlContent.length);
         this.bus.outputChannel.appendLine(`[WALKTHROUGH] showWalkthroughHtml called with ${htmlContent.length} chars`);
+        this.bus.outputChannel.appendLine(`[WALKTHROUGH] HTML content received from MCP server:`);
+        this.bus.outputChannel.appendLine(htmlContent);
 
         // Always store the content so it persists across webview dispose/recreate cycles
         this.offscreenHtmlContent = htmlContent;
@@ -804,7 +808,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         };
 
         reply.thread.comments = [...reply.thread.comments, newComment];
-        
+
         // Ensure the thread can accept more replies
         reply.thread.canReply = true;
 
@@ -825,7 +829,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             const uri = thread.uri;
             const lineNumber = thread.range.start.line + 1; // Convert to 1-based
             const filePath = vscode.workspace.asRelativePath(uri);
-            
+
             // Use new consolidated sendToActiveTerminal method
             const referenceData = {
                 file: filePath,

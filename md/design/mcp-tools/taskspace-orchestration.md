@@ -24,6 +24,10 @@
 
 **Use case**: Update taskspace name and description based on user interaction
 
+## `delete_taskspace`
+
+**Use case**: Delete the current taskspace, removing filesystem directories, closing VSCode windows, and cleaning up git worktrees
+
 ## `log_progress`
 
 ```rust

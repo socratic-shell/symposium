@@ -105,20 +105,12 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
 
         while let Some(event) = input_events.pop_front() {
             match event {
-                Event::InlineHtml(html) => {
-                    if self.is_xml_element(&html) {
-                        self.process_inline_xml(html, &mut input_events, &mut output_events)
+                Event::Start(Tag::CodeBlock(kind)) => {
+                    if self.is_special_code_block(&kind) {
+                        self.process_code_block(kind, &mut input_events, &mut output_events)
                             .await?;
                     } else {
-                        output_events.push(Event::InlineHtml(html));
-                    }
-                }
-                Event::Start(Tag::HtmlBlock) => {
-                    if self.is_xml_block(&input_events) {
-                        self.process_xml_block(&mut input_events, &mut output_events)
-                            .await?;
-                    } else {
-                        output_events.push(Event::Start(Tag::HtmlBlock));
+                        output_events.push(Event::Start(Tag::CodeBlock(kind)));
                     }
                 }
                 _ => output_events.push(event),
@@ -128,139 +120,124 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
         Ok(output_events)
     }
 
-    /// Check if HTML content is one of our XML elements
-    fn is_xml_element(&self, html: &str) -> bool {
-        html.trim_start().starts_with("<comment")
-            || html.trim_start().starts_with("<gitdiff")
-            || html.trim_start().starts_with("<action")
-            || html.trim_start().starts_with("<mermaid")
-            || html.trim_start().starts_with("</comment")
-            || html.trim_start().starts_with("</gitdiff")
-            || html.trim_start().starts_with("</action")
-            || html.trim_start().starts_with("</mermaid")
-    }
-
-    /// Check if upcoming events contain XML block content
-    fn is_xml_block(&self, upcoming_events: &VecDeque<Event>) -> bool {
-        if let Some(Event::Html(html)) = upcoming_events.front() {
-            self.is_xml_element(html)
-        } else {
-            false
+    /// Check if code block is one of our special types (mermaid, comment, etc.)
+    fn is_special_code_block(&self, kind: &pulldown_cmark::CodeBlockKind) -> bool {
+        match kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => {
+                matches!(lang.trim(), "mermaid" | "comment" | "gitdiff" | "action")
+            }
+            _ => false,
         }
     }
 
-    /// Process inline XML elements (opening tag, content, closing tag)
-    async fn process_inline_xml<'a>(
+    /// Parse YAML-style parameters from code block content
+    /// Returns (parameters, remaining_content)
+    fn parse_yaml_parameters(&self, content: &str) -> (HashMap<String, String>, String) {
+        let mut params = HashMap::new();
+        let mut lines: VecDeque<&str> = content.lines().collect();
+        
+        // Parse YAML parameters from the beginning
+        while let Some(line) = lines.pop_front() {
+            let trimmed = line.trim();
+            
+            if trimmed.is_empty() {
+                // Empty line marks end of YAML section
+                break;
+            } else if let Some((key, value)) = trimmed.split_once(':') {
+                if key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+                    // YAML parameter line looks like `foo: ...`
+                    let key = key.trim().to_string();
+                    let value = value.trim().to_string();
+                    params.insert(key, value);
+                    continue;
+                }
+            }
+
+            // Line doesn't contain ':', this is content
+            lines.push_front(line);
+            break;
+        }
+        
+        // Collect remaining content
+        let remaining_content = lines.into_iter().collect::<Vec<_>>().join("\n");
+        
+        (params, remaining_content)
+    }
+
+    /// Process special code blocks (mermaid, comment, etc.)
+    async fn process_code_block<'a>(
         &mut self,
-        html: CowStr<'a>,
+        kind: pulldown_cmark::CodeBlockKind<'a>,
         input_events: &mut VecDeque<Event<'a>>,
         output_events: &mut Vec<Event<'a>>,
     ) -> Result<(), anyhow::Error> {
-        // If this is a self-closing tag, handle it directly
-        if html.contains("/>") {
-            let xml_content = html.to_string();
-            if let Ok(xml_element) = self.parse_xml_element(&xml_content) {
-                let resolved = self.resolve_single_element(xml_element).await?;
-                let normalized_xml = self.create_normalized_xml(&resolved);
-                output_events.push(Event::InlineHtml(normalized_xml.into()));
-            } else {
-                output_events.push(Event::InlineHtml(html));
-            }
-            return Ok(());
-        }
+        // Extract the language from the code block
+        let element_type = match &kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => lang.trim().to_string(),
+            _ => return Ok(()), // Not a fenced code block
+        };
 
-        // If this is a closing tag, pass it through (shouldn't happen in our flow)
-        if html.starts_with("</") {
-            output_events.push(Event::InlineHtml(html));
-            return Ok(());
-        }
-
-        // This is an opening tag - collect all events until closing tag
-        let mut content_events = Vec::new();
-
+        // Collect the content from the code block
+        let mut content = String::new();
         while let Some(event) = input_events.pop_front() {
             match event {
-                Event::InlineHtml(closing_html) if closing_html.starts_with("</") => {
-                    // Found closing tag - render collected content and create complete XML
-                    let mut content_html = String::new();
-                    html::push_html(&mut content_html, content_events.iter().cloned());
-
-                    // Try to parse just the opening tag to get attributes
-                    if let Ok(xml_element) =
-                        self.parse_xml_element(&format!("{}</{}>", html, &closing_html[2..]))
-                    {
-                        let resolved = self.resolve_single_element(xml_element).await?;
-
-                        // Create the resolved XML with the rendered content
-                        let mut attrs = String::new();
-                        let resolved_json =
-                            serde_json::to_string(&resolved.resolved_data).unwrap_or_default();
-                        attrs.push_str(&format!(" data-resolved='{}'", resolved_json));
-
-                        for (key, value) in &resolved.attributes {
-                            attrs.push_str(&format!(" {}=\"{}\"", key, value));
-                        }
-
-                        let tag_name = resolved.element_type;
-                        let normalized_xml =
-                            format!("<{}{}>{}{}", tag_name, attrs, content_html, closing_html);
-                        output_events.push(Event::InlineHtml(normalized_xml.into()));
-                    } else {
-                        // If parsing fails, pass through original
-                        output_events.push(Event::InlineHtml(html));
-                        output_events.extend(content_events);
-                        output_events.push(Event::InlineHtml(closing_html));
-                    }
-                    return Ok(());
+                Event::Text(text) => {
+                    content.push_str(&text);
+                }
+                Event::End(TagEnd::CodeBlock) => {
+                    break; // End of code block
                 }
                 _ => {
-                    // Collect all events between opening and closing tags
-                    content_events.push(event);
-                }
-            }
-        }
-
-        // If we get here, no closing tag was found - pass through original
-        output_events.push(Event::InlineHtml(html));
-        output_events.extend(content_events);
-        Ok(())
-    }
-
-    /// Process block-level XML elements
-    async fn process_xml_block<'a>(
-        &mut self,
-        input_events: &mut VecDeque<Event<'a>>,
-        output_events: &mut Vec<Event<'a>>,
-    ) -> Result<(), anyhow::Error> {
-        let mut xml_content = String::new();
-
-        // Collect all HTML events until End(HtmlBlock)
-        while let Some(event) = input_events.pop_front() {
-            match event {
-                Event::Html(html) => xml_content.push_str(&html),
-                Event::End(TagEnd::HtmlBlock) => break,
-                _ => {
-                    // Put back unexpected event and break
+                    // Unexpected event in code block, add it back and break
                     input_events.push_front(event);
                     break;
                 }
             }
         }
 
-        // Parse and resolve the complete XML block
-        if let Ok(xml_element) = self.parse_xml_element(&xml_content) {
-            let resolved = self.resolve_single_element(xml_element).await?;
-            let normalized_xml = self.create_normalized_xml(&resolved);
-
-            // Emit as HTML block
-            output_events.push(Event::Start(Tag::HtmlBlock));
-            output_events.push(Event::Html(normalized_xml.into()));
-            output_events.push(Event::End(TagEnd::HtmlBlock));
+        // Parse YAML parameters from content (except for mermaid)
+        let (params, remaining_content) = if element_type == "mermaid" {
+            (HashMap::new(), content)
         } else {
-            // If parsing fails, pass through original
-            output_events.push(Event::Start(Tag::HtmlBlock));
-            output_events.push(Event::Html(xml_content.into()));
-            output_events.push(Event::End(TagEnd::HtmlBlock));
+            self.parse_yaml_parameters(&content)
+        };
+
+        // Create the appropriate XML element
+        match element_type.as_str() {
+            "mermaid" => {
+                let xml_element = XmlElement::Mermaid { content: remaining_content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_mermaid_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "comment" => {
+                let location = params.get("location").cloned().unwrap_or_default();
+                let icon = params.get("icon").cloned();
+                let xml_element = XmlElement::Comment { location, icon, content: remaining_content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_comment_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "gitdiff" => {
+                let range = params.get("range").cloned().unwrap_or_default();
+                let exclude_unstaged = params.get("exclude-unstaged").is_some() || params.get("exclude_unstaged").is_some();
+                let exclude_staged = params.get("exclude-staged").is_some() || params.get("exclude_staged").is_some();
+                let xml_element = XmlElement::GitDiff { range, exclude_unstaged, exclude_staged };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_gitdiff_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            "action" => {
+                let button = params.get("button").cloned().unwrap_or("Action".to_string());
+                let xml_element = XmlElement::Action { button, message: remaining_content };
+                let resolved = self.resolve_single_element(xml_element).await?;
+                let html = self.create_action_html(&resolved);
+                output_events.push(Event::InlineHtml(html.into()));
+            }
+            _ => {
+                // Unknown element type, shouldn't happen
+                return Ok(());
+            }
         }
 
         Ok(())
@@ -470,7 +447,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 button: attributes.get("button").unwrap_or(&String::new()).clone(),
                 message: content,
             }),
-            "mermaid" => Ok(XmlElement::Mermaid { content }),
             _ => Err(anyhow::anyhow!("Unknown XML element: {}", element_name)),
         }
     }
@@ -481,7 +457,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             "comment" => self.create_comment_html(resolved),
             "action" => self.create_action_html(resolved),
             "gitdiff" => self.create_gitdiff_html(resolved),
-            "mermaid" => self.create_mermaid_html(resolved),
             _ => {
                 // Fallback to original XML format for unknown types
                 let mut attrs = String::new();
@@ -713,17 +688,35 @@ mod tests {
     #[test]
     fn test_simple_comment_resolution() {
         check(
-            r#"<comment location="findDefinitions(`User`)">User struct</comment>"#,
+            r#"
+```comment
+location: findDefinitions(`User`)
+
+User struct
+```
+"#,
             expect![[r#"
-                <p><comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>User struct</comment></p>
-            "#]],
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">User struct</div>
+                                    </div>
+                                </div>
+                            </div>"#]],
         );
     }
 
     #[test]
     fn test_self_closing_gitdiff() {
         check(
-            r#"<gitdiff range="HEAD~1..HEAD" />"#,
+            r#"
+```gitdiff
+range: HEAD~1..HEAD
+```
+"#,
             expect![[r#"
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
@@ -736,7 +729,7 @@ mod tests {
         check(
             r#"<action button="Next Step">What should we do next?</action>"#,
             expect![[r#"
-                <p><action data-resolved='{"button_text":"Next Step"}' button="Next Step">What should we do next?</action></p>
+                <p><action button="Next Step">What should we do next?</action></p>
             "#]],
         );
     }
@@ -748,15 +741,25 @@ mod tests {
 
 This is some markdown content.
 
-<comment location="findDefinitions(`User`)" icon="lightbulb">
+```comment
+location: findDefinitions(`User`)
+icon: lightbulb
+
 This explains the User struct
-</comment>
+```
 
 More markdown here.
 
-<gitdiff range="HEAD~1..HEAD" />
+```gitdiff
+range: HEAD~1..HEAD
+```
 
-<action button="Next Step">What should we do next?</action>"#,
+```action
+button: Next Step
+
+What should we do next?
+```
+"#,
             expect![[r#"
                 <h1>My Walkthrough</h1>
                 <p>This is some markdown content.</p>
@@ -773,9 +776,7 @@ More markdown here.
                 <p>More markdown here.</p>
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~1..HEAD</div>
-                            </div>
-                <p><action data-resolved='{"button_text":"Next Step"}' button="Next Step">What should we do next?</action></p>
-            "#]],
+                            </div><button class="action-button" data-tell-agent="What should we do next?" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Next Step</button>"#]],
         );
     }
 
@@ -784,19 +785,34 @@ More markdown here.
         check(
             r#"# Title
 Some text before
-<comment location="findDefinitions(`User`)">User comment</comment>
+```comment
+location: findDefinitions(`User`)
+
+User comment
+```
 Some text after
-<gitdiff range="HEAD" />
+```gitdiff
+range:HEAD
+```
 More text"#,
             expect![[r#"
                 <h1>Title</h1>
-                <p>Some text before
-                <comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>User comment</comment>
-                Some text after
+                <p>Some text before</p>
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;User comment&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">User comment</div>
+                                    </div>
+                                </div>
+                            </div>
+                <p>Some text after</p>
                 <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
                                 <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD</div>
                             </div>
-                More text</p>
+                <p>More text</p>
             "#]],
         );
     }
@@ -804,84 +820,449 @@ More text"#,
     #[test]
     fn test_markdown_inside_xml_elements() {
         check(
-            r#"<comment location="findDefinitions(`User`)">This has *emphasis* and **bold** text</comment>"#,
+            r#"
+```comment
+location:findDefinitions(`User`)
+
+This has *emphasis* and **bold** text
+```"#,
             expect![[r#"
-                <p><comment data-resolved='{"dialect_expression":"findDefinitions(`User`)","locations":[{"definedAt":{"content":"struct User {","end":{"column":4,"line":10},"path":"src/models.rs","start":{"column":0,"line":10}},"kind":"struct","name":"User"}]}'>This has <em>emphasis</em> and <strong>bold</strong> text</comment></p>
-            "#]],
+                <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This has *emphasis* and **bold** text&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                    <div class="comment-content" style="flex: 1;">
+                                        <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">findDefinitions(`User`)</div>
+                                        <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                        <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This has *emphasis* and **bold** text</div>
+                                    </div>
+                                </div>
+                            </div>"#]],
         );
     }
+
     #[test]
-    fn test_parse_comment_element() {
+    fn test_parse_yaml_parameters() {
         let parser = create_test_parser();
-        let xml = r#"<comment location="findDefinitions(`User`)" icon="lightbulb">This is a comment</comment>"#;
-
-        let element = parser.parse_xml_element(xml).unwrap();
-
-        match element {
-            XmlElement::Comment {
-                location,
-                icon,
-                content,
-            } => {
-                assert_eq!(location, "findDefinitions(`User`)");
-                assert_eq!(icon, Some("lightbulb".to_string()));
-                assert_eq!(content, "This is a comment");
-            }
-            _ => panic!("Expected Comment element"),
-        }
+        
+        // Test simple parameters
+        let content = "location: findDefinition(`test`)\nicon: lightbulb\n\nThis is the content";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert_eq!(params.get("location").unwrap(), "findDefinition(`test`)");
+        assert_eq!(params.get("icon").unwrap(), "lightbulb");
+        assert_eq!(remaining, "This is the content");
+        
+        // Test boolean flags
+        let content = "range: HEAD~2\nexclude_unstaged: true\nexclude_staged: true\n";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert_eq!(params.get("range").unwrap(), "HEAD~2");
+        assert_eq!(params.get("exclude_unstaged").unwrap(), "true");
+        assert_eq!(params.get("exclude_staged").unwrap(), "true");
+        assert_eq!(remaining, "");
+        
+        // Test content only (no parameters)
+        let content = "This is just content\nwith multiple lines";
+        let (params, remaining) = parser.parse_yaml_parameters(content);
+        assert!(params.is_empty());
+        assert_eq!(remaining, "This is just content\nwith multiple lines");
     }
 
-    #[test]
-    fn test_parse_self_closing_gitdiff() {
-        let parser = create_test_parser();
-        let xml = r#"<gitdiff range="HEAD~2..HEAD" exclude-unstaged="true" />"#;
+    #[tokio::test]
+    async fn test_parse_mermaid_code_block() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
 
-        let element = parser.parse_xml_element(xml).unwrap();
+Here's a mermaid diagram:
 
-        match element {
-            XmlElement::GitDiff {
-                range,
-                exclude_unstaged,
-                exclude_staged,
-            } => {
-                assert_eq!(range, "HEAD~2..HEAD");
-                assert!(exclude_unstaged);
-                assert!(!exclude_staged);
-            }
-            _ => panic!("Expected GitDiff element"),
-        }
+```mermaid
+flowchart TD
+    A[Start] --> B[End]
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the mermaid HTML element
+        assert!(result.contains("<mermaid>"));
+        assert!(result.contains("flowchart TD"));
+        assert!(result.contains("A[Start] --> B[End]"));
+        assert!(result.contains("</mermaid>"));
     }
 
-    #[test]
-    fn test_parse_action_element() {
-        let parser = create_test_parser();
-        let xml = r#"<action button="Test the changes">Run the test suite</action>"#;
+    #[tokio::test]
+    async fn test_parse_comment_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
 
-        let element = parser.parse_xml_element(xml).unwrap();
+Here's a comment:
 
-        match element {
-            XmlElement::Action { button, message } => {
-                assert_eq!(button, "Test the changes");
-                assert_eq!(message, "Run the test suite");
-            }
-            _ => panic!("Expected Action element"),
-        }
+```comment
+location: findDefinition(`foo`)
+icon: lightbulb
+
+This explains the foo function
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        assert!(result.contains("data-comment=\""));
+        assert!(result.contains("This explains the foo function"));
+        assert!(result.contains("💡")); // lightbulb icon
+
+        expect_test::expect![[r#"
+            <h1>Test Walkthrough</h1>
+            <p>Here's a comment:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the foo function&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`foo`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the foo function</div>
+                                </div>
+                            </div>
+                        </div>
+            <p>More content here.</p>
+        "#]].assert_eq(&result);
     }
 
-    #[test]
-    fn test_parse_mermaid_element() {
-        let parser = create_test_parser();
-        let xml = r#"<mermaid>flowchart TD
-    A[Start] --> B[End]</mermaid>"#;
+    #[tokio::test]
+    async fn test_parse_gitdiff_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
 
-        let element = parser.parse_xml_element(xml).unwrap();
+Here's a git diff:
 
-        match element {
-            XmlElement::Mermaid { content } => {
-                assert!(content.contains("flowchart TD"));
-                assert!(content.contains("A[Start] --> B[End]"));
-            }
-            _ => panic!("Expected Mermaid element"),
-        }
+```gitdiff
+range: HEAD~2..HEAD
+exclude_unstaged: true
+exclude_staged: true
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the gitdiff HTML element
+        assert!(result.contains("gitdiff-container"));
+        assert!(result.contains("HEAD~2..HEAD"));
+        assert!(result.contains("GitDiff rendering"));
+    }
+
+    #[tokio::test]
+    async fn test_parse_action_code_block_yaml() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Test Walkthrough
+
+Here's an action:
+
+```action
+button: Run Tests
+
+Should we run the test suite now?
+```
+
+More content here."#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the action HTML element
+        assert!(result.contains("action-button"));
+        assert!(result.contains("Run Tests"));
+        assert!(result.contains("Should we run the test suite now?"));
+    }
+
+    #[tokio::test]
+    async fn test_walkthrough_from_2025_09_12() {
+        let mut parser = create_test_parser();
+        let markdown = r#"# Testing Triple-Tickification After Restart
+
+Let's test if the new code block syntax is working now!
+
+## Mermaid Test
+```mermaid
+flowchart LR
+    A[Old XML] --> B[Triple-Tickification]
+    B --> C[New Code Blocks]
+    C --> D[Success!]
+```
+
+## Comment Test
+```comment
+location: findDefinition(`WalkthroughParser`)
+icon: rocket
+
+This should now render as a proper comment box instead of raw markdown!
+The parser should recognize this as a special code block and convert it to HTML.
+```
+
+## GitDiff Test
+```gitdiff
+range:"HEAD~3..HEAD"
+
+```
+
+## Action Test
+```action
+button: It's working!
+
+Click this if you see a proper button instead of raw markdown text.
+```
+
+If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉"#;
+
+        let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        expect_test::expect![[r#"
+            <h1>Testing Triple-Tickification After Restart</h1>
+            <p>Let's test if the new code block syntax is working now!</p>
+            <h2>Mermaid Test</h2>
+            <mermaid>flowchart LR
+                A[Old XML] --> B[Triple-Tickification]
+                B --> C[New Code Blocks]
+                C --> D[Success!]
+            </mermaid>
+            <h2>Comment Test</h2>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This should now render as a proper comment box instead of raw markdown!\nThe parser should recognize this as a special code block and convert it to HTML.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`WalkthroughParser`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This should now render as a proper comment box instead of raw markdown!
+            The parser should recognize this as a special code block and convert it to HTML.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>GitDiff Test</h2>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: "HEAD~3..HEAD"</div>
+                        </div>
+            <h2>Action Test</h2>
+            <button class="action-button" data-tell-agent="Click this if you see a proper button instead of raw markdown text." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">It's working!</button>
+            <p>If you see rendered elements (diagram, comment box, diff container, button) instead of raw ````code blocks`, then triple-tickification is working! 🎉</p>
+        "#]].assert_eq(&result);
+    }
+
+    #[tokio::test]
+    async fn test_walkthrough_from_2025_09_12_2() {
+        let mut parser = create_test_parser();
+
+        let markdown = r#"# Triple-Tickification: Complete Implementation Walkthrough
+
+We've successfully implemented the complete transition from XML syntax to markdown code blocks! Let's walk through all the key components.
+
+## Architecture Overview
+
+The new YAML-style parsing architecture handles all four element types:
+
+```mermaid
+flowchart TD
+    A[Markdown Input] --> B{Code Block?}
+    B -->|Regular| C[Standard Markdown]
+    B -->|Special| D[Parse Language ID]
+    D --> E{Known Element?}
+    E -->|mermaid| F[Direct Content]
+    E -->|comment/gitdiff/action| G[Parse YAML Parameters]
+    F --> H[Create XML Element]
+    G --> H
+    H --> I[Resolve & Generate HTML]
+    C --> J[Final HTML Output]
+    I --> J
+```
+
+## Core Implementation: YAML Parameter Parser
+
+The heart of the new system parses YAML-style parameters cleanly:
+
+```comment
+location: findDefinition(`parse_yaml_parameters`)
+icon: gear
+
+This function separates YAML parameters from content by processing lines sequentially.
+It stops at the first empty line or non-YAML line, ensuring clean parameter extraction.
+The key fix was replacing the flawed logic that mixed parameters with content.
+```
+
+## Element Processing Pipeline
+
+Each code block type gets processed through a unified pipeline:
+
+```comment
+location: findDefinition(`process_code_block`)
+icon: arrow-right
+
+The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)
+with a unified approach. YAML parameters are extracted first, then the appropriate
+XML element is created and resolved through the existing HTML generation system.
+```
+
+## New Syntax Examples
+
+Here are examples of all four element types in the new YAML-style format:
+
+```comment
+location: search(`guidance.md`, `comment`)
+icon: lightbulb
+```
+
+Comments now use clean YAML parameters:
+
+```comment
+location: findDefinition(`User`)
+icon: rocket
+
+This explains the User struct
+```
+
+GitDiff elements support boolean flags:
+```gitdiff
+range: HEAD~3..HEAD
+exclude_unstaged: true
+exclude_staged: true
+```
+
+Actions have simple button parameters:
+```action
+button: Run Tests
+
+Should we execute the test suite now?
+```
+
+## What We Accomplished
+
+Here's the complete diff of our changes:
+
+```gitdiff
+range: HEAD~15..HEAD
+```
+
+## Key Benefits Achieved
+
+```action
+button: Better Markdown Compatibility
+
+The simple language identifiers (comment, gitdiff, action, mermaid) work perfectly 
+with standard markdown parsers, fixing the compatibility issues we had with 
+complex function-call syntax.
+```
+
+```action
+button: Cleaner Syntax
+
+YAML-style parameters are much more readable and maintainable than the old 
+function-call syntax with complex escaping.
+```
+
+```action
+button: Unified Implementation
+
+All elements now use the same YAML parameter parsing approach, making the 
+codebase more consistent and easier to extend.
+```
+
+## Testing the Implementation
+
+The new system passes all core functionality tests and works seamlessly with the VSCode extension. The HTML output remains identical, so no changes were needed to the frontend!
+
+🎉 **Triple-tickification is complete and working!**"#;
+
+ let result = parser.parse_and_normalize(markdown).await.unwrap();
+        
+        // Should contain the comment HTML element
+        expect_test::expect![[r#"
+            <h1>Triple-Tickification: Complete Implementation Walkthrough</h1>
+            <p>We've successfully implemented the complete transition from XML syntax to markdown code blocks! Let's walk through all the key components.</p>
+            <h2>Architecture Overview</h2>
+            <p>The new YAML-style parsing architecture handles all four element types:</p>
+            <mermaid>flowchart TD
+                A[Markdown Input] --> B{Code Block?}
+                B -->|Regular| C[Standard Markdown]
+                B -->|Special| D[Parse Language ID]
+                D --> E{Known Element?}
+                E -->|mermaid| F[Direct Content]
+                E -->|comment/gitdiff/action| G[Parse YAML Parameters]
+                F --> H[Create XML Element]
+                G --> H
+                H --> I[Resolve & Generate HTML]
+                C --> J[Final HTML Output]
+                I --> J
+            </mermaid>
+            <h2>Core Implementation: YAML Parameter Parser</h2>
+            <p>The heart of the new system parses YAML-style parameters cleanly:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This function separates YAML parameters from content by processing lines sequentially.\nIt stops at the first empty line or non-YAML line, ensuring clean parameter extraction.\nThe key fix was replacing the flawed logic that mixed parameters with content.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">⚙️</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`parse_yaml_parameters`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This function separates YAML parameters from content by processing lines sequentially.
+            It stops at the first empty line or non-YAML line, ensuring clean parameter extraction.
+            The key fix was replacing the flawed logic that mixed parameters with content.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>Element Processing Pipeline</h2>
+            <p>Each code block type gets processed through a unified pipeline:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)\nwith a unified approach. YAML parameters are extracted first, then the appropriate\nXML element is created and resolved through the existing HTML generation system.&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`process_code_block`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">The processing pipeline handles all four element types (mermaid, comment, gitdiff, action)
+            with a unified approach. YAML parameters are extracted first, then the appropriate
+            XML element is created and resolved through the existing HTML generation system.</div>
+                                </div>
+                            </div>
+                        </div>
+            <h2>New Syntax Examples</h2>
+            <p>Here are examples of all four element types in the new YAML-style format:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💡</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">/comment/</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">no location</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;"></div>
+                                </div>
+                            </div>
+                        </div>
+            <p>Comments now use clean YAML parameters:</p>
+            <div class="comment-item" data-comment="{&quot;comment&quot;:[&quot;This explains the User struct&quot;],&quot;id&quot;:&quot;comment-test-uuid&quot;,&quot;locations&quot;:[{&quot;content&quot;:&quot;struct User {&quot;,&quot;end&quot;:{&quot;column&quot;:4,&quot;line&quot;:10},&quot;path&quot;:&quot;src/models.rs&quot;,&quot;start&quot;:{&quot;column&quot;:0,&quot;line&quot;:10}}]}" style="cursor: pointer; border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 8px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="comment-icon" style="margin-right: 8px; font-size: 16px;">💬</div>
+                                <div class="comment-content" style="flex: 1;">
+                                    <div class="comment-expression" style="display: block; color: var(--vscode-textLink-foreground); font-family: var(--vscode-editor-font-family); font-size: 1.0em; font-weight: 500; margin-bottom: 6px; text-decoration: underline;">`User`</div>
+                                    <div class="comment-locations" style="font-weight: 500; color: var(--vscode-textLink-foreground); margin-bottom: 4px; font-family: var(--vscode-editor-font-family); font-size: 0.9em;">src/models.rs:10</div>
+                                    <div class="comment-text" style="color: var(--vscode-foreground); font-size: 0.9em;">This explains the User struct</div>
+                                </div>
+                            </div>
+                        </div>
+            <p>GitDiff elements support boolean flags:</p>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~3..HEAD</div>
+                        </div>
+            <p>Actions have simple button parameters:</p>
+            <button class="action-button" data-tell-agent="Should we execute the test suite now?" style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Run Tests</button>
+            <h2>What We Accomplished</h2>
+            <p>Here's the complete diff of our changes:</p>
+            <div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); border-radius: 4px; margin: 8px 0; background-color: var(--vscode-editor-background);">
+                            <div style="padding: 12px; color: var(--vscode-descriptionForeground);">GitDiff rendering: HEAD~15..HEAD</div>
+                        </div>
+            <h2>Key Benefits Achieved</h2>
+            <button class="action-button" data-tell-agent="The simple language identifiers (comment, gitdiff, action, mermaid) work perfectly 
+            with standard markdown parsers, fixing the compatibility issues we had with 
+            complex function-call syntax." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Better Markdown Compatibility</button><button class="action-button" data-tell-agent="YAML-style parameters are much more readable and maintainable than the old 
+            function-call syntax with complex escaping." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Cleaner Syntax</button><button class="action-button" data-tell-agent="All elements now use the same YAML parameter parsing approach, making the 
+            codebase more consistent and easier to extend." style="background-color: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 8px 0; font-size: 0.9em;">Unified Implementation</button>
+            <h2>Testing the Implementation</h2>
+            <p>The new system passes all core functionality tests and works seamlessly with the VSCode extension. The HTML output remains identical, so no changes were needed to the frontend!</p>
+            <p>🎉 <strong>Triple-tickification is complete and working!</strong></p>
+        "#]].assert_eq(&result);
     }
 }

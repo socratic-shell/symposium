@@ -370,7 +370,6 @@ struct TaskspaceCard: View {
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
     @State private var deleteBranch = false
-    @State private var branchName = ""
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
@@ -566,7 +565,8 @@ struct TaskspaceCard: View {
         .sheet(isPresented: $showingDeleteConfirmation) {
             DeleteTaskspaceDialog(
                 taskspaceName: taskspace.name,
-                branchName: branchName,
+                taskspace: taskspace,
+                projectManager: projectManager,
                 deleteBranch: $deleteBranch,
                 onConfirm: {
                     do {
@@ -581,8 +581,16 @@ struct TaskspaceCard: View {
                 }
             )
         }
-        .onAppear {
-            branchName = projectManager.getBranchName(for: taskspace)
+        .onChange(of: taskspace.pendingDeletion) { pending in
+            if pending {
+                showingDeleteConfirmation = true
+                // Clear the flag after showing dialog
+                if var updatedProject = projectManager.currentProject,
+                   let taskspaceIndex = updatedProject.taskspaces.firstIndex(where: { $0.id == taskspace.id }) {
+                    updatedProject.taskspaces[taskspaceIndex].pendingDeletion = false
+                    projectManager.currentProject = updatedProject
+                }
+            }
         }
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -593,10 +601,15 @@ struct TaskspaceCard: View {
 
 struct DeleteTaskspaceDialog: View {
     let taskspaceName: String
-    let branchName: String
+    let taskspace: Taskspace
+    let projectManager: ProjectManager
     @Binding var deleteBranch: Bool
     let onConfirm: () -> Void
     let onCancel: () -> Void
+    
+    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
+        projectManager.getTaskspaceBranchInfo(for: taskspace)
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -606,10 +619,59 @@ struct DeleteTaskspaceDialog: View {
             Text("Are you sure you want to delete '\(taskspaceName)'? This will permanently remove all files and cannot be undone.")
                 .multilineTextAlignment(.center)
             
-            if !branchName.isEmpty {
-                HStack {
-                    Toggle("Also delete the branch `\(branchName)` from git", isOn: $deleteBranch)
-                    Spacer()
+            if !branchInfo.branchName.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Toggle("Also delete the branch `\(branchInfo.branchName)` from git", isOn: $deleteBranch)
+                        Spacer()
+                    }
+                    
+                    if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if branchInfo.unmergedCommits > 0 {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("\(branchInfo.unmergedCommits) commit\(branchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch.")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.leading, 20)
+                            }
+                            
+                            if branchInfo.hasUncommittedChanges {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("This taskspace contains uncommitted changes.")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                                .padding(.leading, 20)
+                            }
+                            
+                            if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Are you sure you want to delete the taskspace?")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                        .fontWeight(.medium)
+                                }
+                                .padding(.leading, 20)
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("This branch is safe to delete (no unmerged commits or uncommitted changes)")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                        .padding(.leading, 20)
+                    }
                 }
             }
             
@@ -627,6 +689,10 @@ struct DeleteTaskspaceDialog: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return)
             }
+        }
+        .onAppear {
+            // Set default deleteBranch value when dialog appears
+            deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUncommittedChanges)
         }
         .padding()
         .frame(width: 400)

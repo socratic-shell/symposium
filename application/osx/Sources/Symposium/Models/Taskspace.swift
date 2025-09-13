@@ -13,6 +13,9 @@ struct Taskspace: Codable, Identifiable {
     /// Timestamp of last screenshot capture (not persisted, transient UI state)
     var lastScreenshotAt: Date?
     
+    /// Flag to trigger deletion confirmation dialog (not persisted, transient UI state)
+    var pendingDeletion: Bool = false
+    
     private enum CodingKeys: String, CodingKey {
         case id, name, description, state, logs, vscodeWindowID, createdAt
     }

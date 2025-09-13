@@ -290,15 +290,19 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         defer { isLoading = false }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
 
         // Get current branch name before removing worktree
-        let branchName = try getCurrentBranch(in: taskspaceDir)
+        let branchName = getTaskspaceBranch(for: taskspaceDir)
 
         // Remove git worktree (this also removes the directory)
         let worktreeProcess = Process()
         worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        worktreeProcess.arguments = ["worktree", "remove", taskspaceDir, "--force"]
+        worktreeProcess.arguments = ["worktree", "remove", worktreeDir, "--force"]
         worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+
+        Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
 
         try worktreeProcess.run()
         worktreeProcess.waitUntilExit()
@@ -308,6 +312,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                 "Warning: Failed to remove git worktree, falling back to directory removal")
             // Fallback: remove directory if worktree removal failed
             try FileManager.default.removeItem(atPath: taskspaceDir)
+        } else {
+            Logger.shared.log("Successfully removed git worktree: \(worktreeDir)")
         }
 
         // Optionally delete the branch
@@ -343,12 +349,107 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
-        do {
-            return try getCurrentBranch(in: taskspaceDir)
-        } catch {
-            Logger.shared.log("Failed to get branch name for taskspace \(taskspace.name): \(error)")
+        return getTaskspaceBranch(for: taskspaceDir)
+    }
+
+    private func getTaskspaceBranch(for taskspaceDir: String) -> String {
+        guard let project = currentProject else {
             return ""
         }
+        
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        
+        do {
+            return try getCurrentBranch(in: worktreeDir)
+        } catch {
+            Logger.shared.log("Failed to get branch name for taskspace dir \(taskspaceDir): \(error)")
+            return ""
+        }
+    }
+
+    func getTaskspaceBranchInfo(for taskspace: Taskspace) -> (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
+        guard let project = currentProject else {
+            return ("", false, 0, false)
+        }
+
+        let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
+        let branchName = getTaskspaceBranch(for: taskspaceDir)
+        
+        if branchName.isEmpty {
+            return ("", false, 0, false)
+        }
+
+        let repoName = extractRepoName(from: project.gitURL)
+        let worktreeDir = "\(taskspaceDir)/\(repoName)"
+        
+        do {
+            let baseBranch = try getBaseBranch(for: project)
+            let isMerged = try isBranchMerged(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            let unmergedCommits = try getUnmergedCommitCount(branchName: branchName, baseBranch: baseBranch, in: worktreeDir)
+            let hasUncommittedChanges = try hasUncommittedChanges(in: worktreeDir)
+            
+            return (branchName, isMerged, unmergedCommits, hasUncommittedChanges)
+        } catch {
+            Logger.shared.log("Failed to get branch info for taskspace \(taskspace.name): \(error)")
+            return (branchName, false, 0, false)
+        }
+    }
+
+    private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["merge-base", "--is-ancestor", branchName, baseBranch]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        try process.run()
+        process.waitUntilExit()
+
+        return process.terminationStatus == 0
+    }
+
+    private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", baseBranch]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            return 0
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "0"
+        return Int(output) ?? 0
+    }
+    
+    private func hasUncommittedChanges(in directory: String) throws -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["status", "--porcelain"]
+        process.currentDirectoryURL = URL(fileURLWithPath: directory)
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            return false
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return !output.isEmpty
     }
 
     private func getCurrentBranch(in directory: String) throws -> String {
@@ -1352,6 +1453,83 @@ extension ProjectManager {
         }
     }
 
+    func handleUpdateTaskspace(_ payload: UpdateTaskspacePayload, messageId: String) async
+        -> MessageHandlingResult<EmptyResponse>
+    {
+        guard let project = currentProject else {
+            return .notForMe
+        }
+
+        // Find the taskspace by UUID
+        guard
+            let taskspaceIndex = project.taskspaces.firstIndex(where: {
+                $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased()
+            })
+        else {
+            Logger.shared.log(
+                "ProjectManager: Taskspace not found for UUID: \(payload.taskspaceUuid)")
+            return .notForMe
+        }
+
+        var updatedProject = project
+        updatedProject.taskspaces[taskspaceIndex].name = payload.name
+        updatedProject.taskspaces[taskspaceIndex].description = payload.description
+
+        // Transition from Hatchling state if needed
+        if case .hatchling = updatedProject.taskspaces[taskspaceIndex].state {
+            updatedProject.taskspaces[taskspaceIndex].state = .resume
+        }
+
+        do {
+            // Save updated taskspace to disk
+            try updatedProject.taskspaces[taskspaceIndex].save(in: project.directoryPath)
+
+            // Update UI
+            DispatchQueue.main.async {
+                self.currentProject = updatedProject
+                Logger.shared.log(
+                    "ProjectManager[\(self.instanceId)]: Updated taskspace: \(payload.name)")
+            }
+
+            return .handled(EmptyResponse())
+
+        } catch {
+            Logger.shared.log(
+                "ProjectManager[\(instanceId)]: Failed to save taskspace update: \(error)")
+            return .notForMe
+        }
+    }
+
+    func handleDeleteTaskspace(_ payload: DeleteTaskspacePayload, messageId: String) async
+        -> MessageHandlingResult<EmptyResponse>
+    {
+        guard let project = currentProject else {
+            return .notForMe
+        }
+
+        // Find the taskspace by UUID
+        guard
+            let taskspaceIndex = project.taskspaces.firstIndex(where: {
+                $0.id.uuidString.lowercased() == payload.taskspaceUuid.lowercased()
+            })
+        else {
+            Logger.shared.log(
+                "ProjectManager: Taskspace not found for UUID: \(payload.taskspaceUuid)")
+            return .notForMe
+        }
+
+        // Set the pendingDeletion flag to trigger UI confirmation dialog
+        var updatedProject = project
+        updatedProject.taskspaces[taskspaceIndex].pendingDeletion = true
+        
+        DispatchQueue.main.async {
+            self.currentProject = updatedProject
+            Logger.shared.log(
+                "ProjectManager[\(self.instanceId)]: Triggered deletion dialog for taskspace: \(updatedProject.taskspaces[taskspaceIndex].name)")
+        }
+        
+        return .handled(EmptyResponse())
+    }
     /// Check if VSCode 'code' command is available and return its path
     private func getCodeCommandPath() -> String? {
         let process = Process()

@@ -56,6 +56,7 @@ Define message types for daemon communication:
 - ✅ `SpawnTaskspacePayload { project_path, taskspace_uuid, name, task_description, initial_prompt }`
 - ✅ `LogProgressPayload { project_path, taskspace_uuid, message, category }`
 - ✅ `SignalUserPayload { project_path, taskspace_uuid, message }`
+- ✅ `DeleteTaskspacePayload { project_path, taskspace_uuid }`
 
 **Implementation completed**:
 - ✅ Added comprehensive integration tests

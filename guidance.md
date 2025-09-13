@@ -1,26 +1,58 @@
-# AI Assistant Guidelines for Dialectic
+# AI Assistant Guidelines for Socratic Shell walkthroughs
 
-Dialectic offers tools to aid you in developing and discussing code with the user.
+The `present_walkthrough` tool for the Socratic Shell MCP server expects markdown augmented with special code blocks and links that let you interact more easily with the user.
 
 ## Quick Reference
 
-**Core XML Elements:**
-- `<comment location="EXPR" icon="ICON">content</comment>` - Code comments
-- `<gitdiff range="COMMIT_RANGE" />` - Show code changes
-- `<action button="TEXT">message</action>` - Interactive buttons
-- `<mermaid>diagram</mermaid>` - Architecture diagrams
+### Notable tools
 
-**Common expressions:**
+There are other tools that can be more effective 
+- `ide_operation` for code navigation and search; this is preferred to using bash commands like grep and awk
+- `present_walkthrough` for creating interactive code tours; useful for explaining the flow of code or for presenting code that you wrote to the user for them to review.
+
+### Special code blocks for `present_walkthrough`
+
+The `present_walkthrough` tool expects markdown annotated with special codeblocks.
+
+You can write a mermaid block to show flowcharts, sequence diagrams, and so forth:
+
+````markdown
+```mermaid
+flowchart TD
+    ...
+```
+````
+
+You can add comments onto particular code by using the "comment" blocks. The "EXPR" and "ICON" formats are defined later. These comments are rendered inline in the editor and users have the option to reply to them.
+
+````markdown
+```comment(location="EXPR", icon="ICON")
+```
+````
+
+You can include git history with "gitdiff" blocks:
+
+````markdown
+```gitdiff(range="COMMIT_RANGE")
+```
+````
+
+You can include actions with "action" blocks. These render as a button with text that will be sent to you if the user clicks it:
+
+````markdown
+```action(button="TEXT")
+```
+````
+
+### Expressions
+
+The `ide_operation` tool as well as comment location expressions accept expressions like the following:
+
 - `findDefinition("symbol")` - Find where symbol is defined
 - `findReferences("symbol")` - Find all uses of symbol
 - `search("file.rs", "pattern")` - Search file for regex pattern
 - `search("dir", "pattern", ".rs")` - Search directory for pattern in .rs files
 - `lines("file.rs", 10, 20)` - Select specific line range (use sparingly)
-
-**Tool Selection:**
-- `ide_operation` for code navigation and search
-- `fs_read` for reading file contents
-- `present_walkthrough` for creating interactive code tours
 
 # Socratic Shell references
 
@@ -42,15 +74,6 @@ You SHOULD leverage the `ide_operation` tool to navigate the code rather than us
 - Searching for patterns in code
 - Navigating code structure
 
-**Use `fs_read` when:**
-- Reading file contents for analysis
-- Examining configuration files
-- Reviewing documentation
-
-**Use both together for:**
-- Complex code analysis (find locations with `ide_operation`, then read content with `fs_read`)
-- Comprehensive code reviews (search for patterns, then examine specific files)
-
 <!-- ANCHOR: walkthrough_format -->
 # Walkthrough Format Specification
 
@@ -60,7 +83,7 @@ You SHOULD leverage the `ide_operation` tool to navigate the code rather than us
 
 Here's a complete walkthrough showing the authentication system changes:
 
-```markdown
+````markdown
 # Authentication System Updates
 
 We've refactored the token validation system to improve performance and security.
@@ -69,7 +92,7 @@ We've refactored the token validation system to improve performance and security
 
 The new validation architecture works as follows:
 
-<mermaid>
+```mermaid
 flowchart TD
     A[Client Request] --> B{Token Valid?}
     B -->|Check Expiration First| C[Validate Expiration]
@@ -77,56 +100,55 @@ flowchart TD
     C -->|Valid| E[Validate Signature]
     E -->|Invalid| D
     E -->|Valid| F[Process Request]
-</mermaid>
+```
 
 ## Key Changes
 
 The main improvement is in how we handle token expiration:
 
-<comment location="findDefinition(`validateToken`)" icon="lightbulb">
+```comment(location="findDefinition(`validateToken`)", icon="lightbulb")
 This function now checks expiration before signature validation. This avoids expensive 
 cryptographic operations on tokens that are already expired.
-</comment>
+```
 
 We also updated the login flow to use shorter-lived tokens by default:
 
-<comment location="search(`src/auth.rs`, `async fn login`)">
+```comment(location="search(`src/auth.rs`, `async fn login`)")
 The default token lifetime is now 1 hour instead of 24 hours. Users can still 
 request longer-lived tokens through the `remember_me` parameter.
-</comment>
+```
 
 ## What Changed
 
 Here are all the files that were modified:
 
-<gitdiff range="HEAD~2..HEAD" />
+```gitdiff(range="HEAD~2..HEAD")
+```
 
 ## Next Steps
 
-<action button="Test the changes">
+```action(button="Test the changes")
 Run the authentication test suite to verify the changes work correctly.
-</action>
-
-<action button="Update documentation">
-The API documentation needs to reflect the new default token lifetime.
-</action>
 ```
 
-This walkthrough combines regular markdown with specialized XML elements: `<mermaid>`, `<comment>`, `<gitdiff>`, and `<action>`.
+```action(button="Update documentation")
+The API documentation needs to reflect the new default token lifetime.
+```
+````
 
-## XML Elements
+This walkthrough combines regular markdown with specialized code block elements: `mermaid`, `comment`, `gitdiff`, and `action`.
+
+## Code Block Elements
 
 ### Mermaid
 
 Render mermaid graphs and diagrams to visualize architecture, flows, or relationships:
 
-```xml
-<mermaid>
+```mermaid
 flowchart TD
     A[Start] --> B{Decision}
     B -->|Yes| C[Action 1]
     B -->|No| D[Action 2]
-</mermaid>
 ```
 
 **Use when:** Explaining system architecture, data flow, or complex relationships that benefit from visual representation.
@@ -135,11 +157,9 @@ flowchart TD
 
 Place contextual comments at specific code locations to highlight important details, decisions, or areas needing attention. Users can "reply" to comments using the GUI and have those messages forwarded to you in the chat.
 
-```xml
-<comment location="DIALECT_EXPRESSION" icon="question">
+```comment(location="DIALECT_EXPRESSION", icon="question")
 Markdown content explaining this code location.
 Can include **formatting** and [links](https://example.com).
-</comment>
 ```
 
 **Attributes:**
@@ -164,9 +184,10 @@ Can include **formatting** and [links](https://example.com).
 
 Embed git diffs showing code changes:
 
-```xml
-<gitdiff range="HEAD~2..HEAD" />
-<gitdiff range="abc123" exclude-unstaged exclude-staged />
+```gitdiff(range="HEAD~2..HEAD")
+```
+
+```gitdiff(range="abc123", exclude-unstaged, exclude-staged)
 ```
 
 **Attributes:**
@@ -182,10 +203,8 @@ Embed git diffs showing code changes:
 
 Provide interactive buttons for user actions:
 
-```xml
-<action button="Fix the validation logic">
+```action(button="Fix the validation logic")
 How should I handle expired tokens differently?
-</action>
 ```
 
 **Attributes:**
@@ -204,30 +223,30 @@ How should I handle expired tokens differently?
 Expressions in `location` attributes target specific code locations. Here are the main functions:
 
 ### Symbol-based targeting
-```xml
+```markdown
 <!-- Find where a symbol is defined -->
-<comment location="findDefinition(`MyClass`)">
+```comment(location="findDefinition(`MyClass`)")
 
 <!-- Find all references to a symbol -->
-<comment location="findReferences(`validateToken`)">
+```comment(location="findReferences(`validateToken`)")
 ```
 
 ### Search-based targeting
-```xml
+```markdown
 <!-- Search specific file for pattern -->
-<comment location="search(`src/auth.rs`, `async fn`)">
+```comment(location="search(`src/auth.rs`, `async fn`)")
 
 <!-- Search directory for pattern in specific file types -->
-<comment location="search(`src`, `struct.*User`, `.rs`)">
+```comment(location="search(`src`, `struct.*User`, `.rs`)")
 
 <!-- Search all files in directory -->
-<comment location="search(`tests`, `#\[test\]`)">
+```comment(location="search(`tests`, `#\[test\]`)")
 ```
 
 ### Line-based targeting
-```xml
+```markdown
 <!-- Target specific line range (use sparingly) -->
-<comment location="lines(`src/main.rs`, 10, 15)">
+```comment(location="lines(`src/main.rs`, 10, 15)")
 ```
 
 **Best practices:**
@@ -267,7 +286,7 @@ Expressions in `location` attributes target specific code locations. Here are th
 ### Anti-Patterns to Avoid
 
 **Comments:**
-- Don't comment obvious code: `<comment>This function returns a string</comment>`
+- Don't comment obvious code: ````comment` This function returns a string```
 - Don't use for simple navigation: Use direct links instead of comment buttons
 - Don't create comments without specific location targeting
 
@@ -297,10 +316,10 @@ When expressions in `location` attributes fail:
 - **File not found** - Verify paths are relative to project root
 
 **Recovery patterns:**
-```xml
+```markdown
 <!-- If specific search fails, try broader pattern -->
-<comment location="search(`src/auth.rs`, `validateToken`)">
-<!-- Fallback: <comment location="search(`src`, `validateToken`, `.rs`)"> -->
+```comment(location="search(`src/auth.rs`, `validateToken`)")
+<!-- Fallback: ```comment(location="search(`src`, `validateToken`, `.rs`)") -->
 ```
 
 ### Performance Considerations
@@ -312,12 +331,12 @@ When expressions in `location` attributes fail:
 - Avoid overly broad patterns that match many files
 
 **Examples:**
-```xml
+```markdown
 <!-- Good: Specific and targeted -->
-<comment location="search(`src/auth/mod.rs`, `pub fn login`)">
+```comment(location="search(`src/auth/mod.rs`, `pub fn login`)")
 
 <!-- Avoid: Too broad, may be slow -->
-<comment location="search(`src`, `.*`, `.rs`)">
+```comment(location="search(`src`, `.*`, `.rs`)")
 ```
 
 ### Tool Orchestration Patterns
@@ -349,7 +368,7 @@ When expressions in `location` attributes fail:
 - Try simpler patterns first, then add complexity
 
 **Walkthrough not displaying properly:**
-- Ensure all XML elements are properly closed
+- Ensure all code block elements use proper syntax
 - Check that Dialect expressions use correct quoting (backticks recommended)
 - Verify mermaid syntax is valid
 
