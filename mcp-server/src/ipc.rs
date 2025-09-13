@@ -634,16 +634,42 @@ impl IPCCommunicator {
         self.send_message_without_reply(ipc_message).await
     }
 
+    /// Fetch current taskspace state from the Symposium daemon/app
+    /// 
+    /// This is a key method in the dynamic agent initialization system. It enables
+    /// the MCP server to retrieve real taskspace information (name, description, 
+    /// task details) which gets included in the `/yiasou` prompt for agent boot.
+    /// 
+    /// **System Role:**
+    /// - Called by `get_taskspace_context()` in server.rs during prompt assembly
+    /// - Bridges MCP server ↔ Symposium daemon ↔ Symposium app communication
+    /// - Enables dynamic, context-aware agent initialization vs static prompts
+    /// 
+    /// **Flow:**
+    /// 1. Extract taskspace UUID from current directory structure
+    /// 2. Send GetTaskspaceState IPC message to daemon with project/taskspace info
+    /// 3. Daemon forwards request to Symposium app
+    /// 4. App returns current taskspace state (name, description, task)
+    /// 5. Response flows back through daemon to MCP server
+    /// 
+    /// **Error Handling:**
+    /// - If taskspace detection fails → extract_project_info() error
+    /// - If daemon unreachable → IPC timeout/connection error  
+    /// - If app unavailable → daemon returns empty/error response
+    /// - Caller (get_taskspace_context) handles errors gracefully
     pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
         use crate::types::{GetTaskspaceStatePayload, IPCMessageType, TaskspaceStateResponse};
         
+        // Extract taskspace UUID from directory structure (task-UUID/.symposium pattern)
         let (project_path, taskspace_uuid) = extract_project_info()?;
         
+        // Get our shell PID for message routing
         let shell_pid = {
             let inner = self.inner.lock().await;
             inner.terminal_shell_pid
         };
 
+        // Construct IPC message requesting taskspace state
         let ipc_message = IPCMessage {
             shell_pid,
             id: Uuid::new_v4().to_string(),
@@ -654,6 +680,7 @@ impl IPCCommunicator {
             })?,
         };
 
+        // Send message and wait for response from daemon/app
         let taskspace_state: TaskspaceStateResponse = self.send_message_with_reply(ipc_message).await?;
         Ok(taskspace_state)
     }
