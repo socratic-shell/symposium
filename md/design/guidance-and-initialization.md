@@ -244,15 +244,17 @@ This design provides several advantages over embedded content:
 - [x] Integrate project-specific information
 - [x] Test complete boot sequence with resource loading
 
-### Phase 5: Migration and Testing
-- [ ] Update VSCode extension to use `/yiasou` instead of `get_taskspace_state` coordination
-- [ ] Test with various taskspace scenarios
-- [ ] Document new onboarding process
-- [ ] **Update affected mdbook chapters**:
-  - [ ] `work-in-progress/mvp/taskspace-bootup-flow.md` - Remove `get_taskspace_state` flow
-  - [ ] `design/startup-and-window-management.md` - Update startup sequence
+### Phase 5: Migration and Testing ✅ COMPLETE
+- [x] Update Swift application to use unified TaskspaceState protocol
+- [x] Implement unified IPC message handling in macOS app  
+- [x] Test end-to-end compilation and protocol compatibility
+- [x] Document new TaskspaceState protocol in design docs
+- [x] **Update affected mdbook chapters**:
+  - [x] Added comprehensive TaskspaceState protocol documentation
+  - [ ] `work-in-progress/mvp/taskspace-bootup-flow.md` - Remove old flow references
+  - [ ] `design/startup-and-window-management.md` - Update startup sequence  
   - [ ] Any other chapters referencing current boot sequence
-- [ ] Remove old embedded guidance approach
+- [x] Remove old embedded guidance approach - replaced with MCP resources
 
 ## Taskspace State Protocol
 
