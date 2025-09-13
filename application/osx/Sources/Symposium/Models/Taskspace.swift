@@ -9,6 +9,7 @@ struct Taskspace: Codable, Identifiable {
     var logs: [TaskspaceLog] = []
     var vscodeWindowID: Int? = nil
     let createdAt: Date
+    var lastActivatedAt: Date
     
     /// Timestamp of last screenshot capture (not persisted, transient UI state)
     var lastScreenshotAt: Date?
@@ -17,7 +18,23 @@ struct Taskspace: Codable, Identifiable {
     var pendingDeletion: Bool = false
     
     private enum CodingKeys: String, CodingKey {
-        case id, name, description, state, logs, vscodeWindowID, createdAt
+        case id, name, description, state, logs, vscodeWindowID, createdAt, lastActivatedAt
+    }
+    
+    // Custom decoder to handle migration from older versions without lastActivatedAt
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decode(String.self, forKey: .description)
+        state = try container.decode(TaskspaceState.self, forKey: .state)
+        logs = try container.decodeIfPresent([TaskspaceLog].self, forKey: .logs) ?? []
+        vscodeWindowID = try container.decodeIfPresent(Int.self, forKey: .vscodeWindowID)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        
+        // Migration: use createdAt if lastActivatedAt doesn't exist
+        lastActivatedAt = try container.decodeIfPresent(Date.self, forKey: .lastActivatedAt) ?? createdAt
     }
     
     init(name: String, description: String, initialPrompt: String? = nil) {
@@ -26,6 +43,7 @@ struct Taskspace: Codable, Identifiable {
         self.description = description
         self.state = initialPrompt != nil ? .hatchling(initialPrompt: initialPrompt!) : .resume
         self.createdAt = Date()
+        self.lastActivatedAt = self.createdAt  // Use creation time as initial activation time
     }
     
     /// Directory path for this taskspace within project
@@ -51,6 +69,11 @@ struct Taskspace: Codable, Identifiable {
     /// Add a log entry to this taskspace
     mutating func addLog(_ log: TaskspaceLog) {
         logs.append(log)
+    }
+    
+    /// Update the last activated timestamp to current time
+    mutating func updateActivationTime() {
+        lastActivatedAt = Date()
     }
     
     /// Check if taskspace needs user attention

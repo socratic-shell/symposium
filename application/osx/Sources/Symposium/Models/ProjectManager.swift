@@ -210,7 +210,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             }
         }
 
-        return taskspaces.sorted { $0.createdAt > $1.createdAt }
+        return taskspaces.sorted { $0.lastActivatedAt > $1.lastActivatedAt }
     }
 
     /// Close current project
@@ -784,6 +784,24 @@ extension ProjectManager {
         Logger.shared.log(
             "ProjectManager[\(instanceId)]: Focusing window \(windowID) for taskspace: \(taskspace.name)"
         )
+
+        // Update activation time and reorder taskspaces
+        if var project = currentProject {
+            project.activateTaskspace(uuid: taskspace.id.uuidString)
+            currentProject = project
+            
+            // Save the updated project to persist the new ordering
+            do {
+                try project.save()
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Updated taskspace activation order for \(taskspace.name)"
+                )
+            } catch {
+                Logger.shared.log(
+                    "ProjectManager[\(instanceId)]: Failed to save activation order: \(error)"
+                )
+            }
+        }
 
         // Check if stacked windows mode is enabled for this project
         if let project = currentProject, project.stackedWindowsEnabled {

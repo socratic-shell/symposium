@@ -135,4 +135,16 @@ struct Project: Codable, Identifiable {
     func findTaskspaceIndex(uuid: String) -> Int? {
         return taskspaces.firstIndex { $0.id.uuidString.lowercased() == uuid.lowercased() }
     }
+    
+    /// Reorder taskspaces by most recently activated (most recent first)
+    mutating func reorderTaskspacesByActivation() {
+        taskspaces.sort { $0.lastActivatedAt > $1.lastActivatedAt }
+    }
+    
+    /// Update taskspace activation time and reorder
+    mutating func activateTaskspace(uuid: String) {
+        guard let index = findTaskspaceIndex(uuid: uuid) else { return }
+        taskspaces[index].updateActivationTime()
+        reorderTaskspacesByActivation()
+    }
 }
