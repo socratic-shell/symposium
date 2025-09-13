@@ -348,7 +348,10 @@ struct AgentInfo: Identifiable {
 
         switch type {
         case .qcli:
-            return ["q", "chat", initialPrompt]
+            return [
+                "q", "chat",
+                "to load initial instructions, use the Symposium `expand_reference` tool with the argument 'yiasou'",
+            ]
         case .claude:
             // TODO: Implement claude-code hatchling command
             return nil
