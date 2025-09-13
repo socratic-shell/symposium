@@ -661,10 +661,7 @@ impl DialecticServer {
     // ANCHOR: expand_reference_tool
     #[tool(description = "
         Expand a compact reference (denoted as `<symposium-ref id='..'/>`) to get full context. \
-        Invoke with the contents of `id` attribute. Also supports loading guidance files by \
-        filename (e.g., 'main.md', 'walkthrough-format.md', 'coding-guidelines.md') and the \
-        special 'yiasou' reference for agent initialization. \
-        Returns structured JSON with all available context data. \
+        Invoke with the contents of `id` attribute. Returns structured JSON with all available context data. \
     ")]
     async fn expand_reference(
         &self,
