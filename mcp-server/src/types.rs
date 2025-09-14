@@ -161,10 +161,7 @@ pub enum IPCMessageType {
     ResolveSymbolByName,
     /// Find all references to a symbol - returns Vec<FileLocation>
     FindAllReferences,
-    /// Create synthetic pull request
-    CreateSyntheticPr,
-    /// Update synthetic pull request
-    UpdateSyntheticPr,
+
     /// User feedback from VSCode extension (comments, review completion)
     UserFeedback,
     /// Store reference context for compact symposium-ref system

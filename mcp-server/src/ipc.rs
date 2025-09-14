@@ -595,13 +595,8 @@ impl IPCCommunicator {
     where
         R: DeserializeOwned,
     {
-        // Use longer timeout for user feedback messages
-        let timeout_duration = match message.message_type {
-            IPCMessageType::CreateSyntheticPr | IPCMessageType::UpdateSyntheticPr => {
-                std::time::Duration::from_secs(3600) // 1 hour for user interactions
-            }
-            _ => std::time::Duration::from_secs(5), // 5 seconds for normal operations
-        };
+        // Use standard timeout for all messages
+        let timeout_duration = std::time::Duration::from_secs(5);
         debug!(
             "Sending IPC message with ID: {} (PID: {})",
             message.id,
