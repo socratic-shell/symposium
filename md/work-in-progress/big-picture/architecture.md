@@ -51,7 +51,7 @@ Each taskspace gets a host directory with shared mounts across containers:
 │   │   ├── agent_key     # Optional: SSH key for agent git operations
 │   │   └── agent_key.pub
 │   ├── bin/
-│   │   └── symposium-mcp # MCP server binary
+│   │   └── socratic-shell-mcp # MCP server binary
 │   └── config/           # Shared configuration files
 └── taskspace-{uuid}/     # Per taskspace data
   ├── .taskspace.json     # Logs, metadata, progress records
@@ -116,7 +116,7 @@ Each `.symposium` directory is created through a configuration wizard that handl
 **Infrastructure Provisioning:**
 - **Directory Creation**: Symposium creates `.symposium` structure at target location
 - **SSH Key Setup**: Generates agent SSH keys if enabled, installs at target location
-- **Binary Distribution**: Downloads/builds `symposium-mcp` binary for target platform
+- **Binary Distribution**: Downloads/builds `socratic-shell-mcp` binary for target platform
 - **Configuration**: Writes `project.json` with agent settings and deployment info
 
 **Result:**
@@ -127,7 +127,7 @@ Each `.symposium` directory is created through a configuration wizard that handl
 │   │   ├── agent_key
 │   │   └── agent_key.pub
 │   ├── bin/
-│   │   └── symposium-mcp    # Platform-appropriate binary
+│   │   └── socratic-shell-mcp    # Platform-appropriate binary
 │   └── config/
 │       └── project.json     # Agent type, SSH settings, host info
 └── (taskspace directories created as needed)

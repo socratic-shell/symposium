@@ -22,11 +22,11 @@ This document outlines the plan to reorganize the monorepo to clearly separate *
 └── README.md           # Project overview
 
 socratic-shell/
-├── mcp-server/         # Rust MCP server
-└── vscode-extension/   # VSCode extension (renamed from ide/vscode)
+├── socratic-shell/mcp-server/         # Rust MCP server
+└── vscode-extension/   # VSCode extension (renamed from socratic-shell/vscode-extension)
 
 symposium/
-└── macos-app/          # macOS GUI app (from application/osx)
+└── macos-app/          # macOS GUI app (from symposium/macos-app)
 ```
 
 ## Implementation Plan
@@ -34,9 +34,9 @@ symposium/
 ### Phase 1: Directory Restructure and Cleanup
 
 **Moves:**
-- `ide/vscode/` → `socratic-shell/vscode-extension/`
-- `mcp-server/` → `socratic-shell/mcp-server/`
-- `application/osx/` → `symposium/macos-app/`
+- `socratic-shell/vscode-extension/` → `socratic-shell/vscode-extension/`
+- `socratic-shell/mcp-server/` → `socratic-shell/mcp-server/`
+- `symposium/macos-app/` → `symposium/macos-app/`
 - Logo files → `artwork/`
 - `create-app-icon.sh` → `artwork/` (will need path updates)
 

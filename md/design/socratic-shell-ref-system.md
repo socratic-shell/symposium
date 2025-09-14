@@ -14,12 +14,12 @@ The payload structure for `store_reference` messages:
 
 **TypeScript (Extension):**
 ```typescript
-{{#include ../../ide/vscode/src/extension.ts:store_reference_payload}}
+{{#include ../../socratic-shell/vscode-extension/src/extension.ts:store_reference_payload}}
 ```
 
 **Rust (MCP Server):**
 ```rust
-{{#include ../../mcp-server/src/types.rs:store_reference_payload}}
+{{#include ../../socratic-shell/mcp-server/src/types.rs:store_reference_payload}}
 ```
 
 ## Usage Examples

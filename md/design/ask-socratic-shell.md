@@ -72,4 +72,4 @@ This feature builds on the [Symposium Reference System](./symposium-ref-system.m
 
 ## Key Files
 
-- `ide/vscode/src/extension.ts` - Chat icon handling, terminal selection, reference distribution
+- `socratic-shell/vscode-extension/src/extension.ts` - Chat icon handling, terminal selection, reference distribution
