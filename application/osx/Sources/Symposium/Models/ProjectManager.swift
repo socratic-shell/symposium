@@ -646,6 +646,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Create worktree for this taskspace with unique branch
+        // CAREFUL: When adding new steps to taskspace creation, you likely need to modify `findStaleTaskspaces` as well to check for this.
         let branchName = "taskspace-\(taskspace.id.uuidString)"
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"
