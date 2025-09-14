@@ -200,17 +200,7 @@ pub struct StoreReferencePayload {
 }
 // ANCHOR_END: store_reference_payload
 
-/// Payload for synthetic PR creation/update messages
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct SyntheticPRPayload {
-    pub review_id: String,
-    pub title: String,
-    pub description: serde_json::Value,
-    pub commit_range: String,
-    pub files_changed: Vec<crate::git::FileChange>,
-    pub comment_threads: Vec<crate::git::CommentThread>,
-    pub status: String,
-}
+
 
 /// Payload for user feedback messages from VSCode extension
 #[derive(Debug, Clone, Deserialize, Serialize)]

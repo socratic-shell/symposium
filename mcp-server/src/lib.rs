@@ -13,7 +13,7 @@ pub mod structured_logging;
 mod walkthrough_parser;
 mod server;
 pub mod types;
-pub mod synthetic_pr;
+
 pub mod git;
 mod workspace_dir;
 

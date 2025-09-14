@@ -446,43 +446,7 @@ impl DialecticServer {
     /// Analyzes Git changes and extracts AI insight comments (💡❓TODO/FIXME) to create
     /// a PR-like review interface with structured file changes and comment threads.
     // ANCHOR: request_review_tool
-    /// Get the status of the current synthetic pull request
-    ///
-    /// Returns information about the active review including file counts,
-    /// comment threads, and current status.
-    // ANCHOR: get_review_status_tool
-    #[tool(description = "Get the status of the current synthetic pull request. \
-                       Returns review information including file counts, comment threads, and status.")]
-    async fn get_review_status(&self) -> Result<CallToolResult, McpError> {
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                "Received get_review_status tool call".to_string(),
-            )
-            .await;
 
-        let result = crate::synthetic_pr::get_review_status(None)
-            .await
-            .map_err(|e| {
-                McpError::internal_error(
-                    "Status retrieval failed",
-                    Some(serde_json::json!({
-                        "error": e.to_string()
-                    })),
-                )
-            })?;
-
-        let json_content = Content::json(result).map_err(|e| {
-            McpError::internal_error(
-                "Serialization failed",
-                Some(serde_json::json!({
-                    "error": format!("Failed to serialize status result: {}", e)
-                })),
-            )
-        })?;
-
-        Ok(CallToolResult::success(vec![json_content]))
-    }
 
     /// Expand a compact reference to get full context
     ///
