@@ -1253,8 +1253,9 @@ This is test content."#;
         // Test the actual resource generation logic used by list_resources
         let resources = DialecticServer::generate_resources();
 
-        // Verify we have the expected files
-        assert_eq!(resources.len(), 4);
+        // Verify we have resources for all guidance files
+        let expected_count = GuidanceFiles::iter().count();
+        assert_eq!(resources.len(), expected_count);
 
         // Check that all files have proper metadata
         let main_resource = resources.iter().find(|r| r.raw.uri == "main.md").unwrap();
