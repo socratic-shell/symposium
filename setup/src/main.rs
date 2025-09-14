@@ -322,8 +322,8 @@ fn build_macos_app() -> Result<()> {
 fn open_macos_app() -> Result<()> {
     let repo_root = get_repo_root()?;
     let app_path = repo_root
-        .join("application")
-        .join("osx")
+        .join("symposium")
+        .join("macos-app")
         .join(".build")
         .join("arm64-apple-macosx")
         .join("release")
