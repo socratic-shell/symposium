@@ -67,7 +67,7 @@ interface TaskspaceStateRequest {
 }
 
 /**
- * Response from Symposium app when querying taskspace state
+ * Response from Socratic Shell app when querying taskspace state
  * Contains taskspace metadata for agent initialization
  */
 interface TaskspaceStateResponse {
@@ -300,9 +300,9 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
 export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Create dedicated output channel for cleaner logging
-    const outputChannel = vscode.window.createOutputChannel('Symposium');
-    outputChannel.appendLine('Symposium extension is now active');
-    console.log('Symposium extension is now active');
+    const outputChannel = vscode.window.createOutputChannel('Socratic Shell');
+    outputChannel.appendLine('Socratic Shell extension is now active');
+    console.log('Socratic Shell extension is now active');
 
     // Create the central bus
     const bus = new Bus(context, outputChannel);
@@ -394,7 +394,7 @@ export function activate(context: vscode.ExtensionContext) {
     const logPIDsCommand = vscode.commands.registerCommand('socratic-shell.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
         await logPIDDiscovery(outputChannel);
-        vscode.window.showInformationMessage('PID information logged to Symposium output channel');
+        vscode.window.showInformationMessage('PID information logged to Socratic Shell output channel');
     });
 
     // Window title toggle command for POC

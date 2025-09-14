@@ -1,7 +1,7 @@
 {
-  "name": "symposium",
-  "displayName": "Symposium",
-  "description": "AI-powered code walkthroughs and agentspace orchestration",
+  "name": "socratic-shell",
+  "displayName": "Socratic Shell",
+  "description": "",
   "version": "0.1.0",
   "publisher": "socratic-shell",
   "repository": {
@@ -24,56 +24,56 @@
       {
         "command": "symposium.showReview",
         "title": "Show Review",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.copyReview",
         "title": "Copy Review",
-        "category": "Symposium",
+        "category": "Socratic Shell",
         "icon": "$(copy)"
       },
       {
         "command": "symposium.logPIDs",
         "title": "Log PIDs",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.showFileDiff",
         "title": "Show File Diff",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.addComment",
         "title": "Add Comment",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.addCommentReply",
         "title": "Add Comment Reply",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
         "command": "symposium.toggleComments",
         "title": "Toggle Comments",
-        "category": "Symposium",
+        "category": "Socratic Shell",
         "icon": "$(comment)"
       },
       {
         "command": "symposium.toggleWindowTitle",
         "title": "Toggle Window Title",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "symposium",
-          "title": "Symposium",
+          "title": "Socratic Shell",
           "icon": "activitybar-logo.svg"
         }
       ]
