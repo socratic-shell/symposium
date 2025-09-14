@@ -130,12 +130,12 @@ export function formatSocraticShellUrl(socraticShellUrl: SocraticShellUrl): stri
     
     const params = new URLSearchParams();
     
-    if (socratiShellUrl.regex) {
-        params.set('regex', socratiShellUrl.regex);
+    if (socraticShellUrl.regex) {
+        params.set('regex', socraticShellUrl.regex);
     }
     
-    if (socratiShellUrl.line) {
-        params.set('line', formatLineSpec(socratiShellUrl.line));
+    if (socraticShellUrl.line) {
+        params.set('line', formatLineSpec(socraticShellUrl.line));
     }
     
     const queryString = params.toString();
