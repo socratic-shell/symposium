@@ -93,8 +93,8 @@ Complete the rebranding from "Symposium" to "Socratic Shell" throughout the code
 
 - [x] MCP server builds successfully (cargo check passes)
 - [x] VSCode extension loads without infinite spinner (requires TypeScript compilation)
-- [ ] Walkthrough panel displays content
-- [ ] Commands appear in command palette with correct names
+- [x] Walkthrough panel displays content
+- [x] Commands appear in command palette with correct names
 - [ ] File navigation works with new URL scheme
 - [ ] IPC communication between extension and MCP server
 - [ ] Integration tests pass

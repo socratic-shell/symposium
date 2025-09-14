@@ -107,7 +107,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             const token = tokens[idx];
             const href = token.attrGet('href');
 
-            if (href && href.startsWith('dialectic:')) {
+            if (href && href.startsWith('socratic-shell:')) {
                 const linkKey = `link:${href}`;
                 const placementState = this.placementMemory?.get(linkKey);
 
@@ -143,7 +143,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             if (openToken) {
                 const href = openToken.attrGet('href');
                 console.log('[RENDERER] Processing link_close for href:', href);
-                if (href && href.startsWith('dialectic:')) {
+                if (href && href.startsWith('socratic-shell:')) {
                     const linkKey = `link:${href}`;
                     const placementState = this.placementMemory?.get(linkKey);
                     const isPlaced = placementState?.isPlaced || false;
