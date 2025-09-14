@@ -71,9 +71,18 @@ struct Taskspace: Codable, Identifiable {
         logs.append(log)
     }
     
-    /// Clear all question logs (signals) to acknowledge user attention
-    mutating func clearAttentionSignals() {
-        logs.removeAll { $0.category == .question }
+    /// Acknowledge attention signals by changing question logs to info
+    mutating func acknowledgeAttentionSignals() {
+        for i in logs.indices {
+            if logs[i].category == .question {
+                logs[i] = TaskspaceLog(
+                    id: logs[i].id,
+                    message: logs[i].message,
+                    category: .info,
+                    timestamp: logs[i].timestamp
+                )
+            }
+        }
     }
     
     /// Update the last activated timestamp to current time
@@ -126,6 +135,14 @@ struct TaskspaceLog: Codable, Identifiable {
         self.message = message
         self.category = category
         self.timestamp = Date()
+    }
+    
+    /// Create a new log with the same id, message, and timestamp but different category
+    init(id: UUID, message: String, category: LogCategory, timestamp: Date) {
+        self.id = id
+        self.message = message
+        self.category = category
+        self.timestamp = timestamp
     }
 }
 
