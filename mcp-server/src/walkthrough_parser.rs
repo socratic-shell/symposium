@@ -307,7 +307,7 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
                 exclude_staged,
             } => {
                 // Use GitService to generate actual file changes
-                use crate::synthetic_pr::git_service::GitService;
+                use crate::git::GitService;
 
                 let resolved_data = match GitService::new(".") {
                     Ok(git_service) => {

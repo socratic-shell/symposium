@@ -1,7 +1,35 @@
 use regex::Regex;
-use crate::synthetic_pr::{CommentThread, CommentType, ParsedComment, FileChange};
+use schemars::JsonSchema;
+use crate::git::{FileChange, DiffLineType};
 
-/// Parses AI insight comments from source code files for synthetic pull request generation.
+/// Type of AI insight comment found in source code
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub enum CommentType {
+    Explanation,
+    Question,
+    Todo,
+    Fixme,
+}
+
+/// Parsed AI insight comment with type and content
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub struct ParsedComment {
+    pub comment_type: CommentType,
+    pub content: String,
+}
+
+/// Comment thread representing a discussion around a specific line of code
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub struct CommentThread {
+    pub thread_id: String,
+    pub file_path: String,
+    pub line_number: u32,
+    pub comment_type: CommentType,
+    pub content: String,
+    pub responses: Vec<String>,
+}
+
+/// Parses AI insight comments from source code files.
 ///
 /// Extracts structured comments that provide context and explanations for code changes:
 /// - 💡 Explanations: Why code was implemented a certain way
@@ -148,7 +176,7 @@ impl CommentParser {
             for hunk in &file_change.hunks {
                 for line in &hunk.lines {
                     // Only parse added or context lines (not removed lines)
-                    if matches!(line.line_type, crate::synthetic_pr::DiffLineType::Added | crate::synthetic_pr::DiffLineType::Context) {
+                    if matches!(line.line_type, DiffLineType::Added | DiffLineType::Context) {
                         if let Some(comment) = self.extract_comment(&line.content) {
                             all_threads.push(CommentThread {
                                 thread_id: format!("{}:{}", file_change.path, line.new_line_number.unwrap_or(0)),

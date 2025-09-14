@@ -322,7 +322,7 @@ impl<U: IpcClient> DialectFunction<U> for GitDiff {
         self,
         _interpreter: &mut DialectInterpreter<U>,
     ) -> anyhow::Result<Self::Output> {
-        use crate::synthetic_pr::git_service::GitService;
+        use crate::git::GitService;
 
         // Use current directory as repo path (could be made configurable)
         let git_service = GitService::new(".")?;
@@ -775,7 +775,7 @@ fn convert_url_to_dialectic(url: &str) -> String {
 /// with each file's additions, deletions, and diff hunks.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GitDiffElement {
-    pub files: Vec<crate::synthetic_pr::FileChange>,
+    pub files: Vec<crate::git::FileChange>,
 }
 
 /// Resolved walkthrough element output from various dialect functions.

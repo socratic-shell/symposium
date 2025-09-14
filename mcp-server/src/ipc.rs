@@ -3,7 +3,6 @@
 //! Handles Unix socket/named pipe communication with the VSCode extension.
 //! Ports the logic from server/src/ipc.ts to Rust with cross-platform support.
 
-use crate::synthetic_pr::UserFeedback;
 use crate::types::{
     FindAllReferencesPayload, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType,
     LogLevel, LogParams, PoloPayload, ResolveSymbolByNamePayload,

@@ -14,6 +14,7 @@ mod walkthrough_parser;
 mod server;
 pub mod types;
 pub mod synthetic_pr;
+pub mod git;
 mod workspace_dir;
 
 pub use daemon::{run_daemon_with_idle_timeout, run_client};

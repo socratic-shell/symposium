@@ -2,6 +2,7 @@ use rmcp::ServerHandler;
 use serde_json::json;
 use symposium_mcp::DialecticServer;
 use symposium_mcp::synthetic_pr::*;
+use symposium_mcp::git::CommentType;
 use tempfile::TempDir;
 use test_utils::TestRepo;
 

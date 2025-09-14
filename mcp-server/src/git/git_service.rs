@@ -1,12 +1,58 @@
-use crate::synthetic_pr::{ChangeStatus, DiffHunk, DiffLine, DiffLineType, FileChange};
 use git2::{Delta, DiffOptions, Oid, Repository};
+use schemars::JsonSchema;
 
-/// Git service for synthetic pull request operations.
+/// Git service for repository operations.
 ///
 /// Provides Git repository analysis capabilities including commit parsing,
-/// diff generation, and file change detection for synthetic PR workflows.
+/// diff generation, and file change detection.
 pub struct GitService {
     repo: Repository,
+}
+
+/// Represents the status of a file change in a diff
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub enum ChangeStatus {
+    Added,
+    Modified,
+    Deleted,
+}
+
+/// Represents a single line in a diff hunk
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub struct DiffLine {
+    pub line_type: DiffLineType,
+    pub content: String,
+    pub old_line_number: Option<usize>,
+    pub new_line_number: Option<usize>,
+}
+
+/// Type of diff line (added, removed, or context)
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub enum DiffLineType {
+    Added,
+    Removed,
+    Context,
+}
+
+/// Represents a hunk (contiguous block of changes) in a diff
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub struct DiffHunk {
+    pub header: String,
+    pub old_start: usize,
+    pub old_lines: usize,
+    pub new_start: usize,
+    pub new_lines: usize,
+    pub lines: Vec<DiffLine>,
+}
+
+/// Represents a single file change in a diff
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, JsonSchema)]
+pub struct FileChange {
+    pub path: String,
+    pub status: ChangeStatus,
+    pub additions: usize,
+    pub deletions: usize,
+    pub hunks: Vec<DiffHunk>,
 }
 
 impl GitService {
@@ -194,5 +240,4 @@ impl GitService {
 
         Ok(file_changes.into_inner())
     }
-
 }

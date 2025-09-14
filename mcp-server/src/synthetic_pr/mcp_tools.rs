@@ -1,4 +1,5 @@
-use crate::synthetic_pr::{CommentParser, GitService, ReviewState, ReviewStatus};
+use crate::git::{CommentParser, GitService};
+use crate::synthetic_pr::{ReviewState, ReviewStatus};
 use chrono::Utc;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -66,8 +67,8 @@ pub struct ReviewData {
     pub title: String,
     pub description: serde_json::Value,
     pub commit_range: String,
-    pub files_changed: Vec<crate::synthetic_pr::FileChange>,
-    pub comment_threads: Vec<crate::synthetic_pr::CommentThread>,
+    pub files_changed: Vec<crate::git::FileChange>,
+    pub comment_threads: Vec<crate::git::CommentThread>,
     pub status: String,
 }
 
