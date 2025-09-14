@@ -226,7 +226,7 @@ class AgentManager: ObservableObject {
 
     private func checkQCLIMCPConfiguration(qPath: String) -> (Bool, String?) {
         // Use Q CLI's built-in MCP status command to check for socratic-shell-mcp
-        let output = runCommand(path: qPath, arguments: ["mcp", "status", "--name", "symposium"])
+        let output = runCommand(path: qPath, arguments: ["mcp", "status", "--name", "socratic-shell"])
 
         guard let output = output, !output.isEmpty else {
             return (false, nil)
@@ -260,12 +260,12 @@ class AgentManager: ObservableObject {
             return (false, nil)
         }
 
-        // Parse the output to find symposium entry
-        // Look for lines like "symposium: /path/to/socratic-shell-mcp --dev-log - ✓ Connected"
+        // Parse the output to find socratic-shell entry
+        // Look for lines like "socratic-shell: /path/to/socratic-shell-mcp --dev-log - ✓ Connected"
         let lines = output.components(separatedBy: .newlines)
         for line in lines {
-            if line.contains("symposium:") && line.contains("✓ Connected") {
-                // Extract the path between "symposium: " and " --dev-log"
+            if line.contains("socratic-shell:") && line.contains("✓ Connected") {
+                // Extract the path between "socratic-shell: " and " --dev-log"
                 let parts = line.components(separatedBy: ":")
                 if parts.count >= 2 {
                     let pathPart = parts[1].trimmingCharacters(in: .whitespaces)
