@@ -1,6 +1,6 @@
 ---
 name: "Coding Guidelines"
-description: "Development best practices and standards for the Symposium project"
+description: "Development best practices and standards for the Socratic Shell project"
 ---
 
 # Coding Guidelines

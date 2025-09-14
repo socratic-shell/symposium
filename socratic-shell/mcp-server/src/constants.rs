@@ -1,4 +1,4 @@
-//! Constants and configuration values used throughout the Symposium MCP server
+//! Constants and configuration values used throughout the Socratic Shell MCP server
 
 /// Default prefix for daemon socket files
 pub const DAEMON_SOCKET_PREFIX: &str = "symposium-daemon";

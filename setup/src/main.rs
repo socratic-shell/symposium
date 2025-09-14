@@ -247,7 +247,7 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
         println!("\n📝 Next steps:");
         println!("1. Restart VSCode to activate the extension");
         println!("2. Ask your AI assistant to present a code review");
-        println!("3. Reviews will appear in the Symposium panel in VSCode");
+        println!("3. Reviews will appear in the Socratic Shell panel in VSCode");
     }
 
     Ok(())
