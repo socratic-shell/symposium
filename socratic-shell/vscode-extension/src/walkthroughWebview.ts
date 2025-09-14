@@ -75,6 +75,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
     private offscreenHtmlContent?: string;
     private placementMemory = new Map<string, PlacementState>(); // Unified placement memory
     private commentController?: vscode.CommentController;
+    private webviewReady = false; // Track if webview has reported ready
     private commentThreads = new Map<string, vscode.CommentThread>(); // Track comment threads by comment ID
 
     constructor(
@@ -206,6 +207,17 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             case 'ready':
                 console.log('Walkthrough webview ready');
                 this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview reported ready`);
+                this.webviewReady = true;
+                
+                // Send any pending offscreen HTML content now that webview is ready
+                if (this.offscreenHtmlContent && this._view) {
+                    console.log('Webview ready - sending pending offscreen HTML content');
+                    this.bus.outputChannel.appendLine('[WALKTHROUGH] Webview ready - sending pending offscreen HTML content');
+                    this._view.webview.postMessage({
+                        type: 'showWalkthroughHtml',
+                        content: this.offscreenHtmlContent
+                    });
+                }
                 break;
         }
     }
@@ -695,6 +707,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         this.bus.outputChannel.appendLine(`[WALKTHROUGH] Current offscreenHtmlContent length: ${this.offscreenHtmlContent?.length || 0}`);
 
         this._view = webviewView;
+        this.webviewReady = false; // Reset ready state for new webview
 
         webviewView.webview.options = {
             enableScripts: true,
@@ -713,26 +726,16 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
 
         console.log('Setting webview HTML');
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        console.log('Webview HTML set, webview should be ready');
+        console.log('Webview HTML set, waiting for ready message');
 
-        // Send any offscreen HTML content - with small delay to ensure webview is ready
-        if (this.offscreenHtmlContent) {
-            console.log('Sending offscreen HTML content');
-            this.bus.outputChannel.appendLine('[WALKTHROUGH] Sending offscreen HTML content');
-
-            // Small delay to ensure webview is fully initialized
-            setTimeout(() => {
-                console.log('Posting offscreen content to webview (delayed)');
-                this.bus.outputChannel.appendLine('[WALKTHROUGH] Posting offscreen content to webview (delayed)');
-                webviewView.webview.postMessage({
-                    type: 'showWalkthroughHtml',
-                    content: this.offscreenHtmlContent!
-                });
-            }, 100);
-            // Don't clear offscreenHtmlContent - keep it for future webview recreations
-        } else {
+        // Note: We now wait for the 'ready' message from the webview before sending offscreen content
+        // This ensures the webview is fully initialized and can properly handle the content
+        if (!this.offscreenHtmlContent) {
             console.log('No offscreen HTML content to restore');
             this.bus.outputChannel.appendLine('[WALKTHROUGH] No offscreen HTML content to restore');
+        } else {
+            console.log('Offscreen HTML content available, waiting for webview ready signal');
+            this.bus.outputChannel.appendLine('[WALKTHROUGH] Offscreen HTML content available, waiting for webview ready signal');
         }
     }
 
@@ -750,12 +753,18 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview exists, posting message to webview`);
             this._view.show?.(true);
 
-            // Send HTML content directly to webview
-            this._view.webview.postMessage({
-                type: 'showWalkthroughHtml',
-                content: htmlContent
-            });
-            this.bus.outputChannel.appendLine(`[WALKTHROUGH] Message posted to webview successfully`);
+            // Only send immediately if webview is ready, otherwise wait for ready message
+            if (this.webviewReady) {
+                console.log('Webview is ready, sending HTML content immediately');
+                this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview is ready, sending HTML content immediately`);
+                this._view.webview.postMessage({
+                    type: 'showWalkthroughHtml',
+                    content: htmlContent
+                });
+            } else {
+                console.log('Webview not ready yet, content will be sent when ready message is received');
+                this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview not ready yet, content will be sent when ready message is received`);
+            }
         } else {
             console.log('No webview available, content stored for when webview becomes available');
             this.bus.outputChannel.appendLine(`[WALKTHROUGH] No webview available, content stored as pending`);
