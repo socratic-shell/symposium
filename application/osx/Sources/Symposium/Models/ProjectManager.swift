@@ -111,14 +111,21 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Load project
-        let project = try Project.load(from: directoryPath)
+        var project = try Project.load(from: directoryPath)
 
-        // Load existing taskspaces
-        var loadedProject = project
-        loadedProject.taskspaces = try loadTaskspaces(from: directoryPath)
+        // Validate taskspaces and remove stale entries
+        let originalCount = project.taskspaces.count
+        project.taskspaces = validateTaskspaces(project.taskspaces, in: directoryPath)
+        
+        // Save cleaned project back to disk if any taskspaces were removed
+        if project.taskspaces.count < originalCount {
+            let removedCount = originalCount - project.taskspaces.count
+            Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(removedCount) stale taskspace(s) from project")
+            try project.save()
+        }
 
         // Set as current project
-        setCurrentProject(loadedProject)
+        setCurrentProject(project)
     }
 
     /// Helper to set current project and register as IPC delegate
@@ -187,6 +194,21 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     //             "ProjectManager: Launched VSCode for \(activeTaskspaces.count) active taskspaces")
     //     }
     // }
+
+    /// Validate taskspaces against filesystem and remove stale entries
+    private func validateTaskspaces(_ taskspaces: [Taskspace], in projectPath: String) -> [Taskspace] {
+        let fileManager = FileManager.default
+        return taskspaces.filter { taskspace in
+            let taskspaceDir = taskspace.directoryPath(in: projectPath)
+            let taskspaceJsonPath = taskspace.taskspaceFilePath(in: projectPath)
+            
+            let exists = fileManager.fileExists(atPath: taskspaceDir) && fileManager.fileExists(atPath: taskspaceJsonPath)
+            if !exists {
+                Logger.shared.log("ProjectManager[\(instanceId)]: Removing stale taskspace: \(taskspace.name) (directory missing)")
+            }
+            return exists
+        }
+    }
 
     /// Load all taskspaces from project directory
     private func loadTaskspaces(from projectPath: String) throws -> [Taskspace] {
