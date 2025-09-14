@@ -496,29 +496,29 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     let list_stdout = String::from_utf8_lossy(&list_output.stdout);
     let desired_binary_str = binary_path.to_string_lossy();
     
-    // Check if symposium exists with correct path
-    let mut symposium_exists = false;
-    let mut symposium_has_correct_path = false;
+    // Check if socratic-shell exists with correct path
+    let mut socratic-shell_exists = false;
+    let mut socratic-shell_has_correct_path = false;
     
     for line in list_stdout.lines() {
-        if line.contains("symposium") {
-            symposium_exists = true;
+        if line.contains("socratic-shell") {
+            socratic-shell_exists = true;
             if line.contains(desired_binary_str.as_ref()) {
-                symposium_has_correct_path = true;
+                socratic-shell_has_correct_path = true;
                 break;
             }
         }
     }
 
-    if symposium_exists && symposium_has_correct_path {
+    if socratic-shell_exists && socratic-shell_has_correct_path {
         println!("✅ Symposium MCP server already configured with correct path");
         return Ok(true);
     }
 
-    if symposium_exists {
-        println!("🔄 Updating existing symposium MCP server...");
+    if socratic-shell_exists {
+        println!("🔄 Updating existing socratic-shell MCP server...");
         let remove_output = Command::new("claude")
-            .args(["mcp", "remove", "symposium"])
+            .args(["mcp", "remove", "socratic-shell"])
             .output()
             .context("Failed to execute claude mcp remove")?;
 
@@ -534,7 +534,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");    );
     
     let add_output = Command::new("claude")
-        .args(["mcp", "add-json", "--scope", "user", "symposium", &config_json])
+        .args(["mcp", "add-json", "--scope", "user", "socratic-shell", &config_json])
         .output()
         .context("Failed to execute claude mcp add")?;
 
@@ -605,7 +605,7 @@ fn cleanup_existing_daemon() -> Result<()> {
     }
     
     // Clean up any stale socket files
-    let socket_path = "/tmp/symposium-daemon.sock";
+    let socket_path = "/tmp/socratic-shell-daemon.sock";
     if std::path::Path::new(socket_path).exists() {
         if let Err(e) = std::fs::remove_file(socket_path) {
             println!("   ⚠️  Could not remove stale socket: {}", e);
