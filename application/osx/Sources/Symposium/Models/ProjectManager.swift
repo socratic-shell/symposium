@@ -115,6 +115,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         // Validate taskspaces and remove stale entries
         let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath)
+        Logger.shared.log("ProjectManager[\(instanceId)]: Validated \(project.taskspaces.count) taskspaces, found \(staleTaskspaces.count) stale entries")
         
         if !staleTaskspaces.isEmpty {
             // Show confirmation dialog on main thread
