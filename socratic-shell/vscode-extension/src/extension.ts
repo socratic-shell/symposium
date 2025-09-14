@@ -334,13 +334,13 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Register walkthrough comment reply command (legacy - may not be needed)
-    const walkthroughCommentCommand = vscode.commands.registerCommand('symposium.addWalkthroughComment',
+    const walkthroughCommentCommand = vscode.commands.registerCommand('socratic-shell.addWalkthroughComment',
         (reply: vscode.CommentReply) => walkthroughProvider.handleCommentSubmission(reply)
     );
     context.subscriptions.push(walkthroughCommentCommand);
 
     // Register new walkthrough comment reply command that uses symposium-ref
-    const walkthroughReplyCommand = vscode.commands.registerCommand('symposium.replyToWalkthroughComment',
+    const walkthroughReplyCommand = vscode.commands.registerCommand('socratic-shell.replyToWalkthroughComment',
         async (commentData: { file: string; range: { start: { line: number }; end: { line: number } }; comment: string }) => {
             try {
                 console.log('Walkthrough reply command called with data:', commentData);
@@ -395,29 +395,29 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register review action command for tree view buttons
     // 💡: Show review command - displays the walkthrough panel
-    const showReviewCommand = vscode.commands.registerCommand('symposium.showReview', () => {
+    const showReviewCommand = vscode.commands.registerCommand('socratic-shell.showReview', () => {
         // Focus on the walkthrough webview panel
-        vscode.commands.executeCommand('symposium.walkthrough.focus');
+        vscode.commands.executeCommand('socratic-shell.walkthrough.focus');
     });
 
-    const reviewActionCommand = vscode.commands.registerCommand('symposium.reviewAction', (action: string) => {
+    const reviewActionCommand = vscode.commands.registerCommand('socratic-shell.reviewAction', (action: string) => {
         daemonClient.handleReviewAction(action);
     });
 
     // 💡: Copy review command is now handled via webview postMessage
-    const copyReviewCommand = vscode.commands.registerCommand('symposium.copyReview', () => {
+    const copyReviewCommand = vscode.commands.registerCommand('socratic-shell.copyReview', () => {
         vscode.window.showInformationMessage('Use the Copy Review button in the review panel');
     });
 
     // 💡: PID discovery command for testing
-    const logPIDsCommand = vscode.commands.registerCommand('symposium.logPIDs', async () => {
+    const logPIDsCommand = vscode.commands.registerCommand('socratic-shell.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
         await logPIDDiscovery(outputChannel);
         vscode.window.showInformationMessage('PID information logged to Symposium output channel');
     });
 
     // Window title toggle command for POC
-    const toggleWindowTitleCommand = vscode.commands.registerCommand('symposium.toggleWindowTitle', async () => {
+    const toggleWindowTitleCommand = vscode.commands.registerCommand('socratic-shell.toggleWindowTitle', async () => {
         const config = vscode.workspace.getConfiguration();
         const currentTitle = config.get<string>('window.title') || '';
 
@@ -481,7 +481,7 @@ function setupSelectionDetection(bus: Bus): void {
                         vscode.CodeActionKind.QuickFix
                     );
                     action.command = {
-                        command: 'symposium.chatAboutSelection',
+                        command: 'socratic-shell.chatAboutSelection',
                         title: 'Ask Socratic Shell'
                     };
                     action.isPreferred = true; // Show at top of list
@@ -497,7 +497,7 @@ function setupSelectionDetection(bus: Bus): void {
     );
 
     // 💡: Register command for when user clicks the code action
-    const chatIconCommand = vscode.commands.registerCommand('symposium.chatAboutSelection', async () => {
+    const chatIconCommand = vscode.commands.registerCommand('socratic-shell.chatAboutSelection', async () => {
         if (currentSelection) {
             const selectedText = currentSelection.editor.document.getText(currentSelection.selection);
             const filePath = currentSelection.editor.document.fileName;
@@ -596,7 +596,7 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
         outputChannel.appendLine(`Multiple AI-enabled terminals found: ${aiEnabledTerminals.length}`);
 
         // Get previously selected terminal PID from workspace state
-        const lastSelectedPID = context.workspaceState.get<number>('symposium.lastSelectedTerminalPID');
+        const lastSelectedPID = context.workspaceState.get<number>('socratic-shell.lastSelectedTerminalPID');
         outputChannel.appendLine(`Last selected terminal PID: ${lastSelectedPID}`);
 
         // Create picker items with terminal info
@@ -669,7 +669,7 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
             outputChannel.appendLine(`User selected terminal: ${selectedItem.terminal.name} (PID: ${selectedItem.pid})`);
 
             // Remember this selection for next time
-            await context.workspaceState.update('symposium.lastSelectedTerminalPID', selectedItem.pid);
+            await context.workspaceState.update('socratic-shell.lastSelectedTerminalPID', selectedItem.pid);
             outputChannel.appendLine(`Saved terminal PID ${selectedItem.pid} as last selected`);
 
             return selectedItem.terminal;

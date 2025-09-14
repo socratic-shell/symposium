@@ -140,29 +140,29 @@ export class SyntheticPRProvider implements vscode.Disposable {
         this.treeProvider = new SyntheticPRTreeProvider();
         
         // Register tree view
-        console.log('[SYNTHETIC PR] Registering tree view with ID: symposium.syntheticPR');
-        const treeView = vscode.window.createTreeView('symposium.syntheticPR', {
+        console.log('[SYNTHETIC PR] Registering tree view with ID: socratic-shell.syntheticPR');
+        const treeView = vscode.window.createTreeView('socratic-shell.syntheticPR', {
             treeDataProvider: this.treeProvider
         });
         console.log('[SYNTHETIC PR] Tree view created successfully:', !!treeView);
 
         // Register diff command
-        const diffCommand = vscode.commands.registerCommand('symposium.showFileDiff', 
+        const diffCommand = vscode.commands.registerCommand('socratic-shell.showFileDiff', 
             (filePath: string) => this.showFileDiff(filePath)
         );
 
         // Register comment reply command
-        const commentReplyCommand = vscode.commands.registerCommand('symposium.addCommentReply',
+        const commentReplyCommand = vscode.commands.registerCommand('socratic-shell.addCommentReply',
             (thread: vscode.CommentThread, text: string) => this.addCommentReply(thread, text)
         );
 
         // Register add comment command (for new comments)
-        const addCommentCommand = vscode.commands.registerCommand('symposium.addComment',
+        const addCommentCommand = vscode.commands.registerCommand('socratic-shell.addComment',
             (reply: vscode.CommentReply) => this.handleCommentSubmission(reply)
         );
 
         // Register toggle comments command
-        const toggleCommentsCommand = vscode.commands.registerCommand('symposium.toggleComments',
+        const toggleCommentsCommand = vscode.commands.registerCommand('socratic-shell.toggleComments',
             () => this.treeProvider.toggleCommentsExpansion()
         );
 

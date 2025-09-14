@@ -10,14 +10,14 @@ use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing::{error, info};
 
-use symposium_mcp::{
+use socratic_shell_mcp::{
     DialecticServer,
     constants::DAEMON_SOCKET_PREFIX,
     structured_logging::{self, Component},
 };
 
 #[derive(Parser)]
-#[command(name = "symposium-mcp")]
+#[command(name = "socratic-shell-mcp")]
 #[command(about = "Symposium MCP Server for VSCode integration")]
 struct Args {
     /// Enable development logging to the default log file
@@ -88,7 +88,7 @@ async fn main() -> Result<()> {
             info!(
                 "🚀 DAEMON MODE - Starting message bus daemon with prefix {prefix}, idle timeout {idle_timeout}s",
             );
-            symposium_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
+            socratic_shell_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
         }
         Some(Command::Client { prefix, auto_start }) => {
             let prefix = match &prefix {
@@ -96,7 +96,7 @@ async fn main() -> Result<()> {
                 None => DAEMON_SOCKET_PREFIX,
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
-            symposium_mcp::run_client(prefix, auto_start).await?;
+            socratic_shell_mcp::run_client(prefix, auto_start).await?;
         }
         None => {
             info!("Starting Symposium MCP Server (Rust)");
@@ -140,7 +140,7 @@ async fn run_pid_probe() -> Result<()> {
     info!("MCP Server PID: {}", current_pid);
 
     // Try to walk up the process tree to find VSCode
-    match symposium_mcp::find_vscode_pid_from_mcp(current_pid).await {
+    match socratic_shell_mcp::find_vscode_pid_from_mcp(current_pid).await {
         Ok(Some((vscode_pid, terminal_shell_pid))) => {
             info!("✅ SUCCESS: Found VSCode PID: {}", vscode_pid);
             info!("✅ SUCCESS: Terminal Shell PID: {}", terminal_shell_pid);

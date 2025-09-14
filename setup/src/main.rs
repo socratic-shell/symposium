@@ -1,5 +1,5 @@
 #!/usr/bin/env cargo
-//! Symposium Development Setup Tool
+//! Socratic Shell Development Setup Tool
 //!
 //! Builds the Rust MCP server, VSCode extension, and configures them for use
 //! with AI assistants like Claude CLI and Q CLI.
@@ -34,9 +34,9 @@ enum ClaudeScope {
 #[derive(Parser)]
 #[command(
     name = "setup",
-    about = "Build Symposium components and set up for development with AI assistants",
+    about = "Build Socratic Shell components and set up for development with AI assistants",
     long_about = r#"
-Build Symposium components and set up for development with AI assistants
+Build Socratic Shell components and set up for development with AI assistants
 
 This tool builds the Rust MCP server, VSCode extension, and macOS app, then configures
 them for use with Claude CLI or Q CLI.
@@ -89,7 +89,7 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    println!("🎭 Symposium Development Setup");
+    println!("🐚 Socratic Shell Development Setup");
     println!("{}", "=".repeat(35));
 
     // Determine which tool to use
@@ -270,7 +270,7 @@ fn build_and_install_rust_server() -> Result<PathBuf> {
     }
 
     println!("✅ Rust server installed successfully!");
-    Ok(PathBuf::from("symposium-mcp"))
+    Ok(PathBuf::from("socratic-shell-mcp"))
 }
 
 fn build_macos_app() -> Result<()> {
@@ -428,24 +428,24 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
         "mcp",
         "add",
         "--name",
-        "symposium",
+        "socratic-shell",
         "--command",
         &binary_path.to_string_lossy(),
         "--args",
         "--dev-log",
         "--env",
-        "RUST_LOG=symposium_mcp=debug",
+        "RUST_LOG=socratic_shell_mcp=debug",
         "--force", // Always overwrite existing configuration
     ]);
 
-    println!("🔧 Registering Symposium MCP server with Q CLI...");
+    println!("🔧 Registering Socratic Shell MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
+    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
 
     let output = cmd.output().context("Failed to execute q mcp add")?;
 
     if output.status.success() {
-        println!("✅ MCP server 'symposium' registered successfully with Q CLI!");
+        println!("✅ MCP server 'socratic-shell' registered successfully with Q CLI!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);

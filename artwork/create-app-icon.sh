@@ -7,7 +7,7 @@ set -e
 
 LOGO_SVG="./logo.svg"
 ICON_NAME="AppIcon"
-OUTPUT_DIR="./application/osx"
+OUTPUT_DIR="../symposium/macos-app"
 TEMP_DIR="/tmp/symposium-icon-$$"
 
 # Check if logo.svg exists

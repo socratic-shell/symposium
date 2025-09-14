@@ -624,7 +624,7 @@ export class DaemonClient implements vscode.Disposable {
         this.currentReviewId = reviewId;
 
         // Automatically show the review
-        vscode.commands.executeCommand('symposium.showReview');
+        vscode.commands.executeCommand('socratic-shell.showReview');
 
         return new Promise<UserFeedback>((resolve) => {
             this.pendingFeedbackResolvers.set(reviewId, resolve);

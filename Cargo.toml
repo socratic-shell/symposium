@@ -1,5 +1,5 @@
 [workspace]
-members = ["mcp-server", "setup"]
+members = ["socratic-shell/mcp-server", "setup"]
 resolver = "2"
 
 [workspace.dependencies]

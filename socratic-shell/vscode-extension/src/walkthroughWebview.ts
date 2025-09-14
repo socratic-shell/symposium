@@ -65,7 +65,7 @@ interface WalkthroughData {
 }
 
 export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'symposium.walkthrough';
+    public static readonly viewType = 'socratic-shell.walkthrough';
 
     private _view?: vscode.WebviewView;
     private md: MarkdownIt;
@@ -456,7 +456,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             if (comment.comment && comment.comment.length > 0) {
                 const commentText = comment.comment.join('\n\n');
                 // Add reply button as a command link in the comment body
-                const commentWithReply = `${commentText}\n\n---\n[Reply](command:symposium.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
+                const commentWithReply = `${commentText}\n\n---\n[Reply](command:socratic-shell.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
                     file: uri.fsPath,
                     range: { start: { line: startLine + 1 }, end: { line: endLine + 1 } },
                     comment: commentText

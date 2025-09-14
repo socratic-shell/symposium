@@ -1,7 +1,7 @@
 {
-  "name": "symposium",
-  "displayName": "Symposium",
-  "description": "AI-powered code walkthroughs and agentspace orchestration",
+  "name": "socratic-shell",
+  "displayName": "Socratic Shell",
+  "description": "AI-powered code walkthroughs and MCP server integration for enhanced development workflows",
   "version": "0.1.0",
   "publisher": "socratic-shell",
   "repository": {
@@ -22,71 +22,71 @@
   "contributes": {
     "commands": [
       {
-        "command": "symposium.showReview",
+        "command": "socratic-shell.showReview",
         "title": "Show Review",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.copyReview",
+        "command": "socratic-shell.copyReview",
         "title": "Copy Review",
-        "category": "Symposium",
+        "category": "Socratic Shell",
         "icon": "$(copy)"
       },
       {
-        "command": "symposium.logPIDs",
+        "command": "socratic-shell.logPIDs",
         "title": "Log PIDs",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.showFileDiff",
+        "command": "socratic-shell.showFileDiff",
         "title": "Show File Diff",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addComment",
+        "command": "socratic-shell.addComment",
         "title": "Add Comment",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addCommentReply",
+        "command": "socratic-shell.addCommentReply",
         "title": "Add Comment Reply",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addWalkthroughComment",
+        "command": "socratic-shell.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       },
       {
-        "command": "symposium.toggleComments",
+        "command": "socratic-shell.toggleComments",
         "title": "Toggle Comments",
-        "category": "Symposium",
+        "category": "Socratic Shell",
         "icon": "$(comment)"
       },
       {
-        "command": "symposium.toggleWindowTitle",
+        "command": "socratic-shell.toggleWindowTitle",
         "title": "Toggle Window Title",
-        "category": "Symposium"
+        "category": "Socratic Shell"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "symposium",
-          "title": "Symposium",
+          "id": "socratic-shell",
+          "title": "Socratic Shell",
           "icon": "activitybar-logo.svg"
         }
       ]
     },
     "views": {
-      "symposium": [
+      "socratic-shell": [
         {
-          "id": "symposium.walkthrough",
+          "id": "socratic-shell.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
         },
         {
-          "id": "symposium.syntheticPR",
+          "id": "socratic-shell.syntheticPR",
           "name": "Synthetic PR",
           "type": "tree"
         }
@@ -95,19 +95,19 @@
     "menus": {
       "view/title": [
         {
-          "command": "symposium.toggleComments",
+          "command": "socratic-shell.toggleComments",
           "when": "view == dialectic.syntheticPR",
           "group": "navigation"
         }
       ],
       "comments/commentThread/context": [
         {
-          "command": "symposium.addComment",
+          "command": "socratic-shell.addComment",
           "group": "inline@1",
           "when": "commentController == dialectic-synthetic-pr"
         },
         {
-          "command": "symposium.addWalkthroughComment",
+          "command": "socratic-shell.addWalkthroughComment",
           "group": "inline@1",
           "when": "commentController == dialectic-walkthrough"
         }
