@@ -111,14 +111,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Load project
-        let project = try Project.load(from: directoryPath)
+        var project = try Project.load(from: directoryPath)
 
-        // Load existing taskspaces
-        var loadedProject = project
-        loadedProject.taskspaces = try loadTaskspaces(from: directoryPath)
-
-        // Set as current project
-        setCurrentProject(loadedProject)
+        // Set as current project first to display it
+        setCurrentProject(project)
     }
 
     /// Helper to set current project and register as IPC delegate
@@ -149,10 +145,37 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Load existing screenshots from disk for visual persistence
         self.loadExistingScreenshots()
 
+        // Validate taskspaces after display but before full interaction
+        Task { @MainActor in
+            await validateTaskspacesAsync(project)
+        }
+
         // Start automatic window close detection
         self.startWindowCloseDetection()
 
         self.startMCPClient()
+    }
+    
+    /// Validate taskspaces asynchronously after project is displayed
+    @MainActor
+    private func validateTaskspacesAsync(_ project: Project) async {
+        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: project.directoryPath, gitURL: project.gitURL)
+        Logger.shared.log("ProjectManager[\(instanceId)]: Validated \(project.taskspaces.count) taskspaces, found \(staleTaskspaces.count) stale entries")
+        
+        if !staleTaskspaces.isEmpty {
+            let shouldRemove = confirmStaleTaskspaceRemoval(staleTaskspaces)
+            if shouldRemove {
+                var updatedProject = project
+                updatedProject.taskspaces = project.taskspaces.filter { taskspace in
+                    !staleTaskspaces.contains { $0.id == taskspace.id }
+                }
+                Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
+                try? updatedProject.save()
+                
+                // Update the current project with cleaned taskspaces
+                self.currentProject = updatedProject
+            }
+        }
     }
 
     /// Launch VSCode for a specific taskspace (used for user-activated awakening)
@@ -187,6 +210,50 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     //             "ProjectManager: Launched VSCode for \(activeTaskspaces.count) active taskspaces")
     //     }
     // }
+
+    /// Find taskspaces with missing directories
+    private func findStaleTaskspaces(_ taskspaces: [Taskspace], in projectPath: String, gitURL: String) -> [Taskspace] {
+        let fileManager = FileManager.default
+        let repoName = extractRepoName(from: gitURL)
+        
+        return taskspaces.filter { taskspace in
+            let taskspaceDir = taskspace.directoryPath(in: projectPath)
+            let taskspaceJsonPath = taskspace.taskspaceFilePath(in: projectPath)
+            let workingDir = "\(taskspaceDir)/\(repoName)"
+            
+            let hasTaskspaceDir = fileManager.fileExists(atPath: taskspaceDir)
+            let hasTaskspaceJson = fileManager.fileExists(atPath: taskspaceJsonPath)
+            let hasWorkingDir = fileManager.fileExists(atPath: workingDir)
+            
+            let isValid = hasTaskspaceDir && hasTaskspaceJson && hasWorkingDir
+            
+            if !isValid {
+                var missing: [String] = []
+                if !hasTaskspaceDir { missing.append("directory") }
+                if !hasTaskspaceJson { missing.append("taskspace.json") }
+                if !hasWorkingDir { missing.append("worktree") }
+                
+                Logger.shared.log("ProjectManager[\(instanceId)]: Found stale taskspace: \(taskspace.name) (missing: \(missing.joined(separator: ", ")))")
+            }
+            
+            return !isValid
+        }
+    }
+    
+    /// Show confirmation dialog for removing stale taskspaces
+    @MainActor
+    private func confirmStaleTaskspaceRemoval(_ staleTaskspaces: [Taskspace]) -> Bool {
+        let taskspaceNames = staleTaskspaces.map { $0.name }.joined(separator: "\n• ")
+        
+        let alert = NSAlert()
+        alert.messageText = "Remove Missing Taskspaces?"
+        alert.informativeText = "The following taskspaces no longer have directories on disk:\n\n• \(taskspaceNames)\n\nWould you like to remove them from the project?"
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Keep")
+        alert.alertStyle = .warning
+        
+        return alert.runModal() == .alertFirstButtonReturn
+    }
 
     /// Load all taskspaces from project directory
     private func loadTaskspaces(from projectPath: String) throws -> [Taskspace] {
@@ -585,6 +652,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Create worktree for this taskspace with unique branch
+        // CAREFUL: When adding new steps to taskspace creation, you likely need to modify `findStaleTaskspaces` as well to check for this.
         let branchName = "taskspace-\(taskspace.id.uuidString)"
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"

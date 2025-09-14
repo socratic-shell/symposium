@@ -409,6 +409,19 @@ struct TaskspaceCard: View {
     private func handleTaskspaceClick() {
         // Always update activation time and reorder on any taskspace click
         if var project = projectManager.currentProject {
+            // Acknowledge attention signals when user clicks on the taskspace
+            if let taskspaceIndex = project.findTaskspaceIndex(uuid: taskspace.id.uuidString) {
+                project.taskspaces[taskspaceIndex].acknowledgeAttentionSignals()
+                
+                // Save the taskspace to persist the acknowledged signals
+                do {
+                    try project.taskspaces[taskspaceIndex].save(in: project.directoryPath)
+                    Logger.shared.log("TaskspaceCard: Acknowledged attention signals for \(taskspace.name)")
+                } catch {
+                    Logger.shared.log("TaskspaceCard: Failed to save acknowledged signals: \(error)")
+                }
+            }
+            
             project.activateTaskspace(uuid: taskspace.id.uuidString)
             projectManager.currentProject = project
             

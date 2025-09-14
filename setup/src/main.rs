@@ -5,31 +5,9 @@
 //! with AI assistants like Claude CLI and Q CLI.
 
 use anyhow::{anyhow, Context, Result};
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-#[derive(Debug, Clone, ValueEnum)]
-enum CLITool {
-    #[value(name = "q")]
-    QCli,
-    #[value(name = "claude")]
-    ClaudeCode,
-    #[value(name = "both")]
-    Both,
-    #[value(name = "auto")]
-    Auto,
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum ClaudeScope {
-    #[value(name = "user")]
-    User,
-    #[value(name = "local")]
-    Local,
-    #[value(name = "project")]
-    Project,
-}
 
 #[derive(Parser)]
 #[command(
@@ -38,132 +16,139 @@ enum ClaudeScope {
     long_about = r#"
 Build Socratic Shell components and set up for development with AI assistants
 
-This tool builds the Rust MCP server, VSCode extension, and macOS app, then configures
-them for use with Claude CLI or Q CLI.
-
 Examples:
-  cargo setup                           # Build everything and setup for development
-  cargo setup --open                   # Build everything, setup, and launch the app
-  cargo setup --restart                # Build everything and restart daemon processes
-  cargo setup --tool q                 # Setup for Q CLI only
-  cargo setup --tool claude            # Setup for Claude Code only
-  cargo setup --tool both              # Setup for both tools
+  cargo setup                           # Show help and usage
+  cargo setup --all                    # Build everything and setup for development
+  cargo setup --vscode                 # Build/install VSCode extension only
+  cargo setup --mcp                    # Build/install MCP server only
+  cargo setup --mcp --restart          # Build/install MCP server and restart daemon
+  cargo setup --app                    # Build macOS app only
+  cargo setup --app --open             # Build macOS app and launch it
+  cargo setup --vscode --mcp --app     # Build all components (same as --all)
 
 Prerequisites:
   - Rust and Cargo (https://rustup.rs/)
   - Node.js and npm (for VSCode extension)
   - VSCode with 'code' command available
-  - Q CLI or Claude Code
+  - Q CLI or Claude Code (for MCP server)
 "#
 )]
 struct Args {
-    /// Which CLI tool to configure
-    #[arg(long, default_value = "auto")]
-    tool: CLITool,
-
-    /// Scope for Claude Code MCP configuration
-    #[arg(long, default_value = "user")]
-    claude_scope: ClaudeScope,
-
-    /// Skip MCP server registration
+    /// Build all components (VSCode extension, MCP server, and macOS app)
     #[arg(long)]
-    skip_mcp: bool,
+    all: bool,
 
-    /// Skip VSCode extension build and install
+    /// Build/install VSCode extension
     #[arg(long)]
-    skip_extension: bool,
+    vscode: bool,
 
-    /// Skip macOS app build
+    /// Build/install MCP server
     #[arg(long)]
-    skip_app: bool,
+    mcp: bool,
 
-    /// Open the app after building everything
+    /// Build macOS app
+    #[arg(long)]
+    app: bool,
+
+    /// Open the app after building (requires --app)
     #[arg(long)]
     open: bool,
 
-    /// Kill existing daemon processes and restart cleanly
+    /// Restart MCP daemon after building (requires --mcp)
     #[arg(long)]
     restart: bool,
+
+
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
+    // Validate flag combinations first
+    if args.open && !args.app && !args.all {
+        return Err(anyhow!("❌ --open requires --app"));
+    }
+    if args.restart && !args.mcp && !args.all {
+        return Err(anyhow!("❌ --restart requires --mcp"));
+    }
+
+    // Show help if no components specified
+    if !args.all && !args.vscode && !args.mcp && !args.app {
+        show_help();
+        return Ok(());
+    }
+
+    // Determine what to build
+    let build_vscode = args.all || args.vscode;
+    let build_mcp = args.all || args.mcp;
+    let build_app = args.all || args.app;
+
     println!("🐚 Socratic Shell Development Setup");
     println!("{}", "=".repeat(35));
 
-    // Determine which tool to use
-    let tool = match args.tool {
-        CLITool::Auto => detect_available_tools()?,
-        other => other,
-    };
-
-    // Check prerequisites
+    // Check prerequisites based on what we're building
     check_rust()?;
-    check_node()?;
-    check_vscode()?;
-
-    if !args.skip_mcp {
-        match tool {
-            CLITool::QCli => check_q_cli()?,
-            CLITool::ClaudeCode => check_claude_code()?,
-            CLITool::Both => {
-                check_q_cli()?;
-                check_claude_code()?;
-            }
-            CLITool::Auto => unreachable!("Auto should have been resolved earlier"),
-        }
+    if build_vscode {
+        check_node()?;
+        check_vscode()?;
+    }
+    if build_mcp {
+        check_cli_tools()?;
     }
 
     // Build components
-    let binary_path = build_and_install_rust_server()?;
+    let mut binary_path = None;
+    if build_mcp {
+        binary_path = Some(build_and_install_rust_server()?);
+    }
 
-    if !args.skip_extension {
+    if build_vscode {
         build_and_install_extension()?;
     }
 
-    if !args.skip_app {
+    if build_app {
         build_macos_app()?;
     }
 
-    // Clean up any existing daemon (for clean dev environment)
-    // Do this AFTER building so the old daemon can send reload signal
-    if args.restart {
+    // Post-build actions
+    if args.restart && build_mcp {
         cleanup_existing_daemon()?;
     }
 
-    // Setup MCP server(s)
-    let mut success = true;
-    if !args.skip_mcp {
-        match tool {
-            CLITool::QCli => {
-                success = setup_q_cli_mcp(&binary_path)?;
-            }
-            CLITool::ClaudeCode => {
-                success = setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
-            }
-            CLITool::Both => {
-                success = setup_q_cli_mcp(&binary_path)?
-                    && setup_claude_code_mcp(&binary_path, &args.claude_scope)?;
-            }
-            CLITool::Auto => unreachable!("Auto should have been resolved earlier"),
-        }
-    } else {
-        println!("⏭️  Skipping MCP server registration");
+    if let Some(ref binary_path) = binary_path {
+        setup_mcp_servers(binary_path)?;
     }
 
-    if success {
-        print_next_steps(&tool)?;
-        
-        if args.open {
-            open_macos_app()?;
-        }
-    } else {
-        println!("\n❌ Setup incomplete. Please fix the errors above and try again.");
-        std::process::exit(1);
+    print_completion_message(build_vscode, build_mcp, build_app)?;
+
+    if args.open && build_app {
+        open_macos_app()?;
     }
 
     Ok(())
+}
+
+fn show_help() {
+    println!("🎭 Symposium Development Setup");
+    println!("{}", "=".repeat(35));
+    println!();
+    println!("Usage: cargo setup [OPTIONS]");
+    println!();
+    println!("Options:");
+    println!("  --all                Build all components (VSCode extension, MCP server, and macOS app)");
+    println!("  --vscode             Build/install VSCode extension");
+    println!("  --mcp                Build/install MCP server");
+    println!("  --app                Build macOS app");
+    println!("  --open               Open the app after building (requires --app)");
+    println!("  --restart            Restart MCP daemon after building (requires --mcp)");
+    println!("  --help               Show this help message");
+    println!();
+    println!("Examples:");
+    println!("  cargo setup --all                    # Build everything");
+    println!("  cargo setup --vscode                 # Build VSCode extension only");
+    println!("  cargo setup --mcp --restart          # Build MCP server and restart daemon");
+    println!("  cargo setup --app --open             # Build and launch macOS app");
+    println!("  cargo setup --vscode --mcp --app     # Build all components");
 }
 
 fn check_rust() -> Result<()> {
@@ -193,23 +178,7 @@ fn check_vscode() -> Result<()> {
     Ok(())
 }
 
-fn check_q_cli() -> Result<()> {
-    if which::which("q").is_err() {
-        return Err(anyhow!(
-            "❌ Error: Q CLI not found. Please install Q CLI first.\n   Visit: https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/q-cli.html"
-        ));
-    }
-    Ok(())
-}
 
-fn check_claude_code() -> Result<()> {
-    if !is_claude_available() {
-        return Err(anyhow!(
-            "❌ Error: Claude Code not found. Please install Claude Code first.\n   Visit: https://claude.ai/code"
-        ));
-    }
-    Ok(())
-}
 
 fn is_claude_available() -> bool {
     // Check both binary and config directory since claude might be an alias
@@ -217,18 +186,71 @@ fn is_claude_available() -> bool {
         || home::home_dir().map_or(false, |home| home.join(".claude").exists())
 }
 
-fn detect_available_tools() -> Result<CLITool> {
+fn check_cli_tools() -> Result<()> {
     let has_q = which::which("q").is_ok();
     let has_claude = is_claude_available();
 
-    match (has_q, has_claude) {
-        (true, true) => Ok(CLITool::Both),
-        (true, false) => Ok(CLITool::QCli),
-        (false, true) => Ok(CLITool::ClaudeCode),
-        (false, false) => Err(anyhow!(
+    if !has_q && !has_claude {
+        return Err(anyhow!(
             "❌ No supported CLI tools found. Please install Q CLI or Claude Code.\n   Q CLI: https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/q-cli.html\n   Claude Code: https://claude.ai/code"
-        )),
+        ));
     }
+    Ok(())
+}
+
+fn setup_mcp_servers(binary_path: &Path) -> Result<()> {
+    let has_q = which::which("q").is_ok();
+    let has_claude = is_claude_available();
+
+    let mut success = true;
+    
+    if has_q {
+        success &= setup_q_cli_mcp(binary_path)?;
+    }
+    
+    if has_claude {
+        success &= setup_claude_code_mcp(binary_path)?;
+    }
+
+    if !success {
+        println!("\n❌ MCP setup incomplete. Please fix the errors above.");
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool) -> Result<()> {
+    println!("\n🎉 Setup complete!");
+    
+    if built_mcp {
+        println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
+    }
+    if built_vscode {
+        println!("📋 VSCode extension installed and ready to use");
+    }
+    if built_app {
+        println!("🍎 macOS application built and ready to launch");
+    }
+
+    if built_mcp {
+        println!("\n🧪 Test MCP server:");
+        if which::which("q").is_ok() {
+            println!("   q chat \"Present a review of the changes you just made\"");
+        }
+        if is_claude_available() {
+            println!("   claude chat \"Present a review of the changes you just made\"");
+        }
+    }
+
+    if built_vscode {
+        println!("\n📝 Next steps:");
+        println!("1. Restart VSCode to activate the extension");
+        println!("2. Ask your AI assistant to present a code review");
+        println!("3. Reviews will appear in the Symposium panel in VSCode");
+    }
+
+    Ok(())
 }
 
 fn get_repo_root() -> Result<PathBuf> {
@@ -455,20 +477,11 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
     }
 }
 
-fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool> {
-    let scope_str = match scope {
-        ClaudeScope::User => "user",
-        ClaudeScope::Local => "local",
-        ClaudeScope::Project => "project",
-    };
-
+fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Scope: {}", scope_str);
     println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
-
-    // First, check if symposium MCP server is already configured
-    println!("🔍 Checking existing MCP server configuration...");
+    // Check existing configuration
     let list_output = Command::new("claude")
         .args(["mcp", "list"])
         .output()
@@ -476,26 +489,21 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
 
     if !list_output.status.success() {
         let stderr = String::from_utf8_lossy(&list_output.stderr);
-        println!("❌ Failed to list MCP servers:");
-        println!("   Error: {}", stderr.trim());
+        println!("❌ Failed to list MCP servers: {}", stderr.trim());
         return Ok(false);
     }
 
     let list_stdout = String::from_utf8_lossy(&list_output.stdout);
     let desired_binary_str = binary_path.to_string_lossy();
-    let desired_binary_ref = desired_binary_str.as_ref();
     
-    // Parse the output to check if symposium exists and with what binary path
+    // Check if symposium exists with correct path
     let mut symposium_exists = false;
     let mut symposium_has_correct_path = false;
     
     for line in list_stdout.lines() {
-        // Look for lines that mention symposium MCP server
-        // The exact format may vary, but we're looking for symposium name and the binary path
         if line.contains("symposium") {
             symposium_exists = true;
-            // Check if this line also contains our desired binary path
-            if line.contains(desired_binary_ref) {
+            if line.contains(desired_binary_str.as_ref()) {
                 symposium_has_correct_path = true;
                 break;
             }
@@ -503,14 +511,12 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
     }
 
     if symposium_exists && symposium_has_correct_path {
-        println!("✅ Symposium MCP server already configured with correct path - no action needed");
+        println!("✅ Symposium MCP server already configured with correct path");
         return Ok(true);
     }
 
-    if symposium_exists && !symposium_has_correct_path {
-        println!("🔄 Symposium MCP server exists but with different path - updating...");
-        
-        // Remove the existing server
+    if symposium_exists {
+        println!("🔄 Updating existing symposium MCP server...");
         let remove_output = Command::new("claude")
             .args(["mcp", "remove", "symposium"])
             .output()
@@ -518,84 +524,32 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
 
         if !remove_output.status.success() {
             let stderr = String::from_utf8_lossy(&remove_output.stderr);
-            println!("❌ Failed to remove existing MCP server:");
-            println!("   Error: {}", stderr.trim());
+            println!("❌ Failed to remove existing MCP server: {}", stderr.trim());
             return Ok(false);
         }
-        println!("✅ Removed existing symposium MCP server");
     }
 
-    // Add the MCP server (either first time or after removal)
-    let action = if symposium_exists { "Re-adding" } else { "Adding" };
-    println!("➕ {} Symposium MCP server...", action);
-    
-    let mut cmd = Command::new("claude");
-    
-    // Always use dev mode with --dev-log argument and debug logging
+    // Add MCP server
     let config_json = format!(
-        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"socratic_shell_mcp=debug"}}}}"#,
-        desired_binary_ref
-    );
-    cmd.args([
-        "mcp",
-        "add-json",
-        "--scope",
-        scope_str,
-        "symposium",
-        &config_json,
-    ]);
+    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");    );
     
-    let add_output = cmd.output().context("Failed to execute claude mcp add")?;
+    let add_output = Command::new("claude")
+        .args(["mcp", "add-json", "--scope", "user", "symposium", &config_json])
+        .output()
+        .context("Failed to execute claude mcp add")?;
 
     if add_output.status.success() {
         println!("✅ Symposium MCP server registered successfully with Claude Code!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&add_output.stderr);
-        println!("❌ Failed to register MCP server with Claude Code:");
-        println!("   Error: {}", stderr.trim());
+        println!("❌ Failed to register MCP server with Claude Code: {}", stderr.trim());
         Ok(false)
     }
 }
 
-fn print_next_steps(tool: &CLITool) -> Result<()> {
-    println!("\n🎉 Development setup complete! Symposium is ready for development.");
-    println!("🔧 Running in development mode with debug logging enabled");
-    println!("📦 MCP server installed to ~/.cargo/bin/socratic-shell-mcp");
-    println!("📋 VSCode extension installed and ready to use");
-    println!("🍎 macOS application built and ready to launch");
-
-    match tool {
-        CLITool::QCli | CLITool::Both => {
-            println!("\n🧪 Test with Q CLI:");
-            println!("   q chat \"Present a review of the changes you just made\"");
-        }
-        _ => {}
-    }
-
-    match tool {
-        CLITool::ClaudeCode | CLITool::Both => {
-            println!("\n🧪 Test with Claude Code:");
-            println!("   claude chat \"Present a review of the changes you just made\"");
-        }
-        _ => {}
-    }
-
-    println!("\n📝 Next steps:");
-    println!("1. Restart VSCode to activate the extension");
-    println!("2. Ask your AI assistant to present a code review");
-    println!("3. Reviews will appear in the Symposium panel in VSCode");
-
-    println!("\n🔧 Development workflow:");
-    println!("- Run 'cargo setup' to rebuild everything (keeps daemon running)");
-    println!("- Run 'cargo setup --restart' to rebuild and restart daemon");
-    println!("- Run 'cargo setup --open' to rebuild and launch the app");
-    println!("- For quick server changes: cd socratic-shell/mcp-server && cargo build --release && cargo setup");
-    println!("- VSCode extension reloading requires --restart flag");
-
-    Ok(())
-}
-
+    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
 /// Clean up existing daemon process and stale socket files
 fn cleanup_existing_daemon() -> Result<()> {
     println!("🧹 Cleaning up existing daemon...");
