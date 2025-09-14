@@ -22,49 +22,49 @@
   "contributes": {
     "commands": [
       {
-        "command": "symposium.showReview",
+        "command": "socratic-shell.showReview",
         "title": "Show Review",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.copyReview",
+        "command": "socratic-shell.copyReview",
         "title": "Copy Review",
         "category": "Socratic Shell",
         "icon": "$(copy)"
       },
       {
-        "command": "symposium.logPIDs",
+        "command": "socratic-shell.logPIDs",
         "title": "Log PIDs",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.showFileDiff",
+        "command": "socratic-shell.showFileDiff",
         "title": "Show File Diff",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addComment",
+        "command": "socratic-shell.addComment",
         "title": "Add Comment",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addCommentReply",
+        "command": "socratic-shell.addCommentReply",
         "title": "Add Comment Reply",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.addWalkthroughComment",
+        "command": "socratic-shell.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
         "category": "Socratic Shell"
       },
       {
-        "command": "symposium.toggleComments",
+        "command": "socratic-shell.toggleComments",
         "title": "Toggle Comments",
         "category": "Socratic Shell",
         "icon": "$(comment)"
       },
       {
-        "command": "symposium.toggleWindowTitle",
+        "command": "socratic-shell.toggleWindowTitle",
         "title": "Toggle Window Title",
         "category": "Socratic Shell"
       }
@@ -72,16 +72,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "symposium",
+          "id": "socratic-shell",
           "title": "Socratic Shell",
           "icon": "activitybar-logo.svg"
         }
       ]
     },
     "views": {
-      "symposium": [
+      "socratic-shell": [
         {
-          "id": "symposium.walkthrough",
+          "id": "socratic-shell.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
         }
@@ -90,7 +90,7 @@
     "menus": {
       "comments/commentThread/context": [
         {
-          "command": "symposium.addWalkthroughComment",
+          "command": "socratic-shell.addWalkthroughComment",
           "group": "inline@1",
           "when": "commentController == dialectic-walkthrough"
         }
