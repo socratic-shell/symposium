@@ -26,8 +26,10 @@ Complete the rebranding from "Symposium" to "Socratic Shell" throughout the code
 
 ### VSCode Extension - Source Code
 - [x] Command registrations in `extension.ts` (already correct)
-- [ ] URL scheme: `symposium:` → `socratic-shell:`
-  - Update `symposiumUrl.ts` file and all references
+- [x] URL scheme: `symposium:` → `socratic-shell:`
+  - [x] Renamed file: `symposiumUrl.ts` → `socraticShellUrl.ts`
+  - [x] Updated all function names, types, and variable references
+  - [x] Updated HTML data attributes: `data-symposium-url` → `data-socratic-shell-url`
 - [ ] Comment controller IDs: `symposium-walkthrough` → `socratic-shell-walkthrough`
 - [ ] IPC process name: `symposium-mcp` → `socratic-shell-mcp`
 

@@ -2,7 +2,7 @@
 // Supports the parameter combinations from dialectic: URL scheme design
 
 import * as vscode from 'vscode';
-import { LineSpec } from './symposiumUrl';
+import { LineSpec } from './socraticShellUrl';
 
 export interface SearchResult {
     line: number;        // 1-based line number
