@@ -289,7 +289,7 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
-            name: `Symposium agent`,
+            name: `Socratic Shell`,
             cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
         });
 
