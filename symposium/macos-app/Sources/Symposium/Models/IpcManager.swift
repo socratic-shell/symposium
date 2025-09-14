@@ -206,7 +206,7 @@ class IpcManager: ObservableObject {
         guard clientProcess == nil else { return }
 
         error = nil
-        Logger.shared.log("IpcManager[\(instanceId)]: Starting symposium-mcp client...")
+        Logger.shared.log("IpcManager[\(instanceId)]: Starting socratic-shell-mcp client...")
         Logger.shared.log("IpcManager[\(instanceId)]: Path: \(mcpServerPath)")
         Logger.shared.log("IpcManager[\(instanceId)]: Command: \(mcpServerPath) client")
 

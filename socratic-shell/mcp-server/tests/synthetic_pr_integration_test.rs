@@ -1,7 +1,7 @@
 use rmcp::ServerHandler;
 use serde_json::json;
-use symposium_mcp::DialecticServer;
-use symposium_mcp::synthetic_pr::*;
+use socratic_shell_mcp::DialecticServer;
+use socratic_shell_mcp::synthetic_pr::*;
 use tempfile::TempDir;
 use test_utils::TestRepo;
 

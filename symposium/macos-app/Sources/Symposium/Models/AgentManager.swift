@@ -225,7 +225,7 @@ class AgentManager: ObservableObject {
     }
 
     private func checkQCLIMCPConfiguration(qPath: String) -> (Bool, String?) {
-        // Use Q CLI's built-in MCP status command to check for symposium-mcp
+        // Use Q CLI's built-in MCP status command to check for socratic-shell-mcp
         let output = runCommand(path: qPath, arguments: ["mcp", "status", "--name", "symposium"])
 
         guard let output = output, !output.isEmpty else {
@@ -233,7 +233,7 @@ class AgentManager: ObservableObject {
         }
 
         // Parse the output to extract the Command path
-        // Look for lines like "Command : /path/to/symposium-mcp"
+        // Look for lines like "Command : /path/to/socratic-shell-mcp"
         let lines = output.components(separatedBy: .newlines)
         for line in lines {
             if line.contains("Command :") {
@@ -250,7 +250,7 @@ class AgentManager: ObservableObject {
     }
 
     private func checkClaudeCodeMCPConfiguration(claudePath: String) -> (Bool, String?) {
-        // Use Claude Code's built-in MCP list command to check for symposium-mcp
+        // Use Claude Code's built-in MCP list command to check for socratic-shell-mcp
         let output = runCommand(path: claudePath, arguments: ["mcp", "list"])
 
         Logger.shared.log("AgentManager: Claude MCP command: \(claudePath) mcp list")
@@ -261,7 +261,7 @@ class AgentManager: ObservableObject {
         }
 
         // Parse the output to find symposium entry
-        // Look for lines like "symposium: /path/to/symposium-mcp --dev-log - ✓ Connected"
+        // Look for lines like "symposium: /path/to/socratic-shell-mcp --dev-log - ✓ Connected"
         let lines = output.components(separatedBy: .newlines)
         for line in lines {
             if line.contains("symposium:") && line.contains("✓ Connected") {

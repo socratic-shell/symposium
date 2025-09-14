@@ -7,7 +7,7 @@ pub const DAEMON_SOCKET_PREFIX: &str = "symposium-daemon";
 pub const TEMP_DIR: &str = "/tmp";
 
 /// Default log file name for development mode
-pub const DEV_LOG_FILENAME: &str = "symposium-mcp.log";
+pub const DEV_LOG_FILENAME: &str = "socratic-shell-mcp.log";
 
 /// Default idle timeout for daemon in seconds
 pub const DEFAULT_DAEMON_IDLE_TIMEOUT: u64 = 30;

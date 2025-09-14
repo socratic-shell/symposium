@@ -1,4 +1,4 @@
-use symposium_mcp::synthetic_pr::{GitService, CommentParser};
+use socratic_shell_mcp::synthetic_pr::{GitService, CommentParser};
 use test_utils::TestRepo;
 
 #[test]

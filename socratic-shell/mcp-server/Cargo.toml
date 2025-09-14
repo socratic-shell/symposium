@@ -11,7 +11,7 @@ name = "socratic_shell_mcp"
 path = "src/lib.rs"
 
 [[bin]]
-name = "symposium-mcp"
+name = "socratic-shell-mcp"
 path = "src/main.rs"
 
 [dependencies]

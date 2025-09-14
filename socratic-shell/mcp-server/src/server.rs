@@ -1210,7 +1210,7 @@ impl ServerHandler for DialecticServer {
             protocol_version: ProtocolVersion::V_2024_11_05,
             capabilities: ServerCapabilities::builder().enable_tools().enable_resources().enable_prompts().build(),
             server_info: Implementation {
-                name: "symposium-mcp".to_string(),
+                name: "socratic-shell-mcp".to_string(),
                 version: "0.1.0".to_string(),
             },
             instructions: Some(

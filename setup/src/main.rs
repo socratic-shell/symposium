@@ -330,7 +330,7 @@ fn open_macos_app() -> Result<()> {
 
 fn build_and_install_extension() -> Result<()> {
     let repo_root = get_repo_root()?;
-    let extension_dir = repo_root.join("ide/vscode");
+    let extension_dir = repo_root.join("socratic-shell/vscode-extension");
 
     println!("\n📦 Building VSCode extension...");
 
@@ -465,7 +465,7 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Scope: {}", scope_str);
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
+    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
 
     // First, check if symposium MCP server is already configured
     println!("🔍 Checking existing MCP server configuration...");
@@ -533,7 +533,7 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
     
     // Always use dev mode with --dev-log argument and debug logging
     let config_json = format!(
-        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
+        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"socratic_shell_mcp=debug"}}}}"#,
         desired_binary_ref
     );
     cmd.args([
@@ -561,7 +561,7 @@ fn setup_claude_code_mcp(binary_path: &Path, scope: &ClaudeScope) -> Result<bool
 fn print_next_steps(tool: &CLITool) -> Result<()> {
     println!("\n🎉 Development setup complete! Symposium is ready for development.");
     println!("🔧 Running in development mode with debug logging enabled");
-    println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
+    println!("📦 MCP server installed to ~/.cargo/bin/socratic-shell-mcp");
     println!("📋 VSCode extension installed and ready to use");
     println!("🍎 macOS application built and ready to launch");
 
@@ -600,7 +600,7 @@ fn print_next_steps(tool: &CLITool) -> Result<()> {
 fn cleanup_existing_daemon() -> Result<()> {
     println!("🧹 Cleaning up existing daemon...");
     
-    // Find symposium-mcp daemon processes directly
+    // Find socratic-shell-mcp daemon processes directly
     let ps_output = Command::new("ps")
         .args(["ux"])
         .output()
@@ -615,7 +615,7 @@ fn cleanup_existing_daemon() -> Result<()> {
     let mut killed_any = false;
     
     for line in ps_stdout.lines() {
-        if line.contains("symposium-mcp daemon") {
+        if line.contains("socratic-shell-mcp daemon") {
             // Extract PID (second column in ps ux output)
             if let Some(pid_str) = line.split_whitespace().nth(1) {
                 if let Ok(pid) = pid_str.parse::<u32>() {

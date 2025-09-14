@@ -11,7 +11,7 @@ async fn test_daemon_readiness_message() {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Use a unique test prefix based on the test name
-    let test_prefix = "symposium-mcp-test_daemon_readiness_message";
+    let test_prefix = "socratic-shell-mcp-test_daemon_readiness_message";
     let socket_path = format!("/tmp/{}.sock", test_prefix);
     
     // Clean up any existing socket file before starting
@@ -22,7 +22,7 @@ async fn test_daemon_readiness_message() {
     cmd.args(&[
         "run",
         "-p",
-        "symposium-mcp",
+        "socratic-shell-mcp",
         "--",
         "daemon",
         "--prefix",
