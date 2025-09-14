@@ -26,8 +26,8 @@ use uuid::Uuid;
 
 /// Extract project path and taskspace UUID from current working directory
 /// 
-/// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
-/// Traverses upward looking for `task-$UUID` directories and stops at `.symposium`.
+/// Expected directory structure: `project.socratic-shell/task-$UUID/$checkout/`
+/// Traverses upward looking for `task-$UUID` directories and stops at `.socratic-shell`.
 /// Uses the last UUID found during traversal.
 pub fn extract_project_info() -> Result<(String, String)> {
     let current_dir = crate::workspace_dir::current_dir()
@@ -46,11 +46,11 @@ pub fn extract_project_info() -> Result<(String, String)> {
                 }
             }
             
-            // Check if we've reached a .symposium directory
-            if dir_name.ends_with(".symposium") {
+            // Check if we've reached a .socratic-shell directory
+            if dir_name.ends_with(".socratic-shell") {
                 let project_path = dir.to_string_lossy().to_string();
                 let taskspace_uuid = last_uuid.ok_or_else(|| {
-                    IPCError::Other("No task-$UUID directory found before reaching .symposium".to_string())
+                    IPCError::Other("No task-$UUID directory found before reaching .socratic-shell".to_string())
                 })?;
                 
                 return Ok((project_path, taskspace_uuid));
@@ -64,7 +64,7 @@ pub fn extract_project_info() -> Result<(String, String)> {
         }
     }
     
-    Err(IPCError::Other("No .symposium directory found in directory tree".to_string()))
+    Err(IPCError::Other("No .socratic-shell directory found in directory tree".to_string()))
 }
 
 /// Errors that can occur during IPC communication
@@ -519,7 +519,7 @@ impl IPCCommunicator {
     pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
         use crate::types::{TaskspaceStateRequest, IPCMessageType, TaskspaceStateResponse};
         
-        // Extract taskspace UUID from directory structure (task-UUID/.symposium pattern)
+        // Extract taskspace UUID from directory structure (task-UUID/.socratic-shell pattern)
         let (project_path, taskspace_uuid) = extract_project_info()?;
         
         // Get our shell PID for message routing

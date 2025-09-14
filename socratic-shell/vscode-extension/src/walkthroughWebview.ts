@@ -235,7 +235,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
 
             // Recreate the comment controller for future use
             this.commentController = vscode.comments.createCommentController(
-                'symposium-walkthrough',
+                'socratic-shell-walkthrough',
                 'Dialectic Walkthrough'
             );
 
@@ -440,7 +440,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             // Create comment controller if it doesn't exist
             if (!this.commentController) {
                 this.commentController = vscode.comments.createCommentController(
-                    'symposium-walkthrough',
+                    'socratic-shell-walkthrough',
                     'Dialectic Walkthrough Comments'
                 );
 

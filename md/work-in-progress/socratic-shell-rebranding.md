@@ -30,14 +30,14 @@ Complete the rebranding from "Symposium" to "Socratic Shell" throughout the code
   - [x] Renamed file: `symposiumUrl.ts` → `socraticShellUrl.ts`
   - [x] Updated all function names, types, and variable references
   - [x] Updated HTML data attributes: `data-symposium-url` → `data-socratic-shell-url`
-- [ ] Comment controller IDs: `symposium-walkthrough` → `socratic-shell-walkthrough`
-- [ ] IPC process name: `symposium-mcp` → `socratic-shell-mcp`
+- [x] Comment controller IDs: `symposium-walkthrough` → `socratic-shell-walkthrough`
+- [x] IPC process name: `symposium-mcp` → `socratic-shell-mcp`
 
 ### MCP Server
-- [ ] Socket prefixes: `symposium-daemon` → `socratic-shell-daemon`
-- [ ] Directory structure: `.symposium` → `.socratic-shell`
-- [ ] Reference system: `<symposium-ref/>` → `<socratic-shell-ref/>`
-- [ ] Integration test socket names
+- [x] Socket prefixes: `symposium-daemon` → `socratic-shell-daemon`
+- [x] Directory structure: `.symposium` → `.socratic-shell`
+- [x] Reference system: `<symposium-ref/>` → `<socratic-shell-ref/>`
+- [x] Integration test socket names
 
 ## Do NOT Change
 

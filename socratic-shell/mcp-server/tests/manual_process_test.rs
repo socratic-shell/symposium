@@ -14,7 +14,7 @@ async fn test_separate_process_daemon_spawning() {
     let _ = tracing_subscriber::fmt::try_init();
 
     let test_pid = std::process::id(); // Use current process PID so daemon won't exit
-    let socket_path = format!("/tmp/symposium-daemon-{}.sock", test_pid);
+    let socket_path = format!("/tmp/socratic-shell-daemon-{}.sock", test_pid);
 
     // Clean up any existing socket
     let _ = std::fs::remove_file(&socket_path);

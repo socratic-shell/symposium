@@ -9,7 +9,7 @@ description: "Specification for creating interactive code walkthroughs with code
 
 # Socratic Shell references
 
-Whenever the user sends you a message that includes an XML `<symposium-ref/>` element, you SHOULD use the `expand_reference` tool with the contents of the `id` attribute to determine what it means.
+Whenever the user sends you a message that includes an XML `<socratic-shell-ref/>` element, you SHOULD use the `expand_reference` tool with the contents of the `id` attribute to determine what it means.
 
 ## Example Walkthrough
 
