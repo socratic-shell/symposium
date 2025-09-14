@@ -249,7 +249,7 @@ fn get_repo_root() -> Result<PathBuf> {
 
 fn build_and_install_rust_server() -> Result<PathBuf> {
     let repo_root = get_repo_root()?;
-    let server_dir = repo_root.join("mcp-server");
+    let server_dir = repo_root.join("socratic-shell/mcp-server");
 
     println!("📦 Installing Rust MCP server...");
     println!("   Installing from: {}", server_dir.display());
@@ -590,7 +590,7 @@ fn print_next_steps(tool: &CLITool) -> Result<()> {
     println!("- Run 'cargo setup' to rebuild everything (keeps daemon running)");
     println!("- Run 'cargo setup --restart' to rebuild and restart daemon");
     println!("- Run 'cargo setup --open' to rebuild and launch the app");
-    println!("- For quick server changes: cd mcp-server && cargo build --release && cargo setup");
+    println!("- For quick server changes: cd socratic-shell/mcp-server && cargo build --release && cargo setup");
     println!("- VSCode extension reloading requires --restart flag");
 
     Ok(())
