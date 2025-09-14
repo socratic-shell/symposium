@@ -1254,7 +1254,7 @@ This is test content."#;
         let resources = DialecticServer::generate_resources();
 
         // Verify we have the expected files
-        assert_eq!(resources.len(), 3);
+        assert_eq!(resources.len(), 4);
 
         // Check that all files have proper metadata
         let main_resource = resources.iter().find(|r| r.raw.uri == "main.md").unwrap();
@@ -1273,7 +1273,7 @@ This is test content."#;
         assert_eq!(
             walkthrough_resource.raw.description,
             Some(
-                "Specification for creating interactive code walkthroughs with XML elements"
+                "Specification for creating interactive code walkthroughs with code block elements"
                     .to_string()
             )
         );
@@ -1285,7 +1285,7 @@ This is test content."#;
         assert_eq!(coding_resource.raw.name, "Coding Guidelines");
         assert_eq!(
             coding_resource.raw.description,
-            Some("Development best practices and standards for the Symposium project".to_string())
+            Some("Development best practices and standards for the Socratic Shell project".to_string())
         );
     }
 
