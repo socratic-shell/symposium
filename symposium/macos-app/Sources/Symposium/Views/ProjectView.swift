@@ -74,6 +74,11 @@ struct ProjectView: View {
                             }
                             .help("New Taskspace")
                             .disabled(projectManager.isLoading)
+                            .onHover { hovering in
+                                if !projectManager.isLoading {
+                                    NSCursor.pointingHand.set()
+                                }
+                            }
                             .popover(isPresented: $showingNewTaskspaceDialog) {
                                 NewTaskspaceDialog(projectManager: projectManager)
                             }
@@ -85,6 +90,11 @@ struct ProjectView: View {
                             }
                             .help("Re-register Windows")
                             .disabled(projectManager.isLoading)
+                            .onHover { hovering in
+                                if !projectManager.isLoading {
+                                    NSCursor.pointingHand.set()
+                                }
+                            }
                             
                             // Phase 22: Close Project button (only show if callback provided)
                             if let onClose = onCloseProject {
@@ -96,6 +106,9 @@ struct ProjectView: View {
                                 }
                                 .help("Close Project")
                                 .foregroundColor(.red)
+                                .onHover { hovering in
+                                    NSCursor.pointingHand.set()
+                                }
                             }
                         }
                         .padding()
@@ -225,6 +238,9 @@ struct ProjectView: View {
                     .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
+                .onHover { hovering in
+                    NSCursor.pointingHand.set()
+                }
                 
                 Image(systemName: "chevron.right")
                     .foregroundColor(.secondary)
@@ -370,6 +386,8 @@ struct TaskspaceCard: View {
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
     @State private var deleteBranch = false
+    @State private var isHovered = false
+    @State private var isPressed = false
     
     // Step 5: Callback for expand functionality
     var onExpand: (() -> Void)? = nil
@@ -526,6 +544,9 @@ struct TaskspaceCard: View {
                     }
                     .buttonStyle(.plain)
                     .help("View details")
+                    .onHover { hovering in
+                        NSCursor.pointingHand.set()
+                    }
 
                     Button(action: {
                         showingDeleteConfirmation = true
@@ -535,6 +556,9 @@ struct TaskspaceCard: View {
                     }
                     .buttonStyle(.plain)
                     .help("Delete taskspace")
+                    .onHover { hovering in
+                        NSCursor.pointingHand.set()
+                    }
                 }
 
                 // Description
@@ -584,9 +608,21 @@ struct TaskspaceCard: View {
             }
         }
         .padding(16)
-        .background(Color.gray.opacity(0.05))
+        .background(
+            Color.gray.opacity(isPressed ? 0.2 : (isHovered ? 0.08 : 0.05))
+                .animation(.easeInOut(duration: isPressed ? 0.1 : 0.2), value: isHovered)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+        )
         .cornerRadius(8)
+        .onHover { hovering in
+            isHovered = hovering
+        }
         .onTapGesture {
+            // Flash effect
+            isPressed = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isPressed = false
+            }
             handleTaskspaceClick()
         }
         .sheet(isPresented: $showingDeleteConfirmation) {
