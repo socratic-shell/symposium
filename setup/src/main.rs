@@ -290,7 +290,10 @@ fn build_and_install_rust_server() -> Result<PathBuf> {
     }
 
     println!("✅ Rust server installed successfully!");
-    Ok(PathBuf::from("socratic-shell-mcp"))
+    
+    // Return full path to the installed binary
+    let home = std::env::var("HOME").context("HOME environment variable not set")?;
+    Ok(PathBuf::from(home).join(".cargo/bin/socratic-shell-mcp"))
 }
 
 fn build_macos_app() -> Result<()> {
