@@ -224,7 +224,7 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
     println!("\n🎉 Setup complete!");
     
     if built_mcp {
-        println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
+        println!("📦 MCP server installed to ~/.cargo/bin/socratic-shell-mcp");
     }
     if built_vscode {
         println!("📋 VSCode extension installed and ready to use");
