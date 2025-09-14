@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { DaemonClient } from './ipc';
-import { SyntheticPRProvider } from './syntheticPRProvider';
+
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 
@@ -14,7 +14,6 @@ export class Bus {
     public outputChannel: vscode.OutputChannel;
     private logger: StructuredLogger;
     private _daemonClient: DaemonClient | undefined;
-    private _syntheticPRProvider: SyntheticPRProvider | undefined;
     private _walkthroughProvider: WalkthroughWebviewProvider | undefined;
 
     constructor(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
@@ -28,10 +27,6 @@ export class Bus {
         this._daemonClient = client;
     }
 
-    setSyntheticPRProvider(provider: SyntheticPRProvider) {
-        this._syntheticPRProvider = provider;
-    }
-
     setWalkthroughProvider(provider: WalkthroughWebviewProvider) {
         this._walkthroughProvider = provider;
     }
@@ -42,13 +37,6 @@ export class Bus {
             throw new Error('DaemonClient not initialized on Bus');
         }
         return this._daemonClient;
-    }
-
-    get syntheticPRProvider(): SyntheticPRProvider {
-        if (!this._syntheticPRProvider) {
-            throw new Error('SyntheticPRProvider not initialized on Bus');
-        }
-        return this._syntheticPRProvider;
     }
 
     get walkthroughProvider(): WalkthroughWebviewProvider {

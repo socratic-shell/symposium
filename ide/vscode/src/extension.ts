@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { quote } from 'shell-quote';
-import { SyntheticPRProvider } from './syntheticPRProvider';
+
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { Bus } from './bus';
 import { DaemonClient } from './ipc';
@@ -16,8 +16,8 @@ import { StructuredLogger } from './structuredLogger';
 // 💡: Types for IPC communication with MCP server
 interface IPCMessage {
     shellPid: number;
-    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'create_synthetic_pr' | 'update_synthetic_pr' | 'reload_window' | 'get_taskspace_state' | 'taskspace_roll_call' | 'register_taskspace_window' | string; // string allows unknown types
-    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | SyntheticPRPayload | TaskspaceStateRequest | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
+    type: 'present_walkthrough' | 'log' | 'get_selection' | 'store_reference' | 'response' | 'marco' | 'polo' | 'goodbye' | 'resolve_symbol_by_name' | 'find_all_references' | 'reload_window' | 'get_taskspace_state' | 'taskspace_roll_call' | 'register_taskspace_window' | string; // string allows unknown types
+    payload: PresentWalkthroughPayload | LogPayload | GetSelectionPayload | PoloPayload | GoodbyePayload | ResolveSymbolPayload | FindReferencesPayload | ResponsePayload | TaskspaceStateRequest | TaskspaceStateResponse | TaskspaceRollCallPayload | RegisterTaskspaceWindowPayload | unknown; // unknown allows any payload
     id: string;
 }
 
@@ -79,16 +79,6 @@ interface TaskspaceStateResponse {
     initial_prompt?: string;
     /** Command to launch the appropriate agent */
     agent_command: string[];
-}
-
-interface SyntheticPRPayload {
-    review_id: string;
-    title: string;
-    description: any;
-    commit_range: string;
-    files_changed: FileChange[];
-    comment_threads: CommentThread[];
-    status: string;
 }
 
 // ANCHOR: store_reference_payload
@@ -322,10 +312,6 @@ export function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine(`Error in PID discovery: ${error}`);
     });
 
-    // Create synthetic PR provider for AI-generated pull requests
-    const syntheticPRProvider = new SyntheticPRProvider(context);
-    bus.setSyntheticPRProvider(syntheticPRProvider);
-
     // Create walkthrough webview provider
     const walkthroughProvider = new WalkthroughWebviewProvider(context.extensionUri, bus);
     bus.setWalkthroughProvider(walkthroughProvider);
@@ -374,7 +360,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Webview provider created successfully');
 
     // 💡: Set up daemon client connection for message bus communication
-    const daemonClient = new DaemonClient(context, outputChannel, syntheticPRProvider, walkthroughProvider);
+    const daemonClient = new DaemonClient(context, outputChannel, walkthroughProvider);
     bus.setDaemonClient(daemonClient);
 
     daemonClient.start();
@@ -383,11 +369,6 @@ export function activate(context: vscode.ExtensionContext) {
     // (Must be after DaemonClient is initialized)
     checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
         outputChannel.appendLine(`Error in taskspace detection: ${error}`);
-    });
-
-    // Set up comment callback to send comments as feedback
-    syntheticPRProvider.setCommentCallback((comment: string, filePath: string, lineNumber: number) => {
-        daemonClient.handleCommentFeedback(comment, filePath, lineNumber);
     });
 
     // 💡: Set up universal selection detection for interactive code review
@@ -434,7 +415,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, syntheticPRProvider, daemonClient, toggleWindowTitleCommand);
+    context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, daemonClient, toggleWindowTitleCommand);
 
     // Return API for Ask Socratic Shell integration
     return {

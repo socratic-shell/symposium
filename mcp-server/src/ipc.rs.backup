@@ -370,6 +370,105 @@ impl IPCCommunicator {
         self.send_message_without_reply(message).await
     }
 
+    /// Wait for user feedback on a specific review
+    /// This method blocks until the user provides feedback via the VSCode extension
+    pub async fn wait_for_user_feedback(
+        &self,
+        review_id: &str,
+    ) -> Result<crate::synthetic_pr::UserFeedback> {
+        if self.test_mode {
+            info!(
+                "Wait for user feedback called (test mode) for review: {}",
+                review_id
+            );
+            // Return mock feedback for testing
+            return Ok(UserFeedback {
+                review_id: review_id.to_string(),
+                feedback: crate::synthetic_pr::FeedbackData::Comment {
+                    file_path: Some("test.rs".to_string()),
+                    line_number: Some(42),
+                    comment_text: "This is a test comment".to_string(),
+                    context_lines: Some(vec![
+                        "fn test() {".to_string(),
+                        "    // Line 42".to_string(),
+                        "}".to_string(),
+                    ]),
+                },
+            });
+        }
+
+        // Create a channel to receive the user feedback
+        let (sender, receiver) = oneshot::channel();
+
+        // Register the pending feedback request
+        {
+            let mut inner = self.inner.lock().await;
+            inner.pending_feedback.insert(review_id.to_string(), sender);
+        }
+
+        info!("Waiting for user feedback on review: {}", review_id);
+
+        // Block until user feedback arrives via IPC message
+        match receiver.await {
+            Ok(feedback) => {
+                info!("Received user feedback for review: {}", review_id);
+                Ok(feedback)
+            }
+            Err(_) => {
+                // Channel was dropped, remove from pending requests
+                let mut inner = self.inner.lock().await;
+                inner.pending_feedback.remove(review_id);
+                Err(IPCError::ConnectionFailed {
+                    path: "user_feedback".to_string(),
+                    source: std::io::Error::new(
+                        std::io::ErrorKind::BrokenPipe,
+                        "User feedback channel closed",
+                    ),
+                })
+            }
+        }
+    }
+
+    /// Send review update to VSCode extension and wait for user response
+    /// This method blocks until the user provides feedback via the VSCode extension
+    pub async fn send_review_update<T: serde::Serialize>(
+        &self,
+        review: &T,
+    ) -> Result<crate::synthetic_pr::UserFeedback> {
+        if self.test_mode {
+            info!("Send review update called (test mode)");
+            return Ok(UserFeedback {
+                review_id: "test_review".to_string(),
+                feedback: crate::synthetic_pr::FeedbackData::Comment {
+                    file_path: Some("test.rs".to_string()),
+                    line_number: Some(42),
+                    comment_text: "This looks good to me!".to_string(),
+                    context_lines: None,
+                },
+            });
+        }
+
+        let shell_pid = {
+            let inner = self.inner.lock().await;
+            inner.terminal_shell_pid
+        };
+
+        // Create update payload
+        let payload = serde_json::to_value(review)?;
+
+        let message = IPCMessage {
+            shell_pid: Some(shell_pid),
+            message_type: IPCMessageType::UpdateSyntheticPr,
+            payload,
+            id: Uuid::new_v4().to_string(),
+        };
+
+        // Send message and wait for response
+        let response: UserFeedback = self.send_message_with_reply(message).await?;
+
+        Ok(response)
+    }
+
     /// Send spawn_taskspace message to create new taskspace
     pub async fn spawn_taskspace(
         &self,
@@ -963,6 +1062,75 @@ impl IPCCommunicator {
 
                 if let Err(e) = temp_communicator.send_polo(shell_pid).await {
                     error!("Failed to send Polo response to Marco: {}", e);
+                }
+            }
+            IPCMessageType::UserFeedback => {
+                info!("Received user feedback message");
+
+                // Parse the user feedback payload
+                let feedback_payload: UserFeedbackPayload =
+                    match serde_json::from_value(message.payload) {
+                        Ok(payload) => payload,
+                        Err(e) => {
+                            error!("Failed to parse user feedback payload: {}", e);
+                            return;
+                        }
+                    };
+
+                // Convert to UserFeedback enum
+                let user_feedback = UserFeedback {
+                    review_id: feedback_payload.review_id.clone(),
+                    feedback: match feedback_payload.feedback_type.as_str() {
+                        "comment" => crate::synthetic_pr::FeedbackData::Comment {
+                            file_path: feedback_payload.file_path,
+                            line_number: feedback_payload.line_number,
+                            comment_text: feedback_payload.comment_text.unwrap_or_default(),
+                            context_lines: feedback_payload.context_lines,
+                        },
+                        "complete_review" => {
+                            let completion_action = feedback_payload
+                                .completion_action
+                                .as_deref()
+                                .and_then(|action| match action {
+                                    "request_changes" => {
+                                        Some(crate::synthetic_pr::CompletionAction::RequestChanges)
+                                    }
+                                    "checkpoint" => {
+                                        Some(crate::synthetic_pr::CompletionAction::Checkpoint)
+                                    }
+                                    "return" => Some(crate::synthetic_pr::CompletionAction::Return),
+                                    _ => None,
+                                })
+                                .unwrap_or(crate::synthetic_pr::CompletionAction::Return);
+
+                            crate::synthetic_pr::FeedbackData::CompleteReview {
+                                completion_action,
+                                additional_notes: feedback_payload.additional_notes,
+                            }
+                        }
+                        _ => crate::synthetic_pr::FeedbackData::CompleteReview {
+                            completion_action: crate::synthetic_pr::CompletionAction::Return,
+                            additional_notes: None,
+                        },
+                    },
+                };
+
+                // Send to waiting MCP tool
+                let mut inner_guard = inner.lock().await;
+                if let Some(sender) = inner_guard
+                    .pending_feedback
+                    .remove(&feedback_payload.review_id)
+                {
+                    if let Err(_) = sender.send(user_feedback) {
+                        warn!(
+                            "Failed to send user feedback to waiting MCP tool - receiver dropped"
+                        );
+                    }
+                } else {
+                    warn!(
+                        "Received user feedback for unknown review ID: {}",
+                        feedback_payload.review_id
+                    );
                 }
             }
             IPCMessageType::StoreReference => {

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { SyntheticPRProvider } from './syntheticPRProvider';
+
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 
@@ -29,16 +29,6 @@ interface ResponsePayload {
     success: boolean;
     data?: any;
     error?: string;
-}
-
-interface SyntheticPRPayload {
-    review_id: string;
-    title: string;
-    description: any;
-    commit_range: string;
-    files_changed: any[];
-    comment_threads: any[];
-    status: string;
 }
 
 interface StoreReferencePayload {
@@ -136,7 +126,6 @@ export class DaemonClient implements vscode.Disposable {
     constructor(
         private context: vscode.ExtensionContext,
         private outputChannel: vscode.OutputChannel,
-        private syntheticPRProvider: SyntheticPRProvider,
         private walkthroughProvider: WalkthroughWebviewProvider
     ) {
         this.logger = new StructuredLogger(this.outputChannel);
@@ -356,54 +345,6 @@ export class DaemonClient implements vscode.Disposable {
                     error: error instanceof Error ? error.message : String(error)
                 });
             }
-        } else if (message.type === 'create_synthetic_pr') {
-            // Handle synthetic PR creation
-            const startTime = Date.now();
-            this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Received create_synthetic_pr message`);
-            try {
-                const prPayload = message.payload as SyntheticPRPayload;
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Creating PR: ${prPayload.title}`);
-
-                // Create PR UI using SyntheticPRProvider
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Calling syntheticPRProvider.createSyntheticPR`);
-                await this.syntheticPRProvider.createSyntheticPR(prPayload);
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: syntheticPRProvider.createSyntheticPR completed`);
-
-                // Collect user feedback
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Collecting user feedback`);
-                const userFeedback = await this.collectUserFeedback(prPayload.review_id);
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: User feedback collected`);
-
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Sending feedback response`);
-                this.sendResponse(message.id, { success: true, data: userFeedback });
-                this.outputChannel.appendLine(`[SYNTHETIC PR] ${Date.now() - startTime}ms: Feedback response sent`);
-            } catch (error) {
-                this.outputChannel.appendLine(`Error handling create_synthetic_pr: ${error}`);
-                this.sendResponse(message.id, {
-                    success: false,
-                    error: error instanceof Error ? error.message : String(error)
-                });
-            }
-        } else if (message.type === 'update_synthetic_pr') {
-            // Handle synthetic PR updates
-            try {
-                const prPayload = message.payload as SyntheticPRPayload;
-                this.outputChannel.appendLine(`[SYNTHETIC PR] Updating PR: ${prPayload.review_id}`);
-
-                // Update PR UI using SyntheticPRProvider
-                await this.syntheticPRProvider.updateSyntheticPR(prPayload);
-
-                // Collect user feedback
-                const userFeedback = await this.collectUserFeedback(prPayload.review_id);
-
-                this.sendResponse(message.id, { success: true, data: userFeedback });
-            } catch (error) {
-                this.outputChannel.appendLine(`Error handling update_synthetic_pr: ${error}`);
-                this.sendResponse(message.id, {
-                    success: false,
-                    error: error instanceof Error ? error.message : String(error)
-                });
-            }
         } else if (message.type === 'log') {
             // Handle log messages from daemon/MCP servers with structured formatting
             try {
@@ -552,7 +493,6 @@ export class DaemonClient implements vscode.Disposable {
         });
 
         // Clear tree view and cleanup
-        this.syntheticPRProvider.clearPR();
         this.pendingFeedbackResolvers.delete(reviewId);
     }
 
@@ -612,7 +552,6 @@ export class DaemonClient implements vscode.Disposable {
         }
 
         // Clear tree view after action
-        this.syntheticPRProvider.clearPR();
         this.pendingFeedbackResolvers.delete(reviewId);
     }
 

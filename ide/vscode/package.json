@@ -84,28 +84,11 @@
           "id": "symposium.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
-        },
-        {
-          "id": "symposium.syntheticPR",
-          "name": "Synthetic PR",
-          "type": "tree"
         }
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "symposium.toggleComments",
-          "when": "view == dialectic.syntheticPR",
-          "group": "navigation"
-        }
-      ],
       "comments/commentThread/context": [
-        {
-          "command": "symposium.addComment",
-          "group": "inline@1",
-          "when": "commentController == dialectic-synthetic-pr"
-        },
         {
           "command": "symposium.addWalkthroughComment",
           "group": "inline@1",
