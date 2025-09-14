@@ -4,6 +4,7 @@
   "description": "AI-powered code walkthroughs and MCP server integration for enhanced development workflows",
   "version": "0.1.0",
   "publisher": "socratic-shell",
+  "icon": "logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/socratic-shell/symposium.git"
