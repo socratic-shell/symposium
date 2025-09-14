@@ -114,14 +114,17 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         var project = try Project.load(from: directoryPath)
 
         // Validate taskspaces and remove stale entries
-        let originalCount = project.taskspaces.count
-        project.taskspaces = validateTaskspaces(project.taskspaces, in: directoryPath)
+        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath)
         
-        // Save cleaned project back to disk if any taskspaces were removed
-        if project.taskspaces.count < originalCount {
-            let removedCount = originalCount - project.taskspaces.count
-            Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(removedCount) stale taskspace(s) from project")
-            try project.save()
+        if !staleTaskspaces.isEmpty {
+            let shouldRemove = await confirmStaleTaskspaceRemoval(staleTaskspaces)
+            if shouldRemove {
+                project.taskspaces = project.taskspaces.filter { taskspace in
+                    !staleTaskspaces.contains { $0.id == taskspace.id }
+                }
+                Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
+                try project.save()
+            }
         }
 
         // Set as current project
@@ -195,8 +198,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     //     }
     // }
 
-    /// Validate taskspaces against filesystem and remove stale entries
-    private func validateTaskspaces(_ taskspaces: [Taskspace], in projectPath: String) -> [Taskspace] {
+    /// Find taskspaces with missing directories
+    private func findStaleTaskspaces(_ taskspaces: [Taskspace], in projectPath: String) -> [Taskspace] {
         let fileManager = FileManager.default
         return taskspaces.filter { taskspace in
             let taskspaceDir = taskspace.directoryPath(in: projectPath)
@@ -204,10 +207,25 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             
             let exists = fileManager.fileExists(atPath: taskspaceDir) && fileManager.fileExists(atPath: taskspaceJsonPath)
             if !exists {
-                Logger.shared.log("ProjectManager[\(instanceId)]: Removing stale taskspace: \(taskspace.name) (directory missing)")
+                Logger.shared.log("ProjectManager[\(instanceId)]: Found stale taskspace: \(taskspace.name) (directory missing)")
             }
-            return exists
+            return !exists
         }
+    }
+    
+    /// Show confirmation dialog for removing stale taskspaces
+    @MainActor
+    private func confirmStaleTaskspaceRemoval(_ staleTaskspaces: [Taskspace]) -> Bool {
+        let taskspaceNames = staleTaskspaces.map { $0.name }.joined(separator: "\n• ")
+        
+        let alert = NSAlert()
+        alert.messageText = "Remove Missing Taskspaces?"
+        alert.informativeText = "The following taskspaces no longer have directories on disk:\n\n• \(taskspaceNames)\n\nWould you like to remove them from the project?"
+        alert.addButton(withTitle: "Remove")
+        alert.addButton(withTitle: "Keep")
+        alert.alertStyle = .warning
+        
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     /// Load all taskspaces from project directory
