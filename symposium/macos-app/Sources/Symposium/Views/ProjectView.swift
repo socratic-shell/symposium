@@ -609,7 +609,7 @@ struct TaskspaceCard: View {
         }
         .padding(16)
         .background(
-            Color.gray.opacity(isPressed ? 0.2 : (isHovered ? 0.08 : 0.05))
+            Color.gray.opacity(isPressed ? 0.8 : (isHovered ? 0.15 : 0.05))
                 .animation(.easeInOut(duration: isPressed ? 0.1 : 0.2), value: isHovered)
                 .animation(.easeInOut(duration: 0.1), value: isPressed)
         )
