@@ -129,7 +129,7 @@ fn main() -> Result<()> {
 }
 
 fn show_help() {
-    println!("🎭 Symposium Development Setup");
+    println!("🎭 Socratic Shell Development Setup");
     println!("{}", "=".repeat(35));
     println!();
     println!("Usage: cargo setup [OPTIONS]");
@@ -138,7 +138,7 @@ fn show_help() {
     println!("  --all                Build all components (VSCode extension, MCP server, and macOS app)");
     println!("  --vscode             Build/install VSCode extension");
     println!("  --mcp                Build/install MCP server");
-    println!("  --app                Build macOS app");
+    println!("  --app                Build the Symposium macOS app");
     println!("  --open               Open the app after building (requires --app)");
     println!("  --restart            Restart MCP daemon after building (requires --mcp)");
     println!("  --help               Show this help message");
@@ -478,7 +478,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
 }
 
 fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
-    println!("🔧 Configuring Symposium MCP server with Claude Code...");
+    println!("🔧 Configuring Socratic Shell MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
     // Check existing configuration
@@ -511,7 +511,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     }
 
     if socratic-shell_exists && socratic-shell_has_correct_path {
-        println!("✅ Symposium MCP server already configured with correct path");
+        println!("✅ Socratic Shell MCP server already configured with correct path");
         return Ok(true);
     }
 
@@ -539,7 +539,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
         .context("Failed to execute claude mcp add")?;
 
     if add_output.status.success() {
-        println!("✅ Symposium MCP server registered successfully with Claude Code!");
+        println!("✅ Socratic Shell MCP server registered successfully with Claude Code!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&add_output.stderr);
