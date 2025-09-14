@@ -1,11 +1,11 @@
 ---
-name: "Proactive Collaboration"
-description: "Guidelines for effective use of Symposium's collaborative tools"
+name: "MCP Tool Usage Suggestions"
+description: "Guidelines for effective use of Symposium's MCP tools"
 ---
 
-# Proactive Collaboration Guidelines
+# MCP Tool Usage Suggestions
 
-*Making the most of Symposium's tools for effective human-AI collaboration*
+*Making the most of Symposium's MCP tools for effective collaboration*
 
 ## Signal Completion
 

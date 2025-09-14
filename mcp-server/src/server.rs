@@ -1177,10 +1177,10 @@ impl DialecticServer {
             Use the `expand_reference` tool to fetch `coding-guidelines.md` into your working context. Follow these 
             development standards and best practices in all code work.
 
-            ## Load Proactive Collaboration Guidelines
+            ## Load MCP Tool Usage Suggestions
 
-            Use the `expand_reference` tool to fetch `proactive-collaboration.md` into your working context. 
-            This covers effective use of Symposium's collaborative tools, including completion signaling 
+            Use the `expand_reference` tool to fetch `mcp-tool-usage-suggestions.md` into your working context. 
+            This covers effective use of Symposium's MCP tools, including completion signaling 
             and systematic code exploration patterns.
 
         "});
@@ -1570,8 +1570,8 @@ This is test content."#;
         assert!(coding_content.contains("Coding Guidelines"));
         assert!(coding_content.contains("Co-authored-by: Claude"));
 
-        let proactive_content = DialecticServer::load_guidance_file("proactive-collaboration.md").unwrap();
-        assert!(proactive_content.contains("Proactive Collaboration Guidelines"));
+        let proactive_content = DialecticServer::load_guidance_file("mcp-tool-usage-suggestions.md").unwrap();
+        assert!(proactive_content.contains("MCP Tool Usage Suggestions"));
         assert!(proactive_content.contains("signal_user"));
     }
 
@@ -1593,13 +1593,13 @@ This is test content."#;
         let walkthrough_content =
             DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
         let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
-        let proactive_content = DialecticServer::load_guidance_file("proactive-collaboration.md").unwrap();
+        let proactive_content = DialecticServer::load_guidance_file("mcp-tool-usage-suggestions.md").unwrap();
 
         // Verify the content structure matches what we expect in the yiasou prompt
         assert!(main_content.contains("# Mindful Collaboration Patterns"));
         assert!(walkthrough_content.contains("# Walkthrough Format Specification"));
         assert!(coding_content.contains("# Coding Guidelines"));
-        assert!(proactive_content.contains("# Proactive Collaboration Guidelines"));
+        assert!(proactive_content.contains("# MCP Tool Usage Suggestions"));
 
         // Verify key collaboration concepts are present
         assert!(main_content.contains("Make it so?"));
