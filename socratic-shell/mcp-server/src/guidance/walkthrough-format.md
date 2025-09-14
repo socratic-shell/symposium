@@ -1,11 +1,15 @@
 ---
 name: "Walkthrough Format"
-description: "Specification for creating interactive code walkthroughs with XML elements"
+description: "Specification for creating interactive code walkthroughs with code block elements"
 ---
 
 # Walkthrough Format Specification
 
-*This chapter defines the markdown+XML format for code walkthroughs.*
+*This chapter defines the markdown+code block format for code walkthroughs.*
+
+# Socratic Shell references
+
+Whenever the user sends you a message that includes an XML `<symposium-ref/>` element, you SHOULD use the `expand_reference` tool with the contents of the `id` attribute to determine what it means.
 
 ## Example Walkthrough
 
@@ -20,7 +24,7 @@ We've refactored the token validation system to improve performance and security
 
 The new validation architecture works as follows:
 
-<mermaid>
+```mermaid
 flowchart TD
     A[Client Request] --> B{Token Valid?}
     B -->|Check Expiration First| C[Validate Expiration]
@@ -28,56 +32,65 @@ flowchart TD
     C -->|Valid| E[Validate Signature]
     E -->|Invalid| D
     E -->|Valid| F[Process Request]
-</mermaid>
+```
 
 ## Key Changes
 
 The main improvement is in how we handle token expiration:
 
-<comment location="findDefinition(`validateToken`)" icon="lightbulb">
+```comment
+location: findDefinition(`validateToken`)
+icon: lightbulb
+
 This function now checks expiration before signature validation. This avoids expensive 
 cryptographic operations on tokens that are already expired.
-</comment>
+```
 
 We also updated the login flow to use shorter-lived tokens by default:
 
-<comment location="search(`src/auth.rs`, `async fn login`)">
+```comment
+location: search(`src/auth.rs`, `async fn login`)
+
 The default token lifetime is now 1 hour instead of 24 hours. Users can still 
 request longer-lived tokens through the `remember_me` parameter.
-</comment>
+```
 
 ## What Changed
 
 Here are all the files that were modified:
 
-<gitdiff range="HEAD~2..HEAD" />
+```gitdiff
+range: HEAD~2..HEAD
+```
 
 ## Next Steps
 
-<action button="Test the changes">
-Run the authentication test suite to verify the changes work correctly.
-</action>
+```action
+button: Test the changes
 
-<action button="Update documentation">
-The API documentation needs to reflect the new default token lifetime.
-</action>
+Run the authentication test suite to verify the changes work correctly.
 ```
 
-This walkthrough combines regular markdown with specialized XML elements: `<mermaid>`, `<comment>`, `<gitdiff>`, and `<action>`.
+```action
+button: Update documentation
 
-## XML Elements
+The API documentation needs to reflect the new default token lifetime.
+```
+```
+
+This walkthrough combines regular markdown with specialized code block elements: `mermaid`, `comment`, `gitdiff`, and `action`.
+
+## Code Block Elements
 
 ### Mermaid
 
 Render mermaid graphs and diagrams to visualize architecture, flows, or relationships:
 
-```xml
-<mermaid>
+```mermaid
 flowchart TD
     A[Start] --> B{Decision}
     B -->|Yes| C[Action 1]
     B -->|No| D[Action 2]
-</mermaid>
 ```
 
 **Use when:** Explaining system architecture, data flow, or complex relationships that benefit from visual representation.
@@ -86,14 +99,15 @@ flowchart TD
 
 Place contextual comments at specific code locations to highlight important details, decisions, or areas needing attention. Users can "reply" to comments using the GUI and have those messages forwarded to you in the chat.
 
-```xml
-<comment location="DIALECT_EXPRESSION" icon="question">
+```comment
+location: DIALECT_EXPRESSION
+icon: question
+
 Markdown content explaining this code location.
 Can include **formatting** and [links](https://example.com).
-</comment>
 ```
 
-**Attributes:**
+**Parameters:**
 - `location` (required) - expression that resolves to code location(s). Common examples:
   - `findDefinition("validateToken")` -- definition of a function/class/variable
   - `findReferences("User")` -- all references to a symbol
@@ -115,17 +129,20 @@ Can include **formatting** and [links](https://example.com).
 
 Embed git diffs showing code changes:
 
-```xml
-<gitdiff range="HEAD~2..HEAD" />
-<gitdiff range="abc123" exclude-unstaged exclude-staged />
+```gitdiff
+range: HEAD~2..HEAD
 ```
 
-**Attributes:**
-- `range` (required) - Git commit range or single commit
-- `exclude-unstaged` (optional) - Exclude unstaged changes when range includes HEAD
-- `exclude-staged` (optional) - Exclude staged changes when range includes HEAD
+```gitdiff
+range: abc123
+exclude_unstaged: true
+exclude_staged: true
+```
 
-**Content:** Self-closing element that renders as interactive diff tree
+**Parameters:**
+- `range` (required) - Git commit range or single commit
+- `exclude_unstaged` (optional) - Exclude unstaged changes when range includes HEAD
+- `exclude_staged` (optional) - Exclude staged changes when range includes HEAD
 
 **Use when:** The most common use is to show the code that you recently authored. Keep ranges focused on the commits that you created in this case. Can also be used when discussing gitdiffs for any other reason.
 
@@ -133,13 +150,13 @@ Embed git diffs showing code changes:
 
 Provide interactive buttons for user actions:
 
-```xml
-<action button="Fix the validation logic">
+```action
+button: Fix the validation logic
+
 How should I handle expired tokens differently?
-</action>
 ```
 
-**Attributes:**
+**Parameters:**
 - `button` (required) - Text displayed on the button
 
 **Content:** Message sent to AI assistant when button is clicked
@@ -152,33 +169,45 @@ How should I handle expired tokens differently?
 
 ## Location Expressions
 
-Expressions in `location` attributes target specific code locations. Here are the main functions:
+Expressions in `location` parameters target specific code locations. Here are the main functions:
 
 ### Symbol-based targeting
-```xml
+```markdown
 <!-- Find where a symbol is defined -->
-<comment location="findDefinition(`MyClass`)">
+```comment
+location: findDefinition(`MyClass`)
+```
 
 <!-- Find all references to a symbol -->
-<comment location="findReferences(`validateToken`)">
+```comment
+location: findReferences(`validateToken`)
+```
 ```
 
 ### Search-based targeting
-```xml
+```markdown
 <!-- Search specific file for pattern -->
-<comment location="search(`src/auth.rs`, `async fn`)">
+```comment
+location: search(`src/auth.rs`, `async fn`)
+```
 
 <!-- Search directory for pattern in specific file types -->
-<comment location="search(`src`, `struct.*User`, `.rs`)">
+```comment
+location: search(`src`, `struct.*User`, `.rs`)
+```
 
 <!-- Search all files in directory -->
-<comment location="search(`tests`, `#\[test\]`)">
+```comment
+location: search(`tests`, `#\[test\]`)
+```
 ```
 
 ### Line-based targeting
-```xml
+```markdown
 <!-- Target specific line range (use sparingly) -->
-<comment location="lines(`src/main.rs`, 10, 15)">
+```comment
+location: lines(`src/main.rs`, 10, 15)
+```
 ```
 
 **Best practices:**
