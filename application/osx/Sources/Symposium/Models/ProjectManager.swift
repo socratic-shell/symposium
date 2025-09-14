@@ -117,18 +117,24 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath)
         
         if !staleTaskspaces.isEmpty {
-            let shouldRemove = await confirmStaleTaskspaceRemoval(staleTaskspaces)
-            if shouldRemove {
-                project.taskspaces = project.taskspaces.filter { taskspace in
-                    !staleTaskspaces.contains { $0.id == taskspace.id }
+            // Show confirmation dialog on main thread
+            Task { @MainActor in
+                let shouldRemove = confirmStaleTaskspaceRemoval(staleTaskspaces)
+                if shouldRemove {
+                    project.taskspaces = project.taskspaces.filter { taskspace in
+                        !staleTaskspaces.contains { $0.id == taskspace.id }
+                    }
+                    Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
+                    try? project.save()
                 }
-                Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
-                try project.save()
+                
+                // Set as current project after dialog
+                setCurrentProject(project)
             }
+        } else {
+            // Set as current project immediately if no stale taskspaces
+            setCurrentProject(project)
         }
-
-        // Set as current project
-        setCurrentProject(project)
     }
 
     /// Helper to set current project and register as IPC delegate
