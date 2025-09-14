@@ -407,8 +407,22 @@ struct TaskspaceCard: View {
 
     
     private func handleTaskspaceClick() {
+        // Always update activation time and reorder on any taskspace click
+        if var project = projectManager.currentProject {
+            project.activateTaskspace(uuid: taskspace.id.uuidString)
+            projectManager.currentProject = project
+            
+            // Save the updated project to persist the new ordering
+            do {
+                try project.save()
+                Logger.shared.log("TaskspaceCard: Updated activation order for \(taskspace.name)")
+            } catch {
+                Logger.shared.log("TaskspaceCard: Failed to save activation order: \(error)")
+            }
+        }
+        
         if hasRegisteredWindow {
-            // Phase 40: Focus existing active window
+            // Phase 40: Focus existing active window (no need to reorder again)
             Logger.shared.log("TaskspaceCard: Focusing active taskspace: \(taskspace.name)")
             let success = projectManager.focusTaskspaceWindow(for: taskspace)
             if !success {
