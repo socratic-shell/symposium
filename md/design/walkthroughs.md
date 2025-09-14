@@ -49,7 +49,7 @@ For complete format specification and usage guidelines, see the [AI guidance doc
 
 ### Parsing Process
 
-The `WalkthroughParser` in `mcp-server/src/walkthrough_parser.rs` handles the conversion from markdown+XML to interactive HTML:
+The `WalkthroughParser` in `socratic-shell/mcp-server/src/walkthrough_parser.rs` handles the conversion from markdown+XML to interactive HTML:
 
 1. **Markdown Parsing**: Uses `pulldown_cmark` to parse markdown into a stream of events
 2. **XML Detection**: Identifies inline and block-level XML elements (`<comment>`, `<gitdiff>`, `<action>`, `<mermaid>`)
@@ -130,7 +130,7 @@ The parser generates VSCode-compatible HTML with:
 
 #### Extension Implementation
 
-In `ide/vscode/src/extension.ts`:
+In `socratic-shell/vscode-extension/src/extension.ts`:
 ```typescript
 if (message.type === 'present_walkthrough') {
     const walkthroughPayload = message.payload as PresentWalkthroughPayload;
@@ -145,7 +145,7 @@ if (message.type === 'present_walkthrough') {
 
 #### Webview Rendering
 
-In `ide/vscode/src/walkthroughWebview.ts`:
+In `socratic-shell/vscode-extension/src/walkthroughWebview.ts`:
 ```typescript
 // Inject server-rendered HTML directly
 contentElement.innerHTML = message.content;

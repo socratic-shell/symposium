@@ -16,7 +16,7 @@
 
 ### Testing:
 ```bash
-cd application/osx
+cd symposium/macos-app
 ./build-app.sh
 open ./.build/arm64-apple-macosx/release/Symposium.app
 ```
@@ -52,7 +52,7 @@ Based on the [MVP README](./README.md), here are the key implementation decision
 - **State management**: Hatchling → Resume state transition on first launch
 
 ### Symposium App Architecture
-- **Daemon connection**: Connect immediately on startup using `symposium-mcp client`
+- **Daemon connection**: Connect immediately on startup using `socratic-shell-mcp client`
 - **Binary discovery**: Check MCP configuration of Q CLI/Claude Code (hacky but works)
 - **Window management**: Use existing Accessibility APIs to bring VSCode windows to front
 - **Persistence**: Update `taskspace.json` immediately on each `log_progress` call
@@ -76,7 +76,7 @@ Based on the [MVP README](./README.md), here are the key implementation decision
 - [ ] Window tiling configuration buttons
 
 ### 4. IPC Integration ⏳
-- [ ] Connect to daemon via `symposium-mcp client`
+- [ ] Connect to daemon via `socratic-shell-mcp client`
 - [ ] Handle `spawn_taskspace`, `log_progress`, `signal_user` messages
 - [ ] Binary discovery from MCP configuration
 
@@ -109,7 +109,7 @@ The following approaches are deliberately hacky for the MVP and will need proper
 **Future solution**: Proper taskspace registration and ID passing through IPC messages
 
 ### 2. Binary Discovery via MCP Configuration Parsing  
-**Current approach**: Symposium app reads Q CLI/Claude Code MCP configuration to find `symposium-mcp` binary location  
+**Current approach**: Symposium app reads Q CLI/Claude Code MCP configuration to find `socratic-shell-mcp` binary location  
 **Problem**: Brittle dependency on external tool configuration formats  
 **Future solution**: Standard installation paths, proper binary discovery, or bundled binaries
 

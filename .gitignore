@@ -3,7 +3,7 @@
 
 # Swift/Xcode
 /.build
-application/osx/.build/
+symposium/macos-app/.build/
 /Packages
 xcuserdata/
 DerivedData/
@@ -25,12 +25,13 @@ DerivedData/
 *.temp
 .netrc
 .claude
-xxx.logs
+killme.*
+xxx.*
 
 # Node.js (VSCode extension)
-ide/vscode/node_modules/
-ide/vscode/out/
-ide/vscode/*.vsix
+socratic-shell/vscode-extension/node_modules/
+socratic-shell/vscode-extension/out/
+socratic-shell/vscode-extension/*.vsix
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -44,8 +45,3 @@ yarn-error.log*
 *.swp
 *.swo
 *~
-
-# dialectic-repo (temporary during migration)
-dialectic-repo/
-# Log files
-killme.logs

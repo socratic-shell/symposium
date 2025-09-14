@@ -9,13 +9,13 @@ graph TB
     OSX[OS X App]
     MCP[MCP Server<br/>with embedded client]
     EXT[VSCode extension]
-    DAEMON[symposium-mcp daemon<br/>Auto-spawned if needed]
+    DAEMON[socratic-shell-mcp daemon<br/>Auto-spawned if needed]
     SOCKET[Unix Socket<br>/tmp/symposium-daemon.sock]
     AGENT[Coding agent like<br>Claude Code or Q CLI]
     
     subgraph "Client Processes"
-        CLIENT2[symposium-mcp client<br/>spawned by OS X App]
-        CLIENT1[symposium-mcp client<br/>spawned by VSCode]
+        CLIENT2[socratic-shell-mcp client<br/>spawned by OS X App]
+        CLIENT1[socratic-shell-mcp client<br/>spawned by VSCode]
     end
     
     EXT -->|spawns| CLIENT1
@@ -38,40 +38,40 @@ graph TB
 
 ## Binary and Process Structure
 
-The [MCP server](./mcp-server.md) and daemon are packaged in the same binary (`symposium-mcp`) with these subcommands:
+The [MCP server](./mcp-server.md) and daemon are packaged in the same binary (`socratic-shell-mcp`) with these subcommands:
 
 ```bash
 # Start MCP server (default, no subcommand) - has embedded IPC client
-symposium-mcp
+socratic-shell-mcp
 
 # Start client process (spawned by VSCode extension, OS X app, etc.)
 # This will automatically launch a daemon if needed
-symposium-mcp client
+socratic-shell-mcp client
 
 # Start daemon (usually auto-spawned by clients)  
-symposium-mcp daemon
+socratic-shell-mcp daemon
 
 # Run PID discovery probe (for testing)
-symposium-mcp probe
+socratic-shell-mcp probe
 ```
 
 The daemon creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC communication.
 
 ## Key Architecture Principles
 
-**All logic in Rust**: The `symposium-mcp` binary contains all IPC, daemon, and client logic. Other components (VSCode extension, OS X app) spawn Rust processes rather than reimplementing communication logic.
-- See: `mcp-server/src/main.rs` - subcommands for `client`, `daemon` modes
-- See: `ide/vscode/src/extension.ts` - spawns `symposium-mcp client` process
+**All logic in Rust**: The `socratic-shell-mcp` binary contains all IPC, daemon, and client logic. Other components (VSCode extension, OS X app) spawn Rust processes rather than reimplementing communication logic.
+- See: `socratic-shell/mcp-server/src/main.rs` - subcommands for `client`, `daemon` modes
+- See: `socratic-shell/vscode-extension/src/extension.ts` - spawns `socratic-shell-mcp client` process
 
 **Simple broadcast model**: Daemon forwards every message to all connected clients. No parsing, filtering, or routing logic in the daemon itself.
-- See: `mcp-server/src/daemon.rs` - `broadcast_to_clients()` function
+- See: `socratic-shell/mcp-server/src/daemon.rs` - `broadcast_to_clients()` function
 
 **Message format**: One JSON document per line over Unix domain socket at `/tmp/symposium-daemon.sock`.
-- See: `mcp-server/src/daemon.rs` - socket creation and message handling
-- See: `mcp-server/src/constants.rs` - `DAEMON_SOCKET_PREFIX` constant
+- See: `socratic-shell/mcp-server/src/daemon.rs` - socket creation and message handling
+- See: `socratic-shell/mcp-server/src/constants.rs` - `DAEMON_SOCKET_PREFIX` constant
 
 **Automatic lifecycle**: Clients auto-spawn daemon if needed. Daemon auto-terminates after 30s idle. During development, `cargo setup --dev` kills daemon and sends `reload_window` to trigger VSCode reloads.
-- See: `mcp-server/src/daemon.rs` - `run_client()` spawns daemon if needed
+- See: `socratic-shell/mcp-server/src/daemon.rs` - `run_client()` spawns daemon if needed
 - See: `setup/src/dev_setup.rs` - kills existing daemons during development
 
 See [Communication Protocol](./protocol.md) for detailed message format specifications.

@@ -10,35 +10,34 @@
 - [Introduction](./introduction.md)
 - [Installation and setup](./setup.md)
 
-<!--
-    AGENTS: "Research Reports" are in-depth documents you can read to learn more
-    about a particular topic
--->
-
 # Design and implementation
 
 - [Implementation Overview](./design/implementation-overview.md)
-- [Startup and Window Management](./design/startup-and-window-management.md)
-- [Stacked Windows](./design/stacked-windows.md)
 - [Guidance and Initialization](./design/guidance-and-initialization.md)
-- [MCP Server Tools](./design/mcp-server.md)
-    - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
-    - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
-    - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
-    - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
-    - [Reference System Tools](./design/mcp-tools/reference-system.md)
-- [Symposium Reference System](./design/symposium-ref-system.md)
-- [Ask Socratic Shell](./design/ask-socratic-shell.md)
+- [Taskspace Deletion System](./design/taskspace-deletion.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
-- [Code walkthroughs](./design/walkthroughs.md)
-    - [Walkthrough format](./design/walkthrough-format.md)
-    - [Comment Interactions](./design/walkthrough-comment-interactions.md)
-- [Window Stacking Design](./design/window-stacking-design.md)
-- [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
-- [Dialect language](./design/dialect-language.md)
+- [Socratic Shell MCP server + IDE extension specifics]()
+    - [MCP Server Tools](./design/mcp-server.md)
+        - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
+        - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
+        - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
+        - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
+        - [Reference System Tools](./design/mcp-tools/reference-system.md)
+    - [Socratic Shell Reference System](./design/socratic-shell-ref-system.md)
+    - [Ask Socratic Shell](./design/ask-socratic-shell.md)
+    - [Code walkthroughs](./design/walkthroughs.md)
+        - [Walkthrough format](./design/walkthrough-format.md)
+        - [Comment Interactions](./design/walkthrough-comment-interactions.md)
+    - [Dialect language](./design/dialect-language.md)
+- [Symposium application specifics]()
+    - [Startup and Window Management](./design/startup-and-window-management.md)
+    - [Stacked Windows](./design/stacked-windows.md)
+    - [Window Stacking Design](./design/window-stacking-design.md)
+    - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 
 # Work in Progress
 
+- [Repository Restructure: Socratic Shell + Symposium Split](./work-in-progress/rebrand.md)
 - [Startup Window Management Implementation](./work-in-progress/startup-window-management.md)
 - [Triple-Tickification: XML to Markdown Code Blocks](./work-in-progress/triple-tickification.md)
 - [Big picture plans](./work-in-progress/big-picture.md)
