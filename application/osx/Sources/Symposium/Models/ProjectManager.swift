@@ -113,29 +113,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Load project
         var project = try Project.load(from: directoryPath)
 
-        // Validate taskspaces and remove stale entries
-        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath, gitURL: project.gitURL)
-        Logger.shared.log("ProjectManager[\(instanceId)]: Validated \(project.taskspaces.count) taskspaces, found \(staleTaskspaces.count) stale entries")
-        
-        if !staleTaskspaces.isEmpty {
-            // Show confirmation dialog on main thread
-            Task { @MainActor in
-                let shouldRemove = confirmStaleTaskspaceRemoval(staleTaskspaces)
-                if shouldRemove {
-                    project.taskspaces = project.taskspaces.filter { taskspace in
-                        !staleTaskspaces.contains { $0.id == taskspace.id }
-                    }
-                    Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
-                    try? project.save()
-                }
-                
-                // Set as current project after dialog
-                setCurrentProject(project)
-            }
-        } else {
-            // Set as current project immediately if no stale taskspaces
-            setCurrentProject(project)
-        }
+        // Set as current project first to display it
+        setCurrentProject(project)
     }
 
     /// Helper to set current project and register as IPC delegate
@@ -166,10 +145,37 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Load existing screenshots from disk for visual persistence
         self.loadExistingScreenshots()
 
+        // Validate taskspaces after display but before full interaction
+        Task { @MainActor in
+            await validateTaskspacesAsync(project)
+        }
+
         // Start automatic window close detection
         self.startWindowCloseDetection()
 
         self.startMCPClient()
+    }
+    
+    /// Validate taskspaces asynchronously after project is displayed
+    @MainActor
+    private func validateTaskspacesAsync(_ project: Project) async {
+        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: project.directoryPath, gitURL: project.gitURL)
+        Logger.shared.log("ProjectManager[\(instanceId)]: Validated \(project.taskspaces.count) taskspaces, found \(staleTaskspaces.count) stale entries")
+        
+        if !staleTaskspaces.isEmpty {
+            let shouldRemove = confirmStaleTaskspaceRemoval(staleTaskspaces)
+            if shouldRemove {
+                var updatedProject = project
+                updatedProject.taskspaces = project.taskspaces.filter { taskspace in
+                    !staleTaskspaces.contains { $0.id == taskspace.id }
+                }
+                Logger.shared.log("ProjectManager[\(instanceId)]: Removed \(staleTaskspaces.count) stale taskspace(s) from project")
+                try? updatedProject.save()
+                
+                // Update the current project with cleaned taskspaces
+                self.currentProject = updatedProject
+            }
+        }
     }
 
     /// Launch VSCode for a specific taskspace (used for user-activated awakening)
