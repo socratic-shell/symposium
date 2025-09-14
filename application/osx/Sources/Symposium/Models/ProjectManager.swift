@@ -114,7 +114,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         var project = try Project.load(from: directoryPath)
 
         // Validate taskspaces and remove stale entries
-        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath)
+        let staleTaskspaces = findStaleTaskspaces(project.taskspaces, in: directoryPath, gitURL: project.gitURL)
         Logger.shared.log("ProjectManager[\(instanceId)]: Validated \(project.taskspaces.count) taskspaces, found \(staleTaskspaces.count) stale entries")
         
         if !staleTaskspaces.isEmpty {
@@ -206,9 +206,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     // }
 
     /// Find taskspaces with missing directories
-    private func findStaleTaskspaces(_ taskspaces: [Taskspace], in projectPath: String) -> [Taskspace] {
+    private func findStaleTaskspaces(_ taskspaces: [Taskspace], in projectPath: String, gitURL: String) -> [Taskspace] {
         let fileManager = FileManager.default
-        let repoName = extractRepoName(from: currentProject?.gitURL ?? "")
+        let repoName = extractRepoName(from: gitURL)
         
         return taskspaces.filter { taskspace in
             let taskspaceDir = taskspace.directoryPath(in: projectPath)
