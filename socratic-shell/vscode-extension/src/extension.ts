@@ -9,6 +9,7 @@ import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { Bus } from './bus';
 import { DaemonClient } from './ipc';
 import { StructuredLogger } from './structuredLogger';
+import { getCurrentTaskspaceUuid } from './taskspaceUtils';
 
 // TEST TEST TEST 
 
@@ -204,38 +205,6 @@ interface FileLocation {
     column: number,  // 💡: 1-based, vscode is 0-based
 }
 
-/**
- * Investigate current workspace to determine if we're in a taskspace
- * Returns taskspace UUID if valid, null otherwise
- */
-function getCurrentTaskspaceUuid(): string | null {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-        return null;
-    }
-
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-
-    // Walk up the directory tree looking for task-UUID directory with taskspace.json
-    let currentDir = workspaceRoot;
-    while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
-        const dirName = path.basename(currentDir);
-        const match = dirName.match(taskUuidPattern);
-
-        if (match) {
-            const taskspaceJsonPath = path.join(currentDir, 'taskspace.json');
-            if (fs.existsSync(taskspaceJsonPath)) {
-                return match[1]; // Return the UUID
-            }
-        }
-
-        currentDir = path.dirname(currentDir);
-    }
-
-    return null; // No taskspace found in directory tree
-}
-
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
 async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
     outputChannel.appendLine('Checking for taskspace environment...');
@@ -249,7 +218,7 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
     outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
 
     // Send taskspace_state message to get current taskspace information
-    const payload: TaskspaceStateRequest = { 
+    const payload: TaskspaceStateRequest = {
         project_path: getProjectPath(),
         taskspace_uuid: taskspaceUuid,
         name: null,        // Read-only operation
@@ -419,7 +388,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Return API for Ask Socratic Shell integration
     return {
-        getActiveTerminals: () => daemonClient.getActiveTerminals()
+        discoverActiveShells: () => daemonClient.discoverActiveShells()
     };
 }
 
@@ -518,7 +487,7 @@ function setupSelectionDetection(bus: Bus): void {
     outputChannel.appendLine('Selection detection with Code Actions setup complete');
 }
 
-// 💡: Phase 4 - Intelligent terminal detection using registry
+// 💡: Phase 4 - Intelligent terminal detection using discovery
 async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
     const { outputChannel, context } = bus;
     const terminals = vscode.window.terminals;
@@ -529,11 +498,11 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
         return null;
     }
 
-    // Get active terminals with MCP servers from registry
-    const activeTerminals = bus.getActiveTerminals();
-    outputChannel.appendLine(`Active MCP server terminals: [${Array.from(activeTerminals).join(', ')}]`);
+    // Discover active MCP servers using MARCO/POLO
+    const discoveredShells = await bus.daemonClient.discoverActiveShells();
+    outputChannel.appendLine(`Discovered MCP server terminals: [${Array.from(discoveredShells.keys()).join(', ')}]`);
 
-    if (activeTerminals.size === 0) {
+    if (discoveredShells.size === 0) {
         outputChannel.appendLine('No terminals with active MCP servers found');
         return null;
     }
@@ -547,8 +516,8 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
             // Log terminal for debugging
             outputChannel.appendLine(`  Checking terminal: "${terminal.name}" (PID: ${shellPID})`);
 
-            // Check if this terminal's shell PID is in our active registry
-            if (shellPID && activeTerminals.has(shellPID)) {
+            // Check if this terminal's shell PID is in our discovered shells
+            if (shellPID && discoveredShells.has(shellPID)) {
                 outputChannel.appendLine(`    ✅ Terminal "${terminal.name}" has active MCP server (PID: ${shellPID})`);
                 return { terminal, isAiEnabled: true };
             } else {
@@ -682,7 +651,6 @@ async function findQChatTerminal(bus: Bus): Promise<vscode.Terminal | null> {
     outputChannel.appendLine('Multiple terminals found, but none are AI-enabled or named appropriately');
     return null;
 }
-
 /**
  * Get the project path (.symposium directory) for the current workspace
  * Returns project path if valid, empty string otherwise
@@ -694,7 +662,7 @@ function getProjectPath(): string {
     }
 
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    
+
     // Walk up the directory tree looking for .symposium directory
     let currentDir = workspaceRoot;
     while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
@@ -706,69 +674,6 @@ function getProjectPath(): string {
     }
 
     return '';
-}
-
-// 💡: Phase 5 - Create compact reference for selection context
-async function createCompactSelectionReference(
-    selectedText: string,
-    filePath: string,
-    startLine: number,
-    startColumn: number,
-    endLine: number,
-    endColumn: number,
-    bus: Bus
-): Promise<string> {
-    try {
-        const relativePath = vscode.workspace.asRelativePath(filePath);
-        const referenceId = crypto.randomUUID();
-
-        // Create reference data matching the expected format
-        const referenceData = {
-            file: relativePath,
-            line: startLine,
-            selection: selectedText.length > 0 ? selectedText : undefined
-        };
-
-        // Store the reference using the bus
-        await bus.sendReferenceToActiveShell(referenceId, referenceData);
-
-        // Return compact reference tag
-        const compactRef = `<symposium-ref id="${referenceId}"/>\n\n`;
-        bus.log(`Created compact reference ${referenceId} for ${relativePath}:${startLine}`);
-
-        return compactRef;
-    } catch (error) {
-        bus.log(`Failed to create compact reference: ${error}`);
-        // Fallback to old format if compact reference fails
-        return formatSelectionMessageLegacy(selectedText, filePath, startLine, startColumn, endLine, endColumn);
-    }
-}
-
-// 💡: Legacy fallback - Format selection context for Q chat injection (old verbose format)
-function formatSelectionMessageLegacy(
-    selectedText: string,
-    filePath: string,
-    startLine: number,
-    startColumn: number,
-    endLine: number,
-    endColumn: number
-): string {
-    // 💡: Create a formatted message that provides context to the AI
-    const relativePath = vscode.workspace.asRelativePath(filePath);
-    const location = startLine === endLine
-        ? `${relativePath}:${startLine}:${startColumn}-${endColumn}`
-        : `${relativePath}:${startLine}:${startColumn}-${endLine}:${endColumn}`;
-
-    // 💡: Format as a natural message that user can continue typing after
-    // 💡: Show just first 30 chars with escaped newlines for concise terminal display
-    const escapedText = selectedText.replace(/\n/g, '\\n');
-    const truncatedText = escapedText.length > 30
-        ? escapedText.substring(0, 30) + '...'
-        : escapedText;
-
-    const message = `<context>looking at this code from ${location} <content>${truncatedText}</content></context> `;
-
-    return message;
 }
 
 // 💡: PID Discovery Testing - Log all relevant PIDs for debugging
