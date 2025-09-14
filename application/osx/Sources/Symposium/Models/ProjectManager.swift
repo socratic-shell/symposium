@@ -208,15 +208,29 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Find taskspaces with missing directories
     private func findStaleTaskspaces(_ taskspaces: [Taskspace], in projectPath: String) -> [Taskspace] {
         let fileManager = FileManager.default
+        let repoName = extractRepoName(from: currentProject?.gitURL ?? "")
+        
         return taskspaces.filter { taskspace in
             let taskspaceDir = taskspace.directoryPath(in: projectPath)
             let taskspaceJsonPath = taskspace.taskspaceFilePath(in: projectPath)
+            let workingDir = "\(taskspaceDir)/\(repoName)"
             
-            let exists = fileManager.fileExists(atPath: taskspaceDir) && fileManager.fileExists(atPath: taskspaceJsonPath)
-            if !exists {
-                Logger.shared.log("ProjectManager[\(instanceId)]: Found stale taskspace: \(taskspace.name) (directory missing)")
+            let hasTaskspaceDir = fileManager.fileExists(atPath: taskspaceDir)
+            let hasTaskspaceJson = fileManager.fileExists(atPath: taskspaceJsonPath)
+            let hasWorkingDir = fileManager.fileExists(atPath: workingDir)
+            
+            let isValid = hasTaskspaceDir && hasTaskspaceJson && hasWorkingDir
+            
+            if !isValid {
+                var missing: [String] = []
+                if !hasTaskspaceDir { missing.append("directory") }
+                if !hasTaskspaceJson { missing.append("taskspace.json") }
+                if !hasWorkingDir { missing.append("worktree") }
+                
+                Logger.shared.log("ProjectManager[\(instanceId)]: Found stale taskspace: \(taskspace.name) (missing: \(missing.joined(separator: ", ")))")
             }
-            return !exists
+            
+            return !isValid
         }
     }
     
