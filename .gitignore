@@ -25,7 +25,8 @@ DerivedData/
 *.temp
 .netrc
 .claude
-xxx.logs
+killme.*
+xxx.*
 
 # Node.js (VSCode extension)
 socratic-shell/vscode-extension/node_modules/
@@ -44,8 +45,3 @@ yarn-error.log*
 *.swp
 *.swo
 *~
-
-# dialectic-repo (temporary during migration)
-dialectic-repo/
-# Log files
-killme.logs
