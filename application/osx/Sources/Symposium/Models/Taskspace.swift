@@ -71,6 +71,11 @@ struct Taskspace: Codable, Identifiable {
         logs.append(log)
     }
     
+    /// Clear all question logs (signals) to acknowledge user attention
+    mutating func clearAttentionSignals() {
+        logs.removeAll { $0.category == .question }
+    }
+    
     /// Update the last activated timestamp to current time
     mutating func updateActivationTime() {
         lastActivatedAt = Date()
