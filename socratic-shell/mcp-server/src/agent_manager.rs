@@ -300,14 +300,64 @@ mod tests {
             let mut manager = AgentManager::new(sessions_file.clone()).await.unwrap();
             manager.spawn_agent(
                 "test-uuid".to_string(),
-                vec!["echo".to_string(), "test".to_string()],
+                vec!["sleep".to_string(), "30".to_string()],
                 temp_dir.path().to_path_buf(),
             ).await.unwrap();
+            
+            // Verify session was created
+            assert_eq!(manager.sessions.len(), 1);
+            assert!(manager.sessions.contains_key("test-uuid"));
         }
         
-        // Create new manager and verify session persisted
+        // Kill the tmux session to simulate it dying
+        let _ = Command::new("tmux")
+            .arg("kill-session")
+            .arg("-t")
+            .arg("symposium-agent-test-uuid")
+            .output();
+        
+        // Create new manager and verify session was loaded but then cleaned up during sync
         {
             let manager = AgentManager::new(sessions_file).await.unwrap();
+            // After sync_with_tmux, the dead session should be removed
+            assert_eq!(manager.sessions.len(), 0);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_session_file_persistence() {
+        let temp_dir = tempdir().unwrap();
+        let sessions_file = temp_dir.path().join("sessions.json");
+        
+        // Create manager and manually add session (without tmux)
+        {
+            let mut manager = AgentManager {
+                sessions: HashMap::new(),
+                sessions_file: sessions_file.clone(),
+            };
+            
+            let session = AgentSession {
+                uuid: "test-uuid".to_string(),
+                tmux_session_name: "symposium-agent-test-uuid".to_string(),
+                agent_command: vec!["sleep".to_string(), "30".to_string()],
+                working_directory: temp_dir.path().to_path_buf(),
+                status: AgentStatus::Running,
+                created_at: SystemTime::now(),
+                last_attached: None,
+            };
+            
+            manager.sessions.insert("test-uuid".to_string(), session);
+            manager.save_sessions().await.unwrap();
+        }
+        
+        // Create new manager and verify session was loaded from file
+        {
+            let mut manager = AgentManager {
+                sessions: HashMap::new(),
+                sessions_file: sessions_file.clone(),
+            };
+            manager.load_sessions().await.unwrap();
+            
             assert_eq!(manager.sessions.len(), 1);
             assert!(manager.sessions.contains_key("test-uuid"));
         }

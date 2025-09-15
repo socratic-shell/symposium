@@ -203,37 +203,7 @@ interface FileLocation {
     column: number,  // 💡: 1-based, vscode is 0-based
 }
 
-/**
- * Investigate current workspace to determine if we're in a taskspace
- * Returns taskspace UUID if valid, null otherwise
- */
-export function getCurrentTaskspaceUuid(): string | null {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-        return null;
-    }
 
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const taskUuidPattern = /^task-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-
-    // Walk up the directory tree looking for task-UUID directory with taskspace.json
-    let currentDir = workspaceRoot;
-    while (currentDir !== path.dirname(currentDir)) { // Stop at filesystem root
-        const dirName = path.basename(currentDir);
-        const match = dirName.match(taskUuidPattern);
-
-        if (match) {
-            const taskspaceJsonPath = path.join(currentDir, 'taskspace.json');
-            if (fs.existsSync(taskspaceJsonPath)) {
-                return match[1]; // Return the UUID
-            }
-        }
-
-        currentDir = path.dirname(currentDir);
-    }
-
-    return null; // No taskspace found in directory tree
-}
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
 async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
     outputChannel.appendLine('Checking for taskspace environment...');

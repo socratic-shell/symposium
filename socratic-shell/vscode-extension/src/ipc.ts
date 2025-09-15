@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
-import { getCurrentTaskspaceUuid } from './extension';
+import { getCurrentTaskspaceUuid } from './taskspaceUtils';
 
 // ANCHOR: message_sender
 interface MessageSender {
@@ -912,10 +912,14 @@ export class DaemonClient implements vscode.Disposable {
         }
 
         const marcoMessage: IPCMessage = {
-            shellPid: process.pid, // Use our own PID as sender
             type: 'marco',
-            payload: {}, // Empty payload for MARCO
-            id: crypto.randomUUID()
+            id: crypto.randomUUID(),
+            sender: {
+                workingDirectory: process.cwd(),
+                taskspaceUuid: undefined, // VSCode extension doesn't have taskspace context
+                shellPid: process.pid
+            },
+            payload: {} // Empty payload for MARCO
         };
 
         try {
