@@ -362,3 +362,44 @@ Reuses existing permission management:
 - `permissionManager.checkAllPermissions()`
 
 This architecture provides a clean, predictable user experience while maintaining the flexibility to extend functionality in the future.
+
+## Agent Initialization Integration
+
+The startup and window management system integrates with the MCP-based agent initialization system documented in @guidance-and-initialization.md.
+
+### Agent Startup Flow
+
+When a taskspace is opened in VSCode:
+
+1. **VSCode Extension** detects taskspace directory and loads MCP server
+2. **MCP Server** connects to Symposium daemon via IPC
+3. **Agent requests initialization** via `expand_reference("yiasou")` 
+4. **MCP Server** fetches taskspace state using unified TaskspaceState protocol
+5. **Dynamic prompt assembly** includes real taskspace context (name, description, initial_prompt)
+6. **Agent receives** comprehensive initialization with embedded guidance and project context
+
+### TaskspaceState Protocol Integration
+
+The window management system works with the TaskspaceState protocol:
+
+- **Read operations**: Agent initialization fetches current taskspace state
+- **Write operations**: `update_taskspace` tool modifies taskspace properties and clears initial_prompt
+- **State transitions**: Taskspace automatically transitions from `hatchling` → `resume` after first agent interaction
+- **UI updates**: Changes are persisted to disk and reflected in the Symposium GUI
+
+### Coordination with Project Manager
+
+The ProjectManager handles TaskspaceState IPC messages:
+
+```swift
+func handleTaskspaceState(_ payload: TaskspaceStateRequest, messageId: String) async
+    -> MessageHandlingResult<TaskspaceStateResponse>
+{
+    // Handle both read and write operations
+    // Update taskspace properties if provided
+    // Return current state with appropriate initial_prompt value
+    // Persist changes and update UI
+}
+```
+
+This integration ensures seamless coordination between the GUI application's window management and the agent's dynamic initialization system.

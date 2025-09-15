@@ -56,6 +56,7 @@ Define message types for daemon communication:
 - ✅ `SpawnTaskspacePayload { project_path, taskspace_uuid, name, task_description, initial_prompt }`
 - ✅ `LogProgressPayload { project_path, taskspace_uuid, message, category }`
 - ✅ `SignalUserPayload { project_path, taskspace_uuid, message }`
+- ✅ `DeleteTaskspacePayload { project_path, taskspace_uuid }`
 
 **Implementation completed**:
 - ✅ Added comprehensive integration tests
@@ -138,8 +139,8 @@ Define message types for daemon communication:
 ## Phase 3: IPC Integration
 
 ### 3.1 Daemon Connection
-- **Binary discovery**: Parse MCP configuration files to find `symposium-mcp` binary
-- **Process spawning**: Launch `symposium-mcp client` as subprocess
+- **Binary discovery**: Parse MCP configuration files to find `socratic-shell-mcp` binary
+- **Process spawning**: Launch `socratic-shell-mcp client` as subprocess
 - **Communication setup**: stdin/stdout pipes for JSON message exchange
 
 ### 3.2 Message Handling
@@ -361,7 +362,7 @@ Then move to Phase 3 for full daemon communication and orchestration.
 **Future solution**: Proper taskspace registration and ID passing through IPC messages
 
 ### 2. Binary Discovery via MCP Configuration Parsing  
-**Current approach**: Symposium app reads Q CLI/Claude Code MCP configuration to find `symposium-mcp` binary location  
+**Current approach**: Symposium app reads Q CLI/Claude Code MCP configuration to find `socratic-shell-mcp` binary location  
 **Problem**: Brittle dependency on external tool configuration formats  
 **Future solution**: Standard installation paths, proper binary discovery, or bundled binaries
 

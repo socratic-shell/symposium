@@ -79,10 +79,13 @@ All views observe AppDelegate via `@EnvironmentObject` rather than holding direc
 - **Message Routing**: Routes commands between components via Unix socket
 - **Socket Management**: Manages Unix socket at `~/.socratic-shell/symposium/daemon.sock`
 
-### MCP Server (Node.js/TypeScript)  
+### MCP Server (Rust)  
 - **Agent Tool Integration**: Loaded and used by AI agent CLI tools (Claude Code, Q CLI)
-- **Tool Provider**: Provides MCP tools (`spawn_agentspace`, `update_taskspace`, `log_progress`, `signal_user`)
-- **Daemon Communication**: Connects to daemon to send commands and updates
+- **Tool Provider**: Provides MCP tools (`spawn_taskspace`, `update_taskspace`, `log_progress`, `signal_user`)
+- **Resource Provider**: Exposes embedded guidance files as MCP resources (collaboration patterns, walkthrough format, coding guidelines)
+- **Prompt Provider**: Implements `/yiasou` stored prompt for dynamic agent initialization with taskspace context
+- **Daemon Communication**: Connects to daemon via IPC to fetch real taskspace state and send commands
+- **Unified Protocol**: Uses TaskspaceState message for both reading and writing taskspace information
 
 ### VSCode Extension (TypeScript)
 - **Agent Bootstrap**: Automatically launches AI agent tools in VSCode's integrated terminal

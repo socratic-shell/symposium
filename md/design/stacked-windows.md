@@ -13,9 +13,10 @@ Stacked windows is a per-project feature that creates a "deck of cards" effect w
 - **Stacked mode**: When enabled, clicking a taskspace brings it to front and positions all other taskspace windows at the same location
 
 ### Window Following
-When stacked windows is enabled and the user drags the active (top) window:
-- All stacked windows move together as a cohesive unit
-- Following happens during the drag operation at 20fps (50ms intervals)
+When stacked windows is enabled and the user interacts with any window in the stack:
+- **Drag following**: All stacked windows move together as a cohesive unit during drag operations
+- **Resize following**: All stacked windows resize to match when any window is resized
+- Following happens during the operation at 20fps (50ms intervals)
 - No manual repositioning needed - the illusion of a single window is maintained
 
 ## Technical Architecture
@@ -28,9 +29,9 @@ When stacked windows is enabled and the user drags the active (top) window:
 - `focusWindowWithStacking()` implements the core stacking logic
 
 #### WindowStackTracker
-- Handles drag detection and window following
+- Handles drag and resize detection with window following
 - Uses AeroSpace-inspired event-driven approach
-- Manages leader/follower window relationships
+- Manages peer window relationships (no leader/follower hierarchy)
 
 ### Implementation Philosophy
 
@@ -49,15 +50,15 @@ Traditional macOS window management relies on `AXObserver` notifications for tra
 Instead, we use an event-driven polling approach:
 
 1. **CGEvent Tap**: System-wide mouse event detection
-2. **Drag Detection**: Identify when user starts dragging the leader window
-3. **Timer-Based Polling**: Track leader position only during active drags (50ms intervals)
-4. **Synchronous Following**: Move all follower windows by the same delta
+2. **Interaction Detection**: Identify when user starts dragging or resizing any tracked window
+3. **Timer-Based Polling**: Track active window position and size only during interactions (50ms intervals)
+4. **Synchronous Following**: Move and resize all other windows to match the active window
 
 This provides:
 - 90%+ application compatibility
 - Reliable cross-application window management
-- Minimal CPU overhead (polling only during drags)
-- Low latency response (20fps during movement)
+- Minimal CPU overhead (polling only during interactions)
+- Low latency response (20fps during operations)
 
 ## Data Storage
 
@@ -82,42 +83,50 @@ This establishes a clean precedent for future schema upgrades.
 
 ## Implementation Details
 
-### Window Positioning
+### Window Positioning and Synchronization
 When a taskspace is activated in stacked mode:
 
 1. **Focus Target**: Bring target window to front using standard macOS APIs
 2. **Get Bounds**: Retrieve target window position and size
-3. **Position Followers**: Move all other taskspace windows to exact same bounds
-4. **Start Tracking**: Initialize drag detection for the new leader window
+3. **Position Others**: Move all other taskspace windows to exact same bounds
+4. **Start Tracking**: Initialize interaction detection for all windows in the stack
 
-### Drag Following Process
+### Interaction Following Process
 
 ```swift
 // Simplified flow
 func handleMouseEvent(type: CGEventType, event: CGEvent) {
     switch type {
     case .leftMouseDown:
-        if clickedWindow == leaderWindow {
-            startDragTracking() // Begin 50ms polling
+        if trackedWindowIDs.contains(clickedWindow) {
+            startTracking(activeWindow: clickedWindow) // Begin 50ms polling
         }
     case .leftMouseUp:
-        stopDragTracking()   // End polling
+        stopActiveTracking()   // End polling
     }
 }
 
-func updateFollowerPositions() {
-    let delta = currentLeaderPosition - lastLeaderPosition
-    for follower in followers {
-        moveWindow(follower, by: delta)
+func updateOtherWindows() {
+    let positionDelta = currentPosition - lastPosition
+    let hasResize = currentSize != lastSize
+    
+    for otherWindow in otherWindows {
+        if hasMovement && hasResize {
+            moveAndResizeWindow(otherWindow, positionDelta: positionDelta, newSize: currentSize)
+        } else if hasMovement {
+            moveWindow(otherWindow, by: positionDelta)
+        } else if hasResize {
+            resizeWindow(otherWindow, to: currentSize)
+        }
     }
 }
 ```
 
 ### Resource Management
 - **Event Tap**: Created once, reused across all tracking sessions
-- **Timer**: Only active during drag operations (typically 1-3 seconds)
+- **Timer**: Only active during interaction operations (typically 1-3 seconds)
 - **Cleanup**: Automatic cleanup when disabling stacked mode or closing projects
-- **Memory**: Minimal overhead - just window ID tracking and position deltas
+- **Memory**: Minimal overhead - just window ID tracking and position/size deltas
 
 ## Edge Cases and Limitations
 
@@ -149,14 +158,17 @@ func updateFollowerPositions() {
 
 The stacked windows implementation is considered successful based on:
 
-1. **Movement Coherence**: Dragging the leader window moves all followers seamlessly ✅
-2. **Visual Isolation**: Only the leader window is visible during normal operation ✅
-3. **Reliable Switching**: Users can switch between windows without position drift ✅
-4. **System Stability**: No performance impact or conflicts with macOS window management ✅
-5. **Persistent Settings**: Per-project configuration survives app restarts ✅
+1. **Movement Coherence**: Dragging any window moves all others seamlessly ✅
+2. **Resize Coherence**: Resizing any window resizes all others to match ✅
+3. **Visual Isolation**: Only the active window is visible during normal operation ✅
+4. **Reliable Switching**: Users can switch between windows without position drift ✅
+5. **System Stability**: No performance impact or conflicts with macOS window management ✅
+6. **Persistent Settings**: Per-project configuration survives app restarts ✅
 
 ## Conclusion
 
-Stacked windows provides a clean, efficient way to manage multiple taskspace windows by creating the illusion of a single window that can be quickly switched between different contexts. The AeroSpace-inspired drag detection ensures reliable window following across diverse applications while maintaining excellent performance characteristics.
+Stacked windows provides a clean, efficient way to manage multiple taskspace windows by creating the illusion of a single window that can be quickly switched between different contexts. The AeroSpace-inspired interaction detection ensures reliable window following across diverse applications while maintaining excellent performance characteristics.
+
+The peer-based architecture allows any window in the stack to be the one the user interacts with, providing a natural and intuitive experience. Both drag and resize operations are synchronized across all windows in the stack, maintaining the illusion of working with a single window.
 
 The implementation establishes solid patterns for future window management features and demonstrates how to build reliable cross-application window coordination on macOS.

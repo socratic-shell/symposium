@@ -4,10 +4,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../mcp-server/src/types.rs:present_walkthrough_params}}
+{{#include ../../../socratic-shell/mcp-server/src/types.rs:present_walkthrough_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../mcp-server/src/server.rs:present_walkthrough_tool}}
+{{#include ../../../socratic-shell/mcp-server/src/server.rs:present_walkthrough_tool}}
 ```
 
 **Supported XML elements**:
