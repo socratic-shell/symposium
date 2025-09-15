@@ -1,8 +1,8 @@
-# Daemon Message Bus Architecture
+# Daemon Message Bus Architecture ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Experimental](https://img.shields.io/badge/stability-experimental-orange)
 
 The daemon message bus serves as the central communication hub that routes messages between MCP servers and VSCode extensions across multiple windows. It eliminates the need for direct connections while enabling intelligent message routing, buffering, and replay capabilities.
 
-## Architecture Overview
+## Architecture Overview ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
 ```mermaid
 graph TB
@@ -41,7 +41,7 @@ graph TB
 
 ## Message Targeting and Routing
 
-## Message Targeting and Routing
+## Message Targeting and Routing ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
 ### Hybrid Directory + PID Approach
 The daemon uses intelligent message targeting to support both synchronous and persistent agents:
@@ -96,7 +96,7 @@ sender: {
 
 The daemon sends `reload_window` messages to all clients when it shuts down.
 
-## Message Buffering and Replay
+## Message Buffering and Replay ![Planned](https://img.shields.io/badge/status-planned-blue)
 
 ### Buffering Architecture
 The daemon implements per-client message buffering to handle disconnections gracefully:

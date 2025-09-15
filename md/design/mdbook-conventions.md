@@ -16,7 +16,33 @@ The mdbook documents **architecture and design**, not implementation details. We
 - Component relationships and responsibilities
 - API contracts and message formats
 
-### 2. Visual Documentation with Mermaid
+### 2. Implementation Status Badges
+
+Use shields.io badges to indicate implementation status at the section level. This follows the progressive development philosophy - land early, iterate in place.
+
+**Implementation Status:**
+- ![Implemented](https://img.shields.io/badge/status-implemented-green) - Working code exists
+- ![In Progress](https://img.shields.io/badge/status-in%20progress-yellow) - Actively being developed  
+- ![Planned](https://img.shields.io/badge/status-planned-blue) - Designed but not started
+- ![Deprecated](https://img.shields.io/badge/status-deprecated-red) - Being phased out
+
+**Quality/Maturity:**
+- ![Stable](https://img.shields.io/badge/stability-stable-green) - Production ready
+- ![Experimental](https://img.shields.io/badge/stability-experimental-orange) - Working but may change
+- ![Prototype](https://img.shields.io/badge/stability-prototype-yellow) - Proof of concept
+
+**Usage Example:**
+```markdown
+## Message Buffering and Replay ![Planned](https://img.shields.io/badge/status-planned-blue)
+
+The daemon will buffer messages for disconnected clients...
+
+## Basic IPC Routing ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Stable](https://img.shields.io/badge/stability-stable-green)
+
+Messages are routed between VSCode and MCP server...
+```
+
+### 3. Visual Documentation with Mermaid
 
 Use Mermaid diagrams to convey complex relationships:
 
@@ -34,7 +60,7 @@ graph TB
 - Architecture diagrams for system overview
 - State diagrams for lifecycle management
 
-### 3. Self-Documenting Code with Anchors
+### 4. Self-Documenting Code with Anchors
 
 Write code that documents itself through:
 - Clear function and variable names
@@ -64,6 +90,8 @@ Reference in documentation:
 
 ### ✅ DO
 
+- **Use status badges** to indicate implementation progress
+- **Update badges** as features are implemented or deprecated
 - **Use ANCHOR comments** for all code references
 - **Write descriptive anchor names** that explain the concept
 - **Include complete, meaningful code sections** (full structs, methods, etc.)
