@@ -47,47 +47,14 @@ graph TB
 The daemon uses intelligent message targeting to support both synchronous and persistent agents:
 
 ```typescript
-interface IPCMessage {
-    type: string;
-    id: string;
-    sender: {
-        workingDirectory: string;      // Always present - reliable matching
-        taskspaceUuid?: string;        // Optional - for taskspace-specific routing
-        shellPid?: number;             // Optional - only when VSCode parent found
-    };
-    payload: any;
-}
+{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:ipc_message}}
 ```
 
 ### Client-Side Filtering Logic
 VSCode extensions filter incoming messages using hybrid directory + PID matching:
 
 ```typescript
-private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
-    // 1. Check if working directory is within our workspace
-    const workspaceMatch = vscode.workspace.workspaceFolders?.some(folder => 
-        sender.workingDirectory.startsWith(folder.uri.fsPath)
-    );
-    
-    if (!workspaceMatch) {
-        return false; // Directory not in our workspace
-    }
-    
-    // 2. If shellPid provided, verify it's one of our terminals
-    if (sender.shellPid) {
-        const terminals = vscode.window.terminals;
-        for (const terminal of terminals) {
-            const terminalPid = await terminal.processId;
-            if (terminalPid === sender.shellPid) {
-                return true; // Precise PID match
-            }
-        }
-        return false; // shellPid provided but not found in our terminals
-    }
-    
-    // 3. If no shellPid (persistent agent case), accept based on directory match
-    return true;
-}
+{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:is_message_for_our_window}}
 ```
 
 ### Benefits of Hybrid Approach

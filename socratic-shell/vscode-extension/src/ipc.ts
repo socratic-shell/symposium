@@ -395,6 +395,7 @@ export class DaemonClient implements vscode.Disposable {
         return message.sender.shellPid || null;
     }
 
+    // ANCHOR: is_message_for_our_window
     private async isMessageForOurWindow(sender: MessageSender): Promise<boolean> {
         try {
             // 1. Check if working directory is within our workspace
@@ -435,6 +436,7 @@ export class DaemonClient implements vscode.Disposable {
             return true;
         }
     }
+    // ANCHOR_END: is_message_for_our_window
 
     private getCurrentSelection(): any {
         const activeEditor = vscode.window.activeTextEditor;
