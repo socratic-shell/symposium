@@ -1,22 +1,14 @@
-# Synthetic Pull Request Tools
+# Synthetic Pull Request Tools ![Planned](https://img.shields.io/badge/status-planned-blue)
 
-## `request_review`
+## `request_review` ![Planned](https://img.shields.io/badge/status-planned-blue)
 
-```rust
-// --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/synthetic_pr/mcp_tools.rs:request_review_params}}
-
-// --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:request_review_tool}}
-```
+*Implementation pending - will generate structured code reviews from commits.*
 
 **Use case**: Generate structured code reviews from commits
 
-## `update_review`
+## `update_review` ![Planned](https://img.shields.io/badge/status-planned-blue)
 
-```rust
-// --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/synthetic_pr/mcp_tools.rs:update_review_params}}
+*Implementation pending - will update existing code reviews.*
 
 // --- Tool definition ------------------
 {{#include ../../../socratic-shell/mcp-server/src/server.rs:update_review_tool}}

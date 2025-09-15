@@ -326,9 +326,7 @@ The IPC message format is consistent across all components:
 ```
 
 **Swift (Symposium App)**:
-```swift
-{{#include ../../application/osx/Sources/Symposium/Models/IpcManager.swift:ipc_message}}
-```
+*Note: Swift implementation exists but not currently documented with anchors.*
 
 ### MessageSender Structure
 
@@ -343,7 +341,5 @@ The IPC message format is consistent across all components:
 ```
 
 **Swift (Symposium App)**:
-```swift
-{{#include ../../application/osx/Sources/Symposium/Models/IpcManager.swift:message_sender}}
-```
+*Note: Swift implementation exists but not currently documented with anchors.*
 

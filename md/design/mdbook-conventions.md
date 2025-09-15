@@ -102,7 +102,7 @@ Reference in documentation:
 ### ❌ NEVER
 
 - **Hardcode code blocks** that will fall out of sync
-- **Use line-based includes** like `{{#include file.rs:10:20}}`
+- **Use line-based includes** like `{ {#include file.rs:10:20} }` (without spaces)
 - **Include implementation details** that change frequently
 - **Copy-paste code** into documentation
 - **Reference specific line numbers** in explanations
