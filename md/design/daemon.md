@@ -60,7 +60,7 @@ VSCode extensions filter incoming messages using hybrid directory + PID matching
 ### Benefits of Hybrid Approach
 - **Universal Compatibility**: Works with both synchronous (terminal-based) and persistent (tmux-based) agents
 - **Precise When Possible**: Uses PID matching when available for accuracy
-- **Robust Fallback**: Directory matching works across all execution models
+- **Robgust Fallback**: Directory matching works across all execution models
 - **Multi-Window Safe**: Prevents cross-window message leakage
 
 ### Sender Information by Component

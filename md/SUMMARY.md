@@ -13,6 +13,7 @@
 # Design and implementation
 
 - [Implementation Overview](./design/implementation-overview.md)
+- [mdbook Conventions](./design/mdbook-conventions.md)
 - [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
     - [IPC message type reference](./design/ipc_message_type_reference.md)
