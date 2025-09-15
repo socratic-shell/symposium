@@ -63,6 +63,7 @@ interface RegisterTaskspaceWindowPayload {
 
 interface PoloDiscoveryPayload {
     taskspace_uuid?: string;
+    working_directory: string;
     // Shell PID is at message level (message.shellPid)
 }
 
@@ -286,7 +287,8 @@ export class DaemonClient implements vscode.Disposable {
 
                     // Store in discovery responses for MARCO/POLO protocol
                     this.discoveryResponses.set(shellPid, {
-                        taskspace_uuid: message.sender.taskspaceUuid || undefined
+                        taskspace_uuid: message.sender.taskspaceUuid || undefined,
+                        working_directory: message.sender.workingDirectory
                     });
 
                     // Also add to terminal registry for Ask Socratic Shell integration
