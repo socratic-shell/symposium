@@ -208,7 +208,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 console.log('Walkthrough webview ready');
                 this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview reported ready`);
                 this.webviewReady = true;
-                
+
                 // Send any pending offscreen HTML content now that webview is ready
                 if (this.offscreenHtmlContent && this._view) {
                     console.log('Webview ready - sending pending offscreen HTML content');
