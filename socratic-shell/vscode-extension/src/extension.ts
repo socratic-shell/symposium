@@ -315,9 +315,6 @@ export function activate(context: vscode.ExtensionContext) {
                 console.log('Sending reference to active terminal...');
                 await bus.sendToActiveTerminal(referenceData, { includeNewline: false });
                 console.log('Reference sent successfully');
-
-                // Show success message
-                vscode.window.showInformationMessage('Comment reply inserted into AI chat');
             } catch (error) {
                 console.error('Failed to reply to walkthrough comment:', error);
                 vscode.window.showErrorMessage(`Failed to reply to comment: ${error}`);
