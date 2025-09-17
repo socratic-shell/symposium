@@ -39,6 +39,33 @@
     - [Window Stacking Design](./design/window-stacking-design.md)
     - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 
+# Requests for Dialog
+
+<!--
+
+A "Request for Dialog" (RFD) is Socratic Shell's version of the RFC process.
+
+Each entry here maps to a file whose name is the shorthand name for the RFD, e.g.,  `./rfds/ide-operations.md`. 
+
+The RFD tracks the feature's progress from design to implementation. They are living documents that are kept up-to-date until the feature is completed.
+
+RFDs may have other associated files in a directory, e.g., `./rfds/ide-operations/auxiliary-data.md`.
+
+RFDs are moved from section to section by the Socratic Shell team members only.
+
+People can propose an RFD by create a PR adding a new file into the early drafts section. It should have a suitable name using "kebab-case" conventions.
+
+-->
+
+- [About RFDs](./rfds/README.md)
+    - [RFD Template](./rfds/TEMPLATE.md)
+- [Accepted]() <!-- In the process of being implemented; edits into the design & impl section above should be tagged with an appropriate badge linking to this file. -->
+- [Mature drafts]() <!-- Close to ready, highlighted for attention -->
+    - [IDE Capabilities](./rfds/ide-capabilities.md)
+- [Early drafts]() <!-- Early drafts, people start things in this section -->
+- [Not accepted (yet?)]() <!-- Decided against doing this for now -->
+- [Completed]() <!-- Work is complete -->
+
 # Work in Progress
 
 - [Repository Restructure: Socratic Shell + Symposium Split](./work-in-progress/rebrand.md)
