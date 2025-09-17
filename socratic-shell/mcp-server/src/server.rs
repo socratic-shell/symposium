@@ -18,6 +18,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::dialect::DialectInterpreter;
+use crate::eg::Eg;
 use crate::ipc::IPCCommunicator;
 use crate::reference_store::ReferenceStore;
 use crate::types::{LogLevel, PresentWalkthroughParams};
@@ -89,6 +90,22 @@ struct UpdateTaskspaceParams {
     description: String,
 }
 // ANCHOR_END: update_taskspace_params
+
+/// Parameters for the search_crate_examples tool
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct SearchCrateExamplesParams {
+    /// Name of the crate to search
+    crate_name: String,
+    /// Optional search pattern (regex)
+    pattern: Option<String>,
+}
+
+/// Parameters for the get_crate_source tool
+#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
+struct GetCrateSourceParams {
+    /// Name of the crate
+    crate_name: String,
+}
 
 /// Dialectic MCP Server
 ///
@@ -827,6 +844,83 @@ impl DialecticServer {
                 Err(McpError::internal_error(
                     "Failed to delete taskspace",
                     Some(serde_json::json!({
+                        "error": e.to_string()
+                    })),
+                ))
+            }
+        }
+    }
+
+    /// Search for patterns in Rust crate examples and source code
+    #[tool(description = "Search for patterns in Rust crate examples and source code")]
+    async fn search_crate_examples(
+        &self,
+        Parameters(SearchCrateExamplesParams { crate_name, pattern }): Parameters<SearchCrateExamplesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.ipc
+            .send_log(
+                LogLevel::Debug,
+                format!("Searching crate '{}' with pattern: {:?}", crate_name, pattern),
+            )
+            .await;
+
+        let mut search = Eg::rust_crate(&crate_name);
+        
+        if let Some(pattern) = pattern {
+            search = search.pattern(&pattern).map_err(|e| {
+                let error_msg = format!("Invalid regex pattern: {}", e);
+                McpError::invalid_params(error_msg, None)
+            })?;
+        }
+
+        match search.search().await {
+            Ok(result) => {
+                let response = serde_json::to_string_pretty(&result).unwrap();
+                Ok(CallToolResult::success(vec![Content::text(response)]))
+            }
+            Err(e) => {
+                let error_msg = format!("Search failed: {}", e);
+                Err(McpError::internal_error(
+                    error_msg,
+                    Some(serde_json::json!({
+                        "crate_name": crate_name,
+                        "error": e.to_string()
+                    })),
+                ))
+            }
+        }
+    }
+
+    /// Get the full path to an extracted crate for detailed exploration
+    #[tool(description = "Get the full path to an extracted crate for detailed exploration")]
+    async fn get_crate_source(
+        &self,
+        Parameters(GetCrateSourceParams { crate_name }): Parameters<GetCrateSourceParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.ipc
+            .send_log(
+                LogLevel::Debug,
+                format!("Getting source path for crate '{}'", crate_name),
+            )
+            .await;
+
+        match Eg::rust_crate(&crate_name).search().await {
+            Ok(result) => {
+                let response = serde_json::json!({
+                    "crate_name": crate_name,
+                    "version": result.version,
+                    "checkout_path": result.checkout_path.to_string_lossy(),
+                    "message": format!("Crate {} v{} extracted to {}", 
+                                     crate_name, result.version, result.checkout_path.display())
+                });
+                Ok(CallToolResult::success(vec![Content::text(response.to_string())]))
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to extract crate: {}", e);
+                Err(McpError::internal_error(
+                    error_msg,
+                    Some(serde_json::json!({
+                        "crate_name": crate_name,
                         "error": e.to_string()
                     })),
                 ))

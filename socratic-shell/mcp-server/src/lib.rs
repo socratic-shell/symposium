@@ -5,6 +5,7 @@
 pub mod constants;
 mod daemon;
 mod dialect;
+pub mod eg;
 mod ide;
 mod ipc;
 mod pid_discovery;
