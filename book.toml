@@ -8,7 +8,7 @@ title = "Symposium"
 command = "mdbook-mermaid"
 
 [preprocessor.rfd]
-command = "./md-rfd-preprocessor/target/release/md-rfd-preprocessor"
+command = "cargo run -p md-rfd-preprocessor --"
 
 [output]
 

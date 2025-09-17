@@ -16,55 +16,9 @@ The mdbook documents **architecture and design**, not implementation details. We
 - Component relationships and responsibilities
 - API contracts and message formats
 
-### 2. Implementation Status Badges
+### 2. RFD Status Badges
 
-Use shields.io badges to indicate implementation status at the section level. This follows the progressive development philosophy - land early, iterate in place.
-
-**Implementation Status:**
-- ![Implemented](https://img.shields.io/badge/status-implemented-green) - Working code exists
-- ![In Progress](https://img.shields.io/badge/status-in%20progress-yellow) - Actively being developed  
-- ![Planned](https://img.shields.io/badge/status-planned-blue) - Designed but not started
-- ![Deprecated](https://img.shields.io/badge/status-deprecated-red) - Being phased out
-
-**Quality/Maturity:**
-- ![Stable](https://img.shields.io/badge/stability-stable-green) - Production ready
-- ![Experimental](https://img.shields.io/badge/stability-experimental-orange) - Working but may change
-- ![Prototype](https://img.shields.io/badge/stability-prototype-yellow) - Proof of concept
-
-**Work in Progress (RFD-linked):**
-- [![WIP: feature-name](https://img.shields.io/badge/WIP-feature--name-yellow)](../rfds/feature-name.md) - Links to active RFD tracking implementation
-
-**Usage Example:**
-```markdown
-## Message Buffering and Replay ![Planned](https://img.shields.io/badge/status-planned-blue)
-
-The daemon will buffer messages for disconnected clients...
-
-## Window Stacking System [![WIP: window-stacking](https://img.shields.io/badge/WIP-window--stacking-yellow)](../rfds/window-stacking.md)
-
-Currently implementing the window stacking design...
-
-## Basic IPC Routing ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Stable](https://img.shields.io/badge/stability-stable-green)
-
-Messages are routed between VSCode and MCP server...
-```
-
-**RFD Integration:**
-When implementing features from accepted RFDs, use WIP badges that link to the RFD. This connects design rationale with implementation progress. The RFD becomes a living document tracking implementation status, open questions, and design decisions.
-
-**Shorthand Syntax:**
-For convenience, you can use `{RFD:feature-name}` which will automatically expand to the appropriate badge with correct color based on the RFD's current status in SUMMARY.md:
-
-```markdown
-# Window Stacking System {RFD:window-stacking}
-```
-
-This automatically becomes the correct badge linking to the RFD, with colors indicating status:
-- Draft: blue
-- Preview: orange  
-- Accepted: yellow
-- Completed: green
-- To be removed: red
+When implementing an [RFD](../rfds/index.html), you should be creating new documentation as you go. Tag sections that are specific to that RFD with `{RFD:rfd-name}`.
 
 ### 3. Visual Documentation with Mermaid
 

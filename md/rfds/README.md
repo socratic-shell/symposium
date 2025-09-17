@@ -1,5 +1,7 @@
 # Requests for Dialog (RFDs)
 
+{RFD:introduce-rfd-process}
+
 A "Request for Dialog" (RFD) is Socratic Shell's version of the RFC process. RFDs are the primary mechanism for proposing new features, collecting community input on an issue, and documenting design decisions.
 
 ## When to write an RFD
@@ -24,7 +26,7 @@ RFD proposals are merged into the "Draft" section if a core team member decides 
 
 RFDs are living documents that track implementation progress. PRs working towards an RFC will typically update it to reflect changes in design or direction.
 
-When adding new content into the mdbook's design section that is specific to an RFD, those contents are marked with RFD badges, written e.g. `\{RFD:name\}`. An mdbook preprocessor detects these entries and converts them into a proper badge based on the RFD's status.
+When adding new content into the mdbook's design section that is specific to an RFD, those contents are marked with RFD badges, written e.g. `{RFD:rfd-name}`. An mdbook preprocessor detects these entries and converts them into a proper badge based on the RFD's status.
 
 ### 2b. Move to "To be removed"
 

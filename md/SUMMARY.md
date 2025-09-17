@@ -60,11 +60,11 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [About RFDs](./rfds/README.md)
     - [RFD Template](./rfds/TEMPLATE.md)
 - [Preview]() <!-- Close to ready, highlighted for attention -->
-    - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
 - [Draft]() <!-- Early drafts, people start things in this section -->
     - [Tile-based Window Management](./rfds/tile-based-window-management.md)
 - [To be removed (yet?)]() <!-- Decided against doing this for now -->
 - [Completed]() <!-- Work is complete -->
+    - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
 
 # Work in Progress
 
