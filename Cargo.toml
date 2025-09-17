@@ -1,5 +1,5 @@
 [workspace]
-members = ["socratic-shell/mcp-server", "setup"]
+members = ["socratic-shell/mcp-server", "setup", "md-rfd-preprocessor"]
 resolver = "2"
 
 [workspace.dependencies]

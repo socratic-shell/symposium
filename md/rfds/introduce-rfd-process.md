@@ -26,21 +26,21 @@ For the time being, the project shall have a "design team" with 1 member, nikoma
 
 ### RFDs are proposed by opening a PR
 
-An RFD begins as a PR adding a new file into the "Early Drafts" section. The RFD can start minimal - just an elevator pitch and status quo are enough to begin dialog. Pull requests become the discussion forum where ideas get refined through collaborative iteration. 
+An RFD begins as a PR adding a new file into the "Draft" section. The RFD can start minimal - just an elevator pitch and status quo are enough to begin dialog. Pull requests become the discussion forum where ideas get refined through collaborative iteration. 
 
 As discussion proceeds, the FAQ of the RFD should be extended. If discussion has been going long enough, the PR should be closed, feedback summarized, and then re-opened with a link to the original PR.
 
-### The PR is merged into "early drafts" once a core team member decides to champion it
+### The PR is merged into "draft" once a core team member decides to champion it
 
-RFD proposals are merged into the "early drafts" section if a core team member decides to champion them. The champion is then the point-of-contact for that proposal going forward and they will work with the proposal authors and others to make it reality. Core team members do not need to seek consensus to merge a proposal into the early drafts, but they should listen carefully to concerns from other core team members, as it will be difficult to move the RFD forward if those concerns are not ultimately addressed.
+RFD proposals are merged into the "draft" section if a core team member decides to champion them. The champion is then the point-of-contact for that proposal going forward and they will work with the proposal authors and others to make it reality. Core team members do not need to seek consensus to merge a proposal into the draft, but they should listen carefully to concerns from other core team members, as it will be difficult to move the RFD forward if those concerns are not ultimately addressed.
 
-Once a proposal is moved to early drafts, code and implementation may begin to land into the PR. This work needs to be properly feature gated and marked with the name of the RFD.
+Once a proposal is moved to draft, code and implementation may begin to land into the PR. This work needs to be properly feature gated and marked with the name of the RFD.
 
 Further discussion on the RFD can take place on Zulip.
 
-### Moving to the "mature drafts" section
+### Moving to the "preview" section
 
-Once the champion feels the RFD is ready for others to check it out, they can open a PR to move the file to the mature drafts section. This is a signal to the community (and particularly other core team members) to check out the proposal and see what they think. The PR should stay open for "a few days" to give people an opportunity to leave feedback. The champion is empowered to decide whether to land the PR. As ever, all new feedback should be recorded in the FAQ section.
+Once the champion feels the RFD is ready for others to check it out, they can open a PR to move the file to the preview section. This is a signal to the community (and particularly other core team members) to check out the proposal and see what they think. The PR should stay open for "a few days" to give people an opportunity to leave feedback. The champion is empowered to decide whether to land the PR. As ever, all new feedback should be recorded in the FAQ section.
 
 ### Deciding to accept an RFD
 
@@ -61,7 +61,7 @@ If the discussion on the PR gets to the point where Github begins to hide commen
 > What is your implementaton plan?
 
 * ✅ Create RFD infrastructure (README, template, SUMMARY.md sections)
-* ✅ Establish lifecycle: Early drafts → Mature drafts → Accepted → Completed  
+* ✅ Establish lifecycle: Draft → Preview → Accepted → Completed  
 * ⏳ Connect status badges to RFDs
 * ⏳ Write RFDs for major in-progress features
 * ⏳ Document community contribution process

@@ -14,34 +14,49 @@ Some changes do not require an RFD:
 
 ## The RFD Process
 
-In short, to get a major feature added to Socratic Shell, one usually first gets the RFD merged into the RFD repository as a markdown file. At that point the RFD is "active" and may be implemented with the goal of eventual inclusion into Socratic Shell.
+### 1. Propose by opening a PR
 
-1. **Early Draft**: Fork the repo and copy `rfds/TEMPLATE.md` to `rfds/my-feature.md` (where "my-feature" is descriptive). Fill in the RFD. Put care into the details: RFDs that do not present convincing motivation, demonstrate understanding of the impact of the design, or are disingenuous about the drawbacks or alternatives tend to be poorly-received.
+Fork the repo and copy `rfds/TEMPLATE.md` to `rfds/my-feature.md` (using kebab-case naming). The RFD can start minimal - just an elevator pitch and status quo are enough to begin dialog. Pull requests become the discussion forum where ideas get refined through collaborative iteration.
 
-2. **Mature Draft**: Submit a pull request. As a pull request the RFD will receive design feedback from the larger community, and the author should be prepared to revise it in response.
+### 2. Merge to "Draft" when championed
 
-3. **Accepted**: Eventually, the team will decide whether the RFD is a candidate for inclusion in Socratic Shell. RFDs that are candidates for inclusion in Socratic Shell will enter a "final comment period" lasting 3 calendar days. At the end of this period, the team will either accept or reject the RFD.
+RFD proposals are merged into the "Draft" section if a core team member decides to champion them. The champion becomes the point-of-contact and will work with authors to make it reality. Once in draft, implementation may begin (properly feature-gated with the RFD name).
 
-4. **Implementation**: Once an RFD becomes active, then authors may implement it and submit the feature as a pull request to the Socratic Shell repo. Becoming "active" is not a rubber stamp, and in particular still does not mean the feature will ultimately be merged; it does mean that the core team has agreed to it in principle and are amenable to merging it.
+### 3. Move to "Preview" when ready
 
-5. **Completed**: Furthermore, the fact that a given RFD has been accepted and is "active" implies nothing about what priority is assigned to its implementation, nor whether anybody is currently working on it.
+When the champion feels the RFD is ready for broader review, they open a PR to move it to "Preview." This signals the community to provide feedback. The PR stays open for a few days before the champion decides whether to land it.
+
+### 4. Accept or reject
+
+When ready for completion, the champion requests team review. Final decision is made by the core team lead. Accepted RFDs move to "Accepted" section, rejected ones go to "Not accepted (yet?)" for future consideration.
+
+### 5. Implementation and completion
+
+Accepted RFDs become living documents tracking implementation progress. Status badges in design docs link back to RFDs. Agents read and update RFDs during implementation to maintain design rationale.
+
+**Badge Convention:** When implementing RFD features, use WIP badges in design documentation:
+```markdown
+# Window Stacking System [![WIP: window-stacking](https://img.shields.io/badge/WIP-window--stacking-yellow)](../rfds/window-stacking.md)
+```
+
+This creates a direct connection between implementation documentation and the RFD tracking progress, design decisions, and open questions.
 
 ## RFD Lifecycle
 
 - **Early drafts**: Initial ideas, brainstorming, early exploration
-- **Mature drafts**: Well-formed proposals ready for broader review
+- **Mature drafts**: Well-formed proposals ready for broader review  
 - **Accepted**: Approved for implementation, may reference implementation work
 - **Not accepted (yet?)**: Decided against for now, but preserved for future consideration
 - **Completed**: Implementation finished and merged
 
-## Reviewing RFDs
+## Governance
 
-Each week the team will attempt to review some set of open RFD pull requests.
+The project has a design team with nikomatsakis as the lead (BDFL). Champions from the core team guide RFDs through the process, but final decisions rest with the team lead. This structure maintains velocity while anticipating future governance expansion.
 
-We try to make sure that any RFD that we accept is accepted for the right reasons, and because we have a good understanding of what it means to support that feature long term.
+## Discussion and Moderation
 
-## Implementing an RFD
+Detailed discussions happen on Zulip, with PR comments for process decisions. RFD champions actively curate discussions by collecting questions in the FAQ section. If PR discussions become too long, they should be closed, feedback summarized, and reopened with links to the original.
 
-The author of an RFD is not obligated to implement it. Of course, the RFD author (like any other developer) is welcome to post an implementation for review after the RFD has been accepted.
+## Licensing
 
-If you are interested in working on the implementation for an "active" RFD, but cannot determine if someone else is already working on it, feel free to ask (e.g. by leaving a comment on the associated issue).
+All RFDs are dual-licensed under MIT and Apache 2.0. The project remains open source, with the core team retaining discretion to change to other OSI-approved licenses if needed.

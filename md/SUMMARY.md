@@ -60,9 +60,9 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [About RFDs](./rfds/README.md)
     - [RFD Template](./rfds/TEMPLATE.md)
 - [Accepted]() <!-- In the process of being implemented; edits into the design & impl section above should be tagged with an appropriate badge linking to this file. -->
-- [Mature drafts]() <!-- Close to ready, highlighted for attention -->
+- [Preview]() <!-- Close to ready, highlighted for attention -->
     - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
-- [Early drafts]() <!-- Early drafts, people start things in this section -->
+- [Draft]() <!-- Early drafts, people start things in this section -->
 - [Not accepted (yet?)]() <!-- Decided against doing this for now -->
 - [Completed]() <!-- Work is complete -->
 

@@ -31,16 +31,40 @@ Use shields.io badges to indicate implementation status at the section level. Th
 - ![Experimental](https://img.shields.io/badge/stability-experimental-orange) - Working but may change
 - ![Prototype](https://img.shields.io/badge/stability-prototype-yellow) - Proof of concept
 
+**Work in Progress (RFD-linked):**
+- [![WIP: feature-name](https://img.shields.io/badge/WIP-feature--name-yellow)](../rfds/feature-name.md) - Links to active RFD tracking implementation
+
 **Usage Example:**
 ```markdown
 ## Message Buffering and Replay ![Planned](https://img.shields.io/badge/status-planned-blue)
 
 The daemon will buffer messages for disconnected clients...
 
+## Window Stacking System [![WIP: window-stacking](https://img.shields.io/badge/WIP-window--stacking-yellow)](../rfds/window-stacking.md)
+
+Currently implementing the window stacking design...
+
 ## Basic IPC Routing ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Stable](https://img.shields.io/badge/stability-stable-green)
 
 Messages are routed between VSCode and MCP server...
 ```
+
+**RFD Integration:**
+When implementing features from accepted RFDs, use WIP badges that link to the RFD. This connects design rationale with implementation progress. The RFD becomes a living document tracking implementation status, open questions, and design decisions.
+
+**Shorthand Syntax:**
+For convenience, you can use `{RFD:feature-name}` which will automatically expand to the appropriate badge with correct color based on the RFD's current status in SUMMARY.md:
+
+```markdown
+# Window Stacking System {RFD:window-stacking}
+```
+
+This automatically becomes the correct badge linking to the RFD, with colors indicating status:
+- Draft: blue
+- Preview: orange  
+- Accepted: yellow
+- Completed: green
+- Not accepted: red
 
 ### 3. Visual Documentation with Mermaid
 

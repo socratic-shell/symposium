@@ -7,6 +7,9 @@ title = "Symposium"
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
 
+[preprocessor.rfd]
+command = "./md-rfd-preprocessor/target/release/md-rfd-preprocessor"
+
 [output]
 
 [output.html]
