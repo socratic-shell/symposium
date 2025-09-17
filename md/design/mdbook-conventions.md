@@ -64,7 +64,7 @@ This automatically becomes the correct badge linking to the RFD, with colors ind
 - Preview: orange  
 - Accepted: yellow
 - Completed: green
-- Not accepted: red
+- To be removed: red
 
 ### 3. Visual Documentation with Mermaid
 

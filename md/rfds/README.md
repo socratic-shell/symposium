@@ -22,31 +22,32 @@ Fork the repo and copy `rfds/TEMPLATE.md` to `rfds/my-feature.md` (using kebab-c
 
 RFD proposals are merged into the "Draft" section if a core team member decides to champion them. The champion becomes the point-of-contact and will work with authors to make it reality. Once in draft, implementation may begin (properly feature-gated with the RFD name).
 
-### 3. Move to "Preview" when ready
+RFDs are living documents that track implementation progress. PRs working towards an RFC will typically update it to reflect changes in design or direction.
+
+When adding new content into the mdbook's design section that is specific to an RFD, those contents are marked with RFD badges, written e.g. `\{RFD:name\}`. An mdbook preprocessor detects these entries and converts them into a proper badge based on the RFD's status.
+
+### 2b. Move to "To be removed"
+
+RFDs that have never landed may be closed at the discretion of a core team member. RFDs that have landed in draft form are moved to "To be removed" instead until there has been time to remove them fully from the codebase, then they are removed entirely.
+
+### 3. Move to "Preview" when fully implemented
 
 When the champion feels the RFD is ready for broader review, they open a PR to move it to "Preview." This signals the community to provide feedback. The PR stays open for a few days before the champion decides whether to land it.
 
-### 4. Accept or reject
+### 4. Completed
 
-When ready for completion, the champion requests team review. Final decision is made by the core team lead. Accepted RFDs move to "Accepted" section, rejected ones go to "Not accepted (yet?)" for future consideration.
+Once in preview, the RFD can be moved to "completed" with a final PR. The core team should comment and express concerns, but **final decision is always made by the core team lead**. Depending on what the RFD is about, "completed" is the only state that can represent a 1-way door (if there is a stability commitment involved), though given the nature of this project, many decisions can be revisited without breaking running code.
+
+Preview RFDs don't have to be completed. They may also go back to draft to await further changes or even be moved ot "To be removed".
 
 ### 5. Implementation and completion
-
-Accepted RFDs become living documents tracking implementation progress. Status badges in design docs link back to RFDs. Agents read and update RFDs during implementation to maintain design rationale.
-
-**Badge Convention:** When implementing RFD features, use WIP badges in design documentation:
-```markdown
-# Window Stacking System [![WIP: window-stacking](https://img.shields.io/badge/WIP-window--stacking-yellow)](../rfds/window-stacking.md)
-```
-
-This creates a direct connection between implementation documentation and the RFD tracking progress, design decisions, and open questions.
 
 ## RFD Lifecycle
 
 - **Early drafts**: Initial ideas, brainstorming, early exploration
 - **Mature drafts**: Well-formed proposals ready for broader review  
 - **Accepted**: Approved for implementation, may reference implementation work
-- **Not accepted (yet?)**: Decided against for now, but preserved for future consideration
+- **To be removed (yet?)**: Decided against for now, but preserved for future consideration
 - **Completed**: Implementation finished and merged
 
 ## Governance
