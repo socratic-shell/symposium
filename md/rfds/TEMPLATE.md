@@ -3,39 +3,71 @@
 Instructions:
 
 * Copy this file and give it a name like my-feature-slug.md
-* Leave the `>` sections in there, write your content below as if "in answer".
-* For optional sections, leave the existing *NOTE*
-* Copy the format for the FAQ (section heading for each question).
+* Do not remove the `>` sections -- they are part of the template!
+* Replace the HTML comments that give general guidance with your answers and content. Do not begin your answers with `>`, your text should be unquoted.
+* For optional sections, you can leave the HTML comment as is if you do not wish to provide an answer.
+* In the FAQ, begin each question with a markdown `##` section so that it gets a linkable anchor.
 
 -->
 
 # Elevator pitch
 
-> What are you proposing to change? Bullet points welcome.
+> What are you proposing to change?
+
+<!--
+    Give a brief, high-level overview of what you plan to do and what problem you are solving. Feel free to use bullet points to help clarify the structure.
+-->
 
 # Status quo
 
 > How do things work today and what problems does this cause? Why would we change things?
 
+# What we propose to do about it
+
+> What are you proposing to improve the situation? 
+
+<!--
+    Use this section to describe what you propose to do at a high-level.
+    Don't give every detail, this should be the high-level summary.
+
+    Note: This section is OPTIONAL when RFDs are first opened. 
+    You can also include multiple variants if you have different ideas of how to approach the problem, though these should be narrowed down as the RFD progresses.
+-->
+
 # Shiny future
 
 > How will things will play out once this feature exists?
 
-**NOTE:** This section is *OPTIONAL*. It is perfectly find to open an RFD with just a status quo or with only a high-level sketch of what you might like to be different and to invite feedback and discussion on whether it's a problem worth solving.
+<!--
+    Use this section to describe the "status quo" as it will play out once
+    we have made these changes.
 
-# Implementation plan
+    Note: This section is OPTIONAL when RFDs are first opened.
+-->
 
-> What is your implementaton plan?
+# Implementation details and plan
 
-**NOTE:** Do not bother with this section while the RFD is in "Early drafts" phase unless you've got a pretty clear idea how you think it should work and/or have things you particularly want to highlight. This will typically be authored and updated by an agent as implementation work proceeds.
+> Tell me more about your implementation. What is your detailed implementaton plan? 
+
+<!--
+    Use this section to add details that were not covered in the "What we propose to do about it" section and also include an implementation plan with phases.
+
+    Note: This section is OPTIONAL and NOT RECOMMENDED when RFDs are first opened. It can distract from the discussion of the problem.
+-->
 
 # Frequently asked questions
 
-> What questions have arisen over the course of authoring this document or during subsequent discussions? Keep this section up-to-date as discussion proceeds. The goal is to capture major points that came up on a PR or in a discussion forum -- and if they reoccur, to point people to the FAQ so that we can start the dialog from a more informed place.
+> What questions have arisen over the course of authoring this document or during subsequent discussions? 
+
+<!--
+    Keep this section up-to-date as discussion proceeds. The goal is to capture major points that came up on a PR or in a discussion forum -- and if they reoccur, to point people to the FAQ so that we can start the dialog from a more informed place.
+-->
 
 ## What alternative approaches did you consider, and why did you settle on this one?
 
-None. The idea came to me fully formed, like Athena springing from Zeus's head. <!-- You...may want to adjust this. -->
+None. The idea came to me fully formed, like Athena springing from Zeus's head. 
+
+<!-- You...may want to adjust this. -->
 
 # Revision history
 
