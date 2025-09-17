@@ -14,21 +14,47 @@ Currently all development is being done by nikomatsakis and tracking documents a
 
 > How will things will play out once this feature exists?
 
-## Proposing "early drafts"
+## Project licensing
 
-Community members fork the repo and add a new RFD file to the "Early drafts" section using kebab-case naming. The RFD can start minimal - just an elevator pitch and status quo are enough to begin dialog. Pull requests become the discussion forum where ideas get refined through collaborative iteration.
+All code and RFDs are dual-licensed under a MIT and Apache 2.0 license. The project is intended to remain open source and freely available in perpetuity. By agreeing to the MIT licensing, contributors agree that the core team may opt to change this licensing to another [OSI-approved open-source license](https://opensource.org/licenses) at their discretion in the future should the need arise.
 
-## Highlighting "mature drafts"
+## Decision making
 
-When an RFD has been fleshed out with clear problem definition, proposed solution, and implementation approach, team members move it to "Mature drafts." This signals it's ready for broader review and final decision-making. Mature drafts get highlighted in project updates to ensure visibility.
+For the time being, the project shall have a "design team" with 1 member, nikomatsakis, acting in "BDFL" capacity. The expectation is that the project will setup a more structure governance structure as it grows. The design team makes all decisions regarding RFDs and sets overall project direction.
 
-## Deciding whether to accept an RFD or not
+## RFD lifecycle
 
-The team reviews mature drafts during regular planning cycles. Accepted RFDs move to the "Accepted" section and become candidates for implementation. RFDs can also move to "Not accepted (yet?)" if they're good ideas but not the right priority - preserving the thinking for future reconsideration.
+### RFDs are proposed by opening a PR
 
-## Implementation of an RFD
+An RFD begins as a PR adding a new file into the "Early Drafts" section. The RFD can start minimal - just an elevator pitch and status quo are enough to begin dialog. Pull requests become the discussion forum where ideas get refined through collaborative iteration. 
 
-Once accepted, RFDs become living documents that track implementation progress. Status badges in design documentation link back to the relevant RFD, creating a clear connection between "why we're building this" and "how it works." Agents can read RFDs during implementation to understand design rationale and make consistent decisions.
+As discussion proceeds, the FAQ of the RFD should be extended. If discussion has been going long enough, the PR should be closed, feedback summarized, and then re-opened with a link to the original PR.
+
+### The PR is merged into "early drafts" once a core team member decides to champion it
+
+RFD proposals are merged into the "early drafts" section if a core team member decides to champion them. The champion is then the point-of-contact for that proposal going forward and they will work with the proposal authors and others to make it reality. Core team members do not need to seek consensus to merge a proposal into the early drafts, but they should listen carefully to concerns from other core team members, as it will be difficult to move the RFD forward if those concerns are not ultimately addressed.
+
+Once a proposal is moved to early drafts, code and implementation may begin to land into the PR. This work needs to be properly feature gated and marked with the name of the RFD.
+
+Further discussion on the RFD can take place on Zulip.
+
+### Moving to the "mature drafts" section
+
+Once the champion feels the RFD is ready for others to check it out, they can open a PR to move the file to the mature drafts section. This is a signal to the community (and particularly other core team members) to check out the proposal and see what they think. The PR should stay open for "a few days" to give people an opportunity to leave feedback. The champion is empowered to decide whether to land the PR. As ever, all new feedback should be recorded in the FAQ section.
+
+### Deciding to accept an RFD
+
+When they feel the RFD is ready to be completed, the champion requests review by the team. The team can raise concerns and notes during discussion. Final decision on an RFD is made by the core team lead. 
+
+### Implementation of an RFD
+
+Once accepted, RFDs become living documents that track implementation progress. Status badges in design documentation link back to the relevant RFD, creating a clear connection between "why we're building this" and "how it works." When building code with an agent, agents should read RFDs during implementation to understand design rationale and update them with implementation progress.
+
+## Moderating and managing RFD discussions
+
+Moving RFDs between points in the cycle involve opening PRs. Those PRs will be places to hold people dialog and discussion -- but not the only place, we expect more detailed discussions to take place on Zulip. RFD owners and champions should actively "curate" discussions by collecting questions that come up and ensuring they are covered in the FAQ. Duplicate questions can be directed to the FAQ.
+
+If the discussion on the PR gets to the point where Github begins to hide comments, the PR should typically be closed, feedback collected, and then re-opened.
 
 # Implementation plan
 
@@ -42,13 +68,21 @@ Once accepted, RFDs become living documents that track implementation progress. 
 
 # Frequently asked questions
 
+## So...there's a BDFL?
+
+Yes. Early in a project, a BDFL is a good fit to maintain velocity and to have a clear direction.
+
+## So...why does this talk about a core team?
+
+I am anticipating that we'll quickly want to have multiple designers who can move designs forward and not funnel *everything* through the "BDFL". Therefore, I created the idea of a "design team" and made the "BDFL" the lead of that team. But I've intentionally kept the *final* decision about RFDs falling under the lead, which means fundamentally the character of Socratic Shell remains under the lead's purview and influence. I expect that if the project is a success we will extend the governance structure in time but I didn't want to do that in advance.
+
 ## Why "Request for Dialog" and not "Request for Comment"?
 
-Well, partly as a nod to socratic dialogs, of course, but also because "dialog" emphasizes conversation and exploration rather than just collecting feedback on a predetermined design. It fits better with our collaborative development philosophy.
+Well, partly as a nod to socratic dialogs, but also because "dialog" emphasizes conversation and exploration rather than just collecting feedback on a predetermined design. It fits better with our collaborative development philosophy.
 
-## Why make changes to Rust's RFC template?
+## Why not use Rust's RFC template as is?
 
-These changes are based on nikomatsakis's experience with Rust RFCs and are an attempt to better focus user's on what nikomatsakis considers "Best practice" when authoring RFCs.
+We made some changes to better focus users on what nikomatsakis considers "Best practice" when authoring RFCs. Also because the new names seem silly and fun and we like that.
 
 ## Why are you tracking the implementation plan in the RFD itself?
 
