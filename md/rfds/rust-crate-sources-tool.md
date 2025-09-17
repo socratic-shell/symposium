@@ -1,25 +1,44 @@
 # Elevator pitch
 
-> Integrate Rust crate source exploration capabilities directly into the Socratic Shell MCP server through a unified `get_rust_sources` tool that provides seamless access to crate extraction and optional pattern-based searching.
+> What are you proposing to change?
+
+Extend Socratic Shell with a new `get_rust_sources` MCP tool that will direct LLMs to the sources from Rust crates and help to find examples of code that uses particular APIs.
 
 # Status quo
 
 > How do things work today and what problems does this cause? Why would we change things?
 
-Currently, developers who want to explore Rust crate source code and examples face several friction points:
+When Rust developers ask an LLM to use a crate that it does not know from its training data, LLMs typically hallucinate plausible-seeming (but in fact nonexistent) APIs. The easiest way to help an LLM get started is to find example code and/or to point it at the crate source, which currently requires manual investigation or the use of a separate (and proprietary) MCP server like context7.
 
-- **Manual Process**: Must manually download and extract crates using `cargo` or external tools
-- **Fragmented Tooling**: Separate tools for crate extraction vs. searching within source
-- **Poor IDE Integration**: External tools lack context awareness and seamless IDE integration
-- **Multiple MCP Servers**: The standalone `eg` MCP server requires separate configuration and management
+## Leverage Rust's existing `examples` and rustdoc patterns
 
-This creates a disjointed experience where developers must context-switch between their IDE and external tools, losing the flow of their development work.
+Cargo has conventions for giving example source code:
+
+* many crates use the `examples` directory
+* other crates include (tested) examples from rustdoc
+
+Our MCP server will leverage those sources.
+
+# What we propose to do about it
+
+> What are you proposing to improve the situation?
+
+Integrate Rust crate source exploration capabilities directly into the Socratic Shell MCP server through a unified `get_rust_sources` tool that:
+
+- **Extracts crate sources** to a local cache directory for exploration
+- **Matches versions** with the current Rust crate `Cargo.toml`, if the crate is in use; otherwise gets the most recent version
+- **Optionally searches** within the extracted sources using regex patterns
+- **Returns structured results** with file paths, line numbers, and context
+- **Provides conditional responses** - only includes search results when a pattern is provided
+- **Caches extractions** to avoid redundant downloads and improve performance
+
+This eliminates the need for separate MCP servers and provides seamless integration with the existing Socratic Shell ecosystem.
 
 # Shiny future
 
 > How will things will play out once this feature exists?
 
-Developers working in Socratic Shell will have seamless access to Rust crate exploration:
+When developers ask the LLM to work with a crate that it does not know, it will invoke the `get_rust_sources` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and . Developers working in Socratic Shell will have seamless access to Rust crate exploration:
 
 - **Unified Interface**: Single `get_rust_sources` tool handles both extraction and searching
 - **IDE Integration**: Results appear directly in the IDE with proper formatting and links
@@ -31,23 +50,38 @@ Example workflows:
 - `get_rust_sources(crate_name: "tokio")` → extracts and returns path info
 - `get_rust_sources(crate_name: "tokio", pattern: "spawn")` → extracts, searches, and returns matches
 
-# Implementation plan
+# Implementation details and plan
 
-> What is your implementaton plan?
+> Tell me more about your implementation. What is your detailed implementaton plan?
 
-## Phase 1: Core Integration ✅ (Completed)
+## Details
+
+### Crate version and location
+
+The crate version to be fetched will be identified based on the project's lockfile. When possible we'll provide the source from the existing cargo cache. If no cache is found, or the crate is not used in the project, we'll download the sources from crates.io and unpack them into a temporary directory.
+
+### Finding examples
+
+When search terms are included, we will search the crate and include:
+
+* examples, which the agent should look to with higher priority
+* all matches, which may be confusing
+
+## Impl phases
+
+### Phase 1: Core Integration ✅ (Completed)
 1. Copy `eg` library source into `socratic-shell/mcp-server/src/eg/`
 2. Add required dependencies to Cargo.toml
 3. Implement unified `get_rust_sources` tool with conditional response fields
 4. Fix import paths and module structure
 
-## Phase 2: Testing and Documentation
+### Phase 2: Testing and Documentation
 1. Create comprehensive test suite for the tool
 2. Update user documentation with usage examples
 3. Create migration guide for existing standalone `eg` users
 4. Performance testing and optimization
 
-## Phase 3: Enhanced Features (Future)
+### Phase 3: Enhanced Features (Future)
 1. Version selection support (currently uses latest)
 2. Configurable context lines for search results
 3. Search scope options (examples only vs. all source)
@@ -57,46 +91,23 @@ Example workflows:
 
 > What questions have arisen over the course of authoring this document or during subsequent discussions?
 
-## What alternative approaches did you consider, and why did you settle on this one?
+## Why not use rustdoc to browse APIs?
 
-**Separate MCP Server**: Keep the standalone `eg` MCP server
-- *Pros*: Clean separation of concerns, independent deployment
-- *Cons*: Increased complexity, multiple server management, poor integration with other Socratic Shell tools
+We have observed that most developers building in Rust get good results from manually checking out the sources. This fits with the fact that LLMs are trained to work well from many-shot prompts, which are essentially a series of examples, and that they are trained to be able to quickly read and comprehend source code.
 
-**External Tool Integration**: Shell out to existing tools like `cargo` 
-- *Pros*: Leverages existing tools, minimal development
-- *Cons*: Poor IDE integration, complex setup, limited customization, no caching
+It is less clear that they are good at reading and navigating rustdoc source, but this is worth exploring.
 
-**LSP Extension**: Implement as Language Server Protocol extension
-- *Pros*: Standard protocol, good IDE support
-- *Cons*: Limited to language-specific operations, doesn't fit the crate exploration use case well
+## Why not use LSP to give structured information?
 
-We settled on direct integration because it provides the best user experience with unified tooling and seamless IDE integration.
+See previous answer -- the same logic (and desire to experiment!) applies.
 
-## Why copy the source instead of using it as a dependency?
+## Won't checking out the full crate source waste a lot of context?
 
-Direct source integration allows us to:
-- Eliminate external dependency management complexity
-- Enable future customization specific to Socratic Shell needs
-- Simplify deployment and maintenance
-- Archive the standalone repository once migration is complete
+Maybe -- the impl details may not be especially relevant, but then again,when I want to work with crates, I often drill in. We might want to explore producing altered versions of the source that intentionally hide private functions and so forth, and perhaps have the agent be able to ask for additional data.
 
-## How does the conditional response format work?
+## How will we ensure the agent uses the tool?
 
-The tool returns different response structures based on whether a search pattern is provided:
-
-- **No pattern**: Returns only crate metadata and extraction path
-- **With pattern**: Returns metadata, path, plus `example_matches` and `other_matches` arrays
-
-This keeps responses clean and relevant to the specific use case.
-
-## What happens to existing users of the standalone eg MCP server?
-
-Migration path:
-1. Update MCP client configuration to use Socratic Shell MCP server
-2. Change tool calls from `search_crate_examples`/`get_crate_source` to `get_rust_sources`
-3. Update parameter structure to use unified interface
-4. Archive standalone `eg` repository once migration is complete
+This is indeed a good question! We will have to explore our guidance over time, both for steering the agent to use the tool and for helping it understand the OUTPUT.
 
 # Revision history
 

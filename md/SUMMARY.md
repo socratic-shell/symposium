@@ -59,6 +59,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 - [About RFDs](./rfds/README.md)
     - [RFD Template](./rfds/TEMPLATE.md)
+    - [Terminology and Conventions](./rfds/terminology-and-conventions.md)
 - [Preview]() <!-- Close to ready, highlighted for attention -->
     - [Taskspace Deletion Dialog Confirmation](./rfds/taskspace-deletion-dialog-confirmation.md)
     - [Rust Crate Sources Tool](./rfds/rust-crate-sources-tool.md)
