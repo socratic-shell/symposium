@@ -1,4 +1,4 @@
-# Startup and Window Management
+# Startup and Window Management {RFD:tile-based-window-management}
 
 Symposium maintains exactly one window open at any time, using three distinct window types for different application states.
 

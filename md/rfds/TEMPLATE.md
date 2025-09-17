@@ -1,3 +1,14 @@
+<!-- 
+
+Instructions:
+
+* Copy this file and give it a name like my-feature-slug.md
+* Leave the `>` sections in there, write your content below as if "in answer".
+* For optional sections, leave the existing *NOTE*
+* Copy the format for the FAQ (section heading for each question).
+
+-->
+
 # Elevator pitch
 
 > What are you proposing to change? Bullet points welcome.
