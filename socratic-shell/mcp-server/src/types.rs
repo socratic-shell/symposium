@@ -218,11 +218,29 @@ pub struct ResolveSymbolByNamePayload {
     pub name: String,
 }
 
+impl IpcPayload for ResolveSymbolByNamePayload {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = Vec<crate::ide::SymbolDef>;
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::ResolveSymbolByName
+    }
+}
+
 /// Payload for FindAllReferences messages
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FindAllReferencesPayload {
     /// The resolved symbol to find references for
     pub symbol: crate::ide::SymbolDef,
+}
+
+impl IpcPayload for FindAllReferencesPayload {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = Vec<crate::ide::FileRange>;
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::FindAllReferences
+    }
 }
 
 /// Payload for Response messages (replaces IPCResponse struct)

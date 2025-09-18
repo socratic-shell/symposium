@@ -520,29 +520,20 @@ impl IPCCommunicator {
         name: String,
         description: String,
     ) -> Result<crate::types::TaskspaceStateResponse> {
-        use crate::types::{IPCMessageType, TaskspaceStateRequest, TaskspaceStateResponse};
         let (project_path, taskspace_uuid) = extract_project_info()?;
 
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
+        // Use actor dispatch system for update_taskspace request/reply
+        let request = crate::types::TaskspaceStateRequest {
+            project_path,
+            taskspace_uuid,
+            name: Some(name),
+            description: Some(description),
         };
-
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::TaskspaceState,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(TaskspaceStateRequest {
-                project_path,
-                taskspace_uuid,
-                name: Some(name),
-                description: Some(description),
-            })?,
-        };
-
-        let taskspace_state: TaskspaceStateResponse =
-            self.send_message_with_reply(ipc_message).await?;
-        Ok(taskspace_state)
+        let response: crate::types::TaskspaceStateResponse =
+            self.dispatch_handle.send(request).await.map_err(|e| {
+                IPCError::SendError(format!("Failed to update taskspace via actors: {}", e))
+            })?;
+        Ok(response)
     }
 
     /// Fetch current taskspace state from the Symposium daemon/app
@@ -1063,7 +1054,6 @@ impl crate::ide::IpcClient for IPCCommunicator {
         name: &str,
     ) -> anyhow::Result<Vec<crate::ide::SymbolDef>> {
         if self.test_mode {
-            // Return empty result in test mode
             return Ok(vec![]);
         }
 
@@ -1071,20 +1061,9 @@ impl crate::ide::IpcClient for IPCCommunicator {
             name: name.to_string(),
         };
 
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
-        };
-
-        let message = IPCMessage {
-            message_type: IPCMessageType::ResolveSymbolByName,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(payload)?,
-        };
-
         let symbols: Vec<crate::ide::SymbolDef> = self
-            .send_message_with_reply(message)
+            .dispatch_handle
+            .send(payload)
             .await
             .with_context(|| format!("failed to resolve symbol '{name}'"))?;
 
@@ -1096,7 +1075,6 @@ impl crate::ide::IpcClient for IPCCommunicator {
         symbol: &crate::ide::SymbolDef,
     ) -> anyhow::Result<Vec<crate::ide::FileRange>> {
         if self.test_mode {
-            // Return empty result in test mode
             return Ok(vec![]);
         }
 
@@ -1104,20 +1082,9 @@ impl crate::ide::IpcClient for IPCCommunicator {
             symbol: symbol.clone(),
         };
 
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
-        };
-
-        let message = IPCMessage {
-            message_type: IPCMessageType::FindAllReferences,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(payload)?,
-        };
-
         let locations: Vec<crate::ide::FileRange> = self
-            .send_message_with_reply(message)
+            .dispatch_handle
+            .send(payload)
             .await
             .with_context(|| {
                 format!(

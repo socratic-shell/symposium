@@ -102,13 +102,14 @@ The refactored system will have clean separation of concerns with focused actors
 3. ~~Rename `DispatchMessage` to `IpcPayload` and move to types.rs~~ **COMPLETED**
 
 ## Phase 6: Request/Reply Message Migration ✅ COMPLETED
-1. ~~**NEXT**: Migrate `get_selection()` to prove request/reply pattern with real data~~ **COMPLETED**
-2. Migrate `get_taskspace_state()` and `update_taskspace()` 
-3. Validate bidirectional actor communication with typed responses
+1. ~~Migrate `get_selection()` to prove request/reply pattern with real data~~ **COMPLETED**
+2. ~~Migrate `get_taskspace_state()` and `update_taskspace()`~~ **COMPLETED** 
+3. ~~Validate bidirectional actor communication with typed responses~~ **COMPLETED**
+4. ~~Migrate IDE operations: `resolve_symbol_by_name()` and `find_all_references()`~~ **COMPLETED**
 
-## Phase 7: Legacy System Removal (Future)
-1. Remove `IPCCommunicatorInner` struct and manual connection management
-2. Remove `send_message_with_reply()` and `send_message_without_reply()` methods
+## Phase 7: Legacy System Removal 🚧 NEXT
+1. **NEXT**: Remove `send_message_with_reply()` and `send_message_without_reply()` methods
+2. Remove `IPCCommunicatorInner` struct and manual connection management
 3. Remove manual pending request tracking
 4. Add comprehensive testing for actor system
 
@@ -119,9 +120,10 @@ The refactored system will have clean separation of concerns with focused actors
 - **✅ Clean architecture**: No duplicate structs, reusing existing payloads
 - **✅ Hybrid system**: Legacy + actor systems running side-by-side safely
 - **✅ Proven integration**: Both CLI and MCP server modes using actors
-- **✅ Request/reply pattern**: `get_selection()` migrated, proving bidirectional communication
+- **✅ ALL REQUEST/REPLY MESSAGES MIGRATED**: Complete bidirectional communication via actors
+- **✅ IDE operations**: Symbol resolution and reference finding via actor system
 
-**Major milestone achieved**: First request/reply message successfully migrated to actor system!
+**Major milestone achieved**: Complete migration of ALL IPC messages to actor system!
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
