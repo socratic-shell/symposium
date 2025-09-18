@@ -384,29 +384,11 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let goodbye_payload = crate::types::GoodbyePayload {};
-            dispatch_handle.send(goodbye_payload).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e)))?;
-            info!("Goodbye discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy Goodbye sending");
-        let payload = GoodbyePayload {};
-        let message = IPCMessage {
-            message_type: IPCMessageType::Goodbye,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(Some(terminal_shell_pid)),
-            payload: serde_json::to_value(payload)?,
-        };
-
-        debug!(
-            "Sending Goodbye discovery message with shell PID: {}",
-            terminal_shell_pid
-        );
-        self.send_message_without_reply(message).await
+        let goodbye_payload = crate::types::GoodbyePayload {};
+        self.dispatch_handle.send(goodbye_payload).await
+            .map_err(|e| IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e)))?;
+        info!("Goodbye discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+        Ok(())
     }
 
     /// Send spawn_taskspace message to create new taskspace
