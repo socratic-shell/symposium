@@ -1,4 +1,4 @@
-# Summary
+A# Summary
 
 <!-- 
     AGENTS: Please keep this design documentation up-to-date/
@@ -72,27 +72,11 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 # Work in Progress
 
-- [Repository Restructure: Socratic Shell + Symposium Split](./work-in-progress/rebrand.md)
-- [Startup Window Management Implementation](./work-in-progress/startup-window-management.md)
-- [Triple-Tickification: XML to Markdown Code Blocks](./work-in-progress/triple-tickification.md)
 - [Big picture plans](./work-in-progress/big-picture.md)
-    - [Architecture](./work-in-progress/big-picture/architecture.md)
-    - [Experiments](./work-in-progress/big-picture/experiments.md)
-        - [Experiment 1: HTTP + Buffering Daemon](./work-in-progress/big-picture/experiments/experiment-1-http-buffering-daemon.md)
-        - [Experiment 2: Containerized Agent](./work-in-progress/big-picture/experiments/experiment-2-containerized-agent.md)
-    - [Steps](./work-in-progress/big-picture/steps.md)
 - [MVP](./work-in-progress/mvp/README.md)
-    - [Implementation Plan](./work-in-progress/mvp/implementation-plan.md)
     - [Taskspace Bootup Flow](./work-in-progress/mvp/taskspace-bootup-flow.md)
     - [Window Registration Design](./work-in-progress/mvp/window-registration-design.md)
     - [Window Per Project](./work-in-progress/mvp/window-per-project.md)
-- [Project Window Visual Design](./work-in-progress/project-window-visual-design.md)
-- [Centered Panel Implementation Plan](./work-in-progress/centered-panel-implementation-plan.md)
-- [Git Worktrees Migration Plan](./work-in-progress/git-worktrees-migration.md)
-- [Older material]()
-    - [Interface plan](./work-in-progress/mvp/interface-plan.md)
-    - [Symposium Panel Prototype](./work-in-progress/mvp/symposium-panel-prototype.md)
-    - [Dock-Activated Interface](./work-in-progress/dock-activated-interface.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more

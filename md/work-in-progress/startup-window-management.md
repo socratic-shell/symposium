@@ -1,1 +1,0 @@
-# Startup Window Management Implementation
