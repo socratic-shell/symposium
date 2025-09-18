@@ -776,15 +776,6 @@ impl IPCCommunicator {
         Ok(user_feedback)
     }
 
-    /// Sends an IPC message without waiting for a response (fire-and-forget)
-    ///
-    /// Used for operations like logging where we don't need confirmation from VSCode.
-    /// Uses the underlying `write_message` primitive to send the data.
-    async fn send_message_without_reply(&self, message: IPCMessage) -> Result<()> {
-        let message_data = serde_json::to_string(&message)?;
-        self.write_message(&message_data).await
-    }
-
     /// Low-level primitive for writing raw JSON data to the IPC connection (Unix)
     ///
     /// This is the underlying method used by both `send_message_with_reply` and
