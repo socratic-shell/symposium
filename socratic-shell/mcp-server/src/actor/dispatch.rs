@@ -49,8 +49,8 @@ struct DispatchActor {
     /// Outgoing messages to the IPC client.
     client_tx: mpsc::Sender<IPCMessage>,
 
-    /// Handle to MarcoPolo actor for discovery messages
-    marco_polo_handle: Option<crate::actor::MarcoPoloHandle>,
+    /// Handle to Marco actor for discovery messages
+    marco_handle: Option<crate::actor::MarcoHandle>,
 
     /// Map whose key is the `id` of a reply that we are expecting
     /// and the value is the channel where we should send it when it arrives.
@@ -105,21 +105,12 @@ impl Actor for DispatchActor {
                                 // Unsolicited message - route to appropriate actor
                                 match message.message_type {
                                     crate::types::IPCMessageType::Marco => {
-                                        if let Some(marco_polo) = &self.marco_polo_handle {
-                                            if let Err(e) = marco_polo.handle_marco(message).await {
+                                        if let Some(marco) = &self.marco_handle {
+                                            if let Err(e) = marco.handle_marco(message, self.client_tx.clone()).await {
                                                 tracing::error!("Failed to route Marco message: {}", e);
                                             }
                                         } else {
-                                            tracing::debug!("Received Marco message but no MarcoPolo actor available");
-                                        }
-                                    }
-                                    crate::types::IPCMessageType::Polo => {
-                                        if let Some(marco_polo) = &self.marco_polo_handle {
-                                            if let Err(e) = marco_polo.handle_polo(message).await {
-                                                tracing::error!("Failed to route Polo message: {}", e);
-                                            }
-                                        } else {
-                                            tracing::debug!("Received Polo message but no MarcoPolo actor available");
+                                            tracing::debug!("Received Marco message but no Marco actor available");
                                         }
                                     }
                                     _ => {
@@ -152,13 +143,13 @@ impl DispatchActor {
         request_rx: mpsc::Receiver<DispatchRequest>,
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
-        marco_polo_handle: Option<crate::actor::MarcoPoloHandle>,
+        marco_handle: Option<crate::actor::MarcoHandle>,
     ) -> Self {
         Self {
             request_rx,
             client_rx,
             client_tx,
-            marco_polo_handle,
+            marco_handle,
             pending_replies: HashMap::new(),
         }
     }
@@ -180,11 +171,11 @@ impl DispatchHandle {
     pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>) -> Self {
         let (sender, receiver) = mpsc::channel(32);
 
-        // Create MarcoPolo actor for discovery messages
+        // Create Marco actor for discovery messages
         // TODO: Get shell PID from context
-        let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
+        let marco_handle = crate::actor::MarcoHandle::new(0);
 
-        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_polo_handle));
+        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
         Self { sender }
@@ -199,10 +190,10 @@ impl DispatchHandle {
         // Spawn the mock actor
         tokio::spawn(mock_fn(client_rx, mock_tx));
 
-        // Create MarcoPolo actor for discovery messages
-        let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
+        // Create Marco actor for discovery messages
+        let marco_handle = crate::actor::MarcoHandle::new(0);
 
-        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_polo_handle));
+        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
         Self { sender }
