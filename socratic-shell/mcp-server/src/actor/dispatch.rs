@@ -9,6 +9,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use uuid;
 
@@ -51,6 +52,9 @@ struct DispatchActor {
 
     /// Handle to Marco actor for discovery messages
     marco_handle: Option<crate::actor::MarcoHandle>,
+
+    /// Handle to Reference actor for storing/retrieving context
+    reference_handle: Option<crate::actor::ReferenceHandle>,
 
     /// Map whose key is the `id` of a reply that we are expecting
     /// and the value is the channel where we should send it when it arrives.
@@ -113,6 +117,15 @@ impl Actor for DispatchActor {
                                             tracing::debug!("Received Marco message but no Marco actor available");
                                         }
                                     }
+                                    crate::types::IPCMessageType::StoreReference => {
+                                        if let Some(reference) = &self.reference_handle {
+                                            if let Err(e) = self.handle_store_reference(message, reference).await {
+                                                tracing::error!("Failed to handle StoreReference message: {}", e);
+                                            }
+                                        } else {
+                                            tracing::debug!("Received StoreReference message but no Reference actor available");
+                                        }
+                                    }
                                     _ => {
                                         tracing::debug!("Received unsolicited message: {:?}", message.message_type);
                                     }
@@ -144,14 +157,36 @@ impl DispatchActor {
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
         marco_handle: Option<crate::actor::MarcoHandle>,
+        reference_handle: Option<crate::actor::ReferenceHandle>,
     ) -> Self {
         Self {
             request_rx,
             client_rx,
             client_tx,
             marco_handle,
+            reference_handle,
             pending_replies: HashMap::new(),
         }
+    }
+
+    /// Handle StoreReference messages by routing to the reference actor
+    async fn handle_store_reference(
+        &self,
+        message: IPCMessage,
+        reference_handle: &crate::actor::ReferenceHandle,
+    ) -> Result<(), String> {
+        // Deserialize the StoreReference payload
+        let payload: crate::types::StoreReferencePayload = serde_json::from_value(message.payload)
+            .map_err(|e| format!("Failed to deserialize StoreReference payload: {}", e))?;
+
+        // Store the reference using the reference actor
+        reference_handle
+            .store_reference(payload.key, payload.value)
+            .await
+            .map_err(|e| format!("Failed to store reference: {}", e))?;
+
+        tracing::debug!("Successfully stored reference via reference actor");
+        Ok(())
     }
 }
 
@@ -170,7 +205,12 @@ impl DispatchHandle {
     ///
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
-    pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>, shell_pid: u32) -> Self {
+    pub fn new(
+        client_rx: mpsc::Receiver<IPCMessage>, 
+        client_tx: mpsc::Sender<IPCMessage>, 
+        shell_pid: u32,
+        reference_store: Arc<crate::reference_store::ReferenceStore>,
+    ) -> Self {
         let (sender, receiver) = mpsc::channel(32);
 
         // Try to extract taskspace UUID from directory structure
@@ -179,7 +219,10 @@ impl DispatchHandle {
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
 
-        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle));
+        // Create Reference actor for storing context data
+        let reference_handle = crate::actor::ReferenceHandle::new(reference_store);
+
+        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle), Some(reference_handle));
         actor.spawn();
 
         Self { sender, shell_pid, taskspace_uuid }
@@ -197,7 +240,7 @@ impl DispatchHandle {
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(0);
 
-        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle));
+        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle), None);
         actor.spawn();
 
         Self { sender, shell_pid: 0, taskspace_uuid: None }
