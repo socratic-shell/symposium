@@ -45,6 +45,37 @@ pub enum LogLevel {
     Debug,
 }
 
+/// Marco discovery message - broadcasts "who's out there?"
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarcoMessage {
+    // Marco messages have no payload
+}
+
+impl DispatchMessage for MarcoMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Marco
+    }
+}
+
+/// Polo discovery message - announces presence with shell PID
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PoloMessage {
+    #[serde(rename = "terminalShellPid")]
+    pub terminal_shell_pid: u32,
+}
+
+impl DispatchMessage for PoloMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Polo
+    }
+}
+
 /// Response from the get-selection tool
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetSelectionResult {

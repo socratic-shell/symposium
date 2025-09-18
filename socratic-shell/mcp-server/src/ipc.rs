@@ -119,6 +119,9 @@ pub enum IPCError {
     #[error("Response channel closed")]
     ChannelClosed,
 
+    #[error("Failed to send message: {0}")]
+    SendError(String),
+
     #[error("Other error: {0}")]
     Other(String),
 }
@@ -361,6 +364,17 @@ impl IPCCommunicator {
             return Ok(());
         }
 
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let marco_message = crate::types::MarcoMessage {};
+            dispatch_handle.send(marco_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send Marco via actors: {}", e)))?;
+            info!("Marco discovery message sent via actor system");
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy Marco sending");
         let message = IPCMessage {
             message_type: IPCMessageType::Marco,
             id: Uuid::new_v4().to_string(),
@@ -382,6 +396,17 @@ impl IPCCommunicator {
             return Ok(());
         }
 
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let polo_message = crate::types::PoloMessage { terminal_shell_pid };
+            dispatch_handle.send(polo_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send Polo via actors: {}", e)))?;
+            info!("Polo discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy Polo sending");
         let payload = PoloPayload {};
         let message = IPCMessage {
             message_type: IPCMessageType::Polo,
