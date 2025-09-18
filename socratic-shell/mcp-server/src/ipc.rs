@@ -323,6 +323,19 @@ impl IPCCommunicator {
             return;
         }
 
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let log_message = crate::types::LogMessage { level, message };
+            if let Err(e) = dispatch_handle.send(log_message).await {
+                // If IPC fails, we still have local logging above
+                debug!("Failed to send log via actor dispatch: {}", e);
+            }
+            return;
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy log sending");
+
         // Also send to VSCode extension via IPC for unified logging
         let log_params = LogParams { level, message };
 

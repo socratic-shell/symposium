@@ -45,6 +45,24 @@ pub enum LogLevel {
     Debug,
 }
 
+/// Log message for IPC communication
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogMessage {
+    /// Log level
+    pub level: LogLevel,
+    /// Log message content
+    pub message: String,
+}
+
+impl DispatchMessage for LogMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Log
+    }
+}
+
 /// Marco discovery message - broadcasts "who's out there?"
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarcoMessage {
