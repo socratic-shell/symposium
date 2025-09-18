@@ -45,6 +45,55 @@ pub enum LogLevel {
     Debug,
 }
 
+/// Present walkthrough message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PresentWalkthroughMessage {
+    pub content: String,
+    #[serde(rename = "baseUri")]
+    pub base_uri: String,
+}
+
+impl DispatchMessage for PresentWalkthroughMessage {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::PresentWalkthrough
+    }
+}
+
+/// Log progress message to report agent progress
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogProgressMessage {
+    pub message: String,
+    pub category: ProgressCategory,
+}
+
+impl DispatchMessage for LogProgressMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::LogProgress
+    }
+}
+
+/// Goodbye discovery message - announces departure with shell PID
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoodbyeMessage {
+    #[serde(rename = "terminalShellPid")]
+    pub terminal_shell_pid: u32,
+}
+
+impl DispatchMessage for GoodbyeMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Goodbye
+    }
+}
+
 /// Delete taskspace message
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeleteTaskspaceMessage {

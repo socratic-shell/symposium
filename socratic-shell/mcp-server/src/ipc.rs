@@ -239,6 +239,21 @@ impl IPCCommunicator {
             return Ok(());
         }
 
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let walkthrough_message = crate::types::PresentWalkthroughMessage {
+                content: walkthrough.content,
+                base_uri: walkthrough.base_uri,
+            };
+            let _response: () = dispatch_handle.send(walkthrough_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send present_walkthrough via actors: {}", e)))?;
+            info!("Successfully presented walkthrough to VSCode via actor system");
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy present_walkthrough sending");
+        
         let payload = serde_json::to_value(&walkthrough)?;
 
         let shell_pid = {
@@ -445,6 +460,17 @@ impl IPCCommunicator {
             return Ok(());
         }
 
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let goodbye_message = crate::types::GoodbyeMessage { terminal_shell_pid };
+            dispatch_handle.send(goodbye_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e)))?;
+            info!("Goodbye discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy Goodbye sending");
         let payload = GoodbyePayload {};
         let message = IPCMessage {
             message_type: IPCMessageType::Goodbye,
@@ -518,6 +544,22 @@ impl IPCCommunicator {
         message: String,
         category: crate::types::ProgressCategory,
     ) -> Result<()> {
+        if self.test_mode {
+            info!("Log progress called (test mode): {} - {:?}", message, category);
+            return Ok(());
+        }
+
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let progress_message = crate::types::LogProgressMessage { message, category };
+            dispatch_handle.send(progress_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send log_progress via actors: {}", e)))?;
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy log_progress sending");
+        
         use crate::types::{IPCMessageType, LogProgressPayload};
 
         let (project_path, taskspace_uuid) = extract_project_info()?;
