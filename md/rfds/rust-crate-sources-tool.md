@@ -69,9 +69,8 @@ The `get_rust_sources` tool accepts the following parameters:
 }
 ```
 
-**Response format varies based on whether a pattern is provided:**
+The response always begins with the location of the crate source:
 
-Without pattern (extraction only):
 ```json
 {
   "crate_name": "tokio",
@@ -81,31 +80,31 @@ Without pattern (extraction only):
 }
 ```
 
-With pattern (extraction + search):
+When a pattern is provided, we include two additional fields, indicating that occured in examples and matches that occurred anywhere:
+
 ```json
 {
-  "crate_name": "tokio",
-  "version": "1.35.0",
-  "checkout_path": "/path/to/extracted/crate",
+    // ... as above ...
+
+  // Indicates the matches that occurred inside of examples.
   "example_matches": [
     {
       "file_path": "examples/hello_world.rs",
       "line_number": 8,
-      "line_content": "    tokio::spawn(async {",
-      "context_before": ["#[tokio::main]", "async fn main() {"],
-      "context_after": ["        println!(\"Hello from spawn!\");", "    });"]
+      "context_start_line": 6,
+      "context_end_line": 10,
+      "context": "#[tokio::main]\nasync fn main() {\n    tokio::spawn(async {\n        println!(\"Hello from spawn!\");\n    });"
     }
   ],
   "other_matches": [
     {
       "file_path": "src/task/spawn.rs",
       "line_number": 156,
-      "line_content": "pub fn spawn<T>(future: T) -> JoinHandle<T::Output>",
-      "context_before": ["/// Spawns a new asynchronous task", "///"],
-      "context_after": ["where", "    T: Future + Send + 'static,"]
+      "context_start_line": 154,
+      "context_end_line": 158,
+      "context": "/// Spawns a new asynchronous task\n///\npub fn spawn<T>(future: T) -> JoinHandle<T::Output>\nwhere\n    T: Future + Send + 'static,"
     }
   ],
-  "message": "Crate tokio v1.35.0 extracted to /path/to/extracted/crate"
 }
 ```
 
