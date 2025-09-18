@@ -108,26 +108,52 @@ The refactored system will have clean separation of concerns with focused actors
 4. ~~Migrate IDE operations: `resolve_symbol_by_name()` and `find_all_references()`~~ **COMPLETED**
 
 ## Phase 7: Legacy System Removal 🚧 NEXT
-1. **NEXT**: Remove `send_message_with_reply()` and `send_message_without_reply()` methods
-2. Remove `IPCCommunicatorInner` struct and manual connection management
-3. Remove manual pending request tracking
+1. **NEXT**: Remove unused legacy methods:
+   - `send_message_with_reply()` (unused, warnings confirm)
+   - `write_message()` (unused, warnings confirm) 
+   - `create_message_sender()` (unused, warnings confirm)
+2. Remove `IPCCommunicatorInner` struct and manual connection management:
+   - `pending_requests: HashMap<String, oneshot::Sender<ResponsePayload>>`
+   - `write_half: Option<Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>>`
+   - `connected: bool` flag
+3. Simplify `IPCCommunicator` to only contain `dispatch_handle` and `test_mode`
 4. Add comprehensive testing for actor system
 
 ## Current Status
 - **✅ ALL OUTBOUND MESSAGES MIGRATED**: 9+ message types using actor dispatch
-- **✅ Specialized actors**: MarcoPoloActor for inbound message handling
+- **✅ Specialized actors**: MarcoActor for inbound message handling
 - **✅ Type-safe messaging**: `IpcPayload` trait with compile-time validation
 - **✅ Clean architecture**: No duplicate structs, reusing existing payloads
 - **✅ Hybrid system**: Legacy + actor systems running side-by-side safely
 - **✅ Proven integration**: Both CLI and MCP server modes using actors
 - **✅ ALL REQUEST/REPLY MESSAGES MIGRATED**: Complete bidirectional communication via actors
 - **✅ IDE operations**: Symbol resolution and reference finding via actor system
+- **✅ Complete message context**: Shell PID and taskspace UUID properly extracted and cached
+- **✅ Marco discovery**: Simplified marco-polo → marco actor with proper Polo responses
 
-**Major milestone achieved**: Complete migration of ALL IPC messages to actor system!
+**Major milestone achieved**: Complete migration of ALL IPC messages to actor system with full context!
 
-## Actor Communication Pattern
-Each actor follows the standard Tokio actor pattern:
-- **Actor struct**: Owns state and message receiver, runs the main loop
+## Recent Completions (Phase 6 Extras)
+- **✅ Marco-polo → Marco refactor**: Simplified discovery protocol, proper Polo responses
+- **✅ Shell PID context**: Real shell PID propagated through actor system  
+- **✅ Taskspace UUID context**: Extracted once and cached in DispatchHandle
+- **✅ Complete message context**: All MessageSender fields properly populated
+- **✅ Performance optimization**: Context extraction at initialization, not per-message
+
+## What's Left to Complete the Refactoring
+
+**Phase 7 - Legacy Cleanup (Ready Now):**
+- ✅ **All IPC messages migrated** - No functionality depends on legacy methods
+- ✅ **Compiler warnings confirm** - `send_message_with_reply`, `write_message`, `create_message_sender` are unused
+- ✅ **Actor system proven stable** - All tests pass, full functionality working
+
+**Remaining work is pure cleanup:**
+1. **Remove dead code** - 3 unused methods (~100 lines)
+2. **Simplify IPCCommunicator** - Remove `IPCCommunicatorInner` struct (~50 lines)  
+3. **Remove manual state** - `pending_requests`, `write_half`, `connected` fields
+4. **Final result**: Clean actor-only architecture
+
+**Estimated effort**: ~30 minutes of safe deletions + testing
 - **Handle struct**: Provides public API and holds message sender
 - **Message enum**: Defines operations the actor can perform
 
