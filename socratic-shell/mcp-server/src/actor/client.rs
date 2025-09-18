@@ -40,9 +40,13 @@ impl ClientActor {
 
     pub async fn run(mut self) {
         loop {
-            // Check if outbound channel is closed
+            // Check if channels are closed
             if self.outbound_tx.is_closed() {
                 info!("Outbound channel closed, shutting down client actor");
+                break;
+            }
+            if self.inbound_rx.is_closed() {
+                info!("Inbound channel closed, shutting down client actor");
                 break;
             }
 
