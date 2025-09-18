@@ -160,6 +160,7 @@ impl DispatchActor {
 pub struct DispatchHandle {
     sender: mpsc::Sender<DispatchRequest>,
     shell_pid: u32,
+    taskspace_uuid: Option<String>,
 }
 
 impl DispatchHandle {
@@ -172,13 +173,16 @@ impl DispatchHandle {
     pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>, shell_pid: u32) -> Self {
         let (sender, receiver) = mpsc::channel(32);
 
+        // Try to extract taskspace UUID from directory structure
+        let taskspace_uuid = crate::ipc::extract_project_info().map(|(_, uuid)| uuid).ok();
+
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
 
         let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
-        Self { sender, shell_pid }
+        Self { sender, shell_pid, taskspace_uuid }
     }
 
     /// Spawn a dispatch actor with a mock actor for testing
@@ -196,7 +200,7 @@ impl DispatchHandle {
         let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
-        Self { sender, shell_pid: 0 }
+        Self { sender, shell_pid: 0, taskspace_uuid: None }
     }
 
     /// Send a message out into the ether and (optionally) await a response.
@@ -246,15 +250,12 @@ impl DispatchHandle {
     }
 
     fn create_sender(&self) -> crate::types::MessageSender {
-        // Try to extract taskspace UUID from directory structure
-        let taskspace_uuid = crate::ipc::extract_project_info().map(|(_, uuid)| uuid).ok();
-        
         crate::types::MessageSender {
             working_directory: std::env::current_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("/"))
                 .to_string_lossy()
                 .to_string(),
-            taskspace_uuid,
+            taskspace_uuid: self.taskspace_uuid.clone(),
             shell_pid: Some(self.shell_pid),
         }
     }
