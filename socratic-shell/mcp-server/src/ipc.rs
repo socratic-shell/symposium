@@ -4,8 +4,7 @@
 //! Ports the logic from server/src/ipc.ts to Rust with cross-platform support.
 
 use crate::types::{
-    FindAllReferencesPayload, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType,
-    LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload,
+    FindAllReferencesPayload, GetSelectionMessage, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType, LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload
 };
 use anyhow::Context;
 use futures::FutureExt;
@@ -345,22 +344,20 @@ impl IPCCommunicator {
         )
         .await?;
 
-        // Create message payload with shell PID for multi-window filtering
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
-        };
-
-        let message = IPCMessage {
-            message_type: IPCMessageType::GetSelection,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::json!({}),
-        };
-
-        debug!("Sending get_selection message: {:?}", message);
-
-        let selection: GetSelectionResult = self.send_message_with_reply(message).await?;
+        // Use actor dispatch system for get_selection request/reply
+        let get_selection_message = GetSelectionMessage {};
+        let selection: GetSelectionResult = self
+            .dispatch_handle
+            .send(get_selection_message)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!(
+                    "Failed to send get_selection via actors: {}",
+                    e
+                ))
+            })?;
+        
+        info!("Successfully retrieved selection via actor system");
         Ok(selection)
     }
 

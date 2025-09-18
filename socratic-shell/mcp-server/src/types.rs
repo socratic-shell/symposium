@@ -121,6 +121,21 @@ impl IpcPayload for PoloMessage {
     }
 }
 
+/// Request message for getting current text selection
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GetSelectionMessage {
+    // GetSelection messages have no payload - shell PID is in IPCMessage sender
+}
+
+impl IpcPayload for GetSelectionMessage {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = GetSelectionResult;
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::GetSelection
+    }
+}
+
 /// Response from the get-selection tool
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetSelectionResult {
