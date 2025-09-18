@@ -353,40 +353,6 @@ impl IPCCommunicator {
             // If IPC fails, we still have local logging above
             debug!("Failed to send log via actor dispatch: {}", e);
         }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy log sending");
-
-        // Also send to VSCode extension via IPC for unified logging
-        let log_params = LogParams { level, message };
-
-        // Create message payload with shell PID added for multi-window filtering
-        let payload = match serde_json::to_value(log_params) {
-            Ok(payload) => payload,
-            Err(e) => {
-                error!("Failed to serialize log message: {}", e);
-                return;
-            }
-        };
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
-        };
-
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::Log,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload,
-        };
-
-        // For log messages, we don't need to wait for response
-        // Just send and continue (fire-and-forget)
-        if let Err(e) = self.send_message_without_reply(ipc_message).await {
-            // If IPC fails, we still have local logging above
-            debug!("Failed to send log via IPC: {}", e);
-        }
     }
 
     /// Send Polo discovery message (MCP server announces presence with shell PID)
