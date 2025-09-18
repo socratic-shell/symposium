@@ -3,9 +3,9 @@
 //! This actor handles message routing, reply correlation, and timeout management.
 //! Extracted from the monolithic IPCCommunicator to provide focused responsibility.
 
+use crate::actor::Actor;
 use crate::types::{IPCMessage, IpcPayload};
-use crate::{actor::Actor, types::IPCMessageType};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -13,7 +13,14 @@ use tokio::sync::{mpsc, oneshot};
 use uuid;
 
 /// Mock actor function type - takes incoming and outgoing channels
-pub type MockActorFn = Box<dyn Fn(mpsc::Receiver<IPCMessage>, mpsc::Sender<IPCMessage>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+pub type MockActorFn = Box<
+    dyn Fn(
+            mpsc::Receiver<IPCMessage>,
+            mpsc::Sender<IPCMessage>,
+        ) -> Pin<Box<dyn Future<Output = ()> + Send>>
+        + Send
+        + Sync,
+>;
 
 /// Send a message on the IPC channel and optionally ask for a reply.
 struct DispatchRequest {
@@ -71,7 +78,7 @@ impl Actor for DispatchActor {
                             if let Some(reply_tx) = reply_tx {
                                 self.pending_replies.insert(message.id.clone(), reply_tx);
                             }
-                            
+
                             // Send message to client
                             if let Err(e) = self.client_tx.send(message).await {
                                 tracing::error!("Failed to send message to client: {}", e);
@@ -130,7 +137,8 @@ impl Actor for DispatchActor {
             }
 
             // Clean up any closed reply channels (timed out requests)
-            self.pending_replies.retain(|_id, reply_tx| !reply_tx.is_closed());
+            self.pending_replies
+                .retain(|_id, reply_tx| !reply_tx.is_closed());
         }
     }
 }
@@ -169,16 +177,13 @@ impl DispatchHandle {
     ///
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
-    pub fn new(
-        client_rx: mpsc::Receiver<IPCMessage>,
-        client_tx: mpsc::Sender<IPCMessage>,
-    ) -> Self {
+    pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        
+
         // Create MarcoPolo actor for discovery messages
         // TODO: Get shell PID from context
         let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
-        
+
         let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_polo_handle));
         actor.spawn();
 
@@ -190,13 +195,13 @@ impl DispatchHandle {
         let (sender, receiver) = mpsc::channel(32);
         let (client_tx, client_rx) = mpsc::channel(32);
         let (mock_tx, mock_rx) = mpsc::channel(32);
-        
+
         // Spawn the mock actor
         tokio::spawn(mock_fn(client_rx, mock_tx));
-        
+
         // Create MarcoPolo actor for discovery messages
         let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
-        
+
         let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_polo_handle));
         actor.spawn();
 

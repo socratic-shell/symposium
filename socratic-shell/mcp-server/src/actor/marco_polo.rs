@@ -4,9 +4,9 @@
 //! Marco messages are broadcasts asking "who's out there?", Polo messages announce presence.
 
 use crate::actor::Actor;
-use crate::types::{IPCMessage, IPCMessageType, MarcoMessage, PoloMessage};
+use crate::types::{IPCMessage, PoloMessage};
 use tokio::sync::mpsc;
-use tracing::{info, error};
+use tracing::{error, info};
 
 /// Message types that the MarcoPolo actor can handle
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub enum MarcoPoloMessage {
 pub struct MarcoPoloActor {
     /// Channel for receiving marco/polo messages
     message_rx: mpsc::Receiver<MarcoPoloMessage>,
-    
+
     /// Shell PID for this MCP server instance
     shell_pid: u32,
 }
@@ -29,23 +29,29 @@ pub struct MarcoPoloActor {
 impl Actor for MarcoPoloActor {
     async fn run(mut self) {
         info!("MarcoPolo actor started for shell PID {}", self.shell_pid);
-        
+
         while let Some(message) = self.message_rx.recv().await {
             match message {
                 MarcoPoloMessage::HandleMarco { message } => {
-                    info!("Received Marco discovery message from {}", message.sender.working_directory);
+                    info!(
+                        "Received Marco discovery message from {}",
+                        message.sender.working_directory
+                    );
                     // TODO: Respond with Polo message
                 }
                 MarcoPoloMessage::HandlePolo { message } => {
                     if let Ok(polo_msg) = serde_json::from_value::<PoloMessage>(message.payload) {
-                        info!("Received Polo discovery message from shell PID {}", polo_msg.terminal_shell_pid);
+                        info!(
+                            "Received Polo discovery message from shell PID {}",
+                            polo_msg.terminal_shell_pid
+                        );
                     } else {
                         error!("Failed to deserialize Polo message");
                     }
                 }
             }
         }
-        
+
         info!("MarcoPolo actor shutting down");
     }
 }
@@ -77,12 +83,22 @@ impl MarcoPoloHandle {
     }
 
     /// Send a marco message to be handled
-    pub async fn handle_marco(&self, message: IPCMessage) -> Result<(), mpsc::error::SendError<MarcoPoloMessage>> {
-        self.sender.send(MarcoPoloMessage::HandleMarco { message }).await
+    pub async fn handle_marco(
+        &self,
+        message: IPCMessage,
+    ) -> Result<(), mpsc::error::SendError<MarcoPoloMessage>> {
+        self.sender
+            .send(MarcoPoloMessage::HandleMarco { message })
+            .await
     }
 
     /// Send a polo message to be handled
-    pub async fn handle_polo(&self, message: IPCMessage) -> Result<(), mpsc::error::SendError<MarcoPoloMessage>> {
-        self.sender.send(MarcoPoloMessage::HandlePolo { message }).await
+    pub async fn handle_polo(
+        &self,
+        message: IPCMessage,
+    ) -> Result<(), mpsc::error::SendError<MarcoPoloMessage>> {
+        self.sender
+            .send(MarcoPoloMessage::HandlePolo { message })
+            .await
     }
 }

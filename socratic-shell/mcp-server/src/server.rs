@@ -118,11 +118,11 @@ pub struct DialecticServer {
 impl DialecticServer {
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
-    async fn get_taskspace_context(&self) -> Result<(Option<String>, Option<String>, Option<String>)> {
+    async fn get_taskspace_context(
+        &self,
+    ) -> Result<(Option<String>, Option<String>, Option<String>)> {
         match self.ipc.get_taskspace_state().await {
-            Ok(state) => {
-                Ok((state.name, state.description, state.initial_prompt))
-            }
+            Ok(state) => Ok((state.name, state.description, state.initial_prompt)),
             Err(e) => {
                 warn!("Failed to get taskspace context via IPC: {}", e);
                 // Log the error but don't fail the prompt assembly
@@ -450,7 +450,6 @@ impl DialecticServer {
     /// a PR-like review interface with structured file changes and comment threads.
     // ANCHOR: request_review_tool
 
-
     /// Expand a compact reference to get full context
     ///
     /// This tool allows LLMs to retrieve the full context for a compact symposium-ref reference.
@@ -508,7 +507,7 @@ impl DialecticServer {
         // Try to load as guidance file
         if let Some(file) = GuidanceFiles::get(&params.id) {
             let content = String::from_utf8_lossy(&file.data);
-            
+
             self.ipc
                 .send_log(
                     LogLevel::Info,
@@ -516,7 +515,9 @@ impl DialecticServer {
                 )
                 .await;
 
-            return Ok(CallToolResult::success(vec![Content::text(content.to_string())]));
+            return Ok(CallToolResult::success(vec![Content::text(
+                content.to_string(),
+            )]));
         }
 
         // Special case: "yiasou" or "hi" returns the same content as @yiasou stored prompt
@@ -993,11 +994,20 @@ impl DialecticServer {
 
         // Check if we're in a taskspace and get context components
         let is_in_taskspace = self.is_in_taskspace();
-        let (taskspace_name, taskspace_description, initial_prompt) = self.get_taskspace_context().await.ok().unwrap_or((None, None, None));
+        let (taskspace_name, taskspace_description, initial_prompt) = self
+            .get_taskspace_context()
+            .await
+            .ok()
+            .unwrap_or((None, None, None));
 
         // Debug logging
-        info!("Yiasou prompt assembly: is_in_taskspace={}, name={:?}, description={:?}, initial_prompt={:?}", 
-                   is_in_taskspace, taskspace_name, taskspace_description, initial_prompt.as_ref().map(|s| s.len()));
+        info!(
+            "Yiasou prompt assembly: is_in_taskspace={}, name={:?}, description={:?}, initial_prompt={:?}",
+            is_in_taskspace,
+            taskspace_name,
+            taskspace_description,
+            initial_prompt.as_ref().map(|s| s.len())
+        );
 
         let intro = match (is_in_taskspace, initial_prompt.as_ref()) {
             (true, Some(_)) => {
@@ -1066,7 +1076,7 @@ impl DialecticServer {
             prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
         } else if taskspace_name.is_some() || taskspace_description.is_some() {
             prompt.push_str("## Taskspace Context\n\n");
-            
+
             if let Some(name) = taskspace_name {
                 prompt.push_str(&format!("You are in a taskspace named \"{}\"", name));
                 if taskspace_description.is_some() {
@@ -1075,9 +1085,12 @@ impl DialecticServer {
                     prompt.push_str(".\n");
                 }
             }
-            
+
             if let Some(description) = taskspace_description {
-                prompt.push_str(&format!("The description the user gave is as follows: {}\n", description));
+                prompt.push_str(&format!(
+                    "The description the user gave is as follows: {}\n",
+                    description
+                ));
             }
         }
 
@@ -1171,10 +1184,7 @@ impl ServerHandler for DialecticServer {
             },
             Prompt {
                 name: "hi".to_string(),
-                description: Some(
-                    "Agent initialization prompt (alias for yiasou)"
-                        .to_string(),
-                ),
+                description: Some("Agent initialization prompt (alias for yiasou)".to_string()),
                 arguments: None,
             },
         ];
@@ -1383,7 +1393,10 @@ This is test content."#;
         assert_eq!(coding_resource.raw.name, "Coding Guidelines");
         assert_eq!(
             coding_resource.raw.description,
-            Some("Development best practices and standards for the Socratic Shell project".to_string())
+            Some(
+                "Development best practices and standards for the Socratic Shell project"
+                    .to_string()
+            )
         );
     }
 
@@ -1412,21 +1425,31 @@ This is test content."#;
 
         // Verify resource loading instructions using expand_reference tool
         assert!(prompt.contains("Use the `expand_reference` tool to fetch `main.md`"));
-        assert!(prompt.contains("Use the `expand_reference` tool to fetch `walkthrough-format.md`"));
+        assert!(
+            prompt.contains("Use the `expand_reference` tool to fetch `walkthrough-format.md`")
+        );
         assert!(prompt.contains("Use the `expand_reference` tool to fetch `coding-guidelines.md`"));
     }
 
     #[tokio::test]
     async fn test_expand_reference_yiasou() {
         let server = DialecticServer::new_test();
-        
+
         // Test that expand_reference with "yiasou" returns the same content as the stored prompt
-        let params = ExpandReferenceParams { id: "yiasou".to_string() };
+        let params = ExpandReferenceParams {
+            id: "yiasou".to_string(),
+        };
         let result = server.expand_reference(Parameters(params)).await.unwrap();
-        
+
         // Should be successful
-        assert!(matches!(result, CallToolResult { is_error: Some(false), .. }));
-        
+        assert!(matches!(
+            result,
+            CallToolResult {
+                is_error: Some(false),
+                ..
+            }
+        ));
+
         // Should have content
         assert!(!result.content.is_empty());
     }
