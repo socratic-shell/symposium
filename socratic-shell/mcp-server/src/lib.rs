@@ -2,6 +2,7 @@
 //!
 //! Rust implementation of the Dialectic MCP server for code review integration.
 
+pub mod actor;
 pub mod constants;
 mod daemon;
 mod dialect;
