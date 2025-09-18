@@ -7,70 +7,55 @@ use std::process::Command;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use anyhow::Result;
 use crate::types::IPCMessage;
 
-/// Requests that can be sent to the client actor
-pub enum ClientRequest {
-    /// Connect to daemon (with auto-start if needed)
-    Connect {
-        socket_prefix: String,
-        auto_start: bool,
-        reply_tx: oneshot::Sender<Result<()>>,
-    },
-    /// Send a message to daemon
-    SendMessage {
-        message: IPCMessage,
-        reply_tx: oneshot::Sender<Result<()>>,
-    },
-    /// Disconnect from daemon
-    Disconnect,
-}
-
 /// Actor that manages daemon connection and message transport
 pub struct ClientActor {
-    request_rx: mpsc::Receiver<ClientRequest>,
+    /// Channel to receive messages to send to daemon
+    inbound_rx: mpsc::Receiver<IPCMessage>,
     /// Channel to send parsed messages from daemon
     outbound_tx: mpsc::Sender<IPCMessage>,
-    /// Current connection state
-    connection: Option<UnixStream>,
+    /// Socket configuration
+    socket_prefix: String,
+    auto_start: bool,
 }
 
 impl ClientActor {
     pub fn new(
-        request_rx: mpsc::Receiver<ClientRequest>,
+        inbound_rx: mpsc::Receiver<IPCMessage>,
         outbound_tx: mpsc::Sender<IPCMessage>,
+        socket_prefix: String,
+        auto_start: bool,
     ) -> Self {
         Self {
-            request_rx,
+            inbound_rx,
             outbound_tx,
-            connection: None,
+            socket_prefix,
+            auto_start,
         }
     }
 
     pub async fn run(mut self) {
-        while let Some(request) = self.request_rx.recv().await {
-            match request {
-                ClientRequest::Connect { socket_prefix, auto_start, reply_tx } => {
-                    let result = self.connect(&socket_prefix, auto_start).await;
-                    let _ = reply_tx.send(result);
-                }
-                ClientRequest::SendMessage { message, reply_tx } => {
-                    let result = self.send_message(message).await;
-                    let _ = reply_tx.send(result);
-                }
-                ClientRequest::Disconnect => {
-                    self.disconnect().await;
+        loop {
+            match self.connect_and_run().await {
+                Ok(()) => {
+                    info!("Client actor completed normally");
                     break;
+                }
+                Err(e) => {
+                    error!("Client actor error: {}", e);
+                    // TODO: Add reconnection logic with backoff
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
         }
     }
 
-    async fn connect(&mut self, socket_prefix: &str, auto_start: bool) -> Result<()> {
-        let socket_path = crate::constants::daemon_socket_path(socket_prefix);
+    async fn connect_and_run(&mut self) -> Result<()> {
+        let socket_path = crate::constants::daemon_socket_path(&self.socket_prefix);
 
         // Try to connect to existing daemon
         let stream = match UnixStream::connect(&socket_path).await {
@@ -78,7 +63,7 @@ impl ClientActor {
                 info!("✅ Connected to existing daemon at {}", socket_path);
                 stream
             }
-            Err(_) if auto_start => {
+            Err(_) if self.auto_start => {
                 info!("No daemon found, attempting to start one...");
                 self.spawn_daemon().await?;
                 self.wait_for_daemon(&socket_path).await?
@@ -92,21 +77,70 @@ impl ClientActor {
             }
         };
 
-        // Start reading from daemon in background
-        let (read_half, write_half) = stream.into_split();
-        self.connection = Some(UnixStream::from_std(
-            std::os::unix::net::UnixStream::pair()?.0
-        )?);
-        
-        // Spawn reader task
-        let outbound_tx = self.outbound_tx.clone();
-        tokio::spawn(async move {
-            Self::read_daemon_messages(read_half, outbound_tx).await;
-        });
+        // Split stream for reading and writing
+        let (read_half, mut write_half) = stream.into_split();
+        let mut reader = BufReader::new(read_half);
+        let mut line = String::new();
 
-        // Store write half for sending messages
-        // TODO: Store write_half properly for message sending
-        
+        loop {
+            tokio::select! {
+                // Read from daemon and forward to outbound channel
+                result = reader.read_line(&mut line) => {
+                    match result {
+                        Ok(0) => {
+                            info!("Daemon connection closed");
+                            break;
+                        }
+                        Ok(_) => {
+                            let message_str = line.trim();
+                            if !message_str.is_empty() {
+                                match serde_json::from_str::<IPCMessage>(message_str) {
+                                    Ok(message) => {
+                                        if let Err(e) = self.outbound_tx.send(message).await {
+                                            error!("Failed to forward message from daemon: {}", e);
+                                            break;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!("Failed to parse message from daemon: {} - {}", e, message_str);
+                                    }
+                                }
+                            }
+                            line.clear();
+                        }
+                        Err(e) => {
+                            error!("Error reading from daemon: {}", e);
+                            break;
+                        }
+                    }
+                }
+
+                // Receive messages to send to daemon
+                message = self.inbound_rx.recv() => {
+                    match message {
+                        Some(message) => {
+                            match serde_json::to_string(&message) {
+                                Ok(json) => {
+                                    let line = format!("{}\n", json);
+                                    if let Err(e) = write_half.write_all(line.as_bytes()).await {
+                                        error!("Failed to write to daemon: {}", e);
+                                        break;
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Failed to serialize message: {}", e);
+                                }
+                            }
+                        }
+                        None => {
+                            info!("Inbound channel closed");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -153,106 +187,32 @@ impl ClientActor {
             }
         }
     }
-
-    async fn read_daemon_messages(
-        read_half: tokio::net::unix::OwnedReadHalf,
-        outbound_tx: mpsc::Sender<IPCMessage>,
-    ) {
-        let mut reader = BufReader::new(read_half);
-        let mut line = String::new();
-
-        loop {
-            line.clear();
-            match reader.read_line(&mut line).await {
-                Ok(0) => {
-                    info!("Daemon connection closed");
-                    break;
-                }
-                Ok(_) => {
-                    let message_str = line.trim();
-                    if !message_str.is_empty() {
-                        match serde_json::from_str::<IPCMessage>(message_str) {
-                            Ok(message) => {
-                                if let Err(e) = outbound_tx.send(message).await {
-                                    error!("Failed to forward message from daemon: {}", e);
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse message from daemon: {} - {}", e, message_str);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Error reading from daemon: {}", e);
-                    break;
-                }
-            }
-        }
-    }
-
-    async fn send_message(&mut self, message: IPCMessage) -> Result<()> {
-        // TODO: Implement message sending to daemon
-        // Need to store write_half properly in connect()
-        warn!("Message sending not yet implemented: {:?}", message);
-        Ok(())
-    }
-
-    async fn disconnect(&mut self) {
-        if let Some(_connection) = self.connection.take() {
-            info!("Disconnecting from daemon");
-            // Connection will be dropped automatically
-        }
-    }
 }
 
 /// Handle for communicating with the client actor
 #[derive(Clone)]
 pub struct ClientHandle {
-    sender: mpsc::Sender<ClientRequest>,
+    sender: mpsc::Sender<IPCMessage>,
 }
 
 impl ClientHandle {
-    pub fn new(outbound_tx: mpsc::Sender<IPCMessage>) -> Self {
-        let (sender, receiver) = mpsc::channel(32);
-        let actor = ClientActor::new(receiver, outbound_tx);
+    pub fn new(
+        socket_prefix: String,
+        auto_start: bool,
+    ) -> (Self, mpsc::Sender<IPCMessage>) {
+        let (inbound_tx, inbound_rx) = mpsc::channel(32);
+        let (outbound_tx, outbound_rx) = mpsc::channel(32);
+        
+        let actor = ClientActor::new(inbound_rx, outbound_tx.clone(), socket_prefix, auto_start);
         tokio::spawn(async move { actor.run().await });
 
-        Self { sender }
-    }
-
-    /// Connect to daemon with optional auto-start
-    pub async fn connect(&self, socket_prefix: String, auto_start: bool) -> Result<()> {
-        let (reply_tx, reply_rx) = oneshot::channel();
-        let request = ClientRequest::Connect {
-            socket_prefix,
-            auto_start,
-            reply_tx,
-        };
-        
-        self.sender.send(request).await
-            .map_err(|e| anyhow::anyhow!("Failed to send connect request: {}", e))?;
-        
-        reply_rx.await
-            .map_err(|e| anyhow::anyhow!("Connect request cancelled: {}", e))?
+        // Return handle and the receiver for other actors to get messages from daemon
+        (Self { sender: inbound_tx }, outbound_tx)
     }
 
     /// Send a message to daemon
     pub async fn send_message(&self, message: IPCMessage) -> Result<()> {
-        let (reply_tx, reply_rx) = oneshot::channel();
-        let request = ClientRequest::SendMessage { message, reply_tx };
-        
-        self.sender.send(request).await
-            .map_err(|e| anyhow::anyhow!("Failed to send message request: {}", e))?;
-        
-        reply_rx.await
-            .map_err(|e| anyhow::anyhow!("Send message request cancelled: {}", e))?
-    }
-
-    /// Disconnect from daemon
-    pub async fn disconnect(&self) -> Result<()> {
-        self.sender.send(ClientRequest::Disconnect).await
-            .map_err(|e| anyhow::anyhow!("Failed to send disconnect request: {}", e))
+        self.sender.send(message).await
+            .map_err(|e| anyhow::anyhow!("Failed to send message to daemon: {}", e))
     }
 }
