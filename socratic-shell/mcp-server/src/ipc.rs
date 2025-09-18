@@ -215,7 +215,49 @@ impl IPCCommunicator {
 
     pub async fn initialize(&mut self) -> Result<()> {
         if self.test_mode {
-            info!("IPC Communicator initialized (test mode)");
+            info!("IPC Communicator initialized (test mode) - creating mock actor");
+            
+            // Create mock actor that responds to common messages
+            let mock_fn = Box::new(|mut rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+                Box::pin(async move {
+                    while let Some(message) = rx.recv().await {
+                        use crate::types::IPCMessageType;
+                        
+                        // Generate mock responses based on message type
+                        match message.message_type {
+                            IPCMessageType::TaskspaceState => {
+                                let response = crate::types::IPCMessage {
+                                    message_type: crate::types::IPCMessageType::Response,
+                                    id: uuid::Uuid::new_v4().to_string(),
+                                    sender: message.sender.clone(),
+                                    payload: serde_json::to_value(crate::types::TaskspaceStateResponse {
+                                        name: Some("Mock Taskspace".to_string()),
+                                        description: Some("Mock taskspace description".to_string()),
+                                        initial_prompt: Some("Mock initial prompt".to_string()),
+                                    }).unwrap(),
+                                };
+                                let _ = tx.send(response).await;
+                            }
+                            IPCMessageType::PresentWalkthrough => {
+                                // Send acknowledgment for walkthrough
+                                let response = crate::types::IPCMessage {
+                                    message_type: crate::types::IPCMessageType::Response,
+                                    id: uuid::Uuid::new_v4().to_string(),
+                                    sender: message.sender.clone(),
+                                    payload: serde_json::to_value(()).unwrap(),
+                                };
+                                let _ = tx.send(response).await;
+                            }
+                            _ => {
+                                // For fire-and-forget messages, just log
+                                tracing::info!("Mock actor received message: {:?}", message.message_type);
+                            }
+                        }
+                    }
+                }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+            }) as crate::actor::dispatch::MockActorFn;
+            
+            self.dispatch_handle = Some(crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn));
             return Ok(());
         }
 
@@ -703,15 +745,6 @@ impl IPCCommunicator {
     /// - If app unavailable → daemon returns empty/error response
     /// - Caller (get_taskspace_context) handles errors gracefully
     pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
-        if self.test_mode {
-            // Return mock data for test mode
-            return Ok(crate::types::TaskspaceStateResponse {
-                name: Some("Test Taskspace".to_string()),
-                description: Some("Test taskspace description".to_string()),
-                initial_prompt: Some("Test initial prompt".to_string()),
-            });
-        }
-
         // Extract taskspace UUID from directory structure (task-UUID/.symposium pattern)
         let (project_path, taskspace_uuid) = extract_project_info()?;
 

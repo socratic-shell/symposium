@@ -7,8 +7,13 @@ use crate::types::{IPCMessage, IpcPayload};
 use crate::{actor::Actor, types::IPCMessageType};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use tokio::sync::{mpsc, oneshot};
 use uuid;
+
+/// Mock actor function type - takes incoming and outgoing channels
+pub type MockActorFn = Box<dyn Fn(mpsc::Receiver<IPCMessage>, mpsc::Sender<IPCMessage>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 /// Send a message on the IPC channel and optionally ask for a reply.
 struct DispatchRequest {
@@ -175,6 +180,24 @@ impl DispatchHandle {
         let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
         
         let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_polo_handle));
+        actor.spawn();
+
+        Self { sender }
+    }
+
+    /// Spawn a dispatch actor with a mock actor for testing
+    pub fn spawn_with_mock(mock_fn: MockActorFn) -> Self {
+        let (sender, receiver) = mpsc::channel(32);
+        let (client_tx, client_rx) = mpsc::channel(32);
+        let (mock_tx, mock_rx) = mpsc::channel(32);
+        
+        // Spawn the mock actor
+        tokio::spawn(mock_fn(client_rx, mock_tx));
+        
+        // Create MarcoPolo actor for discovery messages
+        let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
+        
+        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_polo_handle));
         actor.spawn();
 
         Self { sender }
