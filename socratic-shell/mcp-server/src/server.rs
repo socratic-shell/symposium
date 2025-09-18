@@ -14,13 +14,11 @@ use rmcp::{
 use rust_embed::RustEmbed;
 use serde_json;
 use std::future::Future;
-use std::sync::Arc;
 use tracing::{info, warn};
 
 use crate::dialect::DialectInterpreter;
 use crate::eg::Eg;
 use crate::ipc::IPCCommunicator;
-use crate::reference_store::ReferenceStore;
 use crate::types::{LogLevel, PresentWalkthroughParams};
 use serde::{Deserialize, Serialize};
 
@@ -111,7 +109,7 @@ pub struct DialecticServer {
     ipc: IPCCommunicator,
     interpreter: DialectInterpreter<IPCCommunicator>,
     tool_router: ToolRouter<DialecticServer>,
-    reference_store: Arc<ReferenceStore>,
+    reference_handle: crate::actor::ReferenceHandle,
 }
 
 #[tool_router]
@@ -156,10 +154,10 @@ impl DialecticServer {
 
         // Connect to the global message bus daemon (started by VSCode extension or other clients)
 
-        // Create shared reference store
-        let reference_store = Arc::new(ReferenceStore::new());
+        // Create shared reference handle for both IPC and MCP tools
+        let reference_handle = crate::actor::ReferenceHandle::new();
 
-        let mut ipc = IPCCommunicator::new(shell_pid, reference_store.clone()).await?;
+        let mut ipc = IPCCommunicator::new(shell_pid, reference_handle.clone()).await?;
 
         // Initialize IPC connection to message bus daemon (not directly to VSCode)
         ipc.initialize().await?;
@@ -177,7 +175,7 @@ impl DialecticServer {
             ipc: ipc.clone(),
             interpreter,
             tool_router: Self::tool_router(),
-            reference_store,
+            reference_handle,
         })
     }
 
@@ -189,8 +187,8 @@ impl DialecticServer {
     /// Creates a new DialecticServer in test mode
     /// In test mode, IPC operations are mocked and don't require a VSCode connection
     pub fn new_test() -> Self {
-        let reference_store = Arc::new(ReferenceStore::new());
-        let ipc = IPCCommunicator::new_test(reference_store.clone());
+        let reference_handle = crate::actor::ReferenceHandle::new();
+        let ipc = IPCCommunicator::new_test(reference_handle.clone());
         info!("DialecticServer initialized in test mode");
 
         // Initialize Dialect interpreter with IDE functions for test mode
@@ -201,7 +199,7 @@ impl DialecticServer {
             ipc,
             interpreter,
             tool_router: Self::tool_router(),
-            reference_store,
+            reference_handle,
         }
     }
 
@@ -470,41 +468,28 @@ impl DialecticServer {
             )
             .await;
 
-        // First, try to get from reference store (existing behavior)
-        match self.reference_store.get_json(&params.id).await {
-            Ok(Some(context)) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Info,
-                        format!("Reference {} expanded successfully", params.id),
-                    )
-                    .await;
+        // First, try to get from reference actor
+        if let Some(context) = self.reference_handle.get_reference(&params.id).await {
+            self.ipc
+                .send_log(
+                    LogLevel::Info,
+                    format!("Reference {} expanded successfully", params.id),
+                )
+                .await;
 
-                return Ok(CallToolResult::success(vec![Content::text(
-                    serde_json::to_string_pretty(&context).map_err(|e| {
-                        McpError::internal_error(
-                            "Failed to serialize reference context",
-                            Some(serde_json::json!({
-                                "error": e.to_string()
-                            })),
-                        )
-                    })?,
-                )]));
-            }
-            Ok(None) => {
-                // Not found in reference store, try guidance files
-            }
-            Err(e) => {
-                return Err(McpError::internal_error(
-                    "Failed to query reference store",
-                    Some(serde_json::json!({
-                        "error": e.to_string()
-                    })),
-                ));
-            }
+            return Ok(CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&context).map_err(|e| {
+                    McpError::internal_error(
+                        "Failed to serialize reference context",
+                        Some(serde_json::json!({
+                            "error": e.to_string()
+                        })),
+                    )
+                })?,
+            )]));
         }
 
-        // Try to load as guidance file
+        // Not found in reference actor, try guidance files
         if let Some(file) = GuidanceFiles::get(&params.id) {
             let content = String::from_utf8_lossy(&file.data);
 

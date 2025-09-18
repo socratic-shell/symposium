@@ -9,7 +9,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use uuid;
 
@@ -209,7 +208,7 @@ impl DispatchHandle {
         client_rx: mpsc::Receiver<IPCMessage>, 
         client_tx: mpsc::Sender<IPCMessage>, 
         shell_pid: u32,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
+        reference_handle: crate::actor::ReferenceHandle,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(32);
 
@@ -218,9 +217,6 @@ impl DispatchHandle {
 
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
-
-        // Create Reference actor for storing context data
-        let reference_handle = crate::actor::ReferenceHandle::new(reference_store);
 
         let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle), Some(reference_handle));
         actor.spawn();

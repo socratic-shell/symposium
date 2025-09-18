@@ -9,7 +9,6 @@ use crate::types::{
 use anyhow::Context;
 
 use serde_json;
-use std::sync::Arc;
 use thiserror::Error;
 use tracing::{debug, error, info};
 use uuid::Uuid;
@@ -121,7 +120,7 @@ pub struct IPCCommunicator {
 impl IPCCommunicator {
     pub async fn new(
         shell_pid: u32,
-        _reference_store: Arc<crate::reference_store::ReferenceStore>,
+        reference_handle: crate::actor::ReferenceHandle,
     ) -> Result<Self> {
         info!("Creating IPC communicator for shell PID {shell_pid}");
 
@@ -134,7 +133,7 @@ impl IPCCommunicator {
             );
 
             // Create dispatch actor with client channels
-            crate::actor::DispatchHandle::new(from_daemon_rx, to_daemon_tx, shell_pid, _reference_store)
+            crate::actor::DispatchHandle::new(from_daemon_rx, to_daemon_tx, shell_pid, reference_handle)
         };
 
         Ok(Self {
@@ -146,7 +145,7 @@ impl IPCCommunicator {
 
     /// Creates a new IPCCommunicator in test mode
     /// In test mode, all IPC operations are mocked and only local logging occurs
-    pub fn new_test(_reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
+    pub fn new_test(_reference_handle: crate::actor::ReferenceHandle) -> Self {
         let mock_fn = Box::new(
             |mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
              _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
@@ -613,14 +612,13 @@ mod test {
         IPCMessage, IPCMessageType, MessageSender, PresentReviewParams, ReviewMode,
     };
     use serde_json;
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_get_selection_test_mode() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let reference_store = Arc::new(crate::reference_store::ReferenceStore::new());
-        let ipc = IPCCommunicator::new_test(reference_store);
+        let reference_handle = crate::actor::ReferenceHandle::new();
+        let ipc = IPCCommunicator::new_test(reference_handle);
 
         // Test get_selection in test mode
         let result = ipc.get_selection().await;

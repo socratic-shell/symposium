@@ -1,7 +1,7 @@
 // Reference actor - handles storage and retrieval of socratic shell references
 
 use serde_json::Value;
-use std::sync::Arc;
+use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error};
 
@@ -21,20 +21,17 @@ pub enum ReferenceMessage {
     },
 }
 
-/// Actor that manages reference storage using the persistent ReferenceStore
+/// Actor that manages reference storage using a local HashMap
 struct ReferenceActor {
     receiver: mpsc::Receiver<ReferenceMessage>,
-    reference_store: Arc<crate::reference_store::ReferenceStore>,
+    storage: HashMap<String, Value>,
 }
 
 impl ReferenceActor {
-    fn new(
-        receiver: mpsc::Receiver<ReferenceMessage>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
-    ) -> Self {
+    fn new(receiver: mpsc::Receiver<ReferenceMessage>) -> Self {
         Self {
             receiver,
-            reference_store,
+            storage: HashMap::new(),
         }
     }
 
@@ -50,27 +47,13 @@ impl ReferenceActor {
         match msg {
             ReferenceMessage::StoreReference { key, value, reply_tx } => {
                 debug!("Storing reference: {}", key);
-                match self.reference_store.store_json_with_id(&key, value).await {
-                    Ok(()) => {
-                        let _ = reply_tx.send(Ok(()));
-                    }
-                    Err(e) => {
-                        error!("Failed to store reference {}: {}", key, e);
-                        let _ = reply_tx.send(Err(e.to_string()));
-                    }
-                }
+                self.storage.insert(key, value);
+                let _ = reply_tx.send(Ok(()));
             }
             ReferenceMessage::GetReference { key, reply_tx } => {
                 debug!("Retrieving reference: {}", key);
-                match self.reference_store.get_json(&key).await {
-                    Ok(value) => {
-                        let _ = reply_tx.send(value);
-                    }
-                    Err(e) => {
-                        error!("Failed to retrieve reference {}: {}", key, e);
-                        let _ = reply_tx.send(None);
-                    }
-                }
+                let value = self.storage.get(&key).cloned();
+                let _ = reply_tx.send(value);
             }
         }
     }
@@ -83,9 +66,9 @@ pub struct ReferenceHandle {
 }
 
 impl ReferenceHandle {
-    pub fn new(reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
+    pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = ReferenceActor::new(receiver, reference_store);
+        let actor = ReferenceActor::new(receiver);
         tokio::spawn(async move { actor.run().await });
 
         Self { sender }
@@ -127,8 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_store_and_retrieve_reference() {
-        let reference_store = Arc::new(crate::reference_store::ReferenceStore::new());
-        let handle = ReferenceHandle::new(reference_store);
+        let handle = ReferenceHandle::new();
         
         let test_data = json!({
             "relativePath": "src/test.rs",
@@ -147,8 +129,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_nonexistent_reference() {
-        let reference_store = Arc::new(crate::reference_store::ReferenceStore::new());
-        let handle = ReferenceHandle::new(reference_store);
+        let handle = ReferenceHandle::new();
         
         let result = handle.get_reference("nonexistent").await;
         assert_eq!(result, None);
