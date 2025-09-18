@@ -128,17 +128,35 @@ impl DispatchHandle {
         self.sender.send(request).await
     }
 
-    /// Send a message and wait for a reply
-    pub async fn send_message_with_reply(&self, message: IPCMessage) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    /// Send a message and wait for a reply with timeout
+    pub async fn send_message_with_reply<R>(&self, message: IPCMessage) -> Result<R, Box<dyn std::error::Error + Send + Sync>>
+    where
+        R: serde::de::DeserializeOwned,
+    {
         let (reply_tx, reply_rx) = oneshot::channel();
+        let message_id = message.id.clone();
         let request = DispatchRequest::SendMessage {
             message,
             reply_tx: Some(reply_tx),
         };
         
         self.sender.send(request).await?;
-        let reply = reply_rx.await?;
-        Ok(reply)
+        
+        // Wait for reply with timeout
+        let reply = tokio::select! {
+            result = reply_rx => {
+                result?
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
+                // Cancel the pending reply on timeout
+                let _ = self.cancel_reply(message_id).await;
+                return Err("Request timed out after 30 seconds".into());
+            }
+        };
+        
+        // Deserialize to the requested type
+        let deserialized = serde_json::from_value(reply)?;
+        Ok(deserialized)
     }
 
     /// Cancel a pending reply
