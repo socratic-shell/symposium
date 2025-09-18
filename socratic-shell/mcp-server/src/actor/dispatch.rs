@@ -155,7 +155,14 @@ impl DispatchHandle {
         };
         
         // Deserialize to the requested type
-        let deserialized = serde_json::from_value(reply)?;
+        let deserialized = serde_json::from_value(reply.clone()).map_err(|e| {
+            format!(
+                "Failed to deserialize response for message {}: {}. Response was: {}",
+                message_id,
+                e,
+                serde_json::to_string(&reply).unwrap_or_else(|_| "<invalid JSON>".to_string())
+            )
+        })?;
         Ok(deserialized)
     }
 
