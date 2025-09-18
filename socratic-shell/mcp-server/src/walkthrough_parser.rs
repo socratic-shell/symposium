@@ -1,7 +1,5 @@
 use anyhow::Result;
-use pulldown_cmark::{CowStr, Event, Parser, Tag, TagEnd, html};
-use quick_xml::Reader;
-use quick_xml::events::Event as XmlEvent;
+use pulldown_cmark::{Event, Parser, Tag, TagEnd, html};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
@@ -385,99 +383,6 @@ impl<T: IpcClient + Clone + 'static> WalkthroughParser<T> {
             resolved_data,
             content,
         })
-    }
-
-    fn parse_xml_element(&self, xml_text: &str) -> Result<XmlElement, anyhow::Error> {
-        let mut reader = Reader::from_str(xml_text);
-        reader.config_mut().trim_text(true);
-
-        let mut buf = Vec::new();
-        let mut element_name = String::new();
-        let mut attributes = HashMap::new();
-        let mut content = String::new();
-
-        loop {
-            match reader.read_event_into(&mut buf)? {
-                XmlEvent::Start(e) => {
-                    element_name = String::from_utf8(e.name().as_ref().to_vec())?;
-
-                    // Parse attributes
-                    for attr in e.attributes() {
-                        let attr = attr?;
-                        let key = String::from_utf8(attr.key.as_ref().to_vec())?;
-                        let value = String::from_utf8(attr.value.to_vec())?;
-                        attributes.insert(key, value);
-                    }
-                }
-                XmlEvent::Text(e) => {
-                    content = std::str::from_utf8(&e)?.to_string();
-                }
-                XmlEvent::End(_) => break,
-                XmlEvent::Empty(e) => {
-                    element_name = String::from_utf8(e.name().as_ref().to_vec())?;
-
-                    // Parse attributes for self-closing tags
-                    for attr in e.attributes() {
-                        let attr = attr?;
-                        let key = String::from_utf8(attr.key.as_ref().to_vec())?;
-                        let value = String::from_utf8(attr.value.to_vec())?;
-                        attributes.insert(key, value);
-                    }
-                    break;
-                }
-                XmlEvent::Eof => break,
-                _ => {}
-            }
-            buf.clear();
-        }
-
-        // Convert to appropriate XmlElement variant
-        match element_name.as_str() {
-            "comment" => Ok(XmlElement::Comment {
-                location: attributes.get("location").unwrap_or(&String::new()).clone(),
-                icon: attributes.get("icon").cloned(),
-                content,
-            }),
-            "gitdiff" => Ok(XmlElement::GitDiff {
-                range: attributes.get("range").unwrap_or(&String::new()).clone(),
-                exclude_unstaged: attributes.contains_key("exclude-unstaged"),
-                exclude_staged: attributes.contains_key("exclude-staged"),
-            }),
-            "action" => Ok(XmlElement::Action {
-                button: attributes.get("button").unwrap_or(&String::new()).clone(),
-                message: content,
-            }),
-            _ => Err(anyhow::anyhow!("Unknown XML element: {}", element_name)),
-        }
-    }
-
-    /// Create final HTML element with resolved data
-    fn create_normalized_xml(&self, resolved: &ResolvedXmlElement) -> String {
-        match resolved.element_type.as_str() {
-            "comment" => self.create_comment_html(resolved),
-            "action" => self.create_action_html(resolved),
-            "gitdiff" => self.create_gitdiff_html(resolved),
-            _ => {
-                // Fallback to original XML format for unknown types
-                let mut attrs = String::new();
-                let resolved_json =
-                    serde_json::to_string(&resolved.resolved_data).unwrap_or_default();
-                attrs.push_str(&format!(" data-resolved='{}'", resolved_json));
-
-                for (key, value) in &resolved.attributes {
-                    attrs.push_str(&format!(" {}=\"{}\"", key, value));
-                }
-
-                if resolved.content.is_empty() {
-                    format!("<{}{} />", resolved.element_type, attrs)
-                } else {
-                    format!(
-                        "<{}{}>{}</{}>",
-                        resolved.element_type, attrs, resolved.content, resolved.element_type
-                    )
-                }
-            }
-        }
     }
 
     /// Generate HTML for comment elements

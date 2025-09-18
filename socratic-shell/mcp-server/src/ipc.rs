@@ -6,7 +6,6 @@
 use crate::types::{
     FindAllReferencesPayload, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType,
     LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload,
-    UserFeedbackPayload,
 };
 use anyhow::Context;
 use futures::FutureExt;

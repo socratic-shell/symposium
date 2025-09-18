@@ -116,15 +116,6 @@ pub struct DialecticServer {
 
 #[tool_router]
 impl DialecticServer {
-    /// Load embedded guidance file content
-    fn load_guidance_file(filename: &str) -> Result<String> {
-        let file = GuidanceFiles::get(filename)
-            .ok_or_else(|| anyhow::anyhow!("Guidance file '{}' not found", filename))?;
-        let content = std::str::from_utf8(file.data.as_ref())
-            .map_err(|e| anyhow::anyhow!("Invalid UTF-8 in guidance file '{}': {}", filename, e))?;
-        Ok(content.to_string())
-    }
-
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
     async fn get_taskspace_context(&self) -> Result<(Option<String>, Option<String>, Option<String>)> {
