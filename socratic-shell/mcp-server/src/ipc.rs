@@ -7,19 +7,11 @@ use crate::types::{
     FindAllReferencesPayload, GetSelectionMessage, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType, LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload
 };
 use anyhow::Context;
-use futures::FutureExt;
 
 use serde_json;
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use thiserror::Error;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::net::UnixStream;
-use tokio::sync::{Mutex, oneshot};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 /// Extract project path and taskspace UUID from current working directory
@@ -107,15 +99,16 @@ pub type Result<T> = std::result::Result<T, IPCError>;
 
 /// Handles IPC communication between MCP server and VSCode extension
 ///
-/// Currently in transition: uses both legacy connection management and new actor system.
-/// Marco/Polo messages use actors, other messages use legacy system during migration.
+/// IPC communication using actor-based dispatch system.
+/// All messages now use the actor system for clean, testable architecture.
 #[derive(Clone)]
 pub struct IPCCommunicator {
-    inner: Arc<Mutex<IPCCommunicatorInner>>,
-    reference_store: Arc<crate::reference_store::ReferenceStore>,
-
-    /// New actor-based dispatch system (for marco/polo messages initially)
+    /// Actor-based dispatch system for all IPC messages
     dispatch_handle: crate::actor::DispatchHandle,
+
+    /// Terminal shell PID for this MCP server instance
+    /// Reported to extension during handshake for smart terminal selection
+    terminal_shell_pid: u32,
 
     /// When true, disables actual IPC communication and uses only local logging.
     /// Used during unit testing to avoid requiring a running VSCode extension.
@@ -123,28 +116,12 @@ pub struct IPCCommunicator {
     test_mode: bool,
 }
 
-struct IPCCommunicatorInner {
-    /// Write half of the Unix socket connection to VSCode extension
-    write_half: Option<Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>>,
 
-    /// Tracks outgoing requests awaiting responses from VSCode extension
-    /// Key: unique message ID (UUID), Value: channel to send response back to caller
-    /// Enables concurrent request/response handling with proper correlation
-    pending_requests: HashMap<String, oneshot::Sender<ResponsePayload>>,
-
-    /// Flag to track if we have an active connection and reader task
-    /// When true, ensure_connection() is a no-op
-    connected: bool,
-
-    /// Terminal shell PID for this MCP server instance
-    /// Reported to extension during handshake for smart terminal selection
-    terminal_shell_pid: u32,
-}
 
 impl IPCCommunicator {
     pub async fn new(
         shell_pid: u32,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
+        _reference_store: Arc<crate::reference_store::ReferenceStore>,
     ) -> Result<Self> {
         info!("Creating IPC communicator for shell PID {shell_pid}");
 
@@ -161,21 +138,15 @@ impl IPCCommunicator {
         };
 
         Ok(Self {
-            inner: Arc::new(Mutex::new(IPCCommunicatorInner {
-                write_half: None,
-                pending_requests: HashMap::new(),
-                connected: false,
-                terminal_shell_pid: shell_pid,
-            })),
-            reference_store,
             dispatch_handle,
+            terminal_shell_pid: shell_pid,
             test_mode: false,
         })
     }
 
     /// Creates a new IPCCommunicator in test mode
     /// In test mode, all IPC operations are mocked and only local logging occurs
-    pub fn new_test(reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
+    pub fn new_test(_reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
         let mock_fn = Box::new(
             |mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
              _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
@@ -187,14 +158,8 @@ impl IPCCommunicator {
         ) as crate::actor::dispatch::MockActorFn;
 
         Self {
-            inner: Arc::new(Mutex::new(IPCCommunicatorInner {
-                write_half: None,
-                pending_requests: HashMap::new(),
-                connected: false,
-                terminal_shell_pid: 0, // Dummy PID for test mode
-            })),
-            reference_store,
             dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn),
+            terminal_shell_pid: 0, // Dummy PID for test mode
             test_mode: true,
         }
     }
@@ -261,14 +226,7 @@ impl IPCCommunicator {
             return Ok(());
         }
 
-        // Use ensure_connection for initial connection (legacy system)
-        IPCCommunicatorInner::ensure_connection(
-            Arc::clone(&self.inner),
-            Arc::clone(&self.reference_store),
-        )
-        .await?;
-
-        info!("Connected to message bus daemon via IPC (legacy + actor systems active)");
+        info!("IPC Communicator initialized with actor system");
         Ok(())
     }
 
@@ -316,13 +274,6 @@ impl IPCCommunicator {
                 message: Some("No selection available (test mode)".to_string()),
             });
         }
-
-        // Ensure connection is established before proceeding
-        IPCCommunicatorInner::ensure_connection(
-            Arc::clone(&self.inner),
-            Arc::clone(&self.reference_store),
-        )
-        .await?;
 
         // Use actor dispatch system for get_selection request/reply
         let get_selection_message = GetSelectionMessage {};
@@ -592,332 +543,14 @@ impl IPCCommunicator {
             return Ok(());
         }
 
-        let shell_pid = {
-            let inner_guard = self.inner.lock().await;
-            inner_guard.terminal_shell_pid
-        };
-
-        self.send_goodbye(shell_pid).await?;
+        self.send_goodbye(self.terminal_shell_pid).await?;
         info!("Sent Goodbye discovery message during shutdown");
         Ok(())
     }
 }
 
-impl IPCCommunicatorInner {
-    /// Ensures connection is established, connecting if necessary
-    /// Idempotent - safe to call multiple times, only connects if not already connected
-    async fn ensure_connection(
-        this: Arc<Mutex<Self>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
-    ) -> Result<()> {
-        let mut inner = this.lock().await;
-        if inner.connected {
-            return Ok(()); // Already connected, nothing to do
-        }
 
-        inner
-            .attempt_connection_with_backoff(&this, reference_store)
-            .await
-    }
-
-    /// Clears dead connection state and attempts fresh reconnection
-    /// Called by reader task as "parting gift" when connection dies
-    async fn clear_connection_and_reconnect(
-        this: Arc<Mutex<Self>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
-    ) {
-        info!("Clearing dead connection state and attempting reconnection");
-
-        let mut inner = this.lock().await;
-
-        // Clean up dead connection state
-        inner.connected = false;
-        inner.write_half = None;
-
-        // Clean up orphaned pending requests to fix memory leak
-        let orphaned_count = inner.pending_requests.len();
-        if orphaned_count > 0 {
-            warn!("Cleaning up {} orphaned pending requests", orphaned_count);
-            inner.pending_requests.clear();
-        }
-
-        // Attempt fresh connection
-        match inner
-            .attempt_connection_with_backoff(&this, reference_store)
-            .await
-        {
-            Ok(()) => {
-                info!("Reader task successfully reconnected");
-            }
-            Err(e) => {
-                error!("Reader task failed to reconnect: {}", e);
-                info!("Next MCP operation will retry connection");
-            }
-        }
-    }
-
-    /// Attempts connection with exponential backoff to handle extension restart timing
-    ///
-    /// Runs while holding the lock to avoid races where multiple concurrent attempts
-    /// try to re-establish the connection. This ensures only one connection attempt
-    /// happens at a time, preventing duplicate reader tasks or connection state corruption.
-    async fn attempt_connection_with_backoff(
-        &mut self,
-        this: &Arc<Mutex<Self>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
-    ) -> Result<()> {
-        // Precondition: we should only be called when disconnected
-        assert!(
-            !self.connected,
-            "attempt_connection_with_backoff called while already connected"
-        );
-        assert!(
-            self.write_half.is_none(),
-            "attempt_connection_with_backoff called with existing write_half"
-        );
-
-        const MAX_RETRIES: u32 = 5;
-        const BASE_DELAY_MS: u64 = 100;
-
-        let socket_path =
-            crate::constants::daemon_socket_path(crate::constants::DAEMON_SOCKET_PREFIX);
-        info!(
-            "Attempting connection to message bus daemon: {}",
-            socket_path
-        );
-
-        for attempt in 1..=MAX_RETRIES {
-            match UnixStream::connect(&socket_path).await {
-                Ok(stream) => {
-                    info!("Successfully connected on attempt {}", attempt);
-
-                    // Split the stream into read and write halves
-                    let (read_half, write_half) = stream.into_split();
-                    let write_half = Arc::new(Mutex::new(write_half));
-
-                    // Update connection state (we already hold the lock)
-                    self.write_half = Some(Arc::clone(&write_half));
-                    self.connected = true;
-
-                    // Spawn new reader task with cloned Arc
-                    let inner_clone = Arc::clone(this);
-                    let reference_store_clone = Arc::clone(&reference_store);
-                    tokio::spawn(async move {
-                        IPCCommunicator::response_reader_task(
-                            read_half,
-                            inner_clone,
-                            reference_store_clone,
-                        )
-                        .await;
-                    });
-
-                    return Ok(());
-                }
-                Err(e) if attempt < MAX_RETRIES => {
-                    let delay = Duration::from_millis(BASE_DELAY_MS * 2_u64.pow(attempt - 1));
-                    warn!(
-                        "Connection attempt {} failed: {}. Retrying in {:?}",
-                        attempt, e, delay
-                    );
-                    tokio::time::sleep(delay).await;
-                }
-                Err(e) => {
-                    error!("All connection attempts failed. Last error: {}", e);
-                    return Err(IPCError::ConnectionFailed {
-                        path: socket_path,
-                        source: e,
-                    }
-                    .into());
-                }
-            }
-        }
-
-        unreachable!("Loop should always return or error")
-    }
-}
-
-impl IPCCommunicator {
-    fn response_reader_task(
-        mut read_half: tokio::net::unix::OwnedReadHalf,
-        inner: Arc<Mutex<IPCCommunicatorInner>>,
-        reference_store: Arc<crate::reference_store::ReferenceStore>,
-    ) -> Pin<Box<dyn Future<Output = ()> + Send>> {
-        async move {
-            info!("Starting IPC response reader task (Unix)");
-
-            let mut reader = BufReader::new(&mut read_half);
-
-            loop {
-                let mut buffer = Vec::new();
-
-                trace!("response_reader_task: About to read from connection");
-
-                // Read a line from the connection
-                let read_result = reader.read_until(b'\n', &mut buffer).await;
-
-                match read_result {
-                    Ok(0) => {
-                        warn!("IPC connection closed by VSCode extension");
-                        break;
-                    }
-                    Ok(_) => {
-                        // Remove the newline delimiter
-                        if buffer.ends_with(&[b'\n']) {
-                            buffer.pop();
-                        }
-
-                        let message_str = match String::from_utf8(buffer) {
-                            Ok(s) => s,
-                            Err(e) => {
-                                error!("Received invalid UTF-8 from VSCode extension: {}", e);
-                                continue;
-                            }
-                        };
-
-                        Self::handle_incoming_message(&inner, &message_str, &reference_store).await;
-                    }
-                    Err(e) => {
-                        error!("Error reading from IPC connection: {}", e);
-                        break;
-                    }
-                }
-            }
-
-            // Reader task's "parting gift" - attempt reconnection before terminating
-            info!("Reader task attempting reconnection as parting gift...");
-
-            // Spawn the reconnection attempt to avoid blocking reader task termination
-            let inner_for_reconnect = Arc::clone(&inner);
-            let reference_store_for_reconnect = Arc::clone(&reference_store);
-            tokio::spawn(IPCCommunicatorInner::clear_connection_and_reconnect(
-                inner_for_reconnect,
-                reference_store_for_reconnect,
-            ));
-
-            info!("IPC response reader task terminated");
-        }
-        .boxed()
-    }
-
-    /// Processes incoming messages from the daemon
-    /// Handles both responses to our requests and incoming messages (like Marco)
-    async fn handle_incoming_message(
-        inner: &Arc<Mutex<IPCCommunicatorInner>>,
-        message_str: &str,
-        reference_store: &Arc<crate::reference_store::ReferenceStore>,
-    ) {
-        debug!(
-            "Received IPC message (PID: {}): {}",
-            std::process::id(),
-            message_str
-        );
-
-        // Parse as unified IPCMessage
-        let message: IPCMessage = match serde_json::from_str(message_str) {
-            Ok(msg) => msg,
-            Err(e) => {
-                error!(
-                    "Failed to parse incoming message: {} - Message: {}",
-                    e, message_str
-                );
-                return;
-            }
-        };
-
-        match message.message_type {
-            IPCMessageType::Response => {
-                // Handle response to our request
-                let response_payload: ResponsePayload =
-                    match serde_json::from_value(message.payload) {
-                        Ok(payload) => payload,
-                        Err(e) => {
-                            error!("Failed to parse response payload: {}", e);
-                            return;
-                        }
-                    };
-
-                let mut inner_guard = inner.lock().await;
-                if let Some(sender) = inner_guard.pending_requests.remove(&message.id) {
-                    if let Err(_) = sender.send(response_payload) {
-                        warn!("Failed to send response to caller - receiver dropped");
-                    }
-                } else {
-                    // Every message (including the ones we send...) gets rebroadcast to everyone,
-                    // so this is (hopefully) to some other MCP server. Just ignore it.
-                    debug!(
-                        "Received response for unknown request ID: {} (PID: {})",
-                        message.id,
-                        std::process::id()
-                    );
-                }
-            }
-            IPCMessageType::Marco => {
-                info!("Received Marco discovery message, responding with Polo");
-
-                // Get shell PID from inner state
-                let shell_pid = {
-                    let inner_guard = inner.lock().await;
-                    inner_guard.terminal_shell_pid
-                };
-
-                // Create a temporary IPCCommunicator to send Polo response
-                let mock_fn = Box::new(
-                    |mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
-                     _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
-                        Box::pin(async move {
-                            // Minimal mock for legacy polo response
-                        })
-                            as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
-                    },
-                ) as crate::actor::dispatch::MockActorFn;
-
-                let temp_communicator = IPCCommunicator {
-                    inner: Arc::clone(inner),
-                    reference_store: Arc::clone(reference_store),
-                    dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(
-                        mock_fn,
-                    ),
-                    test_mode: false,
-                };
-
-                if let Err(e) = temp_communicator.send_polo(shell_pid).await {
-                    error!("Failed to send Polo response to Marco: {}", e);
-                }
-            }
-            IPCMessageType::StoreReference => {
-                info!("Received store reference message");
-
-                // Deserialize payload into StoreReferencePayload struct
-                let payload: crate::types::StoreReferencePayload =
-                    match serde_json::from_value(message.payload) {
-                        Ok(payload) => payload,
-                        Err(e) => {
-                            error!("Failed to deserialize store_reference payload: {}", e);
-                            return;
-                        }
-                    };
-
-                // Store the arbitrary JSON value in the reference store
-                match reference_store
-                    .store_json_with_id(&payload.key, payload.value)
-                    .await
-                {
-                    Ok(()) => {
-                        info!("Successfully stored reference {}", payload.key);
-                    }
-                    Err(e) => {
-                        error!("Failed to store reference {}: {}", payload.key, e);
-                    }
-                }
-            }
-            _ => {
-                // Every message (including the ones we send...) gets rebroadcast to everyone,
-                // so we can just ignore anything else.
-            }
-        }
-    }
-}
-
+// Implementation of IpcClient trait for IDE operations
 // Implementation of IpcClient trait for IDE operations
 impl crate::ide::IpcClient for IPCCommunicator {
     async fn resolve_symbol_by_name(
