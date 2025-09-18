@@ -87,30 +87,41 @@ The refactored system will have clean separation of concerns with focused actors
 4. ~~Ensure all existing tests pass~~ **COMPLETED**
 
 ## Phase 4: Trait-Based Messaging and Specialized Actors ✅ COMPLETED
-1. ~~Implement `DispatchMessage` traits for Marco/Polo message types~~ **COMPLETED**
+1. ~~Implement `IpcPayload` trait for type-safe message dispatch~~ **COMPLETED**
 2. ~~Create dedicated `MarcoPoloActor` for discovery protocol~~ **COMPLETED**
 3. ~~Add message routing in `DispatchActor` based on `IPCMessageType`~~ **COMPLETED**
 4. ~~Migrate Marco/Polo messages to use `.send<M>()` pattern~~ **COMPLETED**
-5. **NEXT**: Migrate other message types to specialized actors
 
-## Phase 5: Complete Migration (Future)
-1. Create specialized actors for other message types (logs, taskspace, etc.)
-2. Migrate remaining IPCCommunicator methods to use actor system
-3. Remove legacy connection management code
+## Phase 5: Complete Outbound Message Migration ✅ COMPLETED
+1. ~~Migrate all fire-and-forget messages to actor dispatch system~~ **COMPLETED**
+   - ~~Discovery: Marco, Polo, Goodbye~~ **COMPLETED**
+   - ~~Logging: Log, LogProgress~~ **COMPLETED**
+   - ~~Taskspace: SpawnTaskspace, SignalUser, DeleteTaskspace~~ **COMPLETED**
+   - ~~Presentation: PresentWalkthrough (with acknowledgment)~~ **COMPLETED**
+2. ~~Eliminate duplicate message structs, reuse existing payload structs~~ **COMPLETED**
+3. ~~Rename `DispatchMessage` to `IpcPayload` and move to types.rs~~ **COMPLETED**
+
+## Phase 6: Request/Reply Message Migration 🚧 NEXT
+1. **NEXT**: Migrate `get_selection()` to prove request/reply pattern with real data
+2. Migrate `get_taskspace_state()` and `update_taskspace()` 
+3. Validate bidirectional actor communication with typed responses
+
+## Phase 7: Legacy System Removal (Future)
+1. Remove `IPCCommunicatorInner` struct and manual connection management
+2. Remove `send_message_with_reply()` and `send_message_without_reply()` methods
+3. Remove manual pending request tracking
 4. Add comprehensive testing for actor system
 
-## Phase 6: Server Actor (Future)
-1. Extract server-side connection handling if needed
-2. Handle incoming connections and message parsing
-
 ## Current Status
-- **5+ actors implemented**: DispatchActor, ClientActor, StdioActor, MarcoPoloActor + others
-- **Actor trait**: Standardized spawn pattern across all actors
-- **Trait-based messaging**: Type-safe `DispatchMessage` system with automatic reply handling
-- **Message routing**: DispatchActor routes messages to specialized actors
-- **Hybrid system**: Legacy + actor systems running side-by-side safely
-- **Proven integration**: Marco/Polo messages successfully migrated to actors
-- **CLI + MCP integration**: Actors proven in both CLI and MCP server usage
+- **✅ ALL OUTBOUND MESSAGES MIGRATED**: 9+ message types using actor dispatch
+- **✅ Specialized actors**: MarcoPoloActor for inbound message handling
+- **✅ Type-safe messaging**: `IpcPayload` trait with compile-time validation
+- **✅ Clean architecture**: No duplicate structs, reusing existing payloads
+- **✅ Hybrid system**: Legacy + actor systems running side-by-side safely
+- **✅ Proven integration**: Both CLI and MCP server modes using actors
+- **🚧 Request/reply pattern**: Ready to implement for bidirectional communication
+
+**Major milestone achieved**: Complete outbound message migration to actor system!
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
