@@ -199,6 +199,12 @@ impl IPCCommunicator {
     /// Creates a new IPCCommunicator in test mode
     /// In test mode, all IPC operations are mocked and only local logging occurs
     pub fn new_test(reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
+        let mock_fn = Box::new(|mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+            Box::pin(async move {
+                // Minimal mock for test constructor
+            }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+        }) as crate::actor::dispatch::MockActorFn;
+        
         Self {
             inner: Arc::new(Mutex::new(IPCCommunicatorInner {
                 write_half: None,
@@ -207,7 +213,7 @@ impl IPCCommunicator {
                 terminal_shell_pid: 0, // Dummy PID for test mode
             })),
             reference_store,
-            dispatch_handle: None, // No actors in test mode for now
+            dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn),
             test_mode: true,
         }
     }
@@ -256,7 +262,7 @@ impl IPCCommunicator {
                 }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
             }) as crate::actor::dispatch::MockActorFn;
             
-            self.dispatch_handle = Some(crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn));
+            self.dispatch_handle = crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn);
             return Ok(());
         }
 
@@ -1080,10 +1086,16 @@ impl IPCCommunicator {
                 };
 
                 // Create a temporary IPCCommunicator to send Polo response
+                let mock_fn = Box::new(|mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+                    Box::pin(async move {
+                        // Minimal mock for legacy polo response
+                    }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+                }) as crate::actor::dispatch::MockActorFn;
+                
                 let temp_communicator = IPCCommunicator {
                     inner: Arc::clone(inner),
                     reference_store: Arc::clone(reference_store),
-                    dispatch_handle: None, // No actors needed for legacy polo response
+                    dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn),
                     test_mode: false,
                 };
 
