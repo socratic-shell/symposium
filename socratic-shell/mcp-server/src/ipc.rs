@@ -389,23 +389,6 @@ impl IPCCommunicator {
         }
     }
 
-    /// Send Marco discovery message. In normal workflow,
-    /// this is actually sent by the *extension* to broadcast
-    /// "who's out there?" -- but we include it for testing purposes.
-    pub async fn send_marco(&self) -> Result<()> {
-        if self.test_mode {
-            info!("Marco discovery message sent (test mode)");
-            return Ok(());
-        }
-
-        // Use new actor-based dispatch system
-        let marco_message = crate::types::MarcoMessage {};
-        self.dispatch_handle.send(marco_message).await
-            .map_err(|e| IPCError::SendError(format!("Failed to send Marco via actors: {}", e)))?;
-        info!("Marco discovery message sent via actor system");
-        Ok(())
-    }
-
     /// Send Polo discovery message (MCP server announces presence with shell PID)
     pub async fn send_polo(&self, terminal_shell_pid: u32) -> Result<()> {
         if self.test_mode {
