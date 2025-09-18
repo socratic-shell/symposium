@@ -366,29 +366,11 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let polo_message = crate::types::PoloMessage { terminal_shell_pid };
-            dispatch_handle.send(polo_message).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send Polo via actors: {}", e)))?;
-            info!("Polo discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy Polo sending");
-        let payload = PoloPayload {};
-        let message = IPCMessage {
-            message_type: IPCMessageType::Polo,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(Some(terminal_shell_pid)),
-            payload: serde_json::to_value(payload)?,
-        };
-
-        debug!(
-            "Sending Polo discovery message with shell PID: {}",
-            terminal_shell_pid
-        );
-        self.send_message_without_reply(message).await
+        let polo_message = crate::types::PoloMessage { terminal_shell_pid };
+        self.dispatch_handle.send(polo_message).await
+            .map_err(|e| IPCError::SendError(format!("Failed to send Polo via actors: {}", e)))?;
+        info!("Polo discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+        Ok(())
     }
 
     /// Send Goodbye discovery message (MCP server announces departure with shell PID)
