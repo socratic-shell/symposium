@@ -2,7 +2,7 @@
 
 > What are you proposing to change?
 
-Extend Socratic Shell with a new `get_rust_sources` MCP tool that will direct agents to the sources from Rust crates and help to find examples of code that uses particular APIs.
+Extend Socratic Shell with a new `get_rust_crate_source` MCP tool that will direct agents to the sources from Rust crates and help to find examples of code that uses particular APIs.
 
 # Status quo
 
@@ -23,7 +23,7 @@ Our MCP server will leverage those sources.
 
 > What are you proposing to improve the situation?
 
-Integrate Rust crate source exploration capabilities directly into the Socratic Shell MCP server through a unified `get_rust_sources` tool that:
+Integrate Rust crate source exploration capabilities directly into the Socratic Shell MCP server through a unified `get_rust_crate_source` tool that:
 
 - **Extracts crate sources** to a local cache directory for exploration
 - **Matches versions** with the current Rust crate `Cargo.toml`, if the crate is in use; otherwise gets the most recent version
@@ -39,17 +39,17 @@ This eliminates the need for separate MCP servers and provides seamless integrat
 
 > How will things will play out once this feature exists?
 
-When developers ask the agent to work with a crate that they do not know, they will invoke the `get_rust_sources` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and provide accurate usage examples. Developers working in Socratic Shell will have seamless access to Rust crate exploration:
+When developers ask the agent to work with a crate that they do not know, they will invoke the `get_rust_crate_source` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and provide accurate usage examples. Developers working in Socratic Shell will have seamless access to Rust crate exploration:
 
-- **Unified Interface**: Single `get_rust_sources` tool handles both extraction and searching
+- **Unified Interface**: Single `get_rust_crate_source` tool handles both extraction and searching
 - **IDE Integration**: Results appear directly in the IDE with proper formatting and links
 - **Intelligent Responses**: Tool returns only relevant fields (search results only when pattern provided)
 - **Cached Performance**: Extracted crates are cached to avoid redundant downloads
 - **Rich Context**: Search results include surrounding code lines for better understanding
 
 Example workflows:
-- `get_rust_sources(crate_name: "tokio")` → extracts and returns path info
-- `get_rust_sources(crate_name: "tokio", pattern: "spawn")` → extracts, searches, and returns matches
+- `get_rust_crate_source(crate_name: "tokio")` → extracts and returns path info
+- `get_rust_crate_source(crate_name: "tokio", pattern: "spawn")` → extracts, searches, and returns matches
 
 # Implementation details and plan
 
@@ -59,7 +59,7 @@ Example workflows:
 
 ### Tool parameters
 
-The `get_rust_sources` tool accepts the following parameters:
+The `get_rust_crate_source` tool accepts the following parameters:
 
 ```json
 {
@@ -123,7 +123,7 @@ The tool accepts an optional `version` parameter as a semver range (using the sa
 ### Phase 1: Core Integration ✅ (Completed)
 1. Copy `eg` library source into `socratic-shell/mcp-server/src/eg/`
 2. Add required dependencies to Cargo.toml
-3. Implement unified `get_rust_sources` tool with conditional response fields
+3. Implement unified `get_rust_crate_source` tool with conditional response fields
 4. Fix import paths and module structure
 
 ### Phase 2: Testing and Documentation

@@ -91,9 +91,9 @@ struct UpdateTaskspaceParams {
 }
 // ANCHOR_END: update_taskspace_params
 
-/// Parameters for the get_rust_sources tool
+/// Parameters for the get_rust_crate_source tool
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
-struct GetRustSourcesParams {
+struct GetRustCrateSourceParams {
     /// Name of the crate to search
     crate_name: String,
     /// Optional semver range (e.g., "1.0", "^1.2", "~1.2.3")
@@ -837,16 +837,16 @@ impl DialecticServer {
         }
     }
 
-    /// Get Rust crate sources with optional pattern search
-    #[tool(description = "Get Rust crate sources with optional pattern search. Always returns the source path, and optionally performs pattern matching if a search pattern is provided.")]
-    async fn get_rust_sources(
+    /// Get Rust crate source with optional pattern search
+    #[tool(description = "Get Rust crate source with optional pattern search. Always returns the source path, and optionally performs pattern matching if a search pattern is provided.")]
+    async fn get_rust_crate_source(
         &self,
-        Parameters(GetRustSourcesParams { crate_name, version, pattern }): Parameters<GetRustSourcesParams>,
+        Parameters(GetRustCrateSourceParams { crate_name, version, pattern }): Parameters<GetRustCrateSourceParams>,
     ) -> Result<CallToolResult, McpError> {
         self.ipc
             .send_log(
                 LogLevel::Debug,
-                format!("Getting Rust sources for crate '{}' version: {:?} pattern: {:?}", crate_name, version, pattern),
+                format!("Getting Rust crate source for '{}' version: {:?} pattern: {:?}", crate_name, version, pattern),
             )
             .await;
 
@@ -919,7 +919,7 @@ impl DialecticServer {
                 Ok(CallToolResult::success(vec![Content::text(serde_json::to_string_pretty(&response).unwrap())]))
             }
             Err(e) => {
-                let error_msg = format!("Failed to get Rust sources: {}", e);
+                let error_msg = format!("Failed to get Rust crate source: {}", e);
                 Err(McpError::internal_error(
                     error_msg,
                     Some(serde_json::json!({
