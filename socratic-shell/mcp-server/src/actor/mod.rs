@@ -25,7 +25,7 @@ pub mod reference;
 pub mod stdio;
 
 // Re-export handles for easy access
-pub use client::ClientHandle;
+pub use client::spawn_client;
 pub use discovery::DiscoveryHandle;
 pub use dispatch::DispatchHandle;
 pub use reference::ReferenceHandle;

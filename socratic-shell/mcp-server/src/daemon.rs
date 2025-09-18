@@ -326,18 +326,18 @@ async fn run_message_bus_with_shutdown_signal(
 /// Run as client - connects to daemon and bridges stdin/stdout using actors
 /// If auto_start is true and daemon is not running, spawns an independent daemon process
 pub async fn run_client(socket_prefix: &str, auto_start: bool) -> Result<()> {
-    use crate::actor::{ClientHandle, StdioHandle};
+    use crate::actor::{spawn_client, StdioHandle};
 
     info!("🔌 Starting client with actor-based architecture");
 
-    // Create ClientActor - returns handle and receiver for messages FROM daemon
-    let (client_handle, mut from_daemon_rx) = ClientHandle::new(
+    // Create ClientActor - returns channels directly
+    let (to_daemon_tx, mut from_daemon_rx) = spawn_client(
         socket_prefix.to_string(),
         auto_start,
     );
 
     // Create StdioActor - needs sender to send TO daemon, returns sender for messages FROM daemon
-    let (_stdio_handle, to_stdout_tx) = StdioHandle::new(client_handle.into_sender());
+    let (_stdio_handle, to_stdout_tx) = StdioHandle::new(to_daemon_tx);
 
     // Wire messages from daemon to stdio for stdout
     tokio::spawn(async move {
