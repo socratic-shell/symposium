@@ -46,12 +46,6 @@ impl RustCrateSearch {
         Ok(self)
     }
 
-    /// Set number of context lines before/after each match
-    pub fn context_lines(mut self, lines: usize) -> Self {
-        self.context_lines = lines;
-        self
-    }
-
     /// Execute the search
     pub async fn search(self) -> Result<SearchResult> {
         // 1. Resolve version

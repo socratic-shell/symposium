@@ -17,9 +17,6 @@ pub enum EgError {
     /// Could not determine CARGO_HOME directory
     #[error("Could not determine CARGO_HOME directory")]
     CargoHomeNotFound(#[source] std::io::Error),
-    /// Failed to access cargo cache
-    #[error("Cache error: {0}")]
-    CacheError(String),
     /// Failed to download crate from registry
     #[error("Download error: {0}")]
     DownloadError(#[from] reqwest::Error),

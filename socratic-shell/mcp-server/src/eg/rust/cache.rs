@@ -1,7 +1,7 @@
 //! Cache management for extracted crates
 
 use crate::eg::{Result, EgError};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Manages access to cargo's cache and our extraction cache
 pub struct CacheManager {
@@ -108,8 +108,4 @@ impl CacheManager {
         Ok(None)
     }
 
-    /// Get the extraction cache directory
-    pub fn extraction_cache_dir(&self) -> &Path {
-        &self.extraction_cache_dir
-    }
 }
