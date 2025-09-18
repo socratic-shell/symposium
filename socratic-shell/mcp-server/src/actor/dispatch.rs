@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
+use crate::actor::Actor;
 use crate::types::IPCMessage;
 
 /// Requests from the rest of the system over the IPC dispatch actor.
@@ -45,15 +46,8 @@ pub struct DispatchActor {
     pending_replies: HashMap<String, oneshot::Sender<serde_json::Value>>,
 }
 
-impl DispatchActor {
-    pub fn new(request_rx: mpsc::Receiver<DispatchRequest>) -> Self {
-        Self {
-            request_rx,
-            pending_replies: HashMap::new(),
-        }
-    }
-
-    pub async fn run(mut self) {
+impl Actor for DispatchActor {
+    async fn run(mut self) {
         // The logic here is
         //
         // 10. If not connected to the daemon, connect. I would kind of like it if
@@ -85,6 +79,15 @@ impl DispatchActor {
             self.handle_request(request).await;
         }
     }
+}
+
+impl DispatchActor {
+    pub fn new(request_rx: mpsc::Receiver<DispatchRequest>) -> Self {
+        Self {
+            request_rx,
+            pending_replies: HashMap::new(),
+        }
+    }
 
     async fn handle_request(&mut self, request: DispatchRequest) {
         match request {
@@ -111,7 +114,7 @@ impl DispatchHandle {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(32);
         let actor = DispatchActor::new(receiver);
-        tokio::spawn(async move { actor.run().await });
+        actor.spawn();
 
         Self { sender }
     }

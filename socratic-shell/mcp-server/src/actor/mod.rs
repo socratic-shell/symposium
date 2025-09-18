@@ -8,12 +8,9 @@
 use tokio::task::JoinHandle;
 
 /// Trait for actors that can be spawned as Tokio tasks
-pub trait Actor {
+pub trait Actor: Sized + Send + 'static {
     /// Spawn the actor as a background task
-    fn spawn(self) -> JoinHandle<()>
-    where
-        Self: Sized + Send + 'static,
-    {
+    fn spawn(self) -> JoinHandle<()> {
         tokio::spawn(async move { self.run().await })
     }
 
@@ -22,14 +19,14 @@ pub trait Actor {
 }
 
 pub mod client;
-pub mod dispatch;
 pub mod discovery;
+pub mod dispatch;
 pub mod reference;
 pub mod stdio;
 
 // Re-export handles for easy access
 pub use client::ClientHandle;
-pub use dispatch::DispatchHandle;
 pub use discovery::DiscoveryHandle;
+pub use dispatch::DispatchHandle;
 pub use reference::ReferenceHandle;
 pub use stdio::StdioHandle;
