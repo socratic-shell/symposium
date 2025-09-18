@@ -703,10 +703,35 @@ impl IPCCommunicator {
     /// - If app unavailable → daemon returns empty/error response
     /// - Caller (get_taskspace_context) handles errors gracefully
     pub async fn get_taskspace_state(&self) -> Result<crate::types::TaskspaceStateResponse> {
-        use crate::types::{IPCMessageType, TaskspaceStateRequest, TaskspaceStateResponse};
+        if self.test_mode {
+            // Return mock data for test mode
+            return Ok(crate::types::TaskspaceStateResponse {
+                name: Some("Test Taskspace".to_string()),
+                description: Some("Test taskspace description".to_string()),
+                initial_prompt: Some("Test initial prompt".to_string()),
+            });
+        }
 
         // Extract taskspace UUID from directory structure (task-UUID/.symposium pattern)
         let (project_path, taskspace_uuid) = extract_project_info()?;
+
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let request = crate::types::TaskspaceStateRequest {
+                project_path,
+                taskspace_uuid,
+                name: None,
+                description: None,
+            };
+            let response: crate::types::TaskspaceStateResponse = dispatch_handle.send(request).await
+                .map_err(|e| IPCError::SendError(format!("Failed to get taskspace state via actors: {}", e)))?;
+            return Ok(response);
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy get_taskspace_state");
+        
+        use crate::types::{IPCMessageType, TaskspaceStateRequest, TaskspaceStateResponse};
 
         // Get our shell PID for message routing
         let shell_pid = {

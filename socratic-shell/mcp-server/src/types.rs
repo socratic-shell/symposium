@@ -454,11 +454,29 @@ pub struct TaskspaceStateRequest {
     pub description: Option<String>,
 }
 
+impl IpcPayload for TaskspaceStateRequest {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = TaskspaceStateResponse;
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::TaskspaceState
+    }
+}
+
 /// Payload for get_taskspace_state messages
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GetTaskspaceStatePayload {
     pub project_path: String,
     pub taskspace_uuid: String,
+}
+
+impl IpcPayload for GetTaskspaceStatePayload {
+    const EXPECTS_REPLY: bool = true;
+    type Reply = TaskspaceStateResponse;
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::TaskspaceState
+    }
 }
 
 /// Response for get_taskspace_state messages
