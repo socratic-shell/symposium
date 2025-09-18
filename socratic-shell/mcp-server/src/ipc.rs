@@ -19,8 +19,6 @@ use std::time::Duration;
 use thiserror::Error;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
-use tokio::sync::mpsc::{self, Receiver};
-use tokio::sync::oneshot::Sender;
 use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
@@ -136,7 +134,7 @@ pub type Result<T> = std::result::Result<T, IPCError>;
 pub struct IPCCommunicator {
     inner: Arc<Mutex<IPCCommunicatorInner>>,
     reference_store: Arc<crate::reference_store::ReferenceStore>,
-    
+
     /// New actor-based dispatch system (for marco/polo messages initially)
     dispatch_handle: crate::actor::DispatchHandle,
 
@@ -176,7 +174,7 @@ impl IPCCommunicator {
             // Create client connection to daemon
             let (to_daemon_tx, from_daemon_rx) = crate::actor::spawn_client(
                 "dialectic".to_string(), // socket prefix
-                true, // auto_start daemon
+                true,                    // auto_start daemon
             );
 
             // Create dispatch actor with client channels
@@ -199,12 +197,16 @@ impl IPCCommunicator {
     /// Creates a new IPCCommunicator in test mode
     /// In test mode, all IPC operations are mocked and only local logging occurs
     pub fn new_test(reference_store: Arc<crate::reference_store::ReferenceStore>) -> Self {
-        let mock_fn = Box::new(|mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
-            Box::pin(async move {
-                // Minimal mock for test constructor
-            }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
-        }) as crate::actor::dispatch::MockActorFn;
-        
+        let mock_fn = Box::new(
+            |mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
+             _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+                Box::pin(async move {
+                    // Minimal mock for test constructor
+                })
+                    as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+            },
+        ) as crate::actor::dispatch::MockActorFn;
+
         Self {
             inner: Arc::new(Mutex::new(IPCCommunicatorInner {
                 write_half: None,
@@ -221,47 +223,61 @@ impl IPCCommunicator {
     pub async fn initialize(&mut self) -> Result<()> {
         if self.test_mode {
             info!("IPC Communicator initialized (test mode) - creating mock actor");
-            
+
             // Create mock actor that responds to common messages
-            let mock_fn = Box::new(|mut rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
-                Box::pin(async move {
-                    while let Some(message) = rx.recv().await {
-                        use crate::types::IPCMessageType;
-                        
-                        // Generate mock responses based on message type
-                        match message.message_type {
-                            IPCMessageType::TaskspaceState => {
-                                let response = crate::types::IPCMessage {
-                                    message_type: crate::types::IPCMessageType::Response,
-                                    id: uuid::Uuid::new_v4().to_string(),
-                                    sender: message.sender.clone(),
-                                    payload: serde_json::to_value(crate::types::TaskspaceStateResponse {
-                                        name: Some("Mock Taskspace".to_string()),
-                                        description: Some("Mock taskspace description".to_string()),
-                                        initial_prompt: Some("Mock initial prompt".to_string()),
-                                    }).unwrap(),
-                                };
-                                let _ = tx.send(response).await;
-                            }
-                            IPCMessageType::PresentWalkthrough => {
-                                // Send acknowledgment for walkthrough
-                                let response = crate::types::IPCMessage {
-                                    message_type: crate::types::IPCMessageType::Response,
-                                    id: uuid::Uuid::new_v4().to_string(),
-                                    sender: message.sender.clone(),
-                                    payload: serde_json::to_value(()).unwrap(),
-                                };
-                                let _ = tx.send(response).await;
-                            }
-                            _ => {
-                                // For fire-and-forget messages, just log
-                                tracing::info!("Mock actor received message: {:?}", message.message_type);
+            let mock_fn = Box::new(
+                |mut rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
+                 tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+                    Box::pin(async move {
+                        while let Some(message) = rx.recv().await {
+                            use crate::types::IPCMessageType;
+
+                            // Generate mock responses based on message type
+                            match message.message_type {
+                                IPCMessageType::TaskspaceState => {
+                                    let response = crate::types::IPCMessage {
+                                        message_type: crate::types::IPCMessageType::Response,
+                                        id: uuid::Uuid::new_v4().to_string(),
+                                        sender: message.sender.clone(),
+                                        payload: serde_json::to_value(
+                                            crate::types::TaskspaceStateResponse {
+                                                name: Some("Mock Taskspace".to_string()),
+                                                description: Some(
+                                                    "Mock taskspace description".to_string(),
+                                                ),
+                                                initial_prompt: Some(
+                                                    "Mock initial prompt".to_string(),
+                                                ),
+                                            },
+                                        )
+                                        .unwrap(),
+                                    };
+                                    let _ = tx.send(response).await;
+                                }
+                                IPCMessageType::PresentWalkthrough => {
+                                    // Send acknowledgment for walkthrough
+                                    let response = crate::types::IPCMessage {
+                                        message_type: crate::types::IPCMessageType::Response,
+                                        id: uuid::Uuid::new_v4().to_string(),
+                                        sender: message.sender.clone(),
+                                        payload: serde_json::to_value(()).unwrap(),
+                                    };
+                                    let _ = tx.send(response).await;
+                                }
+                                _ => {
+                                    // For fire-and-forget messages, just log
+                                    tracing::info!(
+                                        "Mock actor received message: {:?}",
+                                        message.message_type
+                                    );
+                                }
                             }
                         }
-                    }
-                }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
-            }) as crate::actor::dispatch::MockActorFn;
-            
+                    })
+                        as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+                },
+            ) as crate::actor::dispatch::MockActorFn;
+
             self.dispatch_handle = crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn);
             return Ok(());
         }
@@ -291,8 +307,16 @@ impl IPCCommunicator {
             content: walkthrough.content,
             base_uri: walkthrough.base_uri,
         };
-        let _response: () = self.dispatch_handle.send(walkthrough_message).await
-            .map_err(|e| IPCError::SendError(format!("Failed to send present_walkthrough via actors: {}", e)))?;
+        let _response: () = self
+            .dispatch_handle
+            .send(walkthrough_message)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!(
+                    "Failed to send present_walkthrough via actors: {}",
+                    e
+                ))
+            })?;
         info!("Successfully presented walkthrough to VSCode via actor system");
         Ok(())
     }
@@ -373,9 +397,14 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         let polo_message = crate::types::PoloMessage { terminal_shell_pid };
-        self.dispatch_handle.send(polo_message).await
+        self.dispatch_handle
+            .send(polo_message)
+            .await
             .map_err(|e| IPCError::SendError(format!("Failed to send Polo via actors: {}", e)))?;
-        info!("Polo discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+        info!(
+            "Polo discovery message sent via actor system with shell PID: {}",
+            terminal_shell_pid
+        );
         Ok(())
     }
 
@@ -391,9 +420,16 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         let goodbye_payload = crate::types::GoodbyePayload {};
-        self.dispatch_handle.send(goodbye_payload).await
-            .map_err(|e| IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e)))?;
-        info!("Goodbye discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
+        self.dispatch_handle
+            .send(goodbye_payload)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e))
+            })?;
+        info!(
+            "Goodbye discovery message sent via actor system with shell PID: {}",
+            terminal_shell_pid
+        );
         Ok(())
     }
 
@@ -418,8 +454,12 @@ impl IPCCommunicator {
             task_description,
             initial_prompt,
         };
-        self.dispatch_handle.send(spawn_payload).await
-            .map_err(|e| IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e)))?;
+        self.dispatch_handle
+            .send(spawn_payload)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e))
+            })?;
         Ok(())
     }
 
@@ -430,49 +470,28 @@ impl IPCCommunicator {
         category: crate::types::ProgressCategory,
     ) -> Result<()> {
         if self.test_mode {
-            info!("Log progress called (test mode): {} - {:?}", message, category);
+            info!(
+                "Log progress called (test mode): {} - {:?}",
+                message, category
+            );
             return Ok(());
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let (project_path, taskspace_uuid) = extract_project_info()?;
-            let progress_payload = crate::types::LogProgressPayload {
-                project_path,
-                taskspace_uuid,
-                message,
-                category,
-            };
-            dispatch_handle.send(progress_payload).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send log_progress via actors: {}", e)))?;
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy log_progress sending");
-        
-        use crate::types::{IPCMessageType, LogProgressPayload};
-
         let (project_path, taskspace_uuid) = extract_project_info()?;
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
+        let progress_payload = crate::types::LogProgressPayload {
+            project_path,
+            taskspace_uuid,
+            message,
+            category,
         };
-
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::LogProgress,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(LogProgressPayload {
-                project_path,
-                taskspace_uuid,
-                message,
-                category,
-            })?,
-        };
-
-        self.send_message_without_reply(ipc_message).await
+        self.dispatch_handle
+            .send(progress_payload)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!("Failed to send log_progress via actors: {}", e))
+            })?;
+        return Ok(());
     }
 
     /// Send signal_user message to request user attention
@@ -483,42 +502,19 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let (project_path, taskspace_uuid) = extract_project_info()?;
-            let signal_payload = crate::types::SignalUserPayload {
-                project_path,
-                taskspace_uuid,
-                message,
-            };
-            dispatch_handle.send(signal_payload).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send signal_user via actors: {}", e)))?;
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy signal_user sending");
-        
-        use crate::types::{IPCMessageType, SignalUserPayload};
-
         let (project_path, taskspace_uuid) = extract_project_info()?;
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
+        let signal_payload = crate::types::SignalUserPayload {
+            project_path,
+            taskspace_uuid,
+            message,
         };
-
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::SignalUser,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(SignalUserPayload {
-                project_path,
-                taskspace_uuid,
-                message,
-            })?,
-        };
-
-        self.send_message_without_reply(ipc_message).await
+        self.dispatch_handle
+            .send(signal_payload)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!("Failed to send signal_user via actors: {}", e))
+            })?;
+        return Ok(());
     }
 
     /// Send update_taskspace message to update taskspace metadata
@@ -589,46 +585,17 @@ impl IPCCommunicator {
         let (project_path, taskspace_uuid) = extract_project_info()?;
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let request = crate::types::TaskspaceStateRequest {
-                project_path,
-                taskspace_uuid,
-                name: None,
-                description: None,
-            };
-            let response: crate::types::TaskspaceStateResponse = dispatch_handle.send(request).await
-                .map_err(|e| IPCError::SendError(format!("Failed to get taskspace state via actors: {}", e)))?;
-            return Ok(response);
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy get_taskspace_state");
-        
-        use crate::types::{IPCMessageType, TaskspaceStateRequest, TaskspaceStateResponse};
-
-        // Get our shell PID for message routing
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+        let request = crate::types::TaskspaceStateRequest {
+            project_path,
+            taskspace_uuid,
+            name: None,
+            description: None,
         };
-
-        // Construct IPC message requesting taskspace state
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::TaskspaceState,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(Some(shell_pid)),
-            payload: serde_json::to_value(TaskspaceStateRequest {
-                project_path,
-                taskspace_uuid,
-                name: None,
-                description: None,
-            })?,
-        };
-
-        // Send message and wait for response from daemon/app
-        let taskspace_state: TaskspaceStateResponse =
-            self.send_message_with_reply(ipc_message).await?;
-        Ok(taskspace_state)
+        let response: crate::types::TaskspaceStateResponse =
+            self.dispatch_handle.send(request).await.map_err(|e| {
+                IPCError::SendError(format!("Failed to get taskspace state via actors: {}", e))
+            })?;
+        return Ok(response);
     }
 
     /// Send delete_taskspace message to delete current taskspace
@@ -639,40 +606,18 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let (project_path, taskspace_uuid) = extract_project_info()?;
-            let delete_payload = crate::types::DeleteTaskspacePayload {
-                project_path,
-                taskspace_uuid,
-            };
-            dispatch_handle.send(delete_payload).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send delete_taskspace via actors: {}", e)))?;
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy delete_taskspace sending");
-        
-        use crate::types::{DeleteTaskspacePayload, IPCMessageType};
-
         let (project_path, taskspace_uuid) = extract_project_info()?;
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            inner.terminal_shell_pid
+        let delete_payload = crate::types::DeleteTaskspacePayload {
+            project_path,
+            taskspace_uuid,
         };
-
-        let ipc_message = IPCMessage {
-            message_type: IPCMessageType::DeleteTaskspace,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(Some(shell_pid)),
-            payload: serde_json::to_value(DeleteTaskspacePayload {
-                project_path,
-                taskspace_uuid,
-            })?,
-        };
-
-        self.send_message_without_reply(ipc_message).await
+        self.dispatch_handle
+            .send(delete_payload)
+            .await
+            .map_err(|e| {
+                IPCError::SendError(format!("Failed to send delete_taskspace via actors: {}", e))
+            })?;
+        return Ok(());
     }
 
     /// Gracefully shutdown the IPC communicator, sending Goodbye discovery message
@@ -1057,16 +1002,22 @@ impl IPCCommunicator {
                 };
 
                 // Create a temporary IPCCommunicator to send Polo response
-                let mock_fn = Box::new(|mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>, _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
-                    Box::pin(async move {
-                        // Minimal mock for legacy polo response
-                    }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
-                }) as crate::actor::dispatch::MockActorFn;
-                
+                let mock_fn = Box::new(
+                    |mut _rx: tokio::sync::mpsc::Receiver<crate::types::IPCMessage>,
+                     _tx: tokio::sync::mpsc::Sender<crate::types::IPCMessage>| {
+                        Box::pin(async move {
+                            // Minimal mock for legacy polo response
+                        })
+                            as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
+                    },
+                ) as crate::actor::dispatch::MockActorFn;
+
                 let temp_communicator = IPCCommunicator {
                     inner: Arc::clone(inner),
                     reference_store: Arc::clone(reference_store),
-                    dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn),
+                    dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(
+                        mock_fn,
+                    ),
                     test_mode: false,
                 };
 
@@ -1185,8 +1136,6 @@ impl crate::ide::IpcClient for IPCCommunicator {
         uuid::Uuid::new_v4().to_string()
     }
 }
-
-
 
 #[cfg(test)]
 mod test {
