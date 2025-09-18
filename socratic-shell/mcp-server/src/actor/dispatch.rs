@@ -4,9 +4,11 @@
 //! Extracted from the monolithic IPCCommunicator to provide focused responsibility.
 
 use crate::actor::Actor;
-use crate::types::{IPCMessage, IpcPayload};
-use serde::Deserialize;
+use crate::types::{IPCMessage, IpcPayload, MessageSender, ResponsePayload};
+use anyhow::Context;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::future::Future;
 use std::pin::Pin;
 use tokio::sync::{mpsc, oneshot};
@@ -48,6 +50,9 @@ struct DispatchActor {
 
     /// Outgoing messages to the IPC client.
     client_tx: mpsc::Sender<IPCMessage>,
+
+    /// Identity when sending messages
+    sender: MessageSender,
 
     /// Handle to Marco actor for discovery messages
     marco_handle: Option<crate::actor::MarcoHandle>,
@@ -98,39 +103,7 @@ impl Actor for DispatchActor {
                 // Handle incoming messages from client
                 message = self.client_rx.recv() => {
                     match message {
-                        Some(message) => {
-                            // Try to match against pending replies
-                            if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
-                                // This is a reply to a pending request
-                                // Ignore send errors - the listener may have timed out and closed the channel
-                                let _ = reply_tx.send(message.payload);
-                            } else {
-                                // Unsolicited message - route to appropriate actor
-                                match message.message_type {
-                                    crate::types::IPCMessageType::Marco => {
-                                        if let Some(marco) = &self.marco_handle {
-                                            if let Err(e) = marco.handle_marco(message, self.client_tx.clone()).await {
-                                                tracing::error!("Failed to route Marco message: {}", e);
-                                            }
-                                        } else {
-                                            tracing::debug!("Received Marco message but no Marco actor available");
-                                        }
-                                    }
-                                    crate::types::IPCMessageType::StoreReference => {
-                                        if let Some(reference) = &self.reference_handle {
-                                            if let Err(e) = self.handle_store_reference(message, reference).await {
-                                                tracing::error!("Failed to handle StoreReference message: {}", e);
-                                            }
-                                        } else {
-                                            tracing::debug!("Received StoreReference message but no Reference actor available");
-                                        }
-                                    }
-                                    _ => {
-                                        tracing::debug!("Received unsolicited message: {:?}", message.message_type);
-                                    }
-                                }
-                            }
-                        }
+                        Some(message) => self.handle_incoming_message(message).await,
                         None => {
                             tracing::info!("Client channel closed, shutting down dispatch actor");
                             break;
@@ -155,6 +128,7 @@ impl DispatchActor {
         request_rx: mpsc::Receiver<DispatchRequest>,
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
+        sender: MessageSender,
         marco_handle: Option<crate::actor::MarcoHandle>,
         reference_handle: Option<crate::actor::ReferenceHandle>,
     ) -> Self {
@@ -162,9 +136,45 @@ impl DispatchActor {
             request_rx,
             client_rx,
             client_tx,
+            sender,
             marco_handle,
             reference_handle,
             pending_replies: HashMap::new(),
+        }
+    }
+
+    async fn handle_incoming_message(&mut self, message: IPCMessage) {
+        match message.message_type {
+            crate::types::IPCMessageType::Marco => {
+                if let Some(marco) = &self.marco_handle {
+                    if let Err(e) = marco.handle_marco(message, self.client_tx.clone()).await {
+                        tracing::error!("Failed to route Marco message: {}", e);
+                    }
+                } else {
+                    tracing::debug!("Received Marco message but no Marco actor available");
+                }
+            }
+            crate::types::IPCMessageType::Response => {
+                if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
+                    // This is a reply to a pending request
+                    // Ignore send errors - the listener may have timed out and closed the channel
+                    let _ = reply_tx.send(message.payload);
+                }
+            }
+            crate::types::IPCMessageType::StoreReference => {
+                if let Some(reference) = &self.reference_handle {
+                    if let Err(e) = self.handle_store_reference(message, reference).await {
+                        tracing::error!("Failed to handle StoreReference message: {}", e);
+                    }
+                } else {
+                    tracing::debug!(
+                        "Received StoreReference message but no Reference actor available"
+                    );
+                }
+            }
+            _ => {
+                tracing::debug!("Received unsolicited message: {:?}", message.message_type);
+            }
         }
     }
 
@@ -173,28 +183,56 @@ impl DispatchActor {
         &self,
         message: IPCMessage,
         reference_handle: &crate::actor::ReferenceHandle,
-    ) -> Result<(), String> {
+    ) -> anyhow::Result<()> {
         // Deserialize the StoreReference payload
         let payload: crate::types::StoreReferencePayload = serde_json::from_value(message.payload)
-            .map_err(|e| format!("Failed to deserialize StoreReference payload: {}", e))?;
+            .with_context(|| format!("failed to deserialize StoreReference payload"))?;
 
         // Store the reference using the reference actor
-        reference_handle
+        let result = reference_handle
             .store_reference(payload.key, payload.value)
-            .await
-            .map_err(|e| format!("Failed to store reference: {}", e))?;
+            .await;
 
-        tracing::debug!("Successfully stored reference via reference actor");
-        Ok(())
+        self.respond_to(&message.id, result).await
+    }
+
+    async fn respond_to(
+        &self,
+        incoming_message_id: &String,
+        data: Result<impl Serialize, impl Display>,
+    ) -> anyhow::Result<()> {
+        let payload = match data {
+            Ok(data) => ResponsePayload {
+                success: true,
+                error: None,
+                data: Some(serde_json::to_value(data)?),
+            },
+            Err(err) => ResponsePayload {
+                success: false,
+                error: Some(err.to_string()),
+                data: None,
+            },
+        };
+
+        let reply = IPCMessage {
+            id: incoming_message_id.clone(), // Same ID for correlation
+            message_type: crate::types::IPCMessageType::Response, // Always use Response type for replies
+            payload: serde_json::to_value(payload)?,
+            sender: self.sender.clone(),
+        };
+
+        Ok(self.client_tx.send(reply).await?)
     }
 }
 
 /// Handle for communicating with the dispatch actor
 #[derive(Clone)]
 pub struct DispatchHandle {
-    sender: mpsc::Sender<DispatchRequest>,
-    shell_pid: u32,
-    taskspace_uuid: Option<String>,
+    /// Send messages to the dispatch actor
+    actor_tx: mpsc::Sender<DispatchRequest>,
+
+    /// Identity when sending messages
+    sender: MessageSender,
 }
 
 impl DispatchHandle {
@@ -205,28 +243,34 @@ impl DispatchHandle {
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
     pub fn new(
-        client_rx: mpsc::Receiver<IPCMessage>, 
-        client_tx: mpsc::Sender<IPCMessage>, 
+        client_rx: mpsc::Receiver<IPCMessage>,
+        client_tx: mpsc::Sender<IPCMessage>,
         shell_pid: u32,
         reference_handle: crate::actor::ReferenceHandle,
     ) -> Self {
-        let (sender, receiver) = mpsc::channel(32);
-
-        // Try to extract taskspace UUID from directory structure
-        let taskspace_uuid = crate::ipc::extract_project_info().map(|(_, uuid)| uuid).ok();
+        let (actor_tx, actor_rx) = mpsc::channel(32);
 
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
 
-        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle), Some(reference_handle));
+        let sender = create_sender(shell_pid);
+
+        let actor = DispatchActor::new(
+            actor_rx,
+            client_rx,
+            client_tx,
+            sender.clone(),
+            Some(marco_handle),
+            Some(reference_handle),
+        );
         actor.spawn();
 
-        Self { sender, shell_pid, taskspace_uuid }
+        Self { actor_tx, sender }
     }
 
     /// Spawn a dispatch actor with a mock actor for testing
     pub fn spawn_with_mock(mock_fn: MockActorFn) -> Self {
-        let (sender, receiver) = mpsc::channel(32);
+        let (actor_tx, actor_rx) = mpsc::channel(32);
         let (client_tx, client_rx) = mpsc::channel(32);
         let (mock_tx, mock_rx) = mpsc::channel(32);
 
@@ -236,10 +280,23 @@ impl DispatchHandle {
         // Create Marco actor for discovery messages
         let marco_handle = crate::actor::MarcoHandle::new(0);
 
-        let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle), None);
+        let sender = MessageSender {
+            working_directory: working_directory(),
+            taskspace_uuid: None,
+            shell_pid: None,
+        };
+
+        let actor = DispatchActor::new(
+            actor_rx,
+            mock_rx,
+            client_tx,
+            sender.clone(),
+            Some(marco_handle),
+            None,
+        );
         actor.spawn();
 
-        Self { sender, shell_pid: 0, taskspace_uuid: None }
+        Self { actor_tx, sender }
     }
 
     /// Send a message out into the ether and (optionally) await a response.
@@ -254,7 +311,7 @@ impl DispatchHandle {
             message_type,
             id: id.clone(),
             payload,
-            sender: self.create_sender(),
+            sender: self.sender.clone(),
         };
 
         let (reply_tx, reply_rx) = if M::EXPECTS_REPLY {
@@ -264,7 +321,7 @@ impl DispatchHandle {
             (None, None)
         };
 
-        self.sender
+        self.actor_tx
             .send(DispatchRequest { message, reply_tx })
             .await?;
 
@@ -287,15 +344,23 @@ impl DispatchHandle {
     fn fresh_message_id(&self) -> String {
         uuid::Uuid::new_v4().to_string()
     }
+}
 
-    fn create_sender(&self) -> crate::types::MessageSender {
-        crate::types::MessageSender {
-            working_directory: std::env::current_dir()
-                .unwrap_or_else(|_| std::path::PathBuf::from("/"))
-                .to_string_lossy()
-                .to_string(),
-            taskspace_uuid: self.taskspace_uuid.clone(),
-            shell_pid: Some(self.shell_pid),
-        }
+fn create_sender(shell_pid: u32) -> crate::types::MessageSender {
+    // Try to extract taskspace UUID from directory structure
+    let taskspace_uuid = crate::ipc::extract_project_info()
+        .map(|(_, uuid)| uuid)
+        .ok();
+    crate::types::MessageSender {
+        working_directory: working_directory(),
+        taskspace_uuid,
+        shell_pid: Some(shell_pid),
     }
+}
+
+fn working_directory() -> String {
+    std::env::current_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("/"))
+        .to_string_lossy()
+        .to_string()
 }

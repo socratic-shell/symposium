@@ -7,13 +7,15 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Trait for IPC message payloads that can be dispatched through the actor system
-pub trait IpcPayload: serde::Serialize + serde::de::DeserializeOwned + Clone + Send + 'static {
+pub trait IpcPayload:
+    serde::Serialize + serde::de::DeserializeOwned + Clone + Send + 'static
+{
     /// Whether this message type expects a reply
     const EXPECTS_REPLY: bool;
-    
+
     /// The type of the reply (use () for no meaningful reply)
     type Reply: serde::de::DeserializeOwned + Send + 'static;
-    
+
     /// Get the message type for this payload
     fn message_type(&self) -> IPCMessageType;
 }
@@ -294,7 +296,7 @@ pub struct IPCMessage {
 // ANCHOR_END: ipc_message
 
 /// IPC message types
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum IPCMessageType {
     PresentReview,

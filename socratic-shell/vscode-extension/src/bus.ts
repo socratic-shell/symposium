@@ -142,9 +142,15 @@ export class Bus {
         // Generate fresh UUID for reference
         const referenceId = crypto.randomUUID();
 
-        // Send reference data to MCP server for selected terminal
-        this.daemonClient.sendStoreReferenceToShell(selectedTerminal.shellPID, referenceId, referenceData);
-        this.log(`Reference ${referenceId} sent to shell ${selectedTerminal.shellPID}`);
+        // Send reference data to MCP server for selected terminal and wait for confirmation
+        const success = await this.daemonClient.sendStoreReferenceToShell(selectedTerminal.shellPID, referenceId, referenceData);
+        
+        if (!success) {
+            vscode.window.showErrorMessage(`Failed to store reference ${referenceId} - terminal may not receive context`);
+            return;
+        }
+        
+        this.log(`Reference ${referenceId} successfully stored for shell ${selectedTerminal.shellPID}`);
 
         // Generate <symposium-ref id="..."/> XML (using current format)
         const xmlMessage = `<symposium-ref id="${referenceId}"/>` + (options.includeNewline ? '\n\n' : ' ');

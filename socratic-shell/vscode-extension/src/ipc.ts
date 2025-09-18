@@ -678,35 +678,27 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     /**
-     * Send a reference to the active AI terminal via IPC
+     * Send a reference to the active AI terminal via IPC and wait for confirmation
      */
-    public sendStoreReferenceToShell(shellPid: number, key: string, value: any): void {
-        if (!this.clientProcess || this.clientProcess.stdin?.destroyed) {
-            this.outputChannel.appendLine(`Cannot send store_reference - client not connected`);
-            return;
-        }
-
+    public async sendStoreReferenceToShell(shellPid: number, key: string, value: any): Promise<boolean> {
         const storePayload: StoreReferencePayload = {
             key,
             value
         };
 
-        const storeMessage: IPCMessage = {
-            type: 'store_reference',
-            id: crypto.randomUUID(),
-            sender: {
-                workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
-                shellPid: undefined,
-                taskspaceUuid: getCurrentTaskspaceUuid() || undefined
-            },
-            payload: storePayload
-        };
-
         try {
-            this.clientProcess.stdin?.write(JSON.stringify(storeMessage) + '\n');
-            this.outputChannel.appendLine(`[REFERENCE] Stored reference ${key} for shell ${shellPid}`);
+            const response = await this.sendRequest<any>('store_reference', storePayload);
+            
+            if (response?.success) {
+                this.outputChannel.appendLine(`[REFERENCE] Successfully stored reference ${key} for shell ${shellPid}`);
+                return true;
+            } else {
+                this.outputChannel.appendLine(`[REFERENCE] Failed to store reference ${key}: ${response?.error || 'Unknown error'}`);
+                return false;
+            }
         } catch (error) {
             this.outputChannel.appendLine(`Failed to send store_reference to shell ${shellPid}: ${error}`);
+            return false;
         }
     }
 
