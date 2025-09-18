@@ -2,13 +2,13 @@
 
 > What are you proposing to change?
 
-Extend Socratic Shell with a new `get_rust_sources` MCP tool that will direct LLMs to the sources from Rust crates and help to find examples of code that uses particular APIs.
+Extend Socratic Shell with a new `get_rust_sources` MCP tool that will direct agents to the sources from Rust crates and help to find examples of code that uses particular APIs.
 
 # Status quo
 
 > How do things work today and what problems does this cause? Why would we change things?
 
-When Rust developers ask an LLM to use a crate that it does not know from its training data, LLMs typically hallucinate plausible-seeming (but in fact nonexistent) APIs. The easiest way to help an LLM get started is to find example code and/or to point it at the crate source, which currently requires manual investigation or the use of a separate (and proprietary) MCP server like context7.
+When Rust developers ask an agent to use a crate that they do not know from their training data, agents typically hallucinate plausible-seeming (but in fact nonexistent) APIs. The easiest way to help an agent get started is to find example code and/or to point them at the crate source, which currently requires manual investigation or the use of a separate (and proprietary) MCP server like context7.
 
 ## Leverage Rust's existing `examples` and rustdoc patterns
 
@@ -27,6 +27,7 @@ Integrate Rust crate source exploration capabilities directly into the Socratic 
 
 - **Extracts crate sources** to a local cache directory for exploration
 - **Matches versions** with the current Rust crate `Cargo.toml`, if the crate is in use; otherwise gets the most recent version
+- **Accepts optional version parameter** as a semver range (same format as `Cargo.toml`) to override version selection
 - **Optionally searches** within the extracted sources using regex patterns
 - **Returns structured results** with file paths, line numbers, and context
 - **Provides conditional responses** - only includes search results when a pattern is provided
@@ -38,7 +39,7 @@ This eliminates the need for separate MCP servers and provides seamless integrat
 
 > How will things will play out once this feature exists?
 
-When developers ask the LLM to work with a crate that it does not know, it will invoke the `get_rust_sources` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and . Developers working in Socratic Shell will have seamless access to Rust crate exploration:
+When developers ask the agent to work with a crate that they do not know, they will invoke the `get_rust_sources` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and provide accurate usage examples. Developers working in Socratic Shell will have seamless access to Rust crate exploration:
 
 - **Unified Interface**: Single `get_rust_sources` tool handles both extraction and searching
 - **IDE Integration**: Results appear directly in the IDE with proper formatting and links
@@ -56,9 +57,63 @@ Example workflows:
 
 ## Details
 
+### Tool interface
+
+The `get_rust_sources` tool accepts the following parameters:
+
+```json
+{
+  "crate_name": "string",        // Required: Name of the crate (e.g., "tokio")
+  "version": "string?",          // Optional: Semver range (e.g., "1.0", "^1.2", "~1.2.3")
+  "pattern": "string?"           // Optional: Regex pattern for searching within sources
+}
+```
+
+**Response format varies based on whether a pattern is provided:**
+
+Without pattern (extraction only):
+```json
+{
+  "crate_name": "tokio",
+  "version": "1.35.0",
+  "checkout_path": "/path/to/extracted/crate",
+  "message": "Crate tokio v1.35.0 extracted to /path/to/extracted/crate"
+}
+```
+
+With pattern (extraction + search):
+```json
+{
+  "crate_name": "tokio",
+  "version": "1.35.0",
+  "checkout_path": "/path/to/extracted/crate",
+  "example_matches": [
+    {
+      "file_path": "examples/hello_world.rs",
+      "line_number": 8,
+      "line_content": "    tokio::spawn(async {",
+      "context_before": ["#[tokio::main]", "async fn main() {"],
+      "context_after": ["        println!(\"Hello from spawn!\");", "    });"]
+    }
+  ],
+  "other_matches": [
+    {
+      "file_path": "src/task/spawn.rs",
+      "line_number": 156,
+      "line_content": "pub fn spawn<T>(future: T) -> JoinHandle<T::Output>",
+      "context_before": ["/// Spawns a new asynchronous task", "///"],
+      "context_after": ["where", "    T: Future + Send + 'static,"]
+    }
+  ],
+  "message": "Crate tokio v1.35.0 extracted to /path/to/extracted/crate"
+}
+```
+
 ### Crate version and location
 
-The crate version to be fetched will be identified based on the project's lockfile. When possible we'll provide the source from the existing cargo cache. If no cache is found, or the crate is not used in the project, we'll download the sources from crates.io and unpack them into a temporary directory.
+The crate version to be fetched will be identified based on the project's lockfile, found by walking up the directory tree from the current working directory. If multiple major versions of a crate exist in the lockfile, the tool will return an error requesting the agent specify which version to use via the optional `version` parameter. When possible we'll provide the source from the existing cargo cache. If no cache is found, or the crate is not used in the project, we'll download the sources from crates.io and unpack them into a temporary directory.
+
+The tool accepts an optional `version` parameter as a semver range (using the same format as `Cargo.toml`, e.g., "1.0", "^1.2", "~1.2.3") and will select the most recent version matching that range, just as cargo would.
 
 ### Finding examples
 
@@ -82,10 +137,10 @@ When search terms are included, we will search the crate and include:
 4. Performance testing and optimization
 
 ### Phase 3: Enhanced Features (Future)
-1. Version selection support (currently uses latest)
-2. Configurable context lines for search results
-3. Search scope options (examples only vs. all source)
-4. Integration with other Socratic Shell tools for enhanced workflows
+1. Configurable context lines for search results
+2. Search scope options (examples only vs. all source)
+3. Integration with other Socratic Shell tools for enhanced workflows
+4. Smart dependency resolution (use the version that the main crate being modified depends on directly)
 
 # Frequently asked questions
 
@@ -93,7 +148,7 @@ When search terms are included, we will search the crate and include:
 
 ## Why not use rustdoc to browse APIs?
 
-We have observed that most developers building in Rust get good results from manually checking out the sources. This fits with the fact that LLMs are trained to work well from many-shot prompts, which are essentially a series of examples, and that they are trained to be able to quickly read and comprehend source code.
+We have observed that most developers building in Rust get good results from manually checking out the sources. This fits with the fact that agents are trained to work well from many-shot prompts, which are essentially a series of examples, and that they are trained to be able to quickly read and comprehend source code.
 
 It is less clear that they are good at reading and navigating rustdoc source, but this is worth exploring.
 
@@ -108,6 +163,13 @@ Maybe -- the impl details may not be especially relevant, but then again,when I 
 ## How will we ensure the agent uses the tool?
 
 This is indeed a good question! We will have to explore our guidance over time, both for steering the agent to use the tool and for helping it understand the OUTPUT.
+
+## What future enhancements might we consider?
+
+- **Smart dependency resolution**: Instead of erroring on version conflicts, use the version that the main crate being modified depends on directly
+- **Workspace-aware version selection**: Handle complex workspace scenarios with multiple lockfiles
+- **Integration with rust-analyzer**: Leverage LSP information for more targeted source exploration
+- **Filtered source views**: Hide private implementation details to reduce context noise
 
 # Revision history
 
