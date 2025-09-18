@@ -246,12 +246,15 @@ impl DispatchHandle {
     }
 
     fn create_sender(&self) -> crate::types::MessageSender {
+        // Try to extract taskspace UUID from directory structure
+        let taskspace_uuid = crate::ipc::extract_project_info().map(|(_, uuid)| uuid).ok();
+        
         crate::types::MessageSender {
             working_directory: std::env::current_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("/"))
                 .to_string_lossy()
                 .to_string(),
-            taskspace_uuid: None, // TODO: Extract from working directory if needed
+            taskspace_uuid,
             shell_pid: Some(self.shell_pid),
         }
     }
