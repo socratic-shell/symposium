@@ -127,13 +127,15 @@ pub type Result<T> = std::result::Result<T, IPCError>;
 
 /// Handles IPC communication between MCP server and VSCode extension
 ///
-/// Mirrors the TypeScript IPCCommunicator class but leverages Rust's
-/// type safety and async/await patterns. Uses Arc<Mutex<>> for thread safety
-/// since the MCP server requires Clone.
+/// Currently in transition: uses both legacy connection management and new actor system.
+/// Marco/Polo messages use actors, other messages use legacy system during migration.
 #[derive(Clone)]
 pub struct IPCCommunicator {
     inner: Arc<Mutex<IPCCommunicatorInner>>,
     reference_store: Arc<crate::reference_store::ReferenceStore>,
+    
+    /// New actor-based dispatch system (for marco/polo messages initially)
+    dispatch_handle: Option<crate::actor::DispatchHandle>,
 
     /// When true, disables actual IPC communication and uses only local logging.
     /// Used during unit testing to avoid requiring a running VSCode extension.
@@ -166,6 +168,19 @@ impl IPCCommunicator {
     ) -> Result<Self> {
         info!("Creating IPC communicator for shell PID {shell_pid}");
 
+        // Create actor system alongside existing connection management
+        let dispatch_handle = {
+            // Create client connection to daemon
+            let (to_daemon_tx, from_daemon_rx) = crate::actor::spawn_client(
+                "dialectic".to_string(), // socket prefix
+                true, // auto_start daemon
+            );
+
+            // Create dispatch actor with client channels
+            let handle = crate::actor::DispatchHandle::new(from_daemon_rx, to_daemon_tx);
+            Some(handle)
+        };
+
         Ok(Self {
             inner: Arc::new(Mutex::new(IPCCommunicatorInner {
                 write_half: None,
@@ -174,6 +189,7 @@ impl IPCCommunicator {
                 terminal_shell_pid: shell_pid,
             })),
             reference_store,
+            dispatch_handle,
             test_mode: false,
         })
     }
@@ -189,6 +205,7 @@ impl IPCCommunicator {
                 terminal_shell_pid: 0, // Dummy PID for test mode
             })),
             reference_store,
+            dispatch_handle: None, // No actors in test mode for now
             test_mode: true,
         }
     }
@@ -199,14 +216,14 @@ impl IPCCommunicator {
             return Ok(());
         }
 
-        // Use ensure_connection for initial connection
+        // Use ensure_connection for initial connection (legacy system)
         IPCCommunicatorInner::ensure_connection(
             Arc::clone(&self.inner),
             Arc::clone(&self.reference_store),
         )
         .await?;
 
-        info!("Connected to message bus daemon via IPC");
+        info!("Connected to message bus daemon via IPC (legacy + actor systems active)");
         Ok(())
     }
 
@@ -1004,6 +1021,7 @@ impl IPCCommunicator {
                 let temp_communicator = IPCCommunicator {
                     inner: Arc::clone(inner),
                     reference_store: Arc::clone(reference_store),
+                    dispatch_handle: None, // No actors needed for legacy polo response
                     test_mode: false,
                 };
 
