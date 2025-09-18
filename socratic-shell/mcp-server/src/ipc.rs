@@ -8,7 +8,7 @@ use crate::types::{
 };
 use anyhow::Context;
 use futures::FutureExt;
-use serde::de::DeserializeOwned;
+
 use serde_json;
 use std::collections::HashMap;
 use std::future::Future;
@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::UnixStream;
 use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, trace, warn};
@@ -26,22 +26,6 @@ use uuid::Uuid;
 ///
 /// Attempts to gather working directory, taskspace UUID, and shell PID for message routing.
 /// Falls back gracefully when information is not available.
-fn create_message_sender(shell_pid: Option<u32>) -> MessageSender {
-    // Get working directory - always required
-    let working_directory = std::env::current_dir()
-        .map(|path| path.to_string_lossy().to_string())
-        .unwrap_or_default(); // empty string in case of error fetching current directory
-
-    // Try to extract taskspace UUID from directory structure
-    let taskspace_uuid = extract_project_info().map(|(_, uuid)| uuid).ok();
-
-    MessageSender {
-        working_directory,
-        taskspace_uuid,
-        shell_pid,
-    }
-}
-
 /// Extract project path and taskspace UUID from current working directory
 ///
 /// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
@@ -536,7 +520,7 @@ impl IPCCommunicator {
         Ok(response)
     }
 
-    /// Fetch current taskspace state from the Symposium daemon/app
+    /// Get current taskspace state from the Symposium daemon/app
     ///
     /// This is a key method in the dynamic agent initialization system. It enables
     /// the MCP server to retrieve real taskspace information (name, description,
@@ -625,7 +609,8 @@ impl IPCCommunicator {
         Ok(())
     }
 
-    /// Sends an IPC message and waits for a response from VSCode extension
+    /*
+    /// UNUSED - Sends an IPC message and waits for a response from VSCode extension
     ///
     /// Sets up response correlation using the message UUID and waits for response.
     /// Uses the underlying `write_message` primitive to send the data.
@@ -685,8 +670,10 @@ impl IPCCommunicator {
         };
         Ok(user_feedback)
     }
+    */
 
-    /// Low-level primitive for writing raw JSON data to the IPC connection (Unix)
+    /*
+    /// UNUSED - Low-level primitive for writing raw JSON data to the IPC connection (Unix)
     ///
     /// This is the underlying method used by both `send_message_with_reply` and
     /// `send_message_without_reply`. It handles the platform-specific socket writing
@@ -730,6 +717,7 @@ impl IPCCommunicator {
             Err(IPCError::NotConnected)
         }
     }
+    */
 }
 
 impl IPCCommunicatorInner {
