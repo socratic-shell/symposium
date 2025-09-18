@@ -25,6 +25,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     // Window stacking state
     private var stackTracker: WindowStackTracker?
+    
+    // Pending deletion tracking - stores message IDs for taskspaces awaiting user confirmation
+    private var pendingDeletionMessages: [UUID: String] = [:]
 
     // Public access to settings manager for UI
     var settings: SettingsManager {
@@ -422,6 +425,9 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             self.currentProject = updatedProject
             Logger.shared.log(
                 "ProjectManager[\(self.instanceId)]: Deleted taskspace \(taskspace.name)")
+            
+            // Send success response for pending deletion request
+            self.sendDeletionConfirmedResponse(for: taskspace.id)
         }
     }
 
@@ -1630,6 +1636,11 @@ extension ProjectManager {
             return .notForMe
         }
 
+        let taskspace = project.taskspaces[taskspaceIndex]
+        
+        // Store the message ID for later response when dialog completes
+        pendingDeletionMessages[taskspace.id] = messageId
+
         // Set the pendingDeletion flag to trigger UI confirmation dialog
         var updatedProject = project
         updatedProject.taskspaces[taskspaceIndex].pendingDeletion = true
@@ -1637,10 +1648,46 @@ extension ProjectManager {
         DispatchQueue.main.async {
             self.currentProject = updatedProject
             Logger.shared.log(
-                "ProjectManager[\(self.instanceId)]: Triggered deletion dialog for taskspace: \(updatedProject.taskspaces[taskspaceIndex].name)")
+                "ProjectManager[\(self.instanceId)]: Triggered deletion dialog for taskspace: \(updatedProject.taskspaces[taskspaceIndex].name), awaiting user confirmation")
         }
         
-        return .handled(EmptyResponse())
+        // Don't return a response yet - wait for user confirmation/cancellation
+        // The response will be sent when the dialog completes
+        return .pending
+    }
+    
+    /// Send success response for a pending taskspace deletion
+    private func sendDeletionConfirmedResponse(for taskspaceId: UUID) {
+        guard let messageId = pendingDeletionMessages.removeValue(forKey: taskspaceId) else {
+            Logger.shared.log("ProjectManager[\(instanceId)]: No pending message found for taskspace deletion confirmation")
+            return
+        }
+        
+        ipcManager.sendResponse(
+            to: messageId, 
+            success: true, 
+            data: EmptyResponse(), 
+            error: nil
+        )
+        
+        Logger.shared.log("ProjectManager[\(instanceId)]: Sent deletion confirmed response for taskspace")
+    }
+    
+    /// Send cancellation response for a pending taskspace deletion
+    func sendDeletionCancelledResponse(for taskspaceId: UUID) {
+        guard let messageId = pendingDeletionMessages.removeValue(forKey: taskspaceId) else {
+            Logger.shared.log("ProjectManager[\(instanceId)]: No pending message found for taskspace deletion cancellation")
+            return
+        }
+        
+        ipcManager.sendResponse(
+            to: messageId, 
+            success: false, 
+            data: nil as String?, 
+            error: "Taskspace deletion was cancelled by user"
+        )
+        
+        Logger.shared.log("ProjectManager[\(instanceId)]: Sent deletion cancelled response for taskspace")
     }
     /// Check if VSCode 'code' command is available and return its path
     private func getCodeCommandPath() -> String? {

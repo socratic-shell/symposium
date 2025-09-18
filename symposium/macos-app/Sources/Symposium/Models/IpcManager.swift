@@ -158,6 +158,7 @@ struct RegisterTaskspaceWindowPayload: Codable {
 enum MessageHandlingResult<T: Codable> {
     case handled(T?)
     case notForMe
+    case pending  // Response will be sent later via sendResponse
 }
 
 /// Protocol for objects that can handle IPC messages (typically one per active project)
@@ -488,6 +489,11 @@ class IpcManager: ObservableObject {
                     case .handled(let response):
                         sendResponse(
                             to: message.id, success: true, data: response, error: nil)
+                        return
+                    case .pending:
+                        // Response will be sent later when dialog completes
+                        Logger.shared.log(
+                            "IpcManager[\(instanceId)]: Delete taskspace request pending user confirmation")
                         return
                     case .notForMe:
                         continue

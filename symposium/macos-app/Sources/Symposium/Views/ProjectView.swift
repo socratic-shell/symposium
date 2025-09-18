@@ -640,6 +640,8 @@ struct TaskspaceCard: View {
                     showingDeleteConfirmation = false
                 },
                 onCancel: {
+                    // Send cancellation response for pending deletion request
+                    projectManager.sendDeletionCancelledResponse(for: taskspace.id)
                     showingDeleteConfirmation = false
                 }
             )
