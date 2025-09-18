@@ -5,11 +5,11 @@
 // - Actors communicate via message passing channels
 // - Clean separation of concerns
 
-pub mod daemon;
+pub mod dispatch;
 pub mod discovery;
 pub mod reference;
 
 // Re-export handles for easy access
-pub use daemon::DaemonHandle;
+pub use dispatch::DispatchHandle;
 pub use discovery::DiscoveryHandle;
 pub use reference::ReferenceHandle;

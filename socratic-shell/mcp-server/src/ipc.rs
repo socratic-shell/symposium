@@ -1123,76 +1123,7 @@ impl crate::ide::IpcClient for IPCCommunicator {
     }
 }
 
-/// Requests from the rest of the system over the IPC actor.
-enum IpcActorRequest {
-    /// Send a message on the IPC channel and optionally ask for a reply.
-    SendMessage {
-        /// Message to send.
-        message: IPCMessage,
 
-        /// If `Some`, then this is a channel on which the
-        /// sender expects a reply. We will wait for a reply
-        /// to `message.id` and then send the value.
-        reply_tx: Option<oneshot::Sender<serde_json::Value>>,
-    },
-
-    /// Sender stopped waiting for a reply for `id` due to timeout.
-    CancelReply { id: String },
-}
-
-/// A [Tokio actor][] that shepherds the connection to the daemon.
-/// This actor owns the mutable state storing the pending replies.
-///
-/// [Tokio actor]: https://ryhl.io/blog/actors-with-tokio/
-struct IpcActor {
-    /// Channel for receiving actor requests.
-    ///
-    /// Actor terminates when this channel is closed.
-    request_rx: mpsc::Receiver<IpcActorRequest>,
-
-    /// Map whose key is the `id` of a reply that we are expecting
-    /// and the value is the channel where we should send it when it arrives.
-    ///
-    /// When the listener times out, they will send us a [`IpcActorRequest::CancelReply`][]
-    /// message. When we receive it, we'll remove the entry from this map.
-    /// But if the reply arrives before we get that notification, we may find
-    /// that the Sender in this map is closed when we send the data along.
-    /// That's ok.
-    pending_replies: HashMap<String, oneshot::Sender<serde_json::Value>>,
-}
-
-impl IpcActor {
-    async fn run(self) {
-        // The logic here is
-        //
-        // 10. If not connected to the daemon, connect. I would kind of like it if
-        //     we did this by invoking `daemon::run_client` except
-        //     that this function is hardcoded presently to use stdio and to do serialization,
-        //     it'd be be nice if there was an inner code
-        //     we could reuse that relayed messages via tokio pipes.
-        //
-        //     While connecting, if `self.request_rx` is closed, goto 99.
-        //
-        // 20. Once connected, await requests on `self.request_rx`; incoming messages from
-        //     the daemon; `self.request_rx` being closed; daemon disconnecting.
-        //
-        // 30. If `self.request_rx` is closed, goto 99. If daemon disconnected, goto 10.
-        //
-        // 40. If a `IpcActorRequest` arrived, process it:
-        //     - send the message over the daemon if relevant, store the reply channel in a local hashtable
-        //     - if cancel-reply, remove reply channel from local hashtable, if present
-        //
-        // 50. If a daemon message arrived:
-        //     - if it is a reply, check if we have a registered channel, send to that channel, ignore errors.
-        //     - otherwise, if it is a `Marco`, respond with `Polo`
-        //     - otherwise, ... Claude: are there other messages we care about? let's discuss ...
-        //     - otherwise, ignore.
-        //
-        // 99. Return. This should drop any connection to the daemon we may have and cause it to exit.
-
-        // XXX Claude: review the above comment and tell me what you think.
-    }
-}
 
 #[cfg(test)]
 mod test {
