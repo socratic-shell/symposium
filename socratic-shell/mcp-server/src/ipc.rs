@@ -22,10 +22,6 @@ use tokio::sync::{Mutex, oneshot};
 use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
 
-/// Create MessageSender with current context information
-///
-/// Attempts to gather working directory, taskspace UUID, and shell PID for message routing.
-/// Falls back gracefully when information is not available.
 /// Extract project path and taskspace UUID from current working directory
 ///
 /// Expected directory structure: `project.symposium/task-$UUID/$checkout/`
@@ -335,12 +331,9 @@ impl IPCCommunicator {
             .send(get_selection_message)
             .await
             .map_err(|e| {
-                IPCError::SendError(format!(
-                    "Failed to send get_selection via actors: {}",
-                    e
-                ))
+                IPCError::SendError(format!("Failed to send get_selection via actors: {}", e))
             })?;
-        
+
         info!("Successfully retrieved selection via actor system");
         Ok(selection)
     }
@@ -960,11 +953,8 @@ impl crate::ide::IpcClient for IPCCommunicator {
             symbol: symbol.clone(),
         };
 
-        let locations: Vec<crate::ide::FileRange> = self
-            .dispatch_handle
-            .send(payload)
-            .await
-            .with_context(|| {
+        let locations: Vec<crate::ide::FileRange> =
+            self.dispatch_handle.send(payload).await.with_context(|| {
                 format!(
                     "VSCode extension failed to find references for symbol '{}'",
                     symbol.name
