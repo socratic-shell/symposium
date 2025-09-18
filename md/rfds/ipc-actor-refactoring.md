@@ -65,25 +65,34 @@ The refactored system will have clean separation of concerns with focused actors
 
 > What is your implementaton plan?
 
-## Phase 1: Extract Core Dispatch Logic ✅
+## Phase 1: Extract Core Dispatch Logic ✅ COMPLETED
 1. ~~Extract `IpcActor` from `ipc.rs` as `DispatchActor`~~ **COMPLETED**
 2. ~~Move pending reply tracking and message routing to dispatch actor~~ **COMPLETED**
+3. ~~Add Actor trait with standardized spawn() pattern~~ **COMPLETED**
+4. ~~Improve dispatch methods with timeout and generic return types~~ **COMPLETED**
 
-## Phase 2: Client Actor Implementation
-1. Implement `ClientActor` with connection management and auto-start logic
-2. Extract transport logic from `daemon::run_client` 
-3. Create channel-based communication with dispatch actor
-4. Implement `StdoutActor` for CLI mode
+## Phase 2: Client and Stdio Actors ✅ COMPLETED
+1. ~~Implement `ClientActor` with connection management and auto-start logic~~ **COMPLETED**
+2. ~~Extract transport logic from `daemon::run_client`~~ **COMPLETED**
+3. ~~Create channel-based communication with dispatch actor~~ **COMPLETED**
+4. ~~Implement `StdioActor` for CLI mode with bidirectional stdin/stdout~~ **COMPLETED**
+5. ~~All actors implement Actor trait with consistent spawn() pattern~~ **COMPLETED**
 
-## Phase 3: Server Actor (Future)
-1. Extract server-side connection handling if needed
-2. Handle incoming connections and message parsing
-
-## Phase 4: Integration and Cleanup
-1. Refactor `daemon::run_client` to use `ClientActor` + `StdoutActor`
+## Phase 3: Integration and Wiring 🚧 IN PROGRESS
+1. **NEXT**: Refactor `daemon::run_client` to use `ClientActor` + `StdioActor`
 2. Update `IPCCommunicator` to use `ClientActor` + `DispatchActor`
 3. Wire all actors together with appropriate channels
 4. Ensure all existing tests pass
+
+## Phase 4: Server Actor (Future)
+1. Extract server-side connection handling if needed
+2. Handle incoming connections and message parsing
+
+## Current Status
+- **3 actors implemented**: DispatchActor, ClientActor, StdioActor
+- **Actor trait**: Standardized spawn pattern across all actors
+- **Channel architecture**: Clean message passing between actors
+- **Ready for integration**: Actors are complete and tested
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
