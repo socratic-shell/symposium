@@ -6,6 +6,7 @@
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::mpsc;
 use tracing::{error, info};
+use crate::actor::Actor;
 use crate::types::IPCMessage;
 
 /// Actor that bridges stdin/stdout with daemon communication
@@ -16,18 +17,8 @@ pub struct StdioActor {
     outbound_tx: mpsc::Sender<IPCMessage>,
 }
 
-impl StdioActor {
-    pub fn new(
-        message_rx: mpsc::Receiver<IPCMessage>,
-        outbound_tx: mpsc::Sender<IPCMessage>,
-    ) -> Self {
-        Self {
-            message_rx,
-            outbound_tx,
-        }
-    }
-
-    pub async fn run(mut self) {
+impl Actor for StdioActor {
+    async fn run(mut self) {
         let mut stdout = io::stdout();
         let stdin = io::stdin();
         let mut stdin_reader = BufReader::new(stdin);
@@ -100,6 +91,18 @@ impl StdioActor {
     }
 }
 
+impl StdioActor {
+    pub fn new(
+        message_rx: mpsc::Receiver<IPCMessage>,
+        outbound_tx: mpsc::Sender<IPCMessage>,
+    ) -> Self {
+        Self {
+            message_rx,
+            outbound_tx,
+        }
+    }
+}
+
 /// Handle for communicating with the stdio actor
 #[derive(Clone)]
 pub struct StdioHandle {
@@ -110,7 +113,7 @@ impl StdioHandle {
     pub fn new(outbound_tx: mpsc::Sender<IPCMessage>) -> (Self, mpsc::Sender<IPCMessage>) {
         let (inbound_tx, inbound_rx) = mpsc::channel(32);
         let actor = StdioActor::new(inbound_rx, outbound_tx);
-        tokio::spawn(async move { actor.run().await });
+        actor.spawn();
 
         // Return handle and the sender for ClientActor to send messages to stdio
         (Self {}, inbound_tx)

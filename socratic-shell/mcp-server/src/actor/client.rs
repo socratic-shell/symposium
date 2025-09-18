@@ -10,6 +10,7 @@ use tokio::net::UnixStream;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use anyhow::Result;
+use crate::actor::Actor;
 use crate::types::IPCMessage;
 
 /// Actor that manages daemon connection and message transport
@@ -23,22 +24,8 @@ pub struct ClientActor {
     auto_start: bool,
 }
 
-impl ClientActor {
-    pub fn new(
-        inbound_rx: mpsc::Receiver<IPCMessage>,
-        outbound_tx: mpsc::Sender<IPCMessage>,
-        socket_prefix: String,
-        auto_start: bool,
-    ) -> Self {
-        Self {
-            inbound_rx,
-            outbound_tx,
-            socket_prefix,
-            auto_start,
-        }
-    }
-
-    pub async fn run(mut self) {
+impl Actor for ClientActor {
+    async fn run(mut self) {
         loop {
             // Check if channels are closed
             if self.outbound_tx.is_closed() {
@@ -61,6 +48,22 @@ impl ClientActor {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
+        }
+    }
+}
+
+impl ClientActor {
+    pub fn new(
+        inbound_rx: mpsc::Receiver<IPCMessage>,
+        outbound_tx: mpsc::Sender<IPCMessage>,
+        socket_prefix: String,
+        auto_start: bool,
+    ) -> Self {
+        Self {
+            inbound_rx,
+            outbound_tx,
+            socket_prefix,
+            auto_start,
         }
     }
 
@@ -214,7 +217,7 @@ impl ClientHandle {
         let (outbound_tx, outbound_rx) = mpsc::channel(32);
         
         let actor = ClientActor::new(inbound_rx, outbound_tx.clone(), socket_prefix, auto_start);
-        tokio::spawn(async move { actor.run().await });
+        actor.spawn();
 
         // Return handle and the receiver for other actors to get messages from daemon
         (Self { sender: inbound_tx }, outbound_tx)

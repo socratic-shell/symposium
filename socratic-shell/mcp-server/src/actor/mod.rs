@@ -5,6 +5,22 @@
 // - Actors communicate via message passing channels
 // - Clean separation of concerns
 
+use tokio::task::JoinHandle;
+
+/// Trait for actors that can be spawned as Tokio tasks
+pub trait Actor {
+    /// Spawn the actor as a background task
+    fn spawn(self) -> JoinHandle<()>
+    where
+        Self: Sized + Send + 'static,
+    {
+        tokio::spawn(async move { self.run().await })
+    }
+
+    /// Run the actor's main loop
+    fn run(self) -> impl std::future::Future<Output = ()> + Send;
+}
+
 pub mod client;
 pub mod dispatch;
 pub mod discovery;
