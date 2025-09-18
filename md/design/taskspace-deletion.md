@@ -8,6 +8,8 @@ Taskspace deletion is a complex operation that involves multiple safety checks, 
 
 ### Dialog Confirmation Flow
 
+{RFD:taskspace-deletion-dialog-confirmation}
+
 The deletion system now implements proper dialog confirmation to ensure agents receive accurate feedback:
 
 **Previous Flow (Problematic)**:
@@ -72,6 +74,8 @@ project/
 6. **User Control**: Let users choose branch deletion behavior based on clear information
 
 ## IPC Message Flow
+
+{RFD:taskspace-deletion-dialog-confirmation}
 
 ### Deferred Response Pattern
 

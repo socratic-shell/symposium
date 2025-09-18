@@ -291,6 +291,8 @@ For each message type that is sent in the record we record
 
 ## `delete_taskspace`
 
+{RFD:taskspace-deletion-dialog-confirmation}
+
 **Sent by**: MCP server
 
 **Purpose**: Request deletion of the current taskspace with user confirmation
