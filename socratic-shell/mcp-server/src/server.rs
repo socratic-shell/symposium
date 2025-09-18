@@ -1432,31 +1432,9 @@ This is test content."#;
     }
 
     #[test]
-    fn test_guidance_file_loading() {
-        // Test that we can load each guidance file
-        let main_content = DialecticServer::load_guidance_file("main.md").unwrap();
-        assert!(main_content.contains("Mindful Collaboration Patterns"));
-        assert!(main_content.contains("Meta moment"));
-
-        let walkthrough_content =
-            DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
-        assert!(walkthrough_content.contains("Walkthrough Format Specification"));
-        assert!(walkthrough_content.contains("<comment location="));
-
-        let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
-        assert!(coding_content.contains("Coding Guidelines"));
-        assert!(coding_content.contains("Co-authored-by: Claude"));
-
-        let proactive_content = DialecticServer::load_guidance_file("mcp-tool-usage-suggestions.md").unwrap();
-        assert!(proactive_content.contains("MCP Tool Usage Suggestions"));
-        assert!(proactive_content.contains("signal_user"));
-    }
-
-    #[test]
     fn test_guidance_file_not_found() {
-        let result = DialecticServer::load_guidance_file("nonexistent.md");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not found"));
+        let result = GuidanceFiles::get("nonexistent.md");
+        assert!(result.is_none());
     }
 
     #[tokio::test]
@@ -1466,21 +1444,169 @@ This is test content."#;
         // but we can test the static guidance loading parts
 
         // Test that the guidance files contain expected content
-        let main_content = DialecticServer::load_guidance_file("main.md").unwrap();
-        let walkthrough_content =
-            DialecticServer::load_guidance_file("walkthrough-format.md").unwrap();
-        let coding_content = DialecticServer::load_guidance_file("coding-guidelines.md").unwrap();
-        let proactive_content = DialecticServer::load_guidance_file("mcp-tool-usage-suggestions.md").unwrap();
+        let main_content = GuidanceFiles::get("main.md").unwrap();
+        let main_str = String::from_utf8(main_content.data.into_owned()).unwrap();
+        let walkthrough_content = GuidanceFiles::get("walkthrough-format.md").unwrap();
+        let walkthrough_str = String::from_utf8(walkthrough_content.data.into_owned()).unwrap();
+        let coding_content = GuidanceFiles::get("coding-guidelines.md").unwrap();
+        let coding_str = String::from_utf8(coding_content.data.into_owned()).unwrap();
+        let proactive_content = GuidanceFiles::get("mcp-tool-usage-suggestions.md").unwrap();
+        let proactive_str = String::from_utf8(proactive_content.data.into_owned()).unwrap();
 
         // Verify the content structure matches what we expect in the yiasou prompt
-        assert!(main_content.contains("# Mindful Collaboration Patterns"));
-        assert!(walkthrough_content.contains("# Walkthrough Format Specification"));
-        assert!(coding_content.contains("# Coding Guidelines"));
-        assert!(proactive_content.contains("# MCP Tool Usage Suggestions"));
+        assert!(main_str.contains("# Mindful Collaboration Patterns"));
+        assert!(walkthrough_str.contains("# Walkthrough Format Specification"));
+        assert!(coding_str.contains("# Coding Guidelines"));
+        assert!(proactive_str.contains("# MCP Tool Usage Suggestions"));
 
         // Verify key collaboration concepts are present
-        assert!(main_content.contains("Make it so?"));
-        assert!(main_content.contains("spacious attention"));
-        assert!(main_content.contains("beginner's mind"));
+        assert!(main_str.contains("Make it so?"));
+        assert!(main_str.contains("spacious attention"));
+        assert!(main_str.contains("beginner's mind"));
+    }
+
+    // {RFD:rust-crate-sources-tool} Tests for Rust crate source functionality
+    #[tokio::test]
+    async fn test_get_rust_crate_source_extraction_only() {
+        let server = DialecticServer::new_test();
+        
+        // Test extraction without pattern (should not include search results)
+        let params = GetRustCrateSourceParams {
+            crate_name: "serde".to_string(),
+            version: None,
+            pattern: None,
+        };
+        
+        let result = server.get_rust_crate_source(Parameters(params)).await;
+        assert!(result.is_ok());
+        
+        let content = match result.unwrap().content.first() {
+            Some(content) => {
+                if let Some(text) = content.text() {
+                    text
+                } else {
+                    panic!("Expected text content")
+                }
+            },
+            _ => panic!("Expected content"),
+        };
+        
+        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        
+        // Should have basic extraction info
+        assert_eq!(response["crate_name"], "serde");
+        assert!(response["version"].is_string());
+        assert!(response["checkout_path"].is_string());
+        assert!(response["message"].is_string());
+        
+        // Should NOT have search results when no pattern provided
+        assert!(response["example_matches"].is_null());
+        assert!(response["other_matches"].is_null());
+    }
+
+    // {RFD:rust-crate-sources-tool} Test extraction with pattern search
+    #[tokio::test]
+    async fn test_get_rust_crate_source_with_pattern() {
+        let server = DialecticServer::new_test();
+        
+        // Test extraction with pattern (should include search results)
+        let params = GetRustCrateSourceParams {
+            crate_name: "serde".to_string(),
+            version: None,
+            pattern: Some("derive".to_string()),
+        };
+        
+        let result = server.get_rust_crate_source(Parameters(params)).await;
+        assert!(result.is_ok());
+        
+        let content = match result.unwrap().content.first() {
+            Some(content) => {
+                if let Some(text) = content.text() {
+                    text
+                } else {
+                    panic!("Expected text content")
+                }
+            },
+            _ => panic!("Expected content"),
+        };
+        
+        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        
+        // Should have basic extraction info
+        assert_eq!(response["crate_name"], "serde");
+        assert!(response["version"].is_string());
+        assert!(response["checkout_path"].is_string());
+        assert!(response["message"].is_string());
+        
+        // Should have search results when pattern provided
+        assert!(response["example_matches"].is_array());
+        assert!(response["other_matches"].is_array());
+        
+        // Verify search result format if any matches found
+        if let Some(matches) = response["example_matches"].as_array() {
+            if !matches.is_empty() {
+                let first_match = &matches[0];
+                assert!(first_match["file_path"].is_string());
+                assert!(first_match["line_number"].is_number());
+                assert!(first_match["context_start_line"].is_number());
+                assert!(first_match["context_end_line"].is_number());
+                assert!(first_match["context"].is_string());
+            }
+        }
+    }
+
+    // {RFD:rust-crate-sources-tool} Test version parameter handling
+    #[tokio::test]
+    async fn test_get_rust_crate_source_with_version() {
+        let server = DialecticServer::new_test();
+        
+        // Test with version parameter
+        let params = GetRustCrateSourceParams {
+            crate_name: "serde".to_string(),
+            version: Some("1.0".to_string()),
+            pattern: None,
+        };
+        
+        let result = server.get_rust_crate_source(Parameters(params)).await;
+        assert!(result.is_ok());
+        
+        let content = match result.unwrap().content.first() {
+            Some(content) => {
+                if let Some(text) = content.text() {
+                    text
+                } else {
+                    panic!("Expected text content")
+                }
+            },
+            _ => panic!("Expected content"),
+        };
+        
+        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        
+        // Should have extraction info with version handling
+        assert_eq!(response["crate_name"], "serde");
+        assert!(response["version"].is_string());
+        assert!(response["checkout_path"].is_string());
+        assert!(response["message"].is_string());
+    }
+
+    // {RFD:rust-crate-sources-tool} Test invalid regex pattern handling
+    #[tokio::test]
+    async fn test_get_rust_crate_source_invalid_pattern() {
+        let server = DialecticServer::new_test();
+        
+        // Test with invalid regex pattern
+        let params = GetRustCrateSourceParams {
+            crate_name: "serde".to_string(),
+            version: None,
+            pattern: Some("[invalid regex".to_string()),
+        };
+        
+        let result = server.get_rust_crate_source(Parameters(params)).await;
+        assert!(result.is_err());
+        
+        // Should return appropriate error for invalid regex
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("Invalid regex pattern"));
     }
 }

@@ -1,10 +1,10 @@
 # Rust Development Tools
 
-{RFD:rust-crate-sources-tool}
-
 The Rust development tools help agents work with Rust crates by providing access to source code, examples, and documentation.
 
 ## get_rust_crate_source
+
+{RFD:rust-crate-sources-tool}
 
 **Purpose**: Extract and optionally search Rust crate source code from crates.io
 
