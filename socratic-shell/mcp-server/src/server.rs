@@ -91,20 +91,15 @@ struct UpdateTaskspaceParams {
 }
 // ANCHOR_END: update_taskspace_params
 
-/// Parameters for the search_crate_examples tool
+/// Parameters for the get_rust_sources tool
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
-struct SearchCrateExamplesParams {
+struct GetRustSourcesParams {
     /// Name of the crate to search
     crate_name: String,
+    /// Optional semver range (e.g., "1.0", "^1.2", "~1.2.3")
+    version: Option<String>,
     /// Optional search pattern (regex)
     pattern: Option<String>,
-}
-
-/// Parameters for the get_crate_source tool
-#[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
-struct GetCrateSourceParams {
-    /// Name of the crate
-    crate_name: String,
 }
 
 /// Dialectic MCP Server
@@ -851,20 +846,26 @@ impl DialecticServer {
         }
     }
 
-    /// Search for patterns in Rust crate examples and source code
-    #[tool(description = "Search for patterns in Rust crate examples and source code")]
-    async fn search_crate_examples(
+    /// Get Rust crate sources with optional pattern search
+    #[tool(description = "Get Rust crate sources with optional pattern search. Always returns the source path, and optionally performs pattern matching if a search pattern is provided.")]
+    async fn get_rust_sources(
         &self,
-        Parameters(SearchCrateExamplesParams { crate_name, pattern }): Parameters<SearchCrateExamplesParams>,
+        Parameters(GetRustSourcesParams { crate_name, version, pattern }): Parameters<GetRustSourcesParams>,
     ) -> Result<CallToolResult, McpError> {
         self.ipc
             .send_log(
                 LogLevel::Debug,
-                format!("Searching crate '{}' with pattern: {:?}", crate_name, pattern),
+                format!("Getting Rust sources for crate '{}' version: {:?} pattern: {:?}", crate_name, version, pattern),
             )
             .await;
 
+        let has_pattern = pattern.is_some();
         let mut search = Eg::rust_crate(&crate_name);
+        
+        // Use version resolver for semver range support and project detection
+        if let Some(version_spec) = version {
+            search = search.version(&version_spec);
+        }
         
         if let Some(pattern) = pattern {
             search = search.pattern(&pattern).map_err(|e| {
@@ -875,48 +876,25 @@ impl DialecticServer {
 
         match search.search().await {
             Ok(result) => {
-                let response = serde_json::to_string_pretty(&result).unwrap();
-                Ok(CallToolResult::success(vec![Content::text(response)]))
-            }
-            Err(e) => {
-                let error_msg = format!("Search failed: {}", e);
-                Err(McpError::internal_error(
-                    error_msg,
-                    Some(serde_json::json!({
-                        "crate_name": crate_name,
-                        "error": e.to_string()
-                    })),
-                ))
-            }
-        }
-    }
-
-    /// Get the full path to an extracted crate for detailed exploration
-    #[tool(description = "Get the full path to an extracted crate for detailed exploration")]
-    async fn get_crate_source(
-        &self,
-        Parameters(GetCrateSourceParams { crate_name }): Parameters<GetCrateSourceParams>,
-    ) -> Result<CallToolResult, McpError> {
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!("Getting source path for crate '{}'", crate_name),
-            )
-            .await;
-
-        match Eg::rust_crate(&crate_name).search().await {
-            Ok(result) => {
-                let response = serde_json::json!({
+                let mut response = serde_json::json!({
                     "crate_name": crate_name,
                     "version": result.version,
                     "checkout_path": result.checkout_path.to_string_lossy(),
                     "message": format!("Crate {} v{} extracted to {}", 
                                      crate_name, result.version, result.checkout_path.display())
                 });
-                Ok(CallToolResult::success(vec![Content::text(response.to_string())]))
+                
+                // Only include match results if a pattern was provided
+                if has_pattern {
+                    // TODO: Convert to new response format with context strings
+                    response["example_matches"] = serde_json::to_value(&result.example_matches).unwrap();
+                    response["other_matches"] = serde_json::to_value(&result.other_matches).unwrap();
+                }
+                
+                Ok(CallToolResult::success(vec![Content::text(serde_json::to_string_pretty(&response).unwrap())]))
             }
             Err(e) => {
-                let error_msg = format!("Failed to extract crate: {}", e);
+                let error_msg = format!("Failed to get Rust sources: {}", e);
                 Err(McpError::internal_error(
                     error_msg,
                     Some(serde_json::json!({
