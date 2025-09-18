@@ -3,7 +3,7 @@
 //! This actor handles message routing, reply correlation, and timeout management.
 //! Extracted from the monolithic IPCCommunicator to provide focused responsibility.
 
-use crate::types::IPCMessage;
+use crate::types::{IPCMessage, IpcPayload};
 use crate::{actor::Actor, types::IPCMessageType};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
@@ -183,7 +183,7 @@ impl DispatchHandle {
     /// Send a message out into the ether and (optionally) await a response.
     pub async fn send<M>(&self, message: M) -> anyhow::Result<M::Reply>
     where
-        M: DispatchMessage,
+        M: IpcPayload,
     {
         let id = self.fresh_message_id();
         let message_type = message.message_type();
@@ -236,17 +236,4 @@ impl DispatchHandle {
             shell_pid: None,      // TODO: Get from context if available
         }
     }
-}
-
-/// Trait implemented by messages that can be sent over the dispatch handle.
-pub trait DispatchMessage: Serialize {
-    /// If true, we should wait for a reply after sending this message.
-    /// If false, just return `()`.
-    const EXPECTS_REPLY: bool;
-
-    /// Type of reply expected; this is `()` if no reply is expected.
-    type Reply: DeserializeOwned;
-
-    /// Value of `type` field in [`IPCMessage`].
-    fn message_type(&self) -> IPCMessageType;
 }

@@ -6,7 +6,17 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::actor::dispatch::DispatchMessage;
+/// Trait for IPC message payloads that can be dispatched through the actor system
+pub trait IpcPayload: serde::Serialize + serde::de::DeserializeOwned + Clone + Send + 'static {
+    /// Whether this message type expects a reply
+    const EXPECTS_REPLY: bool;
+    
+    /// The type of the reply (use () for no meaningful reply)
+    type Reply: serde::de::DeserializeOwned + Send + 'static;
+    
+    /// Get the message type for this payload
+    fn message_type(&self) -> IPCMessageType;
+}
 
 /// Parameters for the present-walkthrough MCP tool
 ///
@@ -51,7 +61,7 @@ pub struct MarcoMessage {
     // Marco messages have no payload
 }
 
-impl DispatchMessage for MarcoMessage {
+impl IpcPayload for MarcoMessage {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -69,7 +79,7 @@ pub struct LogMessage {
     pub message: String,
 }
 
-impl DispatchMessage for LogMessage {
+impl IpcPayload for LogMessage {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -86,7 +96,7 @@ pub struct PresentWalkthroughMessage {
     pub base_uri: String,
 }
 
-impl DispatchMessage for PresentWalkthroughMessage {
+impl IpcPayload for PresentWalkthroughMessage {
     const EXPECTS_REPLY: bool = true;
     type Reply = ();
 
@@ -102,7 +112,7 @@ pub struct PoloMessage {
     pub terminal_shell_pid: u32,
 }
 
-impl DispatchMessage for PoloMessage {
+impl IpcPayload for PoloMessage {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -162,7 +172,7 @@ pub struct PoloPayload {
 }
 // ANCHOR_END: polo_payload
 
-impl DispatchMessage for PoloPayload {
+impl IpcPayload for PoloPayload {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -177,7 +187,7 @@ pub struct GoodbyePayload {
     // Shell PID is now at top level in IPCMessage
 }
 
-impl DispatchMessage for GoodbyePayload {
+impl IpcPayload for GoodbyePayload {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -350,7 +360,7 @@ pub struct SpawnTaskspacePayload {
 }
 // ANCHOR_END: spawn_taskspace_payload
 
-impl DispatchMessage for SpawnTaskspacePayload {
+impl IpcPayload for SpawnTaskspacePayload {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -370,7 +380,7 @@ pub struct LogProgressPayload {
 }
 // ANCHOR_END: log_progress_payload
 
-impl DispatchMessage for LogProgressPayload {
+impl IpcPayload for LogProgressPayload {
     const EXPECTS_REPLY: bool = false;
 
     type Reply = ();
@@ -403,7 +413,7 @@ pub struct SignalUserPayload {
 }
 // ANCHOR_END: signal_user_payload
 
-impl DispatchMessage for SignalUserPayload {
+impl IpcPayload for SignalUserPayload {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
@@ -487,7 +497,7 @@ pub struct DeleteTaskspacePayload {
 }
 // ANCHOR_END: delete_taskspace_payload
 
-impl DispatchMessage for DeleteTaskspacePayload {
+impl IpcPayload for DeleteTaskspacePayload {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
