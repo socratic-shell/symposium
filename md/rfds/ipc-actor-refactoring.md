@@ -70,6 +70,7 @@ The refactored system will have clean separation of concerns with focused actors
 2. ~~Move pending reply tracking and message routing to dispatch actor~~ **COMPLETED**
 3. ~~Add Actor trait with standardized spawn() pattern~~ **COMPLETED**
 4. ~~Improve dispatch methods with timeout and generic return types~~ **COMPLETED**
+5. ~~Redesign with trait-based messaging system~~ **COMPLETED**
 
 ## Phase 2: Client and Stdio Actors ✅ COMPLETED
 1. ~~Implement `ClientActor` with connection management and auto-start logic~~ **COMPLETED**
@@ -77,22 +78,29 @@ The refactored system will have clean separation of concerns with focused actors
 3. ~~Create channel-based communication with dispatch actor~~ **COMPLETED**
 4. ~~Implement `StdioActor` for CLI mode with bidirectional stdin/stdout~~ **COMPLETED**
 5. ~~All actors implement Actor trait with consistent spawn() pattern~~ **COMPLETED**
+6. ~~Simplify ClientActor interface with `spawn_client()` function~~ **COMPLETED**
 
-## Phase 3: Integration and Wiring 🚧 IN PROGRESS
-1. **NEXT**: Refactor `daemon::run_client` to use `ClientActor` + `StdioActor`
-2. Update `IPCCommunicator` to use `ClientActor` + `DispatchActor`
+## Phase 3: Integration and Wiring ✅ COMPLETED
+1. ~~Refactor `daemon::run_client` to use `ClientActor` + `StdioActor`~~ **COMPLETED**
+2. **NEXT**: Update `IPCCommunicator` to use `ClientActor` + `DispatchActor`
 3. Wire all actors together with appropriate channels
 4. Ensure all existing tests pass
 
-## Phase 4: Server Actor (Future)
+## Phase 4: Migration to Trait-Based Messaging 🚧 IN PROGRESS
+1. **NEXT**: Implement `DispatchMessage` traits for existing message types
+2. Migrate callers from manual channel management to `.send<M>()` pattern
+3. Add type-safe request/reply pairs with compile-time validation
+
+## Phase 5: Server Actor (Future)
 1. Extract server-side connection handling if needed
 2. Handle incoming connections and message parsing
 
 ## Current Status
-- **3 actors implemented**: DispatchActor, ClientActor, StdioActor
+- **4 actors implemented**: DispatchActor, ClientActor, StdioActor, + others
 - **Actor trait**: Standardized spawn pattern across all actors
-- **Channel architecture**: Clean message passing between actors
-- **Ready for integration**: Actors are complete and tested
+- **Trait-based messaging**: Type-safe `DispatchMessage` system with automatic reply handling
+- **CLI integration complete**: `daemon::run_client` uses actor architecture
+- **Ready for MCP integration**: Actors proven in real CLI usage
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
