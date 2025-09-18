@@ -5,11 +5,10 @@
 
 use crate::types::IPCMessage;
 use crate::{actor::Actor, types::IPCMessageType};
-use anyhow::Context;
-use chrono::serde::ts_microseconds::deserialize;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
+use uuid;
 
 /// Send a message on the IPC channel and optionally ask for a reply.
 struct DispatchRequest {
@@ -52,32 +51,73 @@ struct DispatchActor {
 impl Actor for DispatchActor {
     async fn run(mut self) {
         loop {
-            // XXX Claude: you need to do the following here
-            //
-            // 1. Wait for incoming messages on either request_rx or client_rx.
-            // 2. If either of them gives you a `None` value (i.e., no more transmitters), then shutdown.
-            // 3. Otherwise, process the incoming message:
-            //    - if it is a DispatchRequest, insert the `reply_rx` into our `pending_replies` map and send it to the `client_tx`
-            //    - if it is an incoming `IPCMessage`, either
-            //        - attempt to match it against a reply
-            //        - otherwise ignore it
-            //        - later, we'll dispatch to marco/polo or other actors
-            // 4. Also, use `self.pending_replies.retain` to drop any cases where the `reply_rx` is closed
-            //    (means the listener timed out).
-            //
-            // Don't forget to write a nice comment explaining the logic.
+            // Main dispatch loop: handle incoming requests and client messages
+            // - DispatchRequest: outgoing messages that may expect replies
+            // - IPCMessage: incoming messages from client (replies or unsolicited)
+            tokio::select! {
+                // Handle outgoing message requests
+                request = self.request_rx.recv() => {
+                    match request {
+                        Some(DispatchRequest { message, reply_tx }) => {
+                            // Store reply channel if expecting a response
+                            if let Some(reply_tx) = reply_tx {
+                                self.pending_replies.insert(message.id.clone(), reply_tx);
+                            }
+                            
+                            // Send message to client
+                            if let Err(e) = self.client_tx.send(message).await {
+                                tracing::error!("Failed to send message to client: {}", e);
+                                break;
+                            }
+                        }
+                        None => {
+                            tracing::info!("Request channel closed, shutting down dispatch actor");
+                            break;
+                        }
+                    }
+                }
+
+                // Handle incoming messages from client
+                message = self.client_rx.recv() => {
+                    match message {
+                        Some(message) => {
+                            // Try to match against pending replies
+                            if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
+                                // This is a reply to a pending request
+                                let _ = reply_tx.send(message.payload);
+                            } else {
+                                // Unsolicited message - later we'll dispatch to marco/polo or other actors
+                                tracing::debug!("Received unsolicited message: {:?}", message.message_type);
+                            }
+                        }
+                        None => {
+                            tracing::info!("Client channel closed, shutting down dispatch actor");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Clean up any closed reply channels (timed out requests)
+            self.pending_replies.retain(|_id, reply_tx| !reply_tx.is_closed());
         }
     }
 }
 
 impl DispatchActor {
-    /// Create a new dispatch actor and write-up to other actors
+    /// Create a new dispatch actor and wire-up to other actors
     ///
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
-    fn new(request_rx: mpsc::Receiver<DispatchRequest>) -> Self {
+    fn new(
+        request_rx: mpsc::Receiver<DispatchRequest>,
+        client_rx: mpsc::Receiver<IPCMessage>,
+        client_tx: mpsc::Sender<IPCMessage>,
+    ) -> Self {
         Self {
             request_rx,
+            client_rx,
+            client_tx,
             pending_replies: HashMap::new(),
         }
     }
@@ -96,9 +136,12 @@ impl DispatchHandle {
     ///
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
-    pub fn new() -> Self {
+    pub fn new(
+        client_rx: mpsc::Receiver<IPCMessage>,
+        client_tx: mpsc::Sender<IPCMessage>,
+    ) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = DispatchActor::new(receiver);
+        let actor = DispatchActor::new(receiver, client_rx, client_tx);
         actor.spawn();
 
         Self { sender }
@@ -147,11 +190,18 @@ impl DispatchHandle {
     }
 
     fn fresh_message_id(&self) -> String {
-        // XXX Claude -- fill this in with code to make a fresh UUID
+        uuid::Uuid::new_v4().to_string()
     }
 
-    fn create_sender(&self) -> MessageSender {
-        // XXX Claude -- fill this in
+    fn create_sender(&self) -> crate::types::MessageSender {
+        crate::types::MessageSender {
+            working_directory: std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("/"))
+                .to_string_lossy()
+                .to_string(),
+            taskspace_uuid: None, // TODO: Get from context if available
+            shell_pid: None,      // TODO: Get from context if available
+        }
     }
 }
 
