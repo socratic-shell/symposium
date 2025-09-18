@@ -9,6 +9,7 @@ The Symposium MCP server (`socratic-shell-mcp`) provides a comprehensive set of 
 - **[Synthetic Pull Request Tools](./mcp-tools/synthetic-prs.md)** - Generate and manage code reviews
 - **[Taskspace Orchestration Tools](./mcp-tools/taskspace-orchestration.md)** - Create and coordinate collaborative workspaces
 - **[Reference System Tools](./mcp-tools/reference-system.md)** - Manage compact reference storage and retrieval
+- **[Rust Development Tools](./mcp-tools/rust-development.md)** - {RFD:rust-crate-sources-tool} Explore Rust crate sources and examples
 
 ## Agent Initialization System
 

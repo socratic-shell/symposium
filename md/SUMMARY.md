@@ -27,6 +27,7 @@
         - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
         - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
         - [Reference System Tools](./design/mcp-tools/reference-system.md)
+        - [Rust Development Tools](./design/mcp-tools/rust-development.md)
     - [Socratic Shell Reference System](./design/socratic-shell-ref-system.md)
     - [Ask Socratic Shell](./design/ask-socratic-shell.md)
     - [Code walkthroughs](./design/walkthroughs.md)

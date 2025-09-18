@@ -81,7 +81,7 @@ All views observe AppDelegate via `@EnvironmentObject` rather than holding direc
 
 ### MCP Server (Rust)  
 - **Agent Tool Integration**: Loaded and used by AI agent CLI tools (Claude Code, Q CLI)
-- **Tool Provider**: Provides MCP tools (`spawn_taskspace`, `update_taskspace`, `log_progress`, `signal_user`)
+- **Tool Provider**: Provides MCP tools (`spawn_taskspace`, `update_taskspace`, `log_progress`, `signal_user`, `get_rust_crate_source`)
 - **Resource Provider**: Exposes embedded guidance files as MCP resources (collaboration patterns, walkthrough format, coding guidelines)
 - **Prompt Provider**: Implements `/yiasou` stored prompt for dynamic agent initialization with taskspace context
 - **Daemon Communication**: Connects to daemon via IPC to fetch real taskspace state and send commands
