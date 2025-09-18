@@ -281,45 +281,13 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let walkthrough_message = crate::types::PresentWalkthroughMessage {
-                content: walkthrough.content,
-                base_uri: walkthrough.base_uri,
-            };
-            let _response: () = dispatch_handle.send(walkthrough_message).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send present_walkthrough via actors: {}", e)))?;
-            info!("Successfully presented walkthrough to VSCode via actor system");
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy present_walkthrough sending");
-        
-        let payload = serde_json::to_value(&walkthrough)?;
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
+        let walkthrough_message = crate::types::PresentWalkthroughMessage {
+            content: walkthrough.content,
+            base_uri: walkthrough.base_uri,
         };
-
-        let message = IPCMessage {
-            message_type: IPCMessageType::PresentWalkthrough,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload,
-        };
-
-        debug!("Sending present_walkthrough message: {:?}", message);
-        trace!("About to call send_message_with_reply for present_walkthrough");
-
-        let response: () = self.send_message_with_reply(message).await?;
-
-        trace!(
-            "Received response from send_message_with_reply: {:?}",
-            response
-        );
-        info!("Successfully presented walkthrough to VSCode");
-
+        let _response: () = self.dispatch_handle.send(walkthrough_message).await
+            .map_err(|e| IPCError::SendError(format!("Failed to send present_walkthrough via actors: {}", e)))?;
+        info!("Successfully presented walkthrough to VSCode via actor system");
         Ok(())
     }
 
@@ -380,13 +348,10 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let log_message = crate::types::LogMessage { level, message };
-            if let Err(e) = dispatch_handle.send(log_message).await {
-                // If IPC fails, we still have local logging above
-                debug!("Failed to send log via actor dispatch: {}", e);
-            }
-            return;
+        let log_message = crate::types::LogMessage { level, message };
+        if let Err(e) = self.dispatch_handle.send(log_message).await {
+            // If IPC fails, we still have local logging above
+            debug!("Failed to send log via actor dispatch: {}", e);
         }
 
         // Fallback to legacy system (should not happen in current setup)
@@ -434,25 +399,11 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let marco_message = crate::types::MarcoMessage {};
-            dispatch_handle.send(marco_message).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send Marco via actors: {}", e)))?;
-            info!("Marco discovery message sent via actor system");
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy Marco sending");
-        let message = IPCMessage {
-            message_type: IPCMessageType::Marco,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(None), // Marco messages are broadcasts, no specific shell PID
-            payload: serde_json::json!({}),
-        };
-
-        debug!("Sending Marco discovery message");
-        self.send_message_without_reply(message).await
+        let marco_message = crate::types::MarcoMessage {};
+        self.dispatch_handle.send(marco_message).await
+            .map_err(|e| IPCError::SendError(format!("Failed to send Marco via actors: {}", e)))?;
+        info!("Marco discovery message sent via actor system");
+        Ok(())
     }
 
     /// Send Polo discovery message (MCP server announces presence with shell PID)
