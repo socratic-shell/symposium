@@ -886,9 +886,43 @@ impl DialecticServer {
                 
                 // Only include match results if a pattern was provided
                 if has_pattern {
-                    // TODO: Convert to new response format with context strings
-                    response["example_matches"] = serde_json::to_value(&result.example_matches).unwrap();
-                    response["other_matches"] = serde_json::to_value(&result.other_matches).unwrap();
+                    // Convert to new response format with context strings
+                    let example_matches: Vec<_> = result.example_matches.into_iter().map(|m| {
+                        let mut context_lines = m.context_before.clone();
+                        context_lines.push(m.line_content.clone());
+                        context_lines.extend(m.context_after.clone());
+                        
+                        let context_start_line = m.line_number.saturating_sub(m.context_before.len() as u32);
+                        let context_end_line = m.line_number + m.context_after.len() as u32;
+                        
+                        serde_json::json!({
+                            "file_path": m.file_path,
+                            "line_number": m.line_number,
+                            "context_start_line": context_start_line,
+                            "context_end_line": context_end_line,
+                            "context": context_lines.join("\n")
+                        })
+                    }).collect();
+                    
+                    let other_matches: Vec<_> = result.other_matches.into_iter().map(|m| {
+                        let mut context_lines = m.context_before.clone();
+                        context_lines.push(m.line_content.clone());
+                        context_lines.extend(m.context_after.clone());
+                        
+                        let context_start_line = m.line_number.saturating_sub(m.context_before.len() as u32);
+                        let context_end_line = m.line_number + m.context_after.len() as u32;
+                        
+                        serde_json::json!({
+                            "file_path": m.file_path,
+                            "line_number": m.line_number,
+                            "context_start_line": context_start_line,
+                            "context_end_line": context_end_line,
+                            "context": context_lines.join("\n")
+                        })
+                    }).collect();
+                    
+                    response["example_matches"] = serde_json::to_value(example_matches).unwrap();
+                    response["other_matches"] = serde_json::to_value(other_matches).unwrap();
                 }
                 
                 Ok(CallToolResult::success(vec![Content::text(serde_json::to_string_pretty(&response).unwrap())]))
