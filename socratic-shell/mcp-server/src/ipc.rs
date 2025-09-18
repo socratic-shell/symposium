@@ -462,8 +462,8 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         if let Some(dispatch_handle) = &self.dispatch_handle {
-            let goodbye_message = crate::types::GoodbyeMessage { terminal_shell_pid };
-            dispatch_handle.send(goodbye_message).await
+            let goodbye_payload = crate::types::GoodbyePayload {};
+            dispatch_handle.send(goodbye_payload).await
                 .map_err(|e| IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e)))?;
             info!("Goodbye discovery message sent via actor system with shell PID: {}", terminal_shell_pid);
             return Ok(());
@@ -500,12 +500,15 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         if let Some(dispatch_handle) = &self.dispatch_handle {
-            let spawn_message = crate::types::SpawnTaskspaceMessage {
+            let (project_path, taskspace_uuid) = extract_project_info()?;
+            let spawn_payload = crate::types::SpawnTaskspacePayload {
+                project_path,
+                taskspace_uuid,
                 name,
                 task_description,
                 initial_prompt,
             };
-            dispatch_handle.send(spawn_message).await
+            dispatch_handle.send(spawn_payload).await
                 .map_err(|e| IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e)))?;
             return Ok(());
         }
@@ -551,8 +554,14 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         if let Some(dispatch_handle) = &self.dispatch_handle {
-            let progress_message = crate::types::LogProgressMessage { message, category };
-            dispatch_handle.send(progress_message).await
+            let (project_path, taskspace_uuid) = extract_project_info()?;
+            let progress_payload = crate::types::LogProgressPayload {
+                project_path,
+                taskspace_uuid,
+                message,
+                category,
+            };
+            dispatch_handle.send(progress_payload).await
                 .map_err(|e| IPCError::SendError(format!("Failed to send log_progress via actors: {}", e)))?;
             return Ok(());
         }
@@ -593,8 +602,13 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         if let Some(dispatch_handle) = &self.dispatch_handle {
-            let signal_message = crate::types::SignalUserMessage { message };
-            dispatch_handle.send(signal_message).await
+            let (project_path, taskspace_uuid) = extract_project_info()?;
+            let signal_payload = crate::types::SignalUserPayload {
+                project_path,
+                taskspace_uuid,
+                message,
+            };
+            dispatch_handle.send(signal_payload).await
                 .map_err(|e| IPCError::SendError(format!("Failed to send signal_user via actors: {}", e)))?;
             return Ok(());
         }
@@ -728,8 +742,12 @@ impl IPCCommunicator {
 
         // Use new actor-based dispatch system
         if let Some(dispatch_handle) = &self.dispatch_handle {
-            let delete_message = crate::types::DeleteTaskspaceMessage {};
-            dispatch_handle.send(delete_message).await
+            let (project_path, taskspace_uuid) = extract_project_info()?;
+            let delete_payload = crate::types::DeleteTaskspacePayload {
+                project_path,
+                taskspace_uuid,
+            };
+            dispatch_handle.send(delete_payload).await
                 .map_err(|e| IPCError::SendError(format!("Failed to send delete_taskspace via actors: {}", e)))?;
             return Ok(());
         }

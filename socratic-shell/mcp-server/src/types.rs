@@ -45,117 +45,18 @@ pub enum LogLevel {
     Debug,
 }
 
-/// Present walkthrough message
+/// Marco discovery message - broadcasts "who's out there?"
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PresentWalkthroughMessage {
-    pub content: String,
-    #[serde(rename = "baseUri")]
-    pub base_uri: String,
+pub struct MarcoMessage {
+    // Marco messages have no payload
 }
 
-impl DispatchMessage for PresentWalkthroughMessage {
-    const EXPECTS_REPLY: bool = true;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::PresentWalkthrough
-    }
-}
-
-/// Log progress message to report agent progress
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogProgressMessage {
-    pub message: String,
-    pub category: ProgressCategory,
-}
-
-impl DispatchMessage for LogProgressMessage {
+impl DispatchMessage for MarcoMessage {
     const EXPECTS_REPLY: bool = false;
     type Reply = ();
 
     fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::LogProgress
-    }
-}
-
-/// Goodbye discovery message - announces departure with shell PID
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GoodbyeMessage {
-    #[serde(rename = "terminalShellPid")]
-    pub terminal_shell_pid: u32,
-}
-
-impl DispatchMessage for GoodbyeMessage {
-    const EXPECTS_REPLY: bool = false;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::Goodbye
-    }
-}
-
-/// Delete taskspace message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeleteTaskspaceMessage {
-    // Delete taskspace has no additional payload beyond sender info
-}
-
-impl DispatchMessage for DeleteTaskspaceMessage {
-    const EXPECTS_REPLY: bool = false;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::DeleteTaskspace
-    }
-}
-
-/// Update taskspace message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateTaskspaceMessage {
-    pub name: String,
-    pub description: String,
-}
-
-impl DispatchMessage for UpdateTaskspaceMessage {
-    const EXPECTS_REPLY: bool = false;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::UpdateTaskspace
-    }
-}
-
-/// Signal user message to request attention
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SignalUserMessage {
-    pub message: String,
-}
-
-impl DispatchMessage for SignalUserMessage {
-    const EXPECTS_REPLY: bool = false;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::SignalUser
-    }
-}
-
-/// Spawn taskspace message
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpawnTaskspaceMessage {
-    pub name: String,
-    #[serde(rename = "taskDescription")]
-    pub task_description: String,
-    #[serde(rename = "initialPrompt")]
-    pub initial_prompt: String,
-}
-
-impl DispatchMessage for SpawnTaskspaceMessage {
-    const EXPECTS_REPLY: bool = false;
-    type Reply = ();
-
-    fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::SpawnTaskspace
+        IPCMessageType::Marco
     }
 }
 
@@ -177,18 +78,20 @@ impl DispatchMessage for LogMessage {
     }
 }
 
-/// Marco discovery message - broadcasts "who's out there?"
+/// Present walkthrough message
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MarcoMessage {
-    // Marco messages have no payload
+pub struct PresentWalkthroughMessage {
+    pub content: String,
+    #[serde(rename = "baseUri")]
+    pub base_uri: String,
 }
 
-impl DispatchMessage for MarcoMessage {
-    const EXPECTS_REPLY: bool = false;
+impl DispatchMessage for PresentWalkthroughMessage {
+    const EXPECTS_REPLY: bool = true;
     type Reply = ();
 
     fn message_type(&self) -> IPCMessageType {
-        IPCMessageType::Marco
+        IPCMessageType::PresentWalkthrough
     }
 }
 
@@ -259,10 +162,28 @@ pub struct PoloPayload {
 }
 // ANCHOR_END: polo_payload
 
+impl DispatchMessage for PoloPayload {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Polo
+    }
+}
+
 /// Payload for Goodbye discovery messages (MCP server announces departure)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GoodbyePayload {
     // Shell PID is now at top level in IPCMessage
+}
+
+impl DispatchMessage for GoodbyePayload {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::Goodbye
+    }
 }
 
 /// Payload for ResolveSymbolByName messages
@@ -429,6 +350,15 @@ pub struct SpawnTaskspacePayload {
 }
 // ANCHOR_END: spawn_taskspace_payload
 
+impl DispatchMessage for SpawnTaskspacePayload {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::SpawnTaskspace
+    }
+}
+
 /// Payload for log_progress messages
 // ANCHOR: log_progress_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -472,6 +402,15 @@ pub struct SignalUserPayload {
     pub message: String,
 }
 // ANCHOR_END: signal_user_payload
+
+impl DispatchMessage for SignalUserPayload {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::SignalUser
+    }
+}
 
 /// Payload for update_taskspace messages
 // ANCHOR: update_taskspace_payload
@@ -547,3 +486,12 @@ pub struct DeleteTaskspacePayload {
     pub taskspace_uuid: String,
 }
 // ANCHOR_END: delete_taskspace_payload
+
+impl DispatchMessage for DeleteTaskspacePayload {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::DeleteTaskspace
+    }
+}
