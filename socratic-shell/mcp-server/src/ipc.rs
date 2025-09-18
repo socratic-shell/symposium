@@ -410,46 +410,17 @@ impl IPCCommunicator {
         }
 
         // Use new actor-based dispatch system
-        if let Some(dispatch_handle) = &self.dispatch_handle {
-            let (project_path, taskspace_uuid) = extract_project_info()?;
-            let spawn_payload = crate::types::SpawnTaskspacePayload {
-                project_path,
-                taskspace_uuid,
-                name,
-                task_description,
-                initial_prompt,
-            };
-            dispatch_handle.send(spawn_payload).await
-                .map_err(|e| IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e)))?;
-            return Ok(());
-        }
-
-        // Fallback to legacy system (should not happen in current setup)
-        warn!("No dispatch handle available, using legacy spawn_taskspace sending");
-        
-        use crate::types::{IPCMessageType, SpawnTaskspacePayload};
-
         let (project_path, taskspace_uuid) = extract_project_info()?;
-
-        let shell_pid = {
-            let inner = self.inner.lock().await;
-            Some(inner.terminal_shell_pid)
+        let spawn_payload = crate::types::SpawnTaskspacePayload {
+            project_path,
+            taskspace_uuid,
+            name,
+            task_description,
+            initial_prompt,
         };
-
-        let message = IPCMessage {
-            message_type: IPCMessageType::SpawnTaskspace,
-            id: Uuid::new_v4().to_string(),
-            sender: create_message_sender(shell_pid),
-            payload: serde_json::to_value(SpawnTaskspacePayload {
-                project_path,
-                taskspace_uuid,
-                name,
-                task_description,
-                initial_prompt,
-            })?,
-        };
-
-        self.send_message_without_reply(message).await
+        self.dispatch_handle.send(spawn_payload).await
+            .map_err(|e| IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e)))?;
+        Ok(())
     }
 
     /// Send log_progress message to report agent progress
