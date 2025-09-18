@@ -22,6 +22,7 @@ A# Summary
 - [Agent manager](./design/agent-manager.md)
 - [Socratic Shell MCP server + IDE extension specifics]()
     - [MCP Server Tools](./design/mcp-server.md)
+    - [MCP Server Actor Architecture](./design/mcp-server-actor-architecture.md)
         - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
         - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
         - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)

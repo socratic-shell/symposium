@@ -37,46 +37,53 @@ The current IPC system has several architectural issues:
 
 The refactored system will have clean separation of concerns with focused actors:
 
-**IPC Server Actor**: Pure server logic extracted from daemon module, handles incoming connections and message parsing.
+**IPC Client Actor**: Transport layer that handles Unix socket connection management, message serialization/deserialization, and forwards parsed `IPCMessage`s via tokio channels.
 
-**IPC Client Actor**: Pure client logic with reconnection/process launching, maintains connection state.
+**IPC Dispatch Actor**: Message router that receives `IPCMessage`s from client actor, routes replies to waiting callers, and coordinates with other actors.
 
-**IPC Dispatch Actor**: Message router that receives from client, routes replies to waiting callers, forwards messages to other actors.
+**Stdout Actor**: Simple actor for CLI mode that receives `IPCMessage`s and prints them to stdout.
 
 **Discovery Actor**: Handles marco/polo protocol for server discovery.
 
 **Reference Actor**: Handles code reference storage/retrieval.
+
+**Channel-Based Architecture**:
+- Client Actor → tokio::channel → Dispatch Actor (MCP server mode)
+- Client Actor → tokio::channel → Stdout Actor (CLI mode)
+- Clean separation where each actor has single responsibility
+- Actors communicate via typed channels, not shared mutable state
 
 **Benefits**:
 - Each actor has a single responsibility and can be tested in isolation
 - Message passing eliminates the need for manual lock management
 - Clear message flow makes debugging easier
 - The daemon module becomes a thin stdio adapter that uses actors internally
+- Same client actor works for both MCP server and CLI modes
 - Public API remains unchanged, ensuring backward compatibility
 
 # Implementation plan
 
 > What is your implementaton plan?
 
-## Phase 1: Extract Core IPC Logic
-1. Implement the `IpcActor` following the pattern outlined in commit `ba81dd7`
-2. Extract server/client logic from existing `daemon` module into `IpcServerActor` and `IpcClientActor`
-3. Create channel-based communication between actors
+## Phase 1: Extract Core Dispatch Logic ✅
+1. ~~Extract `IpcActor` from `ipc.rs` as `DispatchActor`~~ **COMPLETED**
+2. ~~Move pending reply tracking and message routing to dispatch actor~~ **COMPLETED**
 
-## Phase 2: Message Routing
-1. Implement `IpcDispatchActor` for message routing
-2. Move pending reply tracking from `IPCCommunicator` to the dispatch actor
-3. Ensure proper timeout handling and cancellation
+## Phase 2: Client Actor Implementation
+1. Implement `ClientActor` with connection management and auto-start logic
+2. Extract transport logic from `daemon::run_client` 
+3. Create channel-based communication with dispatch actor
+4. Implement `StdoutActor` for CLI mode
 
-## Phase 3: Specialized Actors
-1. Extract discovery logic into `DiscoveryActor`
-2. Extract reference handling into `ReferenceActor`
+## Phase 3: Server Actor (Future)
+1. Extract server-side connection handling if needed
+2. Handle incoming connections and message parsing
+
+## Phase 4: Integration and Cleanup
+1. Refactor `daemon::run_client` to use `ClientActor` + `StdoutActor`
+2. Update `IPCCommunicator` to use `ClientActor` + `DispatchActor`
 3. Wire all actors together with appropriate channels
-
-## Phase 4: Integration
-1. Refactor `daemon` module to use actors internally while maintaining stdio interface
-2. Update `IPCCommunicator` to be a thin wrapper around actor handles
-3. Ensure all existing tests pass
+4. Ensure all existing tests pass
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
