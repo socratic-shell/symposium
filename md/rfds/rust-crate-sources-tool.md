@@ -57,7 +57,7 @@ Example workflows:
 
 ## Details
 
-### Tool interface
+### Tool parameters
 
 The `get_rust_sources` tool accepts the following parameters:
 
@@ -68,6 +68,8 @@ The `get_rust_sources` tool accepts the following parameters:
   "pattern": "string?"           // Optional: Regex pattern for searching within sources
 }
 ```
+
+### Tool result
 
 The response always begins with the location of the crate source:
 
@@ -84,7 +86,7 @@ When a pattern is provided, we include two additional fields, indicating that oc
 
 ```json
 {
-    // ... as above ...
+  // ... as above ...
 
   // Indicates the matches that occurred inside of examples.
   "example_matches": [
@@ -96,6 +98,8 @@ When a pattern is provided, we include two additional fields, indicating that oc
       "context": "#[tokio::main]\nasync fn main() {\n    tokio::spawn(async {\n        println!(\"Hello from spawn!\");\n    });"
     }
   ],
+
+  // Indicates any other matches that occured across the codebase
   "other_matches": [
     {
       "file_path": "src/task/spawn.rs",
@@ -113,13 +117,6 @@ When a pattern is provided, we include two additional fields, indicating that oc
 The crate version to be fetched will be identified based on the project's lockfile, found by walking up the directory tree from the current working directory. If multiple major versions of a crate exist in the lockfile, the tool will return an error requesting the agent specify which version to use via the optional `version` parameter. When possible we'll provide the source from the existing cargo cache. If no cache is found, or the crate is not used in the project, we'll download the sources from crates.io and unpack them into a temporary directory.
 
 The tool accepts an optional `version` parameter as a semver range (using the same format as `Cargo.toml`, e.g., "1.0", "^1.2", "~1.2.3") and will select the most recent version matching that range, just as cargo would.
-
-### Finding examples
-
-When search terms are included, we will search the crate and include:
-
-* examples, which the agent should look to with higher priority
-* all matches, which may be confusing
 
 ## Impl phases
 
