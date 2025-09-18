@@ -6,6 +6,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::actor::dispatch::DispatchMessage;
+
 /// Parameters for the present-walkthrough MCP tool
 ///
 /// Walkthroughs are markdown documents with embedded XML elements for interactive features
@@ -15,7 +17,7 @@ pub struct PresentWalkthroughParams {
     /// Markdown content with embedded XML elements (comment, gitdiff, action, mermaid)
     /// See dialectic guidance for XML element syntax and usage
     pub content: String,
-    
+
     /// Base directory path for resolving relative file references
     #[serde(rename = "baseUri")]
     pub base_uri: String,
@@ -220,8 +222,6 @@ pub struct StoreReferencePayload {
 }
 // ANCHOR_END: store_reference_payload
 
-
-
 /// Payload for user feedback messages from VSCode extension
 // ANCHOR: user_feedback_payload
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -277,6 +277,16 @@ pub struct LogProgressPayload {
 }
 // ANCHOR_END: log_progress_payload
 
+impl DispatchMessage for LogProgressPayload {
+    const EXPECTS_REPLY: bool = false;
+
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::LogProgress
+    }
+}
+
 /// Progress categories for visual indicators
 // ANCHOR: progress_category
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -312,12 +322,12 @@ pub struct UpdateTaskspacePayload {
 // ANCHOR_END: update_taskspace_payload
 
 /// Unified payload for taskspace state operations (get/update)
-/// 
+///
 /// This message type handles both reading and writing taskspace state.
 /// - For read-only: Send with name=None, description=None  
 /// - For update: Send with new name/description values
 /// - Response: Always returns complete TaskspaceStateResponse
-/// 
+///
 /// **Benefits of unified approach:**
 /// - Single message type for all taskspace state operations
 /// - GUI app can clear initial_prompt on any update operation
@@ -340,16 +350,16 @@ pub struct GetTaskspaceStatePayload {
 }
 
 /// Response for get_taskspace_state messages
-/// 
+///
 /// This structure represents the complete state of a taskspace as managed by the
 /// Symposium GUI application. It's used for dynamic agent initialization and
 /// taskspace management.
-/// 
+///
 /// **Field Usage:**
 /// - `name`: User-visible taskspace name (shown in GUI, tabs, etc.)
 /// - `description`: Short user-visible summary (shown in GUI, tooltips, etc.)  
 /// - `initial_prompt`: Task description given to LLM during agent initialization
-/// 
+///
 /// **Lifecycle:**
 /// 1. GUI app creates taskspace with name, description, initial_prompt
 /// 2. Agent requests state via get_taskspace_state → receives all fields
@@ -374,4 +384,3 @@ pub struct DeleteTaskspacePayload {
     pub taskspace_uuid: String,
 }
 // ANCHOR_END: delete_taskspace_payload
-
