@@ -82,25 +82,35 @@ The refactored system will have clean separation of concerns with focused actors
 
 ## Phase 3: Integration and Wiring ✅ COMPLETED
 1. ~~Refactor `daemon::run_client` to use `ClientActor` + `StdioActor`~~ **COMPLETED**
-2. **NEXT**: Update `IPCCommunicator` to use `ClientActor` + `DispatchActor`
-3. Wire all actors together with appropriate channels
-4. Ensure all existing tests pass
+2. ~~Update `IPCCommunicator` to use hybrid legacy + actor system~~ **COMPLETED**
+3. ~~Wire all actors together with appropriate channels~~ **COMPLETED**
+4. ~~Ensure all existing tests pass~~ **COMPLETED**
 
-## Phase 4: Migration to Trait-Based Messaging 🚧 IN PROGRESS
-1. **NEXT**: Implement `DispatchMessage` traits for existing message types
-2. Migrate callers from manual channel management to `.send<M>()` pattern
-3. Add type-safe request/reply pairs with compile-time validation
+## Phase 4: Trait-Based Messaging and Specialized Actors ✅ COMPLETED
+1. ~~Implement `DispatchMessage` traits for Marco/Polo message types~~ **COMPLETED**
+2. ~~Create dedicated `MarcoPoloActor` for discovery protocol~~ **COMPLETED**
+3. ~~Add message routing in `DispatchActor` based on `IPCMessageType`~~ **COMPLETED**
+4. ~~Migrate Marco/Polo messages to use `.send<M>()` pattern~~ **COMPLETED**
+5. **NEXT**: Migrate other message types to specialized actors
 
-## Phase 5: Server Actor (Future)
+## Phase 5: Complete Migration (Future)
+1. Create specialized actors for other message types (logs, taskspace, etc.)
+2. Migrate remaining IPCCommunicator methods to use actor system
+3. Remove legacy connection management code
+4. Add comprehensive testing for actor system
+
+## Phase 6: Server Actor (Future)
 1. Extract server-side connection handling if needed
 2. Handle incoming connections and message parsing
 
 ## Current Status
-- **4 actors implemented**: DispatchActor, ClientActor, StdioActor, + others
+- **5+ actors implemented**: DispatchActor, ClientActor, StdioActor, MarcoPoloActor + others
 - **Actor trait**: Standardized spawn pattern across all actors
 - **Trait-based messaging**: Type-safe `DispatchMessage` system with automatic reply handling
-- **CLI integration complete**: `daemon::run_client` uses actor architecture
-- **Ready for MCP integration**: Actors proven in real CLI usage
+- **Message routing**: DispatchActor routes messages to specialized actors
+- **Hybrid system**: Legacy + actor systems running side-by-side safely
+- **Proven integration**: Marco/Polo messages successfully migrated to actors
+- **CLI + MCP integration**: Actors proven in both CLI and MCP server usage
 
 ## Actor Communication Pattern
 Each actor follows the standard Tokio actor pattern:
