@@ -177,7 +177,7 @@ impl IPCCommunicator {
             );
 
             // Create dispatch actor with client channels
-            crate::actor::DispatchHandle::new(from_daemon_rx, to_daemon_tx)
+            crate::actor::DispatchHandle::new(from_daemon_rx, to_daemon_tx, shell_pid)
         };
 
         Ok(Self {

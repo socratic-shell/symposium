@@ -159,6 +159,7 @@ impl DispatchActor {
 #[derive(Clone)]
 pub struct DispatchHandle {
     sender: mpsc::Sender<DispatchRequest>,
+    shell_pid: u32,
 }
 
 impl DispatchHandle {
@@ -168,17 +169,16 @@ impl DispatchHandle {
     ///
     /// * A "client" that can send/receive `IPCMessage` values. This is the underlying transport.
     /// * Other actors that should receive particular types of incoming messages (e.g., Marco/Polo messages).
-    pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>) -> Self {
+    pub fn new(client_rx: mpsc::Receiver<IPCMessage>, client_tx: mpsc::Sender<IPCMessage>, shell_pid: u32) -> Self {
         let (sender, receiver) = mpsc::channel(32);
 
         // Create Marco actor for discovery messages
-        // TODO: Get shell PID from context
-        let marco_handle = crate::actor::MarcoHandle::new(0);
+        let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
 
         let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
-        Self { sender }
+        Self { sender, shell_pid }
     }
 
     /// Spawn a dispatch actor with a mock actor for testing
@@ -196,7 +196,7 @@ impl DispatchHandle {
         let actor = DispatchActor::new(receiver, mock_rx, client_tx, Some(marco_handle));
         actor.spawn();
 
-        Self { sender }
+        Self { sender, shell_pid: 0 }
     }
 
     /// Send a message out into the ether and (optionally) await a response.
@@ -251,8 +251,8 @@ impl DispatchHandle {
                 .unwrap_or_else(|_| std::path::PathBuf::from("/"))
                 .to_string_lossy()
                 .to_string(),
-            taskspace_uuid: None, // TODO: Get from context if available
-            shell_pid: None,      // TODO: Get from context if available
+            taskspace_uuid: None, // TODO: Extract from working directory if needed
+            shell_pid: Some(self.shell_pid),
         }
     }
 }
