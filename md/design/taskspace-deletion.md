@@ -6,6 +6,21 @@ Taskspace deletion is a complex operation that involves multiple safety checks, 
 
 ## System Architecture
 
+### Dialog Confirmation Flow
+
+The deletion system now implements proper dialog confirmation to ensure agents receive accurate feedback:
+
+**Previous Flow (Problematic)**:
+1. Agent requests deletion → Immediate "success" response → UI dialog shown
+2. User could cancel, but agent already thought deletion succeeded
+
+**New Flow (Fixed)**:
+1. Agent requests deletion → No immediate response → UI dialog shown  
+2. User confirms → Actual deletion → Success response to agent
+3. User cancels → Error response to agent ("Taskspace deletion was cancelled by user")
+
+**Key Implementation**: The `MessageHandlingResult::pending` case allows the IPC system to defer responses until user interaction completes.
+
 ### Safety-First Design
 
 The deletion system prioritizes preventing data loss through a multi-layered safety approach:
@@ -50,10 +65,24 @@ project/
 ## Design Principles
 
 1. **Safety First**: Always warn about potential data loss before proceeding
-2. **Fresh Data**: Compute branch info when needed, not when cached  
-3. **Clear Communication**: Provide specific warnings for different risk types
-4. **Graceful Degradation**: Continue deletion even when git operations fail
-5. **User Control**: Let users choose branch deletion behavior based on clear information
+2. **Accurate Agent Feedback**: Only respond to agents after user makes actual decision
+3. **Fresh Data**: Compute branch info when needed, not when cached  
+4. **Clear Communication**: Provide specific warnings for different risk types
+5. **Graceful Degradation**: Continue deletion even when git operations fail
+6. **User Control**: Let users choose branch deletion behavior based on clear information
+
+## IPC Message Flow
+
+### Deferred Response Pattern
+
+The `delete_taskspace` IPC message uses a deferred response pattern:
+
+1. **Request Received**: `handleDeleteTaskspace` stores the message ID and returns `.pending`
+2. **No Immediate Response**: IPC manager doesn't send response yet
+3. **Dialog Interaction**: User confirms or cancels in UI
+4. **Deferred Response**: Appropriate success/error response sent based on user choice
+
+This ensures the MCP server and agent receive accurate information about whether the deletion actually occurred.
 
 ## Complexity Drivers
 

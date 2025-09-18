@@ -289,6 +289,23 @@ For each message type that is sent in the record we record
 
 **Target**: Symposium app
 
+## `delete_taskspace`
+
+**Sent by**: MCP server
+
+**Purpose**: Request deletion of the current taskspace with user confirmation
+
+**Payload**: 
+```rust,no_run,noplayground
+{{#include ../../socratic-shell/mcp-server/src/types.rs:delete_taskspace_payload}}
+```
+
+**Expected response**: `response` with success confirmation (sent after user confirms) or error (if user cancels)
+
+**Target**: Symposium app
+
+**Notes**: This message triggers a confirmation dialog. The response is deferred until the user either confirms or cancels the deletion. If confirmed, the taskspace is deleted and a success response is sent. If cancelled, an error response is sent with the message "Taskspace deletion was cancelled by user".
+
 ## `taskspace_roll_call`
 
 **Sent by**: Symposium app
