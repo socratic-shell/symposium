@@ -467,6 +467,26 @@ impl IPCCommunicator {
         task_description: String,
         initial_prompt: String,
     ) -> Result<()> {
+        if self.test_mode {
+            info!("Spawn taskspace called (test mode): {}", name);
+            return Ok(());
+        }
+
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let spawn_message = crate::types::SpawnTaskspaceMessage {
+                name,
+                task_description,
+                initial_prompt,
+            };
+            dispatch_handle.send(spawn_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send spawn_taskspace via actors: {}", e)))?;
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy spawn_taskspace sending");
+        
         use crate::types::{IPCMessageType, SpawnTaskspacePayload};
 
         let (project_path, taskspace_uuid) = extract_project_info()?;
@@ -524,6 +544,22 @@ impl IPCCommunicator {
 
     /// Send signal_user message to request user attention
     pub async fn signal_user(&self, message: String) -> Result<()> {
+        if self.test_mode {
+            info!("Signal user called (test mode): {}", message);
+            return Ok(());
+        }
+
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let signal_message = crate::types::SignalUserMessage { message };
+            dispatch_handle.send(signal_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send signal_user via actors: {}", e)))?;
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy signal_user sending");
+        
         use crate::types::{IPCMessageType, SignalUserPayload};
 
         let (project_path, taskspace_uuid) = extract_project_info()?;
@@ -643,6 +679,22 @@ impl IPCCommunicator {
 
     /// Send delete_taskspace message to delete current taskspace
     pub async fn delete_taskspace(&self) -> Result<()> {
+        if self.test_mode {
+            info!("Delete taskspace called (test mode)");
+            return Ok(());
+        }
+
+        // Use new actor-based dispatch system
+        if let Some(dispatch_handle) = &self.dispatch_handle {
+            let delete_message = crate::types::DeleteTaskspaceMessage {};
+            dispatch_handle.send(delete_message).await
+                .map_err(|e| IPCError::SendError(format!("Failed to send delete_taskspace via actors: {}", e)))?;
+            return Ok(());
+        }
+
+        // Fallback to legacy system (should not happen in current setup)
+        warn!("No dispatch handle available, using legacy delete_taskspace sending");
+        
         use crate::types::{DeleteTaskspacePayload, IPCMessageType};
 
         let (project_path, taskspace_uuid) = extract_project_info()?;

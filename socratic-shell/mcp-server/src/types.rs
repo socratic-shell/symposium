@@ -45,6 +45,71 @@ pub enum LogLevel {
     Debug,
 }
 
+/// Delete taskspace message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteTaskspaceMessage {
+    // Delete taskspace has no additional payload beyond sender info
+}
+
+impl DispatchMessage for DeleteTaskspaceMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::DeleteTaskspace
+    }
+}
+
+/// Update taskspace message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateTaskspaceMessage {
+    pub name: String,
+    pub description: String,
+}
+
+impl DispatchMessage for UpdateTaskspaceMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::UpdateTaskspace
+    }
+}
+
+/// Signal user message to request attention
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalUserMessage {
+    pub message: String,
+}
+
+impl DispatchMessage for SignalUserMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::SignalUser
+    }
+}
+
+/// Spawn taskspace message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnTaskspaceMessage {
+    pub name: String,
+    #[serde(rename = "taskDescription")]
+    pub task_description: String,
+    #[serde(rename = "initialPrompt")]
+    pub initial_prompt: String,
+}
+
+impl DispatchMessage for SpawnTaskspaceMessage {
+    const EXPECTS_REPLY: bool = false;
+    type Reply = ();
+
+    fn message_type(&self) -> IPCMessageType {
+        IPCMessageType::SpawnTaskspace
+    }
+}
+
 /// Log message for IPC communication
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogMessage {
