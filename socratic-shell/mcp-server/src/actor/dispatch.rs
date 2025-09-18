@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
+use anyhow::Context;
 use crate::actor::Actor;
 use crate::types::IPCMessage;
 
@@ -129,7 +130,7 @@ impl DispatchHandle {
     }
 
     /// Send a message and wait for a reply with timeout
-    pub async fn send_message_with_reply<R>(&self, message: IPCMessage) -> Result<R, Box<dyn std::error::Error + Send + Sync>>
+    pub async fn send_message_with_reply<R>(&self, message: IPCMessage) -> anyhow::Result<R>
     where
         R: serde::de::DeserializeOwned,
     {
@@ -150,16 +151,15 @@ impl DispatchHandle {
             _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
                 // Cancel the pending reply on timeout
                 let _ = self.cancel_reply(message_id).await;
-                return Err("Request timed out after 30 seconds".into());
+                return Err(anyhow::anyhow!("Request timed out after 30 seconds"));
             }
         };
         
         // Deserialize to the requested type
-        let deserialized = serde_json::from_value(reply.clone()).map_err(|e| {
+        let deserialized = serde_json::from_value(reply.clone()).with_context(|| {
             format!(
-                "Failed to deserialize response for message {}: {}. Response was: {}",
+                "Failed to deserialize response for message {}: Response was: {}",
                 message_id,
-                e,
                 serde_json::to_string(&reply).unwrap_or_else(|_| "<invalid JSON>".to_string())
             )
         })?;
