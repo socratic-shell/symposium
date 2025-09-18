@@ -84,6 +84,7 @@ impl Actor for DispatchActor {
                             // Try to match against pending replies
                             if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
                                 // This is a reply to a pending request
+                                // Ignore send errors - the listener may have timed out and closed the channel
                                 let _ = reply_tx.send(message.payload);
                             } else {
                                 // Unsolicited message - later we'll dispatch to marco/polo or other actors
