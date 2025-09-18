@@ -107,17 +107,19 @@ The refactored system will have clean separation of concerns with focused actors
 3. ~~Validate bidirectional actor communication with typed responses~~ **COMPLETED**
 4. ~~Migrate IDE operations: `resolve_symbol_by_name()` and `find_all_references()`~~ **COMPLETED**
 
-## Phase 7: Legacy System Removal 🚧 NEXT
-1. **NEXT**: Remove unused legacy methods:
-   - `send_message_with_reply()` (unused, warnings confirm)
-   - `write_message()` (unused, warnings confirm) 
-   - `create_message_sender()` (unused, warnings confirm)
-2. Remove `IPCCommunicatorInner` struct and manual connection management:
+## Phase 7: Legacy System Removal 🚧 IN PROGRESS
+1. **✅ COMPLETE**: Remove unused legacy methods:
+   - ✅ `send_message_with_reply()` (deleted - 110 lines removed)
+   - ✅ `write_message()` (deleted)
+   - ✅ `create_message_sender()` (deleted)
+   - ✅ Clean up unused imports (MessageSender, DeserializeOwned, AsyncWriteExt)
+2. **NEXT**: Remove `IPCCommunicatorInner` struct and manual connection management:
    - `pending_requests: HashMap<String, oneshot::Sender<ResponsePayload>>`
    - `write_half: Option<Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>>`
    - `connected: bool` flag
-3. Simplify `IPCCommunicator` to only contain `dispatch_handle` and `test_mode`
-4. Add comprehensive testing for actor system
+   - `terminal_shell_pid: u32` (move to IPCCommunicator directly)
+3. **NEXT**: Simplify `IPCCommunicator` to only contain `dispatch_handle` and `test_mode`
+4. **NEXT**: Add comprehensive testing for actor system
 
 ## Current Status
 - **✅ ALL OUTBOUND MESSAGES MIGRATED**: 9+ message types using actor dispatch
@@ -142,18 +144,18 @@ The refactored system will have clean separation of concerns with focused actors
 
 ## What's Left to Complete the Refactoring
 
-**Phase 7 - Legacy Cleanup (Ready Now):**
+**Phase 7 - Legacy Cleanup (IN PROGRESS):**
 - ✅ **All IPC messages migrated** - No functionality depends on legacy methods
-- ✅ **Compiler warnings confirm** - `send_message_with_reply`, `write_message`, `create_message_sender` are unused
+- ✅ **Step 1 COMPLETE** - Removed 110 lines of unused legacy methods
 - ✅ **Actor system proven stable** - All tests pass, full functionality working
 
 **Remaining work is pure cleanup:**
-1. **Remove dead code** - 3 unused methods (~100 lines)
-2. **Simplify IPCCommunicator** - Remove `IPCCommunicatorInner` struct (~50 lines)  
-3. **Remove manual state** - `pending_requests`, `write_half`, `connected` fields
+1. ✅ **Remove dead code** - 3 unused methods (110 lines) **DONE**
+2. **NEXT: Simplify IPCCommunicator** - Remove `IPCCommunicatorInner` struct (~50 lines)  
+3. **NEXT: Remove manual state** - `pending_requests`, `write_half`, `connected` fields
 4. **Final result**: Clean actor-only architecture
 
-**Estimated effort**: ~30 minutes of safe deletions + testing
+**Estimated effort**: ~15 minutes of safe deletions + testing (Step 1 complete)
 - **Handle struct**: Provides public API and holds message sender
 - **Message enum**: Defines operations the actor can perform
 
