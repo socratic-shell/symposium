@@ -3,15 +3,15 @@
 //! Handles Unix socket connection management, message serialization/deserialization,
 //! and forwards parsed IPCMessages via tokio channels.
 
+use crate::actor::Actor;
+use crate::types::IPCMessage;
+use anyhow::Result;
 use std::process::Command;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-use anyhow::Result;
-use crate::actor::Actor;
-use crate::types::IPCMessage;
 
 /// Actor that manages daemon connection and message transport
 pub struct ClientActor {
@@ -209,23 +209,30 @@ pub struct ClientHandle {
 }
 
 impl ClientHandle {
-    pub fn new(
-        socket_prefix: String,
-        auto_start: bool,
-    ) -> (Self, mpsc::Sender<IPCMessage>) {
+    /// Spawn a client connection. Returns a `Self` that you can use to send
+    /// messages to the client (which will rebroadcast them to everyone else)
+    /// and a receiver where you can receive messages from others.
+    pub fn new(socket_prefix: String, auto_start: bool) -> (Self, mpsc::Receiver<IPCMessage>) {
         let (inbound_tx, inbound_rx) = mpsc::channel(32);
         let (outbound_tx, outbound_rx) = mpsc::channel(32);
-        
-        let actor = ClientActor::new(inbound_rx, outbound_tx.clone(), socket_prefix, auto_start);
+
+        let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix, auto_start);
         actor.spawn();
 
         // Return handle and the receiver for other actors to get messages from daemon
-        (Self { sender: inbound_tx }, outbound_tx)
+        (Self { sender: inbound_tx }, outbound_rx)
     }
 
     /// Send a message to daemon
     pub async fn send_message(&self, message: IPCMessage) -> Result<()> {
-        self.sender.send(message).await
+        self.sender
+            .send(message)
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to send message to daemon: {}", e))
+    }
+
+    /// Convert handle into the underlying sender for wiring with other actors
+    pub fn into_sender(self) -> mpsc::Sender<IPCMessage> {
+        self.sender
     }
 }

@@ -323,132 +323,37 @@ async fn run_message_bus_with_shutdown_signal(
     Ok(())
 }
 
-/// Run as client - connects to daemon and bridges stdin/stdout
+/// Run as client - connects to daemon and bridges stdin/stdout using actors
 /// If auto_start is true and daemon is not running, spawns an independent daemon process
 pub async fn run_client(socket_prefix: &str, auto_start: bool) -> Result<()> {
-    use std::process::Command;
-    use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
-    use tokio::net::UnixStream;
+    use crate::actor::{ClientHandle, StdioHandle};
 
-    let socket_path = crate::constants::daemon_socket_path(socket_prefix);
+    info!("🔌 Starting client with actor-based architecture");
 
-    // Try to connect to existing daemon
-    let stream = match UnixStream::connect(&socket_path).await {
-        Ok(stream) => {
-            info!("✅ Connected to existing daemon at {}", socket_path);
-            stream
-        }
-        Err(_) if auto_start => {
-            info!("No daemon found, attempting to start one...");
+    // Create ClientActor - returns handle and receiver for messages FROM daemon
+    let (client_handle, mut from_daemon_rx) = ClientHandle::new(
+        socket_prefix.to_string(),
+        auto_start,
+    );
 
-            // Spawn independent daemon process
-            let current_exe = std::env::current_exe()
-                .map_err(|e| anyhow::anyhow!("Failed to get current executable: {}", e))?;
+    // Create StdioActor - needs sender to send TO daemon, returns sender for messages FROM daemon
+    let (_stdio_handle, to_stdout_tx) = StdioHandle::new(client_handle.into_sender());
 
-            let mut cmd = Command::new(&current_exe);
-            cmd.args(&["daemon"]);
-
-            // Make it truly independent
-            #[cfg(unix)]
-            {
-                use std::os::unix::process::CommandExt;
-                cmd.process_group(0); // Create new process group
-            }
-
-            let child = cmd
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-                .map_err(|e| anyhow::anyhow!("Failed to spawn daemon: {}", e))?;
-
-            info!("Spawned daemon process (PID: {})", child.id());
-
-            // Wait for daemon to start and create socket
-            let mut attempts = 0;
-            let stream = loop {
-                if attempts >= 20 {
-                    // 2 seconds timeout
-                    return Err(anyhow::anyhow!("Timeout waiting for daemon to start"));
-                }
-
-                match UnixStream::connect(&socket_path).await {
-                    Ok(stream) => {
-                        info!("✅ Connected to newly started daemon");
-                        break stream;
-                    }
-                    Err(_) => {
-                        tokio::time::sleep(Duration::from_millis(100)).await;
-                        attempts += 1;
-                    }
-                }
-            };
-            stream
-        }
-        Err(e) => {
-            return Err(anyhow::anyhow!(
-                "Failed to connect to daemon at {}: {}",
-                socket_path,
-                e
-            ));
-        }
-    };
-
-    // Split stream for reading and writing
-    let (read_half, mut write_half) = stream.into_split();
-    let mut read_stream = BufReader::new(read_half);
-
-    // Split stdin/stdout for async handling
-    let stdin = io::stdin();
-    let mut stdout = io::stdout();
-
-    let mut stdin_reader = BufReader::new(stdin);
-    let mut daemon_line = String::new();
-    let mut stdin_line = String::new();
-
-    info!("🔌 Client bridge active - forwarding stdin/stdout to/from daemon");
-
-    loop {
-        tokio::select! {
-            // Read from daemon, write to stdout
-            result = read_stream.read_line(&mut daemon_line) => {
-                match result {
-                    Ok(0) => {
-                        info!("Daemon connection closed");
-                        break;
-                    }
-                    Ok(_) => {
-                        stdout.write_all(daemon_line.as_bytes()).await?;
-                        stdout.flush().await?;
-                        daemon_line.clear();
-                    }
-                    Err(e) => {
-                        error!("Error reading from daemon: {}", e);
-                        break;
-                    }
-                }
-            }
-
-            // Read from stdin, write to daemon
-            result = stdin_reader.read_line(&mut stdin_line) => {
-                match result {
-                    Ok(0) => {
-                        info!("Stdin closed");
-                        break;
-                    }
-                    Ok(_) => {
-                        write_half.write_all(stdin_line.as_bytes()).await?;
-                        stdin_line.clear();
-                    }
-                    Err(e) => {
-                        error!("Error reading from stdin: {}", e);
-                        break;
-                    }
-                }
+    // Wire messages from daemon to stdio for stdout
+    tokio::spawn(async move {
+        while let Some(message) = from_daemon_rx.recv().await {
+            if let Err(e) = to_stdout_tx.send(message).await {
+                tracing::error!("Failed to forward daemon message to stdout: {}", e);
+                break;
             }
         }
-    }
+    });
 
+    info!("🔌 Client actors started - stdin/stdout bridge active");
+    
+    // Wait for Ctrl+C to shutdown
+    tokio::signal::ctrl_c().await?;
+    
     info!("Client bridge shutting down");
     Ok(())
 }
