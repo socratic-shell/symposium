@@ -37,6 +37,9 @@ struct DispatchActor {
     /// Outgoing messages to the IPC client.
     client_tx: mpsc::Sender<IPCMessage>,
 
+    /// Handle to MarcoPolo actor for discovery messages
+    marco_polo_handle: Option<crate::actor::MarcoPoloHandle>,
+
     /// Map whose key is the `id` of a reply that we are expecting
     /// and the value is the channel where we should send it when it arrives.
     ///
@@ -87,8 +90,30 @@ impl Actor for DispatchActor {
                                 // Ignore send errors - the listener may have timed out and closed the channel
                                 let _ = reply_tx.send(message.payload);
                             } else {
-                                // Unsolicited message - later we'll dispatch to marco/polo or other actors
-                                tracing::debug!("Received unsolicited message: {:?}", message.message_type);
+                                // Unsolicited message - route to appropriate actor
+                                match message.message_type {
+                                    crate::types::IPCMessageType::Marco => {
+                                        if let Some(marco_polo) = &self.marco_polo_handle {
+                                            if let Err(e) = marco_polo.handle_marco(message).await {
+                                                tracing::error!("Failed to route Marco message: {}", e);
+                                            }
+                                        } else {
+                                            tracing::debug!("Received Marco message but no MarcoPolo actor available");
+                                        }
+                                    }
+                                    crate::types::IPCMessageType::Polo => {
+                                        if let Some(marco_polo) = &self.marco_polo_handle {
+                                            if let Err(e) = marco_polo.handle_polo(message).await {
+                                                tracing::error!("Failed to route Polo message: {}", e);
+                                            }
+                                        } else {
+                                            tracing::debug!("Received Polo message but no MarcoPolo actor available");
+                                        }
+                                    }
+                                    _ => {
+                                        tracing::debug!("Received unsolicited message: {:?}", message.message_type);
+                                    }
+                                }
                             }
                         }
                         None => {
@@ -114,11 +139,13 @@ impl DispatchActor {
         request_rx: mpsc::Receiver<DispatchRequest>,
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
+        marco_polo_handle: Option<crate::actor::MarcoPoloHandle>,
     ) -> Self {
         Self {
             request_rx,
             client_rx,
             client_tx,
+            marco_polo_handle,
             pending_replies: HashMap::new(),
         }
     }
@@ -142,7 +169,12 @@ impl DispatchHandle {
         client_tx: mpsc::Sender<IPCMessage>,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(32);
-        let actor = DispatchActor::new(receiver, client_rx, client_tx);
+        
+        // Create MarcoPolo actor for discovery messages
+        // TODO: Get shell PID from context
+        let marco_polo_handle = crate::actor::MarcoPoloHandle::new(0);
+        
+        let actor = DispatchActor::new(receiver, client_rx, client_tx, Some(marco_polo_handle));
         actor.spawn();
 
         Self { sender }

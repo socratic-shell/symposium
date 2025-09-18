@@ -21,6 +21,7 @@ pub trait Actor: Sized + Send + 'static {
 pub mod client;
 pub mod discovery;
 pub mod dispatch;
+pub mod marco_polo;
 pub mod reference;
 pub mod stdio;
 
@@ -28,5 +29,6 @@ pub mod stdio;
 pub use client::spawn_client;
 pub use discovery::DiscoveryHandle;
 pub use dispatch::DispatchHandle;
+pub use marco_polo::MarcoPoloHandle;
 pub use reference::ReferenceHandle;
 pub use stdio::StdioHandle;
