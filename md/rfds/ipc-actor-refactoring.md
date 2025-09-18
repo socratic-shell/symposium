@@ -105,13 +105,11 @@ struct ActorHandle {
 
 As implementation progresses, the following design documentation will need updates to reflect the new actor-based architecture:
 
-**[Daemon Message Bus Architecture](../design/daemon.md)**: Update the architecture diagrams and implementation details to show how the daemon uses internal actors rather than direct socket handling. The public interface remains the same, but internal structure changes significantly.
+**[Implementation Overview](../design/implementation-overview.md)**: Add a section describing the actor system as a key internal architectural component of the MCP server, explaining how it improves the codebase's maintainability and testability.
 
-**[Message Flows](../design/message-flows.md)**: Update sequence diagrams to show message routing through the dispatch actor rather than direct communication. The external flows remain the same, but internal actor communication needs documentation.
+**Internal Architecture Documentation**: Create new documentation (likely in `md/design/mcp-server/` or similar) that details the actor system for developers working on the MCP server internals. This should include actor responsibilities, message flows between actors, and testing approaches.
 
-**[MCP Server Overview](../design/mcp-server.md)**: Update to reflect that the MCP server now uses an actor-based IPC system internally, which improves testability and separation of concerns.
-
-**[Implementation Overview](../design/implementation-overview.md)**: Add a section describing the actor system as a key architectural component, explaining how it improves the codebase's maintainability and testability.
+**Note**: External interfaces and public APIs remain unchanged, so most design documentation (daemon.md, message-flows.md, etc.) should not need updates since the actor refactoring is purely an internal implementation detail.
 
 # Frequently asked questions
 
