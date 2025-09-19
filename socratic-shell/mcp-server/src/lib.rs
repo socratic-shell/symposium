@@ -25,12 +25,28 @@ pub use crate::main_types::Options;
 
 mod main_types {
     use clap::Parser;
+    use std::process::Command;
 
     #[derive(Parser, Debug, Clone)]
     pub struct Options {
         /// Enable development logging to the default log file
         #[arg(long, global = true)]
         pub dev_log: bool,
+    }
+
+    impl Options {
+        /// Reproduce these options on a spawned command
+        pub fn reproduce(&self, cmd: &mut Command) {
+            // Pass --dev-log if we received it
+            if self.dev_log {
+                cmd.arg("--dev-log");
+            }
+
+            // Pass RUST_LOG environment variable if set
+            if let Ok(rust_log) = std::env::var("RUST_LOG") {
+                cmd.env("RUST_LOG", rust_log);
+            }
+        }
     }
 }
 

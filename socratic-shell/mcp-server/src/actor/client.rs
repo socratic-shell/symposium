@@ -168,15 +168,8 @@ impl ClientActor {
         let mut cmd = Command::new(&current_exe);
         cmd.args(&["daemon"]);
         
-        // Pass --dev-log if we received it
-        if self.options.dev_log {
-            cmd.arg("--dev-log");
-        }
-        
-        // Pass RUST_LOG environment variable if set
-        if let Ok(rust_log) = std::env::var("RUST_LOG") {
-            cmd.env("RUST_LOG", rust_log);
-        }
+        // Reproduce the options we received
+        self.options.reproduce(&mut cmd);
 
         #[cfg(unix)]
         {
