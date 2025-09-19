@@ -225,13 +225,38 @@ impl DialecticServer {
     /// as described in the dialectic guidance documentation.
     // ANCHOR: present_walkthrough_tool
     #[tool(
-        description = "Display a code walkthrough in VSCode using markdown with embedded XML elements. \
-                       Accepts markdown content with special XML tags: \
-                       <comment location=\"dialect_expr\" icon=\"icon\">content</comment>, \
-                       <gitdiff range=\"commit_range\" />, \
-                       <action button=\"text\">message</action>, \
-                       <mermaid>diagram</mermaid>. \
-                       See dialectic guidance for complete syntax and examples."
+        description = "\
+            Display a code walkthrough in the user's IDE.\n\
+            Use this when the user\n\
+            (1) requests a walkthrough or that you walk through code or\n\
+            (2) asks that you explain how code works.\n\
+            \n\
+            Accepts markdown content with special code blocks.\n\
+            \n\
+            To find full guidelines for usage, use the `expand_reference`\n\
+            tool with `walkthrough_format.md`.\n\
+            \n\
+            Quick tips:\n\
+            \n\
+            Display a mermaid graph:\n\
+            ```mermaid\n\
+            (Mermaid content goes here)\n\
+            ```\n\
+            \n\
+            Add a comment to a particular line of code:\n\
+            ```comment\n\
+            location: findDefinition(`symbol_name`)\n\
+            \n\
+            (Explanatory text goes here)\n\
+            ```\n\
+            \n\
+            Add buttons that will let the user send you a message:\n\
+            ```action\n\
+            button: (what the user sees)\n\
+            \n\
+            (what message you will get)\n\
+            ```\n\
+        "
     )]
     async fn present_walkthrough(
         &self,
