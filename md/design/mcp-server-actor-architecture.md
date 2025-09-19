@@ -52,13 +52,14 @@ DispatchActor → tokio::channel → ClientActor → serialize → Unix Socket
 
 **Usage**: When `daemon::run_client()` is called, it wires `ClientActor` → `StdoutActor` instead of `ClientActor` → `DispatchActor`.
 
-### Discovery Actor
-**Purpose**: Marco/polo protocol handling  
-**Location**: `src/actor/discovery.rs`
+### Dispatch Actor
+**Purpose**: Message routing and Marco/Polo discovery  
+**Location**: `src/actor/dispatch.rs`
 
-- Handles daemon discovery protocol
+- Routes messages to appropriate handlers based on type
+- Handles Marco/Polo discovery protocol inline
+- Manages message bus coordination
 - Responds to marco messages with polo
-- Manages discovery state
 
 ### Reference Actor
 **Purpose**: Code reference storage and retrieval  

@@ -39,11 +39,9 @@ The refactored system will have clean separation of concerns with focused actors
 
 **IPC Client Actor**: Transport layer that handles Unix socket connection management, message serialization/deserialization, and forwards parsed `IPCMessage`s via tokio channels.
 
-**IPC Dispatch Actor**: Message router that receives `IPCMessage`s from client actor, routes replies to waiting callers, and coordinates with other actors.
+**IPC Dispatch Actor**: Message router that receives `IPCMessage`s from client actor, routes replies to waiting callers, coordinates with other actors, and handles Marco/Polo discovery protocol inline.
 
 **Stdout Actor**: Simple actor for CLI mode that receives `IPCMessage`s and prints them to stdout.
-
-**Discovery Actor**: Handles marco/polo protocol for server discovery.
 
 **Reference Actor**: Handles code reference storage/retrieval.
 
@@ -129,13 +127,13 @@ The refactored system will have clean separation of concerns with focused actors
 - **✅ ALL OUTBOUND MESSAGES MIGRATED**: 9+ message types using actor dispatch
 - **✅ ALL REQUEST/REPLY MESSAGES MIGRATED**: Complete bidirectional communication via actors
 - **✅ LEGACY SYSTEM REMOVED**: Clean actor-only architecture achieved
-- **✅ Specialized actors**: MarcoActor for inbound message handling
+- **✅ Specialized actors**: DispatchActor handles both routing and Marco/Polo discovery
 - **✅ Type-safe messaging**: `IpcPayload` trait with compile-time validation
 - **✅ Clean architecture**: No duplicate structs, reusing existing payloads
 - **✅ Proven integration**: Both CLI and MCP server modes using actors
 - **✅ IDE operations**: Symbol resolution and reference finding via actor system
 - **✅ Complete message context**: Shell PID and taskspace UUID properly extracted and cached
-- **✅ Marco discovery**: Simplified marco-polo → marco actor with proper Polo responses
+- **✅ Marco discovery**: Simplified architecture with Marco/Polo handling inline in DispatchActor
 
 **Major milestone achieved**: Complete IPC actor refactoring with clean, testable architecture!
 
