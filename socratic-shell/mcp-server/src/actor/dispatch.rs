@@ -4,9 +4,10 @@
 //! Extracted from the monolithic IPCCommunicator to provide focused responsibility.
 
 use crate::actor::Actor;
-use crate::types::{IPCMessage, IpcPayload, MessageSender, ResponsePayload};
+use crate::types::{IPCMessage, IpcPayload, MessageSender, PoloPayload, ResponsePayload};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
@@ -53,9 +54,6 @@ struct DispatchActor {
 
     /// Identity when sending messages
     sender: MessageSender,
-
-    /// Handle to Marco actor for discovery messages
-    marco_handle: Option<crate::actor::MarcoHandle>,
 
     /// Handle to Reference actor for storing/retrieving context
     reference_handle: Option<crate::actor::ReferenceHandle>,
@@ -129,7 +127,6 @@ impl DispatchActor {
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
         sender: MessageSender,
-        marco_handle: Option<crate::actor::MarcoHandle>,
         reference_handle: Option<crate::actor::ReferenceHandle>,
     ) -> Self {
         Self {
@@ -137,7 +134,6 @@ impl DispatchActor {
             client_rx,
             client_tx,
             sender,
-            marco_handle,
             reference_handle,
             pending_replies: HashMap::new(),
         }
@@ -146,12 +142,9 @@ impl DispatchActor {
     async fn handle_incoming_message(&mut self, message: IPCMessage) {
         match message.message_type {
             crate::types::IPCMessageType::Marco => {
-                if let Some(marco) = &self.marco_handle {
-                    if let Err(e) = marco.handle_marco(message, self.client_tx.clone()).await {
-                        tracing::error!("Failed to route Marco message: {}", e);
-                    }
-                } else {
-                    tracing::debug!("Received Marco message but no Marco actor available");
+                // Marco we just handle right here. It's so simple it's not worth factoring out.
+                if let Err(e) = self.send_polo().await {
+                    tracing::error!("Failed to route Marco message: {}", e);
                 }
             }
             crate::types::IPCMessageType::Response => {
@@ -223,6 +216,16 @@ impl DispatchActor {
 
         Ok(self.client_tx.send(reply).await?)
     }
+    
+    async fn send_polo(&self) -> anyhow::Result<()> {
+        let ipc_message = IPCMessage {
+            message_type: crate::types::IPCMessageType::Polo,
+            id: fresh_message_id(),
+            sender: self.sender.clone(),
+            payload: serde_json::to_value(PoloPayload {})?
+        };
+        Ok(self.client_tx.send(ipc_message).await?)
+    }
 }
 
 /// Handle for communicating with the dispatch actor
@@ -250,17 +253,14 @@ impl DispatchHandle {
     ) -> Self {
         let (actor_tx, actor_rx) = mpsc::channel(32);
 
-        // Create Marco actor for discovery messages
-        let marco_handle = crate::actor::MarcoHandle::new(shell_pid);
-
         let sender = create_sender(shell_pid);
+        info!("MCP server sender with PID {shell_pid} sender info: {sender:?}");
 
         let actor = DispatchActor::new(
             actor_rx,
             client_rx,
             client_tx,
             sender.clone(),
-            Some(marco_handle),
             Some(reference_handle),
         );
         actor.spawn();
@@ -277,9 +277,6 @@ impl DispatchHandle {
         // Spawn the mock actor
         tokio::spawn(mock_fn(client_rx, mock_tx));
 
-        // Create Marco actor for discovery messages
-        let marco_handle = crate::actor::MarcoHandle::new(0);
-
         let sender = MessageSender {
             working_directory: working_directory(),
             taskspace_uuid: None,
@@ -291,7 +288,6 @@ impl DispatchHandle {
             mock_rx,
             client_tx,
             sender.clone(),
-            Some(marco_handle),
             None,
         );
         actor.spawn();
@@ -304,7 +300,7 @@ impl DispatchHandle {
     where
         M: IpcPayload,
     {
-        let id = self.fresh_message_id();
+        let id = fresh_message_id();
         let message_type = message.message_type();
         let payload = serde_json::to_value(message)?;
         let message = IPCMessage {
@@ -341,9 +337,6 @@ impl DispatchHandle {
         Ok(<M::Reply>::deserialize(reply_payload)?)
     }
 
-    fn fresh_message_id(&self) -> String {
-        uuid::Uuid::new_v4().to_string()
-    }
 }
 
 fn create_sender(shell_pid: u32) -> crate::types::MessageSender {
@@ -364,3 +357,7 @@ fn working_directory() -> String {
         .to_string_lossy()
         .to_string()
 }
+
+    fn fresh_message_id() -> String {
+        uuid::Uuid::new_v4().to_string()
+    }

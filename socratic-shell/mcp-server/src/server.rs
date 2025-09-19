@@ -233,8 +233,7 @@ impl DialecticServer {
             \n\
             Accepts markdown content with special code blocks.\n\
             \n\
-            To find full guidelines for usage, use the `expand_reference`\n\
-            tool with `walkthrough_format.md`.\n\
+            To find full guidelines for usage, use the `expand_reference` with `walkthrough-format.md`.\n\
             \n\
             Quick tips:\n\
             \n\
@@ -328,9 +327,11 @@ impl DialecticServer {
     /// Returns null if no text is selected or no active editor is found.
     // ANCHOR: get_selection_tool
     #[tool(
-        description = "Get the currently selected text from any active editor in VSCode. \
-                       Works with source files, review panels, and any other text editor. \
-                       Returns null if no text is selected or no active editor is found."
+        description = "\
+            Get the currently selected text from any active editor in VSCode.\n\
+            Works with source files, review panels, and any other text editor.\n\
+            Returns null if no text is selected or no active editor is found.\
+        "
     )]
     async fn get_selection(&self) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: get_selection_tool
@@ -391,13 +392,17 @@ impl DialecticServer {
     /// through a composable function system for symbol resolution and reference finding.
     // ANCHOR: ide_operation_tool
     #[tool(
-        description = "Execute IDE operations using a structured JSON mini-language. \
-                       This tool provides access to VSCode's Language Server Protocol (LSP) capabilities \
-                       through a composable function system.\n\n\
-                       Common operations:\n\
-                       - findDefinitions(\"MyFunction\") or findDefinition(\"MyFunction\") - list of locations where a symbol named `MyFunction` is defined\n\
-                       - findReferences(\"MyFunction\") - list of locations where a symbol named `MyFunction` is referenced\n\
-                       "
+        description = "\
+            Execute IDE operations using a structured JSON mini-language.\n\
+            This tool provides access to VSCode's Language Server Protocol (LSP) capabilities\n\
+            through a composable function system.\n\
+            \n\
+            Common operations:\n\
+            - findDefinitions(\"MyFunction\") or findDefinition(\"MyFunction\") - list of locations where a symbol named `MyFunction` is defined\n\
+            - findReferences(\"MyFunction\") - list of locations where a symbol named `MyFunction` is referenced\n\
+            \n\
+            To find full guidelines for usage, use the `expand_reference` with `walkthrough-format.md`.\n\
+            "
     )]
     async fn ide_operation(
         &self,

@@ -109,6 +109,8 @@ async fn main() -> Result<()> {
     let flush_guard = structured_logging::init_component_tracing(component, args.options.dev_log)
         .expect("Failed to initialize logging");
 
+    info!("🔍 PROBE MODE DETECTED - Running PID discovery probe...");
+
     match args.command {
         Some(Command::Probe {}) => {
             info!("🔍 PROBE MODE DETECTED - Running PID discovery probe...");
@@ -142,6 +144,7 @@ async fn main() -> Result<()> {
         }
         None => {
             info!("Starting Socratic Shell MCP Server (Rust)");
+            info!("MCP Server working directory: {:?}", std::env::current_dir());
 
             // Create our server instance
             let server = DialecticServer::new(args.options.clone()).await?;
