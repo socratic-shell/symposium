@@ -121,6 +121,7 @@ impl IPCCommunicator {
     pub async fn new(
         shell_pid: u32,
         reference_handle: crate::actor::ReferenceHandle,
+        options: crate::Options,
     ) -> Result<Self> {
         info!("Creating IPC communicator for shell PID {shell_pid}");
 
@@ -130,6 +131,7 @@ impl IPCCommunicator {
             let (to_daemon_tx, from_daemon_rx) = crate::actor::spawn_client(
                 "dialectic".to_string(), // socket prefix
                 true,                    // auto_start daemon
+                options,                 // pass options for daemon spawning
             );
 
             // Create dispatch actor with client channels

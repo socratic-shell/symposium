@@ -21,13 +21,14 @@ use socratic_shell_mcp::{
 #[command(name = "socratic-shell-mcp")]
 #[command(about = "Socratic Shell MCP Server for VSCode integration")]
 struct Args {
-    /// Enable development logging to the default log file
-    #[arg(long, global = true)]
-    dev_log: bool,
+    #[command(flatten)]
+    options: Options,
 
     #[command(subcommand)]
     command: Option<Command>,
 }
+
+use socratic_shell_mcp::Options;
 
 #[derive(Parser, Debug)]
 enum Command {
@@ -105,7 +106,7 @@ async fn main() -> Result<()> {
     };
 
     // Initialize structured logging with component-specific prefixes
-    let flush_guard = structured_logging::init_component_tracing(component, args.dev_log)
+    let flush_guard = structured_logging::init_component_tracing(component, args.options.dev_log)
         .expect("Failed to initialize logging");
 
     match args.command {
@@ -133,7 +134,7 @@ async fn main() -> Result<()> {
                 None => DAEMON_SOCKET_PREFIX,
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
-            socratic_shell_mcp::run_client(prefix, auto_start).await?;
+            socratic_shell_mcp::run_client(prefix, auto_start, args.options.clone()).await?;
         }
         Some(Command::Agent(agent_cmd)) => {
             info!("🤖 AGENT MANAGER MODE");
@@ -143,7 +144,7 @@ async fn main() -> Result<()> {
             info!("Starting Socratic Shell MCP Server (Rust)");
 
             // Create our server instance
-            let server = DialecticServer::new().await?;
+            let server = DialecticServer::new(args.options.clone()).await?;
 
             // Clone the IPC communicator for shutdown handling
             let ipc_for_shutdown = server.ipc().clone();

@@ -141,7 +141,7 @@ impl DialecticServer {
         result
     }
 
-    pub async fn new() -> Result<Self> {
+    pub async fn new(options: crate::Options) -> Result<Self> {
         // First, discover VSCode PID by walking up the process tree
         let current_pid = std::process::id();
         let Some((vscode_pid, shell_pid)) =
@@ -157,7 +157,7 @@ impl DialecticServer {
         // Create shared reference handle for both IPC and MCP tools
         let reference_handle = crate::actor::ReferenceHandle::new();
 
-        let mut ipc = IPCCommunicator::new(shell_pid, reference_handle.clone()).await?;
+        let mut ipc = IPCCommunicator::new(shell_pid, reference_handle.clone(), options).await?;
 
         // Initialize IPC connection to message bus daemon (not directly to VSCode)
         ipc.initialize().await?;

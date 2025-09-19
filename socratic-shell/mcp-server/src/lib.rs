@@ -20,6 +20,20 @@ pub mod git;
 mod workspace_dir;
 mod agent_manager;
 
+// Re-export Options for use in main.rs
+pub use crate::main_types::Options;
+
+mod main_types {
+    use clap::Parser;
+
+    #[derive(Parser, Debug, Clone)]
+    pub struct Options {
+        /// Enable development logging to the default log file
+        #[arg(long, global = true)]
+        pub dev_log: bool,
+    }
+}
+
 pub use daemon::{run_daemon_with_idle_timeout, run_client};
 pub use pid_discovery::find_vscode_pid_from_mcp;
 pub use reference_store::ReferenceStore;

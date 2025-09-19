@@ -22,6 +22,8 @@ pub struct ClientActor {
     /// Socket configuration
     socket_prefix: String,
     auto_start: bool,
+    /// Options for daemon spawning
+    options: crate::Options,
 }
 
 impl Actor for ClientActor {
@@ -58,12 +60,14 @@ impl ClientActor {
         outbound_tx: mpsc::Sender<IPCMessage>,
         socket_prefix: String,
         auto_start: bool,
+        options: crate::Options,
     ) -> Self {
         Self {
             inbound_rx,
             outbound_tx,
             socket_prefix,
             auto_start,
+            options,
         }
     }
 
@@ -163,6 +167,16 @@ impl ClientActor {
 
         let mut cmd = Command::new(&current_exe);
         cmd.args(&["daemon"]);
+        
+        // Pass --dev-log if we received it
+        if self.options.dev_log {
+            cmd.arg("--dev-log");
+        }
+        
+        // Pass RUST_LOG environment variable if set
+        if let Ok(rust_log) = std::env::var("RUST_LOG") {
+            cmd.env("RUST_LOG", rust_log);
+        }
 
         #[cfg(unix)]
         {
@@ -208,11 +222,12 @@ impl ClientActor {
 pub fn spawn_client(
     socket_prefix: String,
     auto_start: bool,
+    options: crate::Options,
 ) -> (mpsc::Sender<IPCMessage>, mpsc::Receiver<IPCMessage>) {
     let (inbound_tx, inbound_rx) = mpsc::channel(32);
     let (outbound_tx, outbound_rx) = mpsc::channel(32);
 
-    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix, auto_start);
+    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix, auto_start, options);
     actor.spawn();
 
     // Return handle and the receiver for other actors to get messages from daemon
