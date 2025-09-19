@@ -689,7 +689,7 @@ export class DaemonClient implements vscode.Disposable {
         try {
             const response = await this.sendRequest<any>('store_reference', storePayload);
             
-            if (response?.success) {
+            if (response) {
                 this.outputChannel.appendLine(`[REFERENCE] Successfully stored reference ${key} for shell ${shellPid}`);
                 return true;
             } else {

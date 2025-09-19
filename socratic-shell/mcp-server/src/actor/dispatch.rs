@@ -7,7 +7,7 @@ use crate::actor::Actor;
 use crate::types::{IPCMessage, IpcPayload, MessageSender, PoloPayload, ResponsePayload};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{debug, info};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
@@ -140,6 +140,12 @@ impl DispatchActor {
     }
 
     async fn handle_incoming_message(&mut self, message: IPCMessage) {
+        tracing::debug!("Received {mty:?} message with id `{id}` from {sender:?}",
+            id = message.id,
+            mty = message.message_type,
+            sender = message.sender,
+        );
+
         match message.message_type {
             crate::types::IPCMessageType::Marco => {
                 // Marco we just handle right here. It's so simple it's not worth factoring out.
@@ -149,9 +155,13 @@ impl DispatchActor {
             }
             crate::types::IPCMessageType::Response => {
                 if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
+                    tracing::debug!("reply received, forwarding to the waiting actor");
+
                     // This is a reply to a pending request
-                    // Ignore send errors - the listener may have timed out and closed the channel
-                    let _ = reply_tx.send(message.payload);
+                    if let Err(e) = reply_tx.send(message.payload) {
+                        // Ignore send errors - the listener may have timed out and closed the channel
+                        tracing::debug!("error forwarding, likely because actor had timed out: {e:?}");
+                    }
                 }
             }
             crate::types::IPCMessageType::StoreReference => {
@@ -166,7 +176,6 @@ impl DispatchActor {
                 }
             }
             _ => {
-                tracing::debug!("Received unsolicited message: {:?}", message.message_type);
             }
         }
     }
@@ -180,6 +189,8 @@ impl DispatchActor {
         // Deserialize the StoreReference payload
         let payload: crate::types::StoreReferencePayload = serde_json::from_value(message.payload)
             .with_context(|| format!("failed to deserialize StoreReference payload"))?;
+
+        tracing::debug!("forwarding to reference actor: {payload:?}");
 
         // Store the reference using the reference actor
         let result = reference_handle
@@ -207,6 +218,8 @@ impl DispatchActor {
             },
         };
 
+        debug!("responding to message with id {incoming_message_id:?} with {payload:?}");
+
         let reply = IPCMessage {
             id: incoming_message_id.clone(), // Same ID for correlation
             message_type: crate::types::IPCMessageType::Response, // Always use Response type for replies
@@ -218,6 +231,7 @@ impl DispatchActor {
     }
     
     async fn send_polo(&self) -> anyhow::Result<()> {
+        tracing::debug!("responding with polo message");
         let ipc_message = IPCMessage {
             message_type: crate::types::IPCMessageType::Polo,
             id: fresh_message_id(),

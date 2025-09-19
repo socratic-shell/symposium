@@ -1,6 +1,7 @@
 // Reference actor - handles storage and retrieval of socratic shell references
 
 use anyhow::bail;
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use tokio::sync::{mpsc, oneshot};
@@ -70,6 +71,12 @@ pub struct ReferenceHandle {
     sender: mpsc::Sender<ReferenceMessage>,
 }
 
+/// The result value. It's important that this has `{}`
+/// because serde serializes that to a `{}` object which
+/// is "truthy".
+#[derive(Serialize, Debug)]
+pub struct ReferenceStored {}
+
 impl ReferenceHandle {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(32);
@@ -80,7 +87,7 @@ impl ReferenceHandle {
     }
 
     /// Store a reference with arbitrary JSON context
-    pub async fn store_reference(&self, key: String, value: Value) -> anyhow::Result<()> {
+    pub async fn store_reference(&self, key: String, value: Value) -> anyhow::Result<ReferenceStored> {
         let (reply_tx, reply_rx) = oneshot::channel();
         let msg = ReferenceMessage::StoreReference {
             key,
@@ -92,7 +99,9 @@ impl ReferenceHandle {
             bail!("Reference actor unavailable");
         }
 
-        Ok(reply_rx.await??)
+        reply_rx.await??;
+
+        Ok(ReferenceStored {})
     }
 
     /// Retrieve a stored reference
