@@ -6,7 +6,6 @@ use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use regex::Regex;
 use semver::{Version, VersionReq};
 use serde_json;
-use std::arch::naked_asm;
 use std::collections::HashMap;
 use std::io::{self, Read};
 use std::path::PathBuf;

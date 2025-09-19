@@ -1482,8 +1482,8 @@ This is test content."#;
         
         let content = match result.unwrap().content.first() {
             Some(content) => {
-                if let Some(text) = content.text() {
-                    text
+                if let Some(text) = content.as_text() {
+                    text.text.clone()
                 } else {
                     panic!("Expected text content")
                 }
@@ -1491,7 +1491,7 @@ This is test content."#;
             _ => panic!("Expected content"),
         };
         
-        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        let response: serde_json::Value = serde_json::from_str(&content).unwrap();
         
         // Should have basic extraction info
         assert_eq!(response["crate_name"], "serde");
@@ -1521,8 +1521,8 @@ This is test content."#;
         
         let content = match result.unwrap().content.first() {
             Some(content) => {
-                if let Some(text) = content.text() {
-                    text
+                if let Some(text) = content.as_text() {
+                    text.text.clone()
                 } else {
                     panic!("Expected text content")
                 }
@@ -1530,7 +1530,7 @@ This is test content."#;
             _ => panic!("Expected content"),
         };
         
-        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        let response: serde_json::Value = serde_json::from_str(&content).unwrap();
         
         // Should have basic extraction info
         assert_eq!(response["crate_name"], "serde");
@@ -1572,8 +1572,8 @@ This is test content."#;
         
         let content = match result.unwrap().content.first() {
             Some(content) => {
-                if let Some(text) = content.text() {
-                    text
+                if let Some(text) = content.as_text() {
+                    text.text.clone()
                 } else {
                     panic!("Expected text content")
                 }
@@ -1581,7 +1581,7 @@ This is test content."#;
             _ => panic!("Expected content"),
         };
         
-        let response: serde_json::Value = serde_json::from_str(content).unwrap();
+        let response: serde_json::Value = serde_json::from_str(&content).unwrap();
         
         // Should have extraction info with version handling
         assert_eq!(response["crate_name"], "serde");
