@@ -332,7 +332,7 @@ pub async fn run_client(socket_prefix: &str, auto_start: bool, options: crate::O
 
     // Create ClientActor - returns channels directly
     let (to_daemon_tx, mut from_daemon_rx) = spawn_client(
-        socket_prefix.to_string(),
+        socket_prefix,
         auto_start,
         options,
     );

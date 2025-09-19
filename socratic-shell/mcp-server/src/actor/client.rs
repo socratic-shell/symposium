@@ -213,14 +213,14 @@ impl ClientActor {
 /// messages to the client (which will rebroadcast them to everyone else)
 /// and a `Receiver` where you can receive messages from others.
 pub fn spawn_client(
-    socket_prefix: String,
+    socket_prefix: &str,
     auto_start: bool,
     options: crate::Options,
 ) -> (mpsc::Sender<IPCMessage>, mpsc::Receiver<IPCMessage>) {
     let (inbound_tx, inbound_rx) = mpsc::channel(32);
     let (outbound_tx, outbound_rx) = mpsc::channel(32);
 
-    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix, auto_start, options);
+    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix.to_string(), auto_start, options);
     actor.spawn();
 
     // Return handle and the receiver for other actors to get messages from daemon
