@@ -4,7 +4,7 @@
 //! Ports the logic from server/src/ipc.ts to Rust with cross-platform support.
 
 use crate::{constants::DAEMON_SOCKET_PREFIX, types::{
-    FindAllReferencesPayload, GetSelectionMessage, GetSelectionResult, GoodbyePayload, IPCMessage, IPCMessageType, LogLevel, LogParams, MessageSender, PoloPayload, ResolveSymbolByNamePayload, ResponsePayload
+    FindAllReferencesPayload, GetSelectionMessage, GetSelectionResult, LogLevel, ResolveSymbolByNamePayload
 }};
 use anyhow::Context;
 
