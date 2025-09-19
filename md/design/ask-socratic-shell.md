@@ -59,6 +59,7 @@ sequenceDiagram
     User->>Ext: Select code + click chat icon
     Ext->>Daemon: store_reference(uuid, context) 
     Daemon->>Daemon: Store in reference system
+    Daemon->>Ext: Response (success confirmation)
     Ext->>Term: Type <symposium-ref id="uuid"/> in terminal
     User->>AI: Ask question about the code
     AI->>Daemon: expand_reference(uuid)
