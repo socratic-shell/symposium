@@ -1,3 +1,7 @@
+# IPC Actor Refactoring
+
+**Status**: ✅ **COMPLETED** (2025-09-19)
+
 # Elevator pitch
 
 > What are you proposing to change? Bullet points welcome.

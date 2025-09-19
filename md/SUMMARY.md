@@ -67,11 +67,11 @@ People can propose an RFD by create a PR adding a new file into the early drafts
     - [Rust Crate Sources Tool](./rfds/rust-crate-sources-tool.md)
 - [Draft]() <!-- Early drafts, people start things in this section -->
     - [Persistent Agents](./rfds/persistent-agents.md)
-    - [IPC Actor Refactoring](./rfds/ipc-actor-refactoring.md)
     - [Tile-based Window Management](./rfds/tile-based-window-management.md)
 - [To be removed (yet?)]() <!-- Decided against doing this for now -->
 - [Completed]() <!-- Work is complete -->
     - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
+    - [IPC Actor Refactoring](./rfds/ipc-actor-refactoring.md)
 
 # Work in Progress
 
