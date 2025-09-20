@@ -21,6 +21,7 @@ pub trait Actor: Sized + Send + 'static {
 pub mod client;
 pub mod dispatch;
 pub mod reference;
+pub mod repeater;
 pub mod stdio;
 
 // Re-export handles for easy access
