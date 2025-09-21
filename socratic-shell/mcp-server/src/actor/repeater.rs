@@ -3,7 +3,7 @@
 //! The repeater actor receives messages from clients and broadcasts them to all subscribers.
 //! It maintains a central log of all messages for debugging purposes.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
@@ -20,6 +20,8 @@ pub enum RepeaterMessage {
     IncomingMessage { from_client_id: usize, content: String },
     /// Request debug dump of message history
     DebugDump(oneshot::Sender<Vec<LoggedMessage>>),
+    /// Set identifier for a client for debugging
+    DebugSetIdentifier { client_id: usize, identifier: String },
 }
 
 /// A logged message with metadata
@@ -27,6 +29,7 @@ pub enum RepeaterMessage {
 pub struct LoggedMessage {
     pub timestamp: u64,
     pub from_client_id: usize,
+    pub from_identifier: String,
     pub content: String,
 }
 
@@ -36,6 +39,8 @@ pub struct RepeaterActor {
     subscribers: Vec<mpsc::UnboundedSender<String>>,
     /// History of broadcast messages for debugging
     message_history: VecDeque<LoggedMessage>,
+    /// Client identifiers for debugging
+    client_identifiers: HashMap<usize, String>,
 }
 
 impl RepeaterActor {
@@ -44,6 +49,7 @@ impl RepeaterActor {
         Self {
             subscribers: Vec::new(),
             message_history: VecDeque::with_capacity(MAX_MESSAGE_HISTORY),
+            client_identifiers: HashMap::new(),
         }
     }
 
@@ -66,6 +72,10 @@ impl RepeaterActor {
                         error!("Failed to send debug dump response");
                     }
                 }
+                RepeaterMessage::DebugSetIdentifier { client_id, identifier } => {
+                    self.client_identifiers.insert(client_id, identifier.clone());
+                    info!("Set identifier for client {}: {}", client_id, identifier);
+                }
             }
         }
 
@@ -80,9 +90,15 @@ impl RepeaterActor {
             .unwrap_or_default()
             .as_millis() as u64;
 
+        let from_identifier = self.client_identifiers
+            .get(&from_client_id)
+            .cloned()
+            .unwrap_or_else(|| from_client_id.to_string());
+
         let logged_message = LoggedMessage {
             timestamp,
             from_client_id,
+            from_identifier: from_identifier.clone(),
             content: content.clone(),
         };
 
@@ -103,6 +119,6 @@ impl RepeaterActor {
             }
         });
 
-        info!("Broadcast message from client {} to {} subscribers", from_client_id, self.subscribers.len());
+        info!("Broadcast message from client {} ({}) to {} subscribers", from_client_id, from_identifier, self.subscribers.len());
     }
 }

@@ -99,6 +99,14 @@ impl ClientActor {
         let mut reader = BufReader::new(read_half);
         let mut line = String::new();
 
+        // Send identify command to daemon
+        let identify_msg = format!("#identify:MCP-Server-PID-{}\n", std::process::id());
+        if let Err(e) = write_half.write_all(identify_msg.as_bytes()).await {
+            error!("Failed to send identify command: {}", e);
+        } else if let Err(e) = write_half.flush().await {
+            error!("Failed to flush identify command: {}", e);
+        }
+
         loop {
             tokio::select! {
                 // Read from daemon and forward to outbound channel
