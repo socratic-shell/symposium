@@ -34,7 +34,7 @@ pub struct LoggedMessage {
 }
 
 /// The repeater actor that handles message routing and logging
-pub struct RepeaterActor {
+struct RepeaterActor {
     /// List of subscribers to broadcast messages to
     subscribers: Vec<mpsc::UnboundedSender<String>>,
     /// History of broadcast messages for debugging
@@ -139,11 +139,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_basic_message_routing() {
-        let (tx, rx) = mpsc::unbounded_channel();
-        let actor = RepeaterActor::new();
-        
-        // Spawn the actor
-        tokio::spawn(actor.run(rx));
+        let tx = spawn_repeater_task().await;
         
         // Create two subscribers
         let (sub1_tx, mut sub1_rx) = mpsc::unbounded_channel();
@@ -169,10 +165,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_identifiers() {
-        let (tx, rx) = mpsc::unbounded_channel();
-        let actor = RepeaterActor::new();
-        
-        tokio::spawn(actor.run(rx));
+        let tx = spawn_repeater_task().await;
         
         // Set identifier for client 1
         tx.send(RepeaterMessage::DebugSetIdentifier {
@@ -198,10 +191,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_closed_channel_cleanup() {
-        let (tx, rx) = mpsc::unbounded_channel();
-        let actor = RepeaterActor::new();
-        
-        tokio::spawn(actor.run(rx));
+        let tx = spawn_repeater_task().await;
         
         // Create subscriber and then drop it
         let (sub_tx, sub_rx) = mpsc::unbounded_channel();
@@ -222,10 +212,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_message_history_limit() {
-        let (tx, rx) = mpsc::unbounded_channel();
-        let actor = RepeaterActor::new();
-        
-        tokio::spawn(actor.run(rx));
+        let tx = spawn_repeater_task().await;
         
         // Send more than MAX_MESSAGE_HISTORY messages
         for i in 0..MAX_MESSAGE_HISTORY + 10 {
