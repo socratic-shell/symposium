@@ -118,13 +118,17 @@ async fn handle_debug_command(
         
         let response = match response_rx.await {
             Ok(messages) => {
-                let mut lines = Vec::new();
+                let mut entries = Vec::new();
                 for msg in messages {
-                    lines.push(format!("{} BROADCAST[{}] {}", msg.timestamp, msg.from_identifier, msg.content));
+                    entries.push(serde_json::json!({
+                        "timestamp": msg.timestamp,
+                        "from_identifier": msg.from_identifier,
+                        "content": msg.content
+                    }));
                 }
-                lines.join("\n")
+                serde_json::to_string(&entries).unwrap_or_else(|_| "[]".to_string())
             }
-            Err(_) => "Error: Failed to get debug dump response".to_string(),
+            Err(_) => "[]".to_string(),
         };
         
         let response_with_newline = format!("{}\n", response);

@@ -281,7 +281,7 @@ async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
 
 async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
     use socratic_shell_mcp::constants;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::{AsyncWriteExt, AsyncBufReadExt};
     use tokio::net::UnixStream;
     
     match debug_cmd {
@@ -299,52 +299,59 @@ async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
                 }
             };
             
-            let (mut reader, mut writer) = stream.into_split();
+            let (reader, mut writer) = stream.into_split();
             
             // Send debug command
             writer.write_all(b"#debug_dump_messages\n").await?;
             writer.flush().await?;
             
-            // Read response
+            // Read response (single JSON line)
             let mut response = String::new();
-            reader.read_to_string(&mut response).await?;
+            let mut buf_reader = tokio::io::BufReader::new(reader);
+            buf_reader.read_line(&mut response).await?;
             
             if response.trim().is_empty() {
                 println!("No messages in daemon history.");
                 return Ok(());
             }
             
-            // Parse response lines
-            let lines: Vec<&str> = response.trim().lines().collect();
-            let recent_lines = if lines.len() > count {
-                &lines[lines.len() - count..]
+            // Parse JSON response
+            let messages: Vec<serde_json::Value> = match serde_json::from_str(response.trim()) {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    println!("Failed to parse daemon response: {}", e);
+                    println!("Raw response: {}", response.trim());
+                    return Ok(());
+                }
+            };
+            
+            let recent_messages = if messages.len() > count {
+                &messages[messages.len() - count..]
             } else {
-                &lines
+                &messages
             };
             
             if json {
-                // Parse and output as JSON
-                let mut messages = Vec::new();
-                for line in recent_lines {
-                    if let Some(parsed) = parse_debug_log_line(line) {
-                        messages.push(parsed);
-                    }
-                }
-                println!("{}", serde_json::to_string_pretty(&messages)?);
+                // Output as JSON
+                println!("{}", serde_json::to_string_pretty(&recent_messages)?);
             } else {
                 // Output as human-readable format
-                println!("Recent daemon messages ({} of {} total):", recent_lines.len(), lines.len());
+                println!("Recent daemon messages ({} of {} total):", recent_messages.len(), messages.len());
                 println!("{}", "─".repeat(80));
                 
-                for line in recent_lines {
-                    if let Some(parsed) = parse_debug_log_line(line) {
-                        let timestamp = chrono::DateTime::from_timestamp_millis(parsed.timestamp as i64)
+                for msg in recent_messages {
+                    if let (Some(timestamp), Some(identifier), Some(content)) = (
+                        msg.get("timestamp").and_then(|v| v.as_u64()),
+                        msg.get("from_identifier").and_then(|v| v.as_str()),
+                        msg.get("content").and_then(|v| v.as_str())
+                    ) {
+                        let time_str = chrono::DateTime::from_timestamp_millis(timestamp as i64)
                             .unwrap_or_default()
                             .format("%H:%M:%S%.3f");
                         
-                        println!("[{}] {} {}", timestamp, parsed.direction, parsed.content);
+                        println!("[{}] BROADCAST[{}] {}", time_str, identifier, content);
                     } else {
-                        println!("Raw: {}", line);
+                        println!("Malformed message: {}", msg);
                     }
                 }
             }
@@ -352,29 +359,4 @@ async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
     }
     
     Ok(())
-}
-
-#[derive(serde::Serialize)]
-struct ParsedDebugMessage {
-    timestamp: u64,
-    direction: String,
-    content: String,
-}
-
-fn parse_debug_log_line(line: &str) -> Option<ParsedDebugMessage> {
-    // Parse format: "timestamp BROADCAST[identifier] content"
-    let parts: Vec<&str> = line.splitn(3, ' ').collect();
-    if parts.len() >= 3 {
-        if let Ok(timestamp) = parts[0].parse::<u64>() {
-            Some(ParsedDebugMessage {
-                timestamp,
-                direction: parts[1].to_string(),
-                content: parts[2].to_string(),
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
 }
