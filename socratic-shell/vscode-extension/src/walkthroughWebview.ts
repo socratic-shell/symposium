@@ -191,7 +191,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 break;
             case 'action':
                 console.log('Walkthrough: action received:', message.message);
-                this.bus.outputChannel.appendLine(`Action button clicked: ${message.message}`);
+                this.bus.log(`Action button clicked: ${message.message}`);
 
                 // Send message to active AI terminal using Bus method
                 await this.bus.sendTextToActiveTerminal(message.message);
@@ -206,13 +206,13 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 break;
             case 'ready':
                 console.log('Walkthrough webview ready');
-                this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview reported ready`);
+                this.bus.log(`[WALKTHROUGH] Webview reported ready`);
                 this.webviewReady = true;
 
                 // Send any pending offscreen HTML content now that webview is ready
                 if (this.offscreenHtmlContent && this._view) {
                     console.log('Webview ready - sending pending offscreen HTML content');
-                    this.bus.outputChannel.appendLine('[WALKTHROUGH] Webview ready - sending pending offscreen HTML content');
+                    this.bus.log('[WALKTHROUGH] Webview ready - sending pending offscreen HTML content');
                     this._view.webview.postMessage({
                         type: 'showWalkthroughHtml',
                         content: this.offscreenHtmlContent
@@ -249,7 +249,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         // Clear placement memory
         this.placementMemory.clear();
 
-        this.bus.outputChannel.appendLine('Walkthrough cleared');
+        this.bus.log('Walkthrough cleared');
     }
 
     /**
@@ -702,9 +702,9 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         _token: vscode.CancellationToken,
     ) {
         console.log('WalkthroughWebviewProvider.resolveWebviewView called');
-        this.bus.outputChannel.appendLine('[WALKTHROUGH] resolveWebviewView called');
+        this.bus.log('[WALKTHROUGH] resolveWebviewView called');
         console.log('Current offscreenHtmlContent length:', this.offscreenHtmlContent?.length || 0);
-        this.bus.outputChannel.appendLine(`[WALKTHROUGH] Current offscreenHtmlContent length: ${this.offscreenHtmlContent?.length || 0}`);
+        this.bus.log(`[WALKTHROUGH] Current offscreenHtmlContent length: ${this.offscreenHtmlContent?.length || 0}`);
 
         this._view = webviewView;
         this.webviewReady = false; // Reset ready state for new webview
@@ -732,42 +732,42 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         // This ensures the webview is fully initialized and can properly handle the content
         if (!this.offscreenHtmlContent) {
             console.log('No offscreen HTML content to restore');
-            this.bus.outputChannel.appendLine('[WALKTHROUGH] No offscreen HTML content to restore');
+            this.bus.log('[WALKTHROUGH] No offscreen HTML content to restore');
         } else {
             console.log('Offscreen HTML content available, waiting for webview ready signal');
-            this.bus.outputChannel.appendLine('[WALKTHROUGH] Offscreen HTML content available, waiting for webview ready signal');
+            this.bus.log('[WALKTHROUGH] Offscreen HTML content available, waiting for webview ready signal');
         }
     }
 
     public showWalkthroughHtml(htmlContent: string) {
         console.log('WalkthroughWebviewProvider.showWalkthroughHtml called with content length:', htmlContent.length);
-        this.bus.outputChannel.appendLine(`[WALKTHROUGH] showWalkthroughHtml called with ${htmlContent.length} chars`);
-        this.bus.outputChannel.appendLine(`[WALKTHROUGH] HTML content received from MCP server:`);
-        this.bus.outputChannel.appendLine(htmlContent);
+        this.bus.log(`[WALKTHROUGH] showWalkthroughHtml called with ${htmlContent.length} chars`);
+        this.bus.log(`[WALKTHROUGH] HTML content received from MCP server:`);
+        this.bus.log(htmlContent);
 
         // Always store the content so it persists across webview dispose/recreate cycles
         this.offscreenHtmlContent = htmlContent;
 
         if (this._view) {
             console.log('Webview exists, showing and posting HTML content');
-            this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview exists, posting message to webview`);
+            this.bus.log(`[WALKTHROUGH] Webview exists, posting message to webview`);
             this._view.show?.(true);
 
             // Only send immediately if webview is ready, otherwise wait for ready message
             if (this.webviewReady) {
                 console.log('Webview is ready, sending HTML content immediately');
-                this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview is ready, sending HTML content immediately`);
+                this.bus.log(`[WALKTHROUGH] Webview is ready, sending HTML content immediately`);
                 this._view.webview.postMessage({
                     type: 'showWalkthroughHtml',
                     content: htmlContent
                 });
             } else {
                 console.log('Webview not ready yet, content will be sent when ready message is received');
-                this.bus.outputChannel.appendLine(`[WALKTHROUGH] Webview not ready yet, content will be sent when ready message is received`);
+                this.bus.log(`[WALKTHROUGH] Webview not ready yet, content will be sent when ready message is received`);
             }
         } else {
             console.log('No webview available, content stored for when webview becomes available');
-            this.bus.outputChannel.appendLine(`[WALKTHROUGH] No webview available, content stored as pending`);
+            this.bus.log(`[WALKTHROUGH] No webview available, content stored as pending`);
         }
     }
 
@@ -848,10 +848,10 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             };
 
             await this.bus.sendToActiveTerminal(referenceData, { includeNewline: true });
-            this.bus.outputChannel.appendLine(`Comment reply sent as compact reference for ${filePath}:${lineNumber}`);
+            this.bus.log(`Comment reply sent as compact reference for ${filePath}:${lineNumber}`);
         } catch (error) {
             console.error('[WALKTHROUGH] Error sending comment to shell:', error);
-            this.bus.outputChannel.appendLine(`Error sending comment: ${error}`);
+            this.bus.log(`Error sending comment: ${error}`);
         }
     }
 
@@ -1668,10 +1668,10 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             </body>
             </html>`;
 
-        this.bus.outputChannel.appendLine(`-----------------------------------------`);
-        this.bus.outputChannel.appendLine(`WEBVIEW HTML FOLLOWS:`);
-        this.bus.outputChannel.appendLine(html);
-        this.bus.outputChannel.appendLine(`-----------------------------------------`);
+        this.bus.log(`-----------------------------------------`);
+        this.bus.log(`WEBVIEW HTML FOLLOWS:`);
+        this.bus.log(html);
+        this.bus.log(`-----------------------------------------`);
 
         return html;
     }

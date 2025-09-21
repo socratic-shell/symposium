@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 import { getCurrentTaskspaceUuid } from './taskspaceUtils';
+import { debugLog } from './logging';
 
 // ANCHOR: message_sender
 interface MessageSender {
@@ -186,7 +187,7 @@ export class DaemonClient implements vscode.Disposable {
             const stderrText = data.toString().trim();
             // If stderr already has structured format, use as-is, otherwise add CLIENT prefix
             if (stderrText.match(/^\[[A-Z-]+:\d+\]/)) {
-                this.outputChannel.appendLine(stderrText);
+                debugLog(stderrText);
             } else {
                 this.logger.error(`Client stderr: ${stderrText}`);
             }
@@ -203,13 +204,13 @@ export class DaemonClient implements vscode.Disposable {
         try {
             const taskspaceUuid = getCurrentTaskspaceUuid();
             if (taskspaceUuid) {
-                this.outputChannel.appendLine(`[WINDOW REG] Auto-registering window for taskspace: ${taskspaceUuid}`);
+                debugLog(`[WINDOW REG] Auto-registering window for taskspace: ${taskspaceUuid}`);
                 await this.registerWindow(taskspaceUuid);
             } else {
-                this.outputChannel.appendLine(`[WINDOW REG] Not in a taskspace, skipping auto-registration`);
+                debugLog(`[WINDOW REG] Not in a taskspace, skipping auto-registration`);
             }
         } catch (error) {
-            this.outputChannel.appendLine(`[WINDOW REG] Auto-registration failed: ${error}`);
+            debugLog(`[WINDOW REG] Auto-registration failed: ${error}`);
         }
     }
 
@@ -274,16 +275,16 @@ export class DaemonClient implements vscode.Disposable {
                 const logPayload = message.payload as LogPayload;
 
                 const levelPrefix = logPayload.level.toUpperCase();
-                this.outputChannel.appendLine(`[${levelPrefix}] ${logPayload.message}`);
+                debugLog(`[${levelPrefix}] ${logPayload.message}`);
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling log message: ${error}`);
+                debugLog(`Error handling log message: ${error}`);
             }
         } else if (message.type === 'polo') {
             // Handle Polo messages during discovery
             try {
                 const shellPid = message.sender.shellPid;
                 if (shellPid) {
-                    this.outputChannel.appendLine(`[DISCOVERY] MCP server connected in terminal PID ${shellPid}`);
+                    debugLog(`[DISCOVERY] MCP server connected in terminal PID ${shellPid}`);
 
                     // Store in discovery responses for MARCO/POLO protocol
                     this.discoveryResponses.set(shellPid, {
@@ -293,24 +294,24 @@ export class DaemonClient implements vscode.Disposable {
 
                     // Also add to terminal registry for Ask Socratic Shell integration
                     this.activeTerminals.add(shellPid);
-                    this.outputChannel.appendLine(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
+                    debugLog(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
                 }
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling polo message: ${error}`);
+                debugLog(`Error handling polo message: ${error}`);
             }
         } else if (message.type === 'goodbye') {
             // Handle Goodbye messages - just log for now (no persistent registry)
             try {
                 const shellPid = message.sender.shellPid || 'persistent';
-                this.outputChannel.appendLine(`[DISCOVERY] MCP server disconnected from terminal PID ${shellPid}`);
+                debugLog(`[DISCOVERY] MCP server disconnected from terminal PID ${shellPid}`);
 
                 // Remove from terminal registry for Ask Socratic Shell integration (only if we have a PID)
                 if (message.sender.shellPid) {
                     this.activeTerminals.delete(message.sender.shellPid);
                 }
-                this.outputChannel.appendLine(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
+                debugLog(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling goodbye message: ${error}`);
+                debugLog(`Error handling goodbye message: ${error}`);
             }
         } else if (message.type === 'marco') {
             // Ignore Marco messages - these are broadcasts we send, MCP servers respond to them
@@ -320,7 +321,7 @@ export class DaemonClient implements vscode.Disposable {
             try {
                 const symbolPayload = message.payload as ResolveSymbolPayload;
 
-                this.outputChannel.appendLine(`[LSP] Resolving symbol: ${symbolPayload.name}`);
+                debugLog(`[LSP] Resolving symbol: ${symbolPayload.name}`);
 
                 // Call VSCode's LSP to find symbol definitions
                 const symbols = await this.resolveSymbolByName(symbolPayload.name);
@@ -330,7 +331,7 @@ export class DaemonClient implements vscode.Disposable {
                     data: symbols
                 });
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling resolve_symbol_by_name: ${error}`);
+                debugLog(`Error handling resolve_symbol_by_name: ${error}`);
                 this.sendResponse(message.id, {
                     success: false,
                     error: error instanceof Error ? error.message : String(error)
@@ -341,7 +342,7 @@ export class DaemonClient implements vscode.Disposable {
             try {
                 const referencesPayload = message.payload as FindReferencesPayload;
 
-                this.outputChannel.appendLine(`[LSP] Finding references for symbol: ${referencesPayload.symbol.name}`);
+                debugLog(`[LSP] Finding references for symbol: ${referencesPayload.symbol.name}`);
 
                 // Call VSCode's LSP to find all references
                 const references = await this.findAllReferences(referencesPayload.symbol);
@@ -351,7 +352,7 @@ export class DaemonClient implements vscode.Disposable {
                     data: references
                 });
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling find_all_references: ${error}`);
+                debugLog(`Error handling find_all_references: ${error}`);
                 this.sendResponse(message.id, {
                     success: false,
                     error: error instanceof Error ? error.message : String(error)
@@ -362,9 +363,9 @@ export class DaemonClient implements vscode.Disposable {
             try {
                 const logPayload = message.payload as { level: string; message: string };
                 // The message already has structured prefix from Rust side, display as-is
-                this.outputChannel.appendLine(logPayload.message);
+                debugLog(logPayload.message);
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling log message: ${error}`);
+                debugLog(`Error handling log message: ${error}`);
             }
         } else if (message.type === 'reload_window') {
             // Handle reload window signal from daemon (on shutdown)
@@ -387,18 +388,18 @@ export class DaemonClient implements vscode.Disposable {
             // Handle taskspace roll call - check if this is our taskspace and register window
             try {
                 const rollCallPayload = message.payload as TaskspaceRollCallPayload;
-                this.outputChannel.appendLine(`[WINDOW REG] Received roll call for taskspace: ${rollCallPayload.taskspace_uuid}`);
+                debugLog(`[WINDOW REG] Received roll call for taskspace: ${rollCallPayload.taskspace_uuid}`);
 
                 // Check if this roll call is for our taskspace
                 const currentTaskspaceUuid = getCurrentTaskspaceUuid();
                 if (currentTaskspaceUuid === rollCallPayload.taskspace_uuid) {
-                    this.outputChannel.appendLine(`[WINDOW REG] Roll call matches our taskspace, registering window`);
+                    debugLog(`[WINDOW REG] Roll call matches our taskspace, registering window`);
                     await this.registerWindow(rollCallPayload.taskspace_uuid);
                 } else {
-                    this.outputChannel.appendLine(`[WINDOW REG] Roll call not for us (ours: ${currentTaskspaceUuid}, theirs: ${rollCallPayload.taskspace_uuid})`);
+                    debugLog(`[WINDOW REG] Roll call not for us (ours: ${currentTaskspaceUuid}, theirs: ${rollCallPayload.taskspace_uuid})`);
                 }
             } catch (error) {
-                this.outputChannel.appendLine(`Error handling taskspace_roll_call: ${error}`);
+                debugLog(`Error handling taskspace_roll_call: ${error}`);
             }
         } else {
             // Forward compatibility: silently ignore unknown message types for our window
@@ -419,7 +420,7 @@ export class DaemonClient implements vscode.Disposable {
             );
 
             if (!workspaceMatch) {
-                this.outputChannel.appendLine(`Debug: working directory ${sender.workingDirectory} not in our workspace`);
+                debugLog(`Debug: working directory ${sender.workingDirectory} not in our workspace`);
                 return false; // Directory not in our workspace
             }
 
@@ -430,7 +431,7 @@ export class DaemonClient implements vscode.Disposable {
                     try {
                         const terminalPid = await terminal.processId;
                         if (terminalPid === sender.shellPid) {
-                            this.outputChannel.appendLine(`Debug: shell PID ${sender.shellPid} is in our window`);
+                            debugLog(`Debug: shell PID ${sender.shellPid} is in our window`);
                             return true; // Precise PID match
                         }
                     } catch (error) {
@@ -438,15 +439,15 @@ export class DaemonClient implements vscode.Disposable {
                         continue;
                     }
                 }
-                this.outputChannel.appendLine(`Debug: shell PID ${sender.shellPid} not found in our terminals`);
+                debugLog(`Debug: shell PID ${sender.shellPid} not found in our terminals`);
                 return false; // shellPid provided but not found in our terminals
             }
 
             // 3. If no shellPid (persistent agent case), accept based on directory match
-            this.outputChannel.appendLine(`Debug: accepting message from ${sender.workingDirectory} (persistent agent, no PID)`);
+            debugLog(`Debug: accepting message from ${sender.workingDirectory} (persistent agent, no PID)`);
             return true;
         } catch (error) {
-            this.outputChannel.appendLine(`Error checking if message is for our window: ${error}`);
+            debugLog(`Error checking if message is for our window: ${error}`);
             // On error, default to processing the message (fail open)
             return true;
         }
@@ -600,7 +601,7 @@ export class DaemonClient implements vscode.Disposable {
 
     private sendResponse(messageId: string, response: ResponsePayload): void {
         if (!this.clientProcess || this.clientProcess.killed) {
-            this.outputChannel.appendLine(`Cannot send response - client process not available`);
+            debugLog(`Cannot send response - client process not available`);
             return;
         }
 
@@ -618,7 +619,7 @@ export class DaemonClient implements vscode.Disposable {
         try {
             this.clientProcess.stdin.write(JSON.stringify(responseMessage) + '\n');
         } catch (error) {
-            this.outputChannel.appendLine(`Failed to send response: ${error}`);
+            debugLog(`Failed to send response: ${error}`);
         }
     }
 
@@ -636,7 +637,7 @@ export class DaemonClient implements vscode.Disposable {
             const tempTitle = `${uniqueIdentifier} ${originalTitle}`;
             await config.update('window.title', tempTitle, vscode.ConfigurationTarget.Workspace);
 
-            this.outputChannel.appendLine(`[WINDOW REG] Set temporary title: ${tempTitle}`);
+            debugLog(`[WINDOW REG] Set temporary title: ${tempTitle}`);
 
             // Send registration message to Swift app using existing helper
             const payload: RegisterTaskspaceWindowPayload = {
@@ -648,17 +649,17 @@ export class DaemonClient implements vscode.Disposable {
             const response = await this.sendRequest<{ success: boolean }>('register_taskspace_window', payload, 5000);
 
             if (response?.success) {
-                this.outputChannel.appendLine(`[WINDOW REG] Successfully registered window for taskspace: ${taskspaceUuid}`);
+                debugLog(`[WINDOW REG] Successfully registered window for taskspace: ${taskspaceUuid}`);
             } else {
-                this.outputChannel.appendLine(`[WINDOW REG] Failed to register window for taskspace: ${taskspaceUuid}`);
+                debugLog(`[WINDOW REG] Failed to register window for taskspace: ${taskspaceUuid}`);
             }
 
             // Restore original title
             await config.update('window.title', originalTitle, vscode.ConfigurationTarget.Workspace);
-            this.outputChannel.appendLine(`[WINDOW REG] Restored original title`);
+            debugLog(`[WINDOW REG] Restored original title`);
 
         } catch (error) {
-            this.outputChannel.appendLine(`[WINDOW REG] Error during window registration: ${error}`);
+            debugLog(`[WINDOW REG] Error during window registration: ${error}`);
 
             // Ensure title is restored even on error
             try {
@@ -672,7 +673,7 @@ export class DaemonClient implements vscode.Disposable {
                     }
                 }
             } catch (restoreError) {
-                this.outputChannel.appendLine(`[WINDOW REG] Error restoring title: ${restoreError}`);
+                debugLog(`[WINDOW REG] Error restoring title: ${restoreError}`);
             }
         }
     }
@@ -690,14 +691,14 @@ export class DaemonClient implements vscode.Disposable {
             const response = await this.sendRequest<any>('store_reference', storePayload);
             
             if (response) {
-                this.outputChannel.appendLine(`[REFERENCE] Successfully stored reference ${key} for shell ${shellPid}`);
+                debugLog(`[REFERENCE] Successfully stored reference ${key} for shell ${shellPid}`);
                 return true;
             } else {
-                this.outputChannel.appendLine(`[REFERENCE] Failed to store reference ${key}: ${response?.error || 'Unknown error'}`);
+                debugLog(`[REFERENCE] Failed to store reference ${key}: ${response?.error || 'Unknown error'}`);
                 return false;
             }
         } catch (error) {
-            this.outputChannel.appendLine(`Failed to send store_reference to shell ${shellPid}: ${error}`);
+            debugLog(`Failed to send store_reference to shell ${shellPid}: ${error}`);
             return false;
         }
     }
@@ -706,7 +707,7 @@ export class DaemonClient implements vscode.Disposable {
     private async tryStartDaemon(): Promise<void> {
         // With the new client architecture, we don't need to manage daemons directly
         // The client mode handles daemon startup automatically
-        this.outputChannel.appendLine('✅ Using client mode - daemon management handled automatically');
+        debugLog('✅ Using client mode - daemon management handled automatically');
         return Promise.resolve();
     }
 
@@ -746,7 +747,7 @@ export class DaemonClient implements vscode.Disposable {
 
             return resolvedSymbols;
         } catch (error) {
-            this.outputChannel.appendLine(`Error in resolveSymbolByName: ${error}`);
+            debugLog(`Error in resolveSymbolByName: ${error}`);
             throw error;
         }
     }
@@ -817,8 +818,8 @@ export class DaemonClient implements vscode.Disposable {
             }
 
             // Find all references using LSP
-            this.outputChannel.appendLine(`workspaceFolder.uri: ${workspaceFolder.uri}`);
-            this.outputChannel.appendLine(`symbol.definedAt.path: ${symbol.definedAt.path}`);
+            debugLog(`workspaceFolder.uri: ${workspaceFolder.uri}`);
+            debugLog(`symbol.definedAt.path: ${symbol.definedAt.path}`);
             const locations = await vscode.commands.executeCommand<vscode.Location[]>(
                 'vscode.executeReferenceProvider',
                 vscode.Uri.file(path.isAbsolute(symbol.definedAt.path)
@@ -829,7 +830,7 @@ export class DaemonClient implements vscode.Disposable {
 
             return locations.map(location => this.vscodeLocationToRange(location));
         } catch (error) {
-            this.outputChannel.appendLine(`Error in findAllReferences: ${error}`);
+            debugLog(`Error in findAllReferences: ${error}`);
             throw error;
         }
     }
@@ -888,7 +889,7 @@ export class DaemonClient implements vscode.Disposable {
             this.clientProcess = null;
         }
 
-        this.outputChannel.appendLine('Socratic Shell client disposed');
+        debugLog('Socratic Shell client disposed');
     }
 
     /**
@@ -900,7 +901,7 @@ export class DaemonClient implements vscode.Disposable {
         this.discoveryResponses.clear();
 
         // Send MARCO broadcast
-        this.outputChannel.appendLine(`[DISCOVERY] Sending MARCO broadcast`);
+        debugLog(`[DISCOVERY] Sending MARCO broadcast`);
         this.sendMarco();
 
         // Wait for POLO responses with timeout
@@ -910,13 +911,13 @@ export class DaemonClient implements vscode.Disposable {
         const responses = new Map(this.discoveryResponses);
         this.discoveryResponses.clear(); // Clean up
 
-        this.outputChannel.appendLine(`[DISCOVERY] Collected ${responses.size} POLO responses: [${Array.from(responses.keys()).join(', ')}]`);
+        debugLog(`[DISCOVERY] Collected ${responses.size} POLO responses: [${Array.from(responses.keys()).join(', ')}]`);
         return responses;
     }
 
     private sendMarco(): void {
         if (!this.clientProcess || this.clientProcess.stdin?.destroyed) {
-            this.outputChannel.appendLine(`Cannot send MARCO - client not connected`);
+            debugLog(`Cannot send MARCO - client not connected`);
             return;
         }
 
@@ -933,9 +934,9 @@ export class DaemonClient implements vscode.Disposable {
 
         try {
             this.clientProcess.stdin.write(JSON.stringify(marcoMessage) + '\n');
-            this.outputChannel.appendLine(`[DISCOVERY] MARCO broadcast sent`);
+            debugLog(`[DISCOVERY] MARCO broadcast sent`);
         } catch (error) {
-            this.outputChannel.appendLine(`Error sending MARCO: ${error}`);
+            debugLog(`Error sending MARCO: ${error}`);
         }
     }
 

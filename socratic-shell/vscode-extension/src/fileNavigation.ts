@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { debugLog } from './logging';
 import { parseSocraticShellUrl, SocraticShellUrl } from './socraticShellUrl';
 import { searchInFile, getBestSearchResult, formatSearchResults, needsDisambiguation } from './searchEngine';
 
@@ -28,8 +29,8 @@ export async function resolveSocraticShellUrlPlacement(
             return null;
         }
 
-        outputChannel.appendLine(`Resolving socratic-shell URL: ${socraticShellUrl}`);
-        outputChannel.appendLine(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
+        debugLog(`Resolving socratic-shell URL: ${socraticShellUrl}`);
+        debugLog(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
 
         // Resolve the file path
         let resolvedPath = parsed.path;
@@ -37,7 +38,7 @@ export async function resolveSocraticShellUrlPlacement(
             resolvedPath = path.resolve(baseUri.fsPath, parsed.path);
         }
 
-        outputChannel.appendLine(`Resolved file path: ${resolvedPath}`);
+        debugLog(`Resolved file path: ${resolvedPath}`);
 
         // Open the document
         const fileUri = vscode.Uri.file(resolvedPath);
@@ -49,7 +50,7 @@ export async function resolveSocraticShellUrlPlacement(
         if (parsed.regex) {
             try {
                 const searchResults = await searchInFile(fileUri, { regexPattern: parsed.regex });
-                outputChannel.appendLine(`Search results: ${formatSearchResults(searchResults)}`);
+                debugLog(`Search results: ${formatSearchResults(searchResults)}`);
 
                 if (searchResults.length === 0) {
                     vscode.window.showWarningMessage(`Regex pattern "${parsed.regex}" not found in ${parsed.path}`);
@@ -100,7 +101,7 @@ export async function resolveSocraticShellUrlPlacement(
                     }
                 }
             } catch (error) {
-                outputChannel.appendLine(`Error during regex search: ${error}`);
+                debugLog(`Error during regex search: ${error}`);
                 vscode.window.showErrorMessage(`Error searching for pattern "${parsed.regex}": ${error}`);
                 return null;
             }
@@ -116,7 +117,7 @@ export async function resolveSocraticShellUrlPlacement(
         };
 
     } catch (error) {
-        outputChannel.appendLine(`Error resolving socratic-shell URL: ${error}`);
+        debugLog(`Error resolving socratic-shell URL: ${error}`);
         vscode.window.showErrorMessage(`Failed to resolve socratic-shell URL: ${error}`);
         return null;
     }
@@ -170,7 +171,7 @@ export async function openSocraticShellUrl(
         }, 3000);
     }
 
-    outputChannel.appendLine(`Successfully navigated to ${document.fileName}:${range.start.line + 1}:${range.start.character + 1}`);
+    debugLog(`Successfully navigated to ${document.fileName}:${range.start.line + 1}:${range.start.character + 1}`);
 }
 
 /**

@@ -5,6 +5,7 @@ import { DaemonClient } from './ipc';
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
 import { StructuredLogger } from './structuredLogger';
 import { getCurrentTaskspaceUuid } from './taskspaceUtils';
+import { debugLog } from './logging';
 
 /**
  * Central message bus for extension components
@@ -181,7 +182,7 @@ export class Bus {
         // Check if message is already structured (has [COMPONENT:PID] prefix)
         if (message.match(/^\[[A-Z-]+:\d+\]/)) {
             // Already structured, use as-is
-            this.outputChannel.appendLine(message);
+            debugLog(message);
         } else {
             // Not structured, add our prefix
             this.logger.info(message);

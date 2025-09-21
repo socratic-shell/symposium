@@ -10,6 +10,17 @@ import { Bus } from './bus';
 import { DaemonClient } from './ipc';
 import { StructuredLogger } from './structuredLogger';
 import { getCurrentTaskspaceUuid } from './taskspaceUtils';
+import { debugLog } from './logging';
+
+// Global logger instance for the extension
+let globalLogger: StructuredLogger | null = null;
+
+/**
+ * Get the global logger instance (available after activation)
+ */
+export function getLogger(): StructuredLogger | null {
+    return globalLogger;
+}
 
 // TEST TEST TEST 
 
@@ -206,15 +217,15 @@ interface FileLocation {
 
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
 async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
-    outputChannel.appendLine('Checking for taskspace environment...');
+    debugLog('Checking for taskspace environment...');
 
     const taskspaceUuid = getCurrentTaskspaceUuid();
     if (!taskspaceUuid) {
-        outputChannel.appendLine('Not in a taskspace environment');
+        debugLog('Not in a taskspace environment');
         return;
     }
 
-    outputChannel.appendLine(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
+    debugLog(`✅ Taskspace detected! UUID: ${taskspaceUuid}`);
 
     // Send taskspace_state message to get current taskspace information
     const payload: TaskspaceStateRequest = {
@@ -224,26 +235,26 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
         description: null  // Read-only operation
     };
     const response = await bus.daemonClient.sendRequest<TaskspaceStateResponse>('taskspace_state', payload);
-    outputChannel.appendLine(`App responded with ${JSON.stringify(response)}`);
+    debugLog(`App responded with ${JSON.stringify(response)}`);
 
     if (response) {
-        outputChannel.appendLine(`Taskspace: ${response.name || 'Unnamed'} - ${response.description || 'No description'}`);
+        debugLog(`Taskspace: ${response.name || 'Unnamed'} - ${response.description || 'No description'}`);
         if (response.initial_prompt) {
-            outputChannel.appendLine('Initial prompt available - launching agent for first-time setup');
+            debugLog('Initial prompt available - launching agent for first-time setup');
         } else {
-            outputChannel.appendLine('Resuming existing taskspace');
+            debugLog('Resuming existing taskspace');
         }
-        outputChannel.appendLine(`Launching agent: ${response.agent_command.join(' ')}`);
+        debugLog(`Launching agent: ${response.agent_command.join(' ')}`);
         await launchAIAgent(outputChannel, bus, response.agent_command, taskspaceUuid);
     } else {
-        outputChannel.appendLine('No taskspace state received from app');
+        debugLog('No taskspace state received from app');
     }
 }
 
 // 💡: Launch AI agent in terminal with provided command
 async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
-        outputChannel.appendLine(`Launching agent with command: ${agentCommand.join(' ')}`);
+        debugLog(`Launching agent with command: ${agentCommand.join(' ')}`);
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
@@ -258,10 +269,10 @@ async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agen
         const quotedCommand = quote(agentCommand);
         terminal.sendText(quotedCommand);
 
-        outputChannel.appendLine('Agent launched successfully');
+        debugLog('Agent launched successfully');
 
     } catch (error) {
-        outputChannel.appendLine(`Error launching AI agent: ${error}`);
+        debugLog(`Error launching AI agent: ${error}`);
     }
 }
 
@@ -269,7 +280,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Create dedicated output channel for cleaner logging
     const outputChannel = vscode.window.createOutputChannel('Socratic Shell');
-    outputChannel.appendLine('Socratic Shell extension is now active');
+    
+    // Create global logger for the extension
+    const logger = new StructuredLogger(outputChannel, 'EXTENSION');
+    globalLogger = logger; // Set global reference
+    logger.info('Socratic Shell extension is now active');
     console.log('Socratic Shell extension is now active');
 
     // Create the central bus
@@ -277,7 +292,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 💡: PID Discovery Testing - Log VSCode and terminal PIDs
     logPIDDiscovery(outputChannel).catch(error => {
-        outputChannel.appendLine(`Error in PID discovery: ${error}`);
+        debugLog(`Error in PID discovery: ${error}`);
     });
 
     // Create walkthrough webview provider
@@ -333,7 +348,7 @@ export function activate(context: vscode.ExtensionContext) {
     // 💡: Check for taskspace environment and auto-launch agent if needed
     // (Must be after DaemonClient is initialized)
     checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
-        outputChannel.appendLine(`Error in taskspace detection: ${error}`);
+        debugLog(`Error in taskspace detection: ${error}`);
     });
 
     // 💡: Set up universal selection detection for interactive code review
@@ -392,7 +407,7 @@ export function activate(context: vscode.ExtensionContext) {
 function setupSelectionDetection(bus: Bus): void {
     const { context, outputChannel } = bus;
 
-    outputChannel.appendLine('Setting up universal selection detection...');
+    debugLog('Setting up universal selection detection...');
 
     // 💡: Track current selection state
     let currentSelection: {
@@ -452,9 +467,9 @@ function setupSelectionDetection(bus: Bus): void {
             const endLine = currentSelection.selection.end.line + 1;
             const endColumn = currentSelection.selection.end.character + 1;
 
-            outputChannel.appendLine(`CHAT ICON CLICKED!`);
-            outputChannel.appendLine(`Selected: "${selectedText}"`);
-            outputChannel.appendLine(`Location: ${filePath}:${startLine}:${startColumn}-${endLine}:${endColumn}`);
+            debugLog(`CHAT ICON CLICKED!`);
+            debugLog(`Selected: "${selectedText}"`);
+            debugLog(`Location: ${filePath}:${startLine}:${startColumn}-${endLine}:${endColumn}`);
 
             // Use new consolidated sendToActiveTerminal method
             try {
@@ -469,18 +484,18 @@ function setupSelectionDetection(bus: Bus): void {
                 };
 
                 await bus.sendToActiveTerminal(referenceData, { includeNewline: false });
-                outputChannel.appendLine(`Compact reference sent for ${relativePath}:${startLine}`);
+                debugLog(`Compact reference sent for ${relativePath}:${startLine}`);
             } catch (error) {
-                outputChannel.appendLine(`Failed to send reference: ${error}`);
+                debugLog(`Failed to send reference: ${error}`);
                 vscode.window.showErrorMessage('Failed to send reference to terminal');
             }
         } else {
-            outputChannel.appendLine('Chat action triggered but no current selection found');
+            debugLog('Chat action triggered but no current selection found');
         }
     });
 
     context.subscriptions.push(selectionListener, codeActionProvider, chatIconCommand);
-    outputChannel.appendLine('Selection detection with Code Actions setup complete');
+    debugLog('Selection detection with Code Actions setup complete');
 }
 
 /**
@@ -510,32 +525,32 @@ function getProjectPath(): string {
 
 // 💡: PID Discovery Testing - Log all relevant PIDs for debugging
 async function logPIDDiscovery(outputChannel: vscode.OutputChannel): Promise<void> {
-    outputChannel.appendLine('=== PID DISCOVERY TESTING ===');
+    debugLog('=== PID DISCOVERY TESTING ===');
 
     // Extension process info
-    outputChannel.appendLine(`Extension process PID: ${process.pid}`);
-    outputChannel.appendLine(`Extension parent PID: ${process.ppid}`);
+    debugLog(`Extension process PID: ${process.pid}`);
+    debugLog(`Extension parent PID: ${process.ppid}`);
 
     // Try to find VSCode PID by walking up the process tree
     const vscodePid = findVSCodePID(outputChannel);
     if (vscodePid) {
-        outputChannel.appendLine(`Found VSCode PID: ${vscodePid}`);
+        debugLog(`Found VSCode PID: ${vscodePid}`);
     } else {
-        outputChannel.appendLine('Could not find VSCode PID');
+        debugLog('Could not find VSCode PID');
     }
 
     // Log terminal PIDs (handle the Promise properly)
     const terminals = vscode.window.terminals;
-    outputChannel.appendLine(`Found ${terminals.length} terminals:`);
+    debugLog(`Found ${terminals.length} terminals:`);
 
     for (let i = 0; i < terminals.length; i++) {
         const terminal = terminals[i];
         try {
             // terminal.processId returns a Promise in newer VSCode versions
             const pid = await terminal.processId;
-            outputChannel.appendLine(`  Terminal ${i}: name="${terminal.name}", PID=${pid}`);
+            debugLog(`  Terminal ${i}: name="${terminal.name}", PID=${pid}`);
         } catch (error) {
-            outputChannel.appendLine(`  Terminal ${i}: name="${terminal.name}", PID=<error: ${error}>`);
+            debugLog(`  Terminal ${i}: name="${terminal.name}", PID=<error: ${error}>`);
         }
     }
 
@@ -543,13 +558,13 @@ async function logPIDDiscovery(outputChannel: vscode.OutputChannel): Promise<voi
     const terminalListener = vscode.window.onDidOpenTerminal(async (terminal) => {
         try {
             const pid = await terminal.processId;
-            outputChannel.appendLine(`NEW TERMINAL: name="${terminal.name}", PID=${pid}`);
+            debugLog(`NEW TERMINAL: name="${terminal.name}", PID=${pid}`);
         } catch (error) {
-            outputChannel.appendLine(`NEW TERMINAL: name="${terminal.name}", PID=<error: ${error}>`);
+            debugLog(`NEW TERMINAL: name="${terminal.name}", PID=<error: ${error}>`);
         }
     });
 
-    outputChannel.appendLine('=== END PID DISCOVERY ===');
+    debugLog('=== END PID DISCOVERY ===');
 }
 
 // 💡: Attempt to find VSCode PID by walking up process tree
@@ -577,7 +592,7 @@ function findVSCodePID(outputChannel: vscode.OutputChannel): number | null {
                 // Check if this looks like the main VSCode process (not helper processes)
                 if ((command.includes('Visual Studio Code') || command.includes('Code.app') || command.includes('Electron'))
                     && !command.includes('Code Helper')) {
-                    outputChannel.appendLine(`Found VSCode PID: ${pid}`);
+                    debugLog(`Found VSCode PID: ${pid}`);
                     return pid;
                 }
 
@@ -589,11 +604,11 @@ function findVSCodePID(outputChannel: vscode.OutputChannel): number | null {
             }
         }
 
-        outputChannel.appendLine('Could not find VSCode PID in process tree');
+        debugLog('Could not find VSCode PID in process tree');
         return null;
 
     } catch (error) {
-        outputChannel.appendLine(`PID discovery error: ${error}`);
+        debugLog(`PID discovery error: ${error}`);
         return null;
     }
 }
