@@ -31,15 +31,21 @@ struct Args {
 use socratic_shell_mcp::Options;
 
 #[derive(Parser, Debug)]
+struct DaemonArgs {
+    /// Optional filename prefix to use (for testing)
+    #[arg(long)]
+    prefix: Option<String>,
+}
+
+#[derive(Parser, Debug)]
 enum Command {
     /// Run PID discovery probe and exit (for testing)
     Probe {},
 
     /// Run as message bus daemon for multi-window support
     Daemon {
-        /// Optional filename prefix to use (for testing)
-        #[arg(long)]
-        prefix: Option<String>,
+        #[command(flatten)]
+        daemon_args: DaemonArgs,
 
         /// Idle timeout in seconds before auto-shutdown (default: 30)
         #[arg(long, default_value = "30")]
@@ -48,18 +54,38 @@ enum Command {
 
     /// Run as client - connects to daemon and bridges stdin/stdout
     Client {
-        /// Optional socket prefix for testing
-        #[arg(long)]
-        prefix: Option<String>,
+        #[command(flatten)]
+        daemon_args: DaemonArgs,
 
         /// Auto-start daemon if not running
         #[arg(long, default_value = "true")]
         auto_start: bool,
     },
 
+    /// Debug daemon functionality
+    #[command(subcommand)]
+    Debug(DebugCommand),
+
     /// Manage persistent agent sessions
     #[command(subcommand)]
     Agent(AgentCommand),
+}
+
+#[derive(Parser, Debug)]
+enum DebugCommand {
+    /// Dump recent daemon messages
+    DumpMessages {
+        #[command(flatten)]
+        daemon_args: DaemonArgs,
+
+        /// Number of recent messages to show
+        #[arg(long, default_value = "50")]
+        count: usize,
+
+        /// Output as JSON instead of human-readable format
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 #[derive(Parser, Debug)]
@@ -118,10 +144,10 @@ async fn main() -> Result<()> {
             info!("🔍 PROBE MODE COMPLETE - Exiting");
         }
         Some(Command::Daemon {
-            prefix,
+            daemon_args,
             idle_timeout,
         }) => {
-            let prefix = match &prefix {
+            let prefix = match &daemon_args.prefix {
                 Some(s) => s,
                 None => DAEMON_SOCKET_PREFIX,
             };
@@ -130,13 +156,16 @@ async fn main() -> Result<()> {
             );
             socratic_shell_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
         }
-        Some(Command::Client { prefix, auto_start }) => {
-            let prefix = match &prefix {
+        Some(Command::Client { daemon_args, auto_start }) => {
+            let prefix = match &daemon_args.prefix {
                 Some(s) => s,
                 None => DAEMON_SOCKET_PREFIX,
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
             socratic_shell_mcp::run_client(prefix, auto_start, args.options.clone()).await?;
+        }
+        Some(Command::Debug(debug_cmd)) => {
+            run_debug_command(debug_cmd).await?;
         }
         Some(Command::Agent(agent_cmd)) => {
             info!("🤖 AGENT MANAGER MODE");
@@ -248,4 +277,104 @@ async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
+    use socratic_shell_mcp::constants;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::UnixStream;
+    
+    match debug_cmd {
+        DebugCommand::DumpMessages { daemon_args, count, json } => {
+            let socket_prefix = daemon_args.prefix.as_deref().unwrap_or(constants::DAEMON_SOCKET_PREFIX);
+            let socket_path = constants::daemon_socket_path(socket_prefix);
+            
+            // Connect to daemon
+            let stream = match UnixStream::connect(&socket_path).await {
+                Ok(stream) => stream,
+                Err(e) => {
+                    println!("Failed to connect to daemon at {}: {}", socket_path, e);
+                    println!("Make sure the daemon is running.");
+                    return Ok(());
+                }
+            };
+            
+            let (mut reader, mut writer) = stream.into_split();
+            
+            // Send debug command
+            writer.write_all(b"#debug_dump_messages\n").await?;
+            writer.flush().await?;
+            
+            // Read response
+            let mut response = String::new();
+            reader.read_to_string(&mut response).await?;
+            
+            if response.trim().is_empty() {
+                println!("No messages in daemon history.");
+                return Ok(());
+            }
+            
+            // Parse response lines
+            let lines: Vec<&str> = response.trim().lines().collect();
+            let recent_lines = if lines.len() > count {
+                &lines[lines.len() - count..]
+            } else {
+                &lines
+            };
+            
+            if json {
+                // Parse and output as JSON
+                let mut messages = Vec::new();
+                for line in recent_lines {
+                    if let Some(parsed) = parse_debug_log_line(line) {
+                        messages.push(parsed);
+                    }
+                }
+                println!("{}", serde_json::to_string_pretty(&messages)?);
+            } else {
+                // Output as human-readable format
+                println!("Recent daemon messages ({} of {} total):", recent_lines.len(), lines.len());
+                println!("{}", "─".repeat(80));
+                
+                for line in recent_lines {
+                    if let Some(parsed) = parse_debug_log_line(line) {
+                        let timestamp = chrono::DateTime::from_timestamp_millis(parsed.timestamp as i64)
+                            .unwrap_or_default()
+                            .format("%H:%M:%S%.3f");
+                        
+                        println!("[{}] {} {}", timestamp, parsed.direction, parsed.content);
+                    } else {
+                        println!("Raw: {}", line);
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+struct ParsedDebugMessage {
+    timestamp: u64,
+    direction: String,
+    content: String,
+}
+
+fn parse_debug_log_line(line: &str) -> Option<ParsedDebugMessage> {
+    // Parse format: "timestamp BROADCAST[identifier] content"
+    let parts: Vec<&str> = line.splitn(3, ' ').collect();
+    if parts.len() >= 3 {
+        if let Ok(timestamp) = parts[0].parse::<u64>() {
+            Some(ParsedDebugMessage {
+                timestamp,
+                direction: parts[1].to_string(),
+                content: parts[2].to_string(),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }
