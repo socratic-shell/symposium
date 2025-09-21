@@ -1,6 +1,8 @@
 # IPC Actor Refactoring
 
-**Status**: ✅ **COMPLETED** (2025-09-19)
+**Status**: ✅ **COMPLETED** (2025-09-21)
+
+**Implementation**: The refactor introduced a RepeaterActor for centralized message routing, comprehensive unit tests, and debugging tools. See [Debugging Tools](../design/debugging-tools.md) for usage information.
 
 # Elevator pitch
 

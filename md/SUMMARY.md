@@ -14,6 +14,7 @@ A# Summary
 
 - [Implementation Overview](./design/implementation-overview.md)
 - [mdbook Conventions](./design/mdbook-conventions.md)
+- [Debugging Tools](./design/debugging-tools.md)
 - [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
 - [Guidance and Initialization](./design/guidance-and-initialization.md)
 - [Taskspace Deletion System](./design/taskspace-deletion.md)
