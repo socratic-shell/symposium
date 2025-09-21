@@ -225,7 +225,7 @@ class IpcManager: ObservableObject {
         error = nil
         Logger.shared.log("IpcManager[\(instanceId)]: Starting socratic-shell-mcp client...")
         Logger.shared.log("IpcManager[\(instanceId)]: Path: \(mcpServerPath)")
-        Logger.shared.log("IpcManager[\(instanceId)]: Command: \(mcpServerPath) client")
+        Logger.shared.log("IpcManager[\(instanceId)]: Command: \(mcpServerPath) client --identity-prefix app")
 
         DispatchQueue.global(qos: .userInitiated).async {
             self.launchClient(mcpServerPath: mcpServerPath)
@@ -247,7 +247,7 @@ class IpcManager: ObservableObject {
 
         // Use shell to handle PATH resolution automatically
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "\(mcpServerPath) client"]
+        process.arguments = ["-c", "\(mcpServerPath) client --identity-prefix app"]
 
         // Set up pipes for stdin/stdout/stderr
         let inputPipe = Pipe()
