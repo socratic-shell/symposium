@@ -121,6 +121,12 @@ struct LogProgressPayload: Codable {
     }
 }
 
+/// Log message for IPC communication
+struct LogMessage: Codable {
+    let level: String
+    let message: String
+}
+
 /// Request from MCP tool for user attention (highlights taskspace, dock badge)
 struct SignalUserPayload: Codable {
     let projectPath: String

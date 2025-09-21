@@ -88,6 +88,10 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         self.permissionManager = permissionManager
 
         Logger.shared.log("ProjectManager[\(instanceId)]: Created")
+        
+        // Set up Logger to send messages to daemon via IPC
+        Logger.shared.setIpcManager(ipcManager)
+        
         // ScreenshotManager initialization is deferred via lazy var
         
         // Subscribe to IpcManager changes to republish them
