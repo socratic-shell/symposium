@@ -7,21 +7,32 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::pin::pin;
 use tokio::signal;
+use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant};
 use tracing::{error, info};
 
-/// Handle a single client connection - read messages and broadcast them
+use crate::actor::repeater::{RepeaterActor, RepeaterMessage};
+
+/// Handle a single client connection using the repeater actor
 pub async fn handle_client(
     client_id: usize,
     mut stream: tokio::net::UnixStream,
-    tx: tokio::sync::broadcast::Sender<String>,
-    mut rx: tokio::sync::broadcast::Receiver<String>,
+    repeater_tx: mpsc::UnboundedSender<RepeaterMessage>,
 ) {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
     let (reader, mut writer) = stream.split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
+
+    // Create channel to receive messages from repeater
+    let (client_tx, mut client_rx) = mpsc::unbounded_channel::<String>();
+    
+    // Subscribe to repeater
+    if let Err(e) = repeater_tx.send(RepeaterMessage::Subscribe(client_tx)) {
+        error!("Failed to subscribe client {} to repeater: {}", client_id, e);
+        return;
+    }
 
     loop {
         tokio::select! {
@@ -36,11 +47,20 @@ pub async fn handle_client(
                     Ok(_) => {
                         let message = line.trim().to_string();
                         if !message.is_empty() {
-                            info!("daemon: client {} sent: {}", client_id, message);
+                            // Check for debug commands
+                            if message.starts_with('#') {
+                                handle_debug_command(&message, client_id, &repeater_tx, &mut writer).await;
+                            } else {
+                                info!("daemon: client {} sent: {}", client_id, message);
 
-                            // Broadcast message to all other clients
-                            if let Err(e) = tx.send(message) {
-                                error!("daemon: failed to broadcast message from client {}: {}", client_id, e);
+                                // Send to repeater for broadcasting
+                                if let Err(e) = repeater_tx.send(RepeaterMessage::IncomingMessage {
+                                    from_client_id: client_id,
+                                    content: message,
+                                }) {
+                                    error!("Failed to send message to repeater: {}", e);
+                                    break;
+                                }
                             }
                         }
                         line.clear();
@@ -52,11 +72,10 @@ pub async fn handle_client(
                 }
             }
 
-            // Receive broadcasts from other clients
-            result = rx.recv() => {
+            // Receive messages from repeater to send to this client
+            result = client_rx.recv() => {
                 match result {
-                    Ok(message) => {
-                        // Send message to this client
+                    Some(message) => {
                         let message_with_newline = format!("{}\n", message);
                         if let Err(e) = writer.write_all(message_with_newline.as_bytes()).await {
                             error!("Failed to send message to client {}: {}", client_id, e);
@@ -67,13 +86,9 @@ pub async fn handle_client(
                             break;
                         }
                     }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        info!("Broadcast channel closed, disconnecting client {}", client_id);
+                    None => {
+                        info!("Repeater channel closed, disconnecting client {}", client_id);
                         break;
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                        // Client is too slow, skip lagged messages
-                        continue;
                     }
                 }
             }
@@ -81,6 +96,52 @@ pub async fn handle_client(
     }
 
     info!("Client {} handler finished", client_id);
+}
+
+/// Handle debug commands from clients
+async fn handle_debug_command(
+    command: &str,
+    client_id: usize,
+    repeater_tx: &mpsc::UnboundedSender<RepeaterMessage>,
+    writer: &mut tokio::net::unix::WriteHalf<'_>,
+) {
+    use tokio::io::AsyncWriteExt;
+    use tokio::sync::oneshot;
+    
+    if command == "#debug_dump_messages" {
+        let (response_tx, response_rx) = oneshot::channel();
+        
+        if let Err(e) = repeater_tx.send(RepeaterMessage::DebugDump(response_tx)) {
+            error!("Failed to request debug dump: {}", e);
+            return;
+        }
+        
+        let response = match response_rx.await {
+            Ok(messages) => {
+                let mut lines = Vec::new();
+                for msg in messages {
+                    lines.push(format!("{} BROADCAST[{}] {}", msg.timestamp, msg.from_identifier, msg.content));
+                }
+                lines.join("\n")
+            }
+            Err(_) => "Error: Failed to get debug dump response".to_string(),
+        };
+        
+        let response_with_newline = format!("{}\n", response);
+        if let Err(e) = writer.write_all(response_with_newline.as_bytes()).await {
+            error!("Failed to send debug response: {}", e);
+        } else if let Err(e) = writer.flush().await {
+            error!("Failed to flush debug response: {}", e);
+        }
+    } else if command.starts_with("#identify:") {
+        let identifier = command.strip_prefix("#identify:").unwrap_or("").to_string();
+        if let Err(e) = repeater_tx.send(RepeaterMessage::DebugSetIdentifier {
+            client_id,
+            identifier,
+        }) {
+            error!("Failed to set client identifier: {}", e);
+        }
+    }
 }
 
 /// Run the message bus daemon with idle timeout instead of VSCode PID monitoring
@@ -195,7 +256,6 @@ async fn run_message_bus_with_shutdown_signal(
     ready_barrier: Option<std::sync::Arc<tokio::sync::Barrier>>,
     shutdown: impl Future<Output = ()>,
 ) -> Result<()> {
-    use tokio::sync::broadcast;
     use tokio::time::interval;
 
     info!("daemon: starting message bus loop with idle timeout");
@@ -205,8 +265,10 @@ async fn run_message_bus_with_shutdown_signal(
         barrier.wait().await;
     }
 
-    // Broadcast channel for distributing messages to all clients
-    let (tx, _rx) = broadcast::channel::<String>(1000);
+    // Create repeater actor for message routing
+    let (repeater_tx, repeater_rx) = mpsc::unbounded_channel::<RepeaterMessage>();
+    let repeater_actor = RepeaterActor::new();
+    tokio::spawn(repeater_actor.run(repeater_rx));
 
     // Track connected clients
     let mut clients: HashMap<usize, tokio::task::JoinHandle<()>> = HashMap::new();
@@ -236,9 +298,8 @@ async fn run_message_bus_with_shutdown_signal(
                         last_activity = Instant::now();
 
                         // Spawn task to handle this client
-                        let tx_clone = tx.clone();
-                        let rx = tx.subscribe();
-                        let handle = tokio::spawn(handle_client(client_id, stream, tx_clone, rx));
+                        let repeater_tx_clone = repeater_tx.clone();
+                        let handle = tokio::spawn(handle_client(client_id, stream, repeater_tx_clone));
                         clients.insert(client_id, handle);
                     }
                     Err(e) => {
@@ -296,9 +357,12 @@ async fn run_message_bus_with_shutdown_signal(
                     payload: json!({}), // Empty payload
                 };
 
-                // Broadcast reload message to all connected clients
+                // Broadcast reload message to all connected clients via repeater
                 if let Ok(message_json) = serde_json::to_string(&reload_message) {
-                    if let Err(e) = tx.send(message_json) {
+                    if let Err(e) = repeater_tx.send(RepeaterMessage::IncomingMessage {
+                        from_client_id: 0, // System message
+                        content: message_json,
+                    }) {
                         info!("No clients to receive reload signal: {}", e);
                     } else {
                         info!("✅ Broadcast reload_window message to all clients");
