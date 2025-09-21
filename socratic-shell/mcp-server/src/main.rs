@@ -12,7 +12,7 @@ use tracing::{error, info};
 
 use socratic_shell_mcp::{
     AgentManager,
-    DialecticServer,
+    SymposiumServer,
     constants::DAEMON_SOCKET_PREFIX,
     structured_logging::{self, Component},
 };
@@ -139,9 +139,6 @@ async fn main() -> Result<()> {
     let flush_guard = structured_logging::init_component_tracing(component, args.options.dev_log)
         .expect("Failed to initialize logging");
 
-    // Initialize daemon logging channel (will be connected after server creation)
-    let daemon_log_rx = structured_logging::init_daemon_logging();
-
     info!("🔍 PROBE MODE DETECTED - Running PID discovery probe...");
 
     match args.command {
@@ -183,10 +180,10 @@ async fn main() -> Result<()> {
             info!("MCP Server working directory: {:?}", std::env::current_dir());
 
             // Create our server instance
-            let server = DialecticServer::new(args.options.clone()).await?;
+            let server = SymposiumServer::new(args.options.clone()).await?;
 
-            // Set up daemon logging integration
-            structured_logging::spawn_daemon_log_forwarder(daemon_log_rx, server.ipc());
+            // Set up log subscriber integration
+            structured_logging::spawn_log_forwarder(server.ipc());
 
             // Clone the IPC communicator for shutdown handling
             let ipc_for_shutdown = server.ipc().clone();

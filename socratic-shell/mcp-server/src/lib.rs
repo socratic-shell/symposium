@@ -53,5 +53,5 @@ mod main_types {
 pub use daemon::{run_daemon_with_idle_timeout, run_client};
 pub use pid_discovery::find_vscode_pid_from_mcp;
 pub use reference_store::ReferenceStore;
-pub use server::DialecticServer;
+pub use server::SymposiumServer;
 pub use agent_manager::AgentManager;

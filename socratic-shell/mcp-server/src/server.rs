@@ -105,15 +105,15 @@ struct GetRustCrateSourceParams {
 /// Implements the MCP server protocol and bridges to VSCode extension via IPC.
 /// Uses the official rmcp SDK with tool macros for clean implementation.
 #[derive(Clone)]
-pub struct DialecticServer {
+pub struct SymposiumServer {
     ipc: IPCCommunicator,
     interpreter: DialectInterpreter<IPCCommunicator>,
-    tool_router: ToolRouter<DialecticServer>,
+    tool_router: ToolRouter<SymposiumServer>,
     reference_handle: crate::actor::ReferenceHandle,
 }
 
 #[tool_router]
-impl DialecticServer {
+impl SymposiumServer {
     /// Assemble the complete /yiasou initialization prompt
     /// Get taskspace context via IPC
     async fn get_taskspace_context(
@@ -948,7 +948,7 @@ impl DialecticServer {
     }
 }
 
-impl DialecticServer {
+impl SymposiumServer {
     fn parse_yaml_metadata(content: &str) -> (Option<String>, Option<String>) {
         if !content.starts_with("---\n") {
             return (None, None);
@@ -1114,7 +1114,7 @@ impl DialecticServer {
 }
 
 #[tool_handler]
-impl ServerHandler for DialecticServer {
+impl ServerHandler for SymposiumServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             protocol_version: ProtocolVersion::V_2024_11_05,
@@ -1241,7 +1241,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_baseuri_conversion() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
 
         // Test with "." - should convert to absolute path
         let params = PresentWalkthroughParams {
@@ -1359,13 +1359,13 @@ description: "A test resource for testing"
 
 This is test content."#;
 
-        let (name, description) = DialecticServer::parse_yaml_metadata(content_with_yaml);
+        let (name, description) = SymposiumServer::parse_yaml_metadata(content_with_yaml);
         assert_eq!(name, Some("Test Resource".to_string()));
         assert_eq!(description, Some("A test resource for testing".to_string()));
 
         // Test content without YAML
         let content_without_yaml = "# Just a heading\n\nSome content.";
-        let (name, description) = DialecticServer::parse_yaml_metadata(content_without_yaml);
+        let (name, description) = SymposiumServer::parse_yaml_metadata(content_without_yaml);
         assert_eq!(name, None);
         assert_eq!(description, None);
     }
@@ -1373,7 +1373,7 @@ This is test content."#;
     #[test]
     fn test_list_resources_output() {
         // Test the actual resource generation logic used by list_resources
-        let resources = DialecticServer::generate_resources();
+        let resources = SymposiumServer::generate_resources();
 
         // Verify we have resources for all guidance files
         let expected_count = GuidanceFiles::iter().count();
@@ -1417,7 +1417,7 @@ This is test content."#;
 
     #[tokio::test]
     async fn test_yiasou_prompt_generation() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
 
         let prompt = server.assemble_yiasou_prompt().await.unwrap();
 
@@ -1448,7 +1448,7 @@ This is test content."#;
 
     #[tokio::test]
     async fn test_expand_reference_yiasou() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
 
         // Test that expand_reference with "yiasou" returns the same content as the stored prompt
         let params = ExpandReferenceParams {
@@ -1506,7 +1506,7 @@ This is test content."#;
     // {RFD:rust-crate-sources-tool} Tests for Rust crate source functionality
     #[tokio::test]
     async fn test_get_rust_crate_source_extraction_only() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
         
         // Test extraction without pattern (should not include search results)
         let params = GetRustCrateSourceParams {
@@ -1545,7 +1545,7 @@ This is test content."#;
     // {RFD:rust-crate-sources-tool} Test extraction with pattern search
     #[tokio::test]
     async fn test_get_rust_crate_source_with_pattern() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
         
         // Test extraction with pattern (should include search results)
         let params = GetRustCrateSourceParams {
@@ -1596,7 +1596,7 @@ This is test content."#;
     // {RFD:rust-crate-sources-tool} Test version parameter handling
     #[tokio::test]
     async fn test_get_rust_crate_source_with_version() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
         
         // Test with version parameter
         let params = GetRustCrateSourceParams {
@@ -1631,7 +1631,7 @@ This is test content."#;
     // {RFD:rust-crate-sources-tool} Test invalid regex pattern handling
     #[tokio::test]
     async fn test_get_rust_crate_source_invalid_pattern() {
-        let server = DialecticServer::new_test();
+        let server = SymposiumServer::new_test();
         
         // Test with invalid regex pattern
         let params = GetRustCrateSourceParams {

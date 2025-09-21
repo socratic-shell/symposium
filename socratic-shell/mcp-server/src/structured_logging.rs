@@ -15,26 +15,26 @@ use tracing_subscriber::Layer;
 use crate::constants;
 use crate::types::LogLevel;
 
-/// Global log sender for daemon communication
-static LOG_SENDER: Mutex<Option<mpsc::UnboundedSender<(LogLevel, String)>>> = Mutex::new(None);
+/// Global log senders for subscriber communication
+static LOG_SUBSCRIBERS: Mutex<Vec<mpsc::UnboundedSender<(LogLevel, String)>>> = Mutex::new(Vec::new());
 
-/// Set the global log sender for daemon communication
-pub fn set_daemon_log_sender(sender: mpsc::UnboundedSender<(LogLevel, String)>) {
-    let mut global_sender = LOG_SENDER.lock().unwrap();
-    *global_sender = Some(sender);
+/// Add a log subscriber and return the receiver
+pub fn add_log_subscriber() -> mpsc::UnboundedReceiver<(LogLevel, String)> {
+    let (tx, rx) = mpsc::unbounded_channel();
+    let mut subscribers = LOG_SUBSCRIBERS.lock().unwrap();
+    subscribers.push(tx);
+    rx
 }
 
-/// Send a log message to the daemon if connected
-fn send_to_daemon(level: LogLevel, message: String) {
-    if let Ok(sender_guard) = LOG_SENDER.lock() {
-        if let Some(sender) = sender_guard.as_ref() {
-            // Use try_send to avoid blocking if daemon is slow
-            let _ = sender.send((level, message));
-        }
+/// Send a log message to all subscribers
+fn send_to_subscribers(level: LogLevel, message: String) {
+    if let Ok(mut subscribers) = LOG_SUBSCRIBERS.lock() {
+        // Send to all subscribers, removing any that are closed
+        subscribers.retain(|sender| sender.send((level.clone(), message.clone())).is_ok());
     }
 }
 
-/// Custom tracing layer that sends logs to daemon
+/// Custom tracing layer that sends logs to subscribers
 pub struct DaemonLogLayer {
     component: Component,
     pid: u32,
@@ -71,8 +71,8 @@ where
         event.record(&mut visitor);
         message.push_str(&visitor.message);
 
-        // Send to daemon
-        send_to_daemon(level, message);
+        // Send to subscribers
+        send_to_subscribers(level, message);
     }
 }
 
@@ -101,23 +101,13 @@ impl tracing::field::Visit for MessageVisitor {
     }
 }
 
-/// Initialize daemon logging integration
-/// Returns a receiver that should be handled by forwarding logs to the daemon via IPC
-pub fn init_daemon_logging() -> mpsc::UnboundedReceiver<(LogLevel, String)> {
-    let (tx, rx) = mpsc::unbounded_channel();
-    set_daemon_log_sender(tx);
-    rx
-}
-
-/// Spawn a task to forward logs from the receiver to the daemon via IPC
-pub fn spawn_daemon_log_forwarder(
-    mut log_rx: mpsc::UnboundedReceiver<(LogLevel, String)>,
-    ipc: &crate::ipc::IPCCommunicator,
-) {
+/// Spawn a task to forward logs to subscribers via IPC
+pub fn spawn_log_forwarder(ipc: &crate::ipc::IPCCommunicator) {
+    let mut log_rx = add_log_subscriber();
     let ipc = ipc.clone(); // Clone the IPCCommunicator for the async task
     tokio::spawn(async move {
         while let Some((level, message)) = log_rx.recv().await {
-            // Forward to daemon via IPC (send_log doesn't return a Result)
+            // Forward to subscribers via IPC (send_log doesn't return a Result)
             ipc.send_log(level, message).await;
         }
     });

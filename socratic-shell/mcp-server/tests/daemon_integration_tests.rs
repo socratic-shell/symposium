@@ -1,6 +1,6 @@
 //! Integration tests for daemon spawning and MCP server integration
 
-use socratic_shell_mcp::DialecticServer;
+use socratic_shell_mcp::SymposiumServer;
 
 #[tokio::test]
 async fn test_daemon_spawning_integration() {
@@ -10,7 +10,7 @@ async fn test_daemon_spawning_integration() {
     // This test verifies that the MCP server can spawn and connect to the daemon
     // We'll use the test mode to avoid requiring actual VSCode PID discovery
 
-    let _server = DialecticServer::new_test();
+    let _server = SymposiumServer::new_test();
 
     // Verify server was created successfully
     assert!(true, "Server created successfully in test mode");

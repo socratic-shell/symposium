@@ -1,6 +1,6 @@
 //! Integration tests for taskspace orchestration MCP tools
 
-use socratic_shell_mcp::DialecticServer;
+use socratic_shell_mcp::SymposiumServer;
 use socratic_shell_mcp::types::*;
 use serde_json;
 
@@ -10,7 +10,7 @@ async fn test_taskspace_tools_integration() {
     let _ = tracing_subscriber::fmt::try_init();
 
     // Create server in test mode (avoids actual IPC communication)
-    let _server = DialecticServer::new_test();
+    let _server = SymposiumServer::new_test();
 
     // Verify server was created successfully
     assert!(true, "Server created successfully in test mode");
