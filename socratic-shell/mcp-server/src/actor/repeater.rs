@@ -123,6 +123,14 @@ impl RepeaterActor {
     }
 }
 
+/// Spawn a repeater actor task and return the sender for communicating with it
+pub async fn spawn_repeater_task() -> mpsc::UnboundedSender<RepeaterMessage> {
+    let (repeater_tx, repeater_rx) = mpsc::unbounded_channel::<RepeaterMessage>();
+    let repeater_actor = RepeaterActor::new();
+    tokio::spawn(repeater_actor.run(repeater_rx));
+    repeater_tx
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

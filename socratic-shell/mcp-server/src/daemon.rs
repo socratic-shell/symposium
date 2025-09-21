@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 use tokio::time::{Duration, Instant};
 use tracing::{error, info};
 
-use crate::actor::repeater::{RepeaterActor, RepeaterMessage};
+use crate::actor::repeater::{spawn_repeater_task, RepeaterMessage};
 
 /// Handle a single client connection using the repeater actor
 pub async fn handle_client(
@@ -266,9 +266,7 @@ async fn run_message_bus_with_shutdown_signal(
     }
 
     // Create repeater actor for message routing
-    let (repeater_tx, repeater_rx) = mpsc::unbounded_channel::<RepeaterMessage>();
-    let repeater_actor = RepeaterActor::new();
-    tokio::spawn(repeater_actor.run(repeater_rx));
+    let repeater_tx = spawn_repeater_task().await;
 
     // Track connected clients
     let mut clients: HashMap<usize, tokio::task::JoinHandle<()>> = HashMap::new();
