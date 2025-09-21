@@ -122,3 +122,121 @@ impl RepeaterActor {
         info!("Broadcast message from client {} ({}) to {} subscribers", from_client_id, from_identifier, self.subscribers.len());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::sync::oneshot;
+    use tokio::time::{timeout, Duration};
+
+    #[tokio::test]
+    async fn test_basic_message_routing() {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let actor = RepeaterActor::new();
+        
+        // Spawn the actor
+        tokio::spawn(actor.run(rx));
+        
+        // Create two subscribers
+        let (sub1_tx, mut sub1_rx) = mpsc::unbounded_channel();
+        let (sub2_tx, mut sub2_rx) = mpsc::unbounded_channel();
+        
+        // Subscribe both
+        tx.send(RepeaterMessage::Subscribe(sub1_tx)).unwrap();
+        tx.send(RepeaterMessage::Subscribe(sub2_tx)).unwrap();
+        
+        // Send a message
+        tx.send(RepeaterMessage::IncomingMessage {
+            from_client_id: 1,
+            content: "test message".to_string(),
+        }).unwrap();
+        
+        // Both subscribers should receive it
+        let msg1 = timeout(Duration::from_millis(100), sub1_rx.recv()).await.unwrap().unwrap();
+        let msg2 = timeout(Duration::from_millis(100), sub2_rx.recv()).await.unwrap().unwrap();
+        
+        assert_eq!(msg1, "test message");
+        assert_eq!(msg2, "test message");
+    }
+
+    #[tokio::test]
+    async fn test_client_identifiers() {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let actor = RepeaterActor::new();
+        
+        tokio::spawn(actor.run(rx));
+        
+        // Set identifier for client 1
+        tx.send(RepeaterMessage::DebugSetIdentifier {
+            client_id: 1,
+            identifier: "MCP-Server-123".to_string(),
+        }).unwrap();
+        
+        // Send message from client 1
+        tx.send(RepeaterMessage::IncomingMessage {
+            from_client_id: 1,
+            content: "hello".to_string(),
+        }).unwrap();
+        
+        // Request debug dump
+        let (dump_tx, dump_rx) = oneshot::channel();
+        tx.send(RepeaterMessage::DebugDump(dump_tx)).unwrap();
+        
+        let history = timeout(Duration::from_millis(100), dump_rx).await.unwrap().unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].from_identifier, "MCP-Server-123");
+        assert_eq!(history[0].content, "hello");
+    }
+
+    #[tokio::test]
+    async fn test_closed_channel_cleanup() {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let actor = RepeaterActor::new();
+        
+        tokio::spawn(actor.run(rx));
+        
+        // Create subscriber and then drop it
+        let (sub_tx, sub_rx) = mpsc::unbounded_channel();
+        tx.send(RepeaterMessage::Subscribe(sub_tx)).unwrap();
+        drop(sub_rx); // Close the receiver
+        
+        // Send a message - should not panic and should clean up the closed channel
+        tx.send(RepeaterMessage::IncomingMessage {
+            from_client_id: 1,
+            content: "test".to_string(),
+        }).unwrap();
+        
+        // Give it time to process
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        
+        // Test passes if no panic occurred
+    }
+
+    #[tokio::test]
+    async fn test_message_history_limit() {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let actor = RepeaterActor::new();
+        
+        tokio::spawn(actor.run(rx));
+        
+        // Send more than MAX_MESSAGE_HISTORY messages
+        for i in 0..MAX_MESSAGE_HISTORY + 10 {
+            tx.send(RepeaterMessage::IncomingMessage {
+                from_client_id: 1,
+                content: format!("message {}", i),
+            }).unwrap();
+        }
+        
+        // Request debug dump
+        let (dump_tx, dump_rx) = oneshot::channel();
+        tx.send(RepeaterMessage::DebugDump(dump_tx)).unwrap();
+        
+        let history = timeout(Duration::from_millis(100), dump_rx).await.unwrap().unwrap();
+        
+        // Should be limited to MAX_MESSAGE_HISTORY
+        assert_eq!(history.len(), MAX_MESSAGE_HISTORY);
+        
+        // Should contain the most recent messages
+        assert!(history.last().unwrap().content.contains(&format!("{}", MAX_MESSAGE_HISTORY + 9)));
+    }
+}
