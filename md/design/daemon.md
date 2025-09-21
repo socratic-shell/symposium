@@ -1,22 +1,23 @@
-# Daemon Message Bus Architecture ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Experimental](https://img.shields.io/badge/stability-experimental-orange)
+# Daemon Message Bus Architecture ![Implemented](https://img.shields.io/badge/status-implemented-green) ![Stable](https://img.shields.io/badge/stability-stable-brightgreen)
 
-The daemon message bus serves as the central communication hub that routes messages between MCP servers and VSCode extensions across multiple windows. It eliminates the need for direct connections while enabling intelligent message routing, buffering, and replay capabilities.
+The daemon message bus serves as the central communication hub that routes messages between MCP servers and VSCode extensions across multiple windows. Built on a RepeaterActor architecture, it provides centralized message routing, client identity tracking, and comprehensive debugging capabilities.
 
 ## Architecture Overview ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
 ```mermaid
 graph TB
-    OSX[OS X App]
+    OSX[macOS App]
     MCP[MCP Server<br/>with embedded client]
     EXT[VSCode extension]
     DAEMON[socratic-shell-mcp daemon<br/>Auto-spawned if needed]
-    SOCKET[Unix Socket<br>/tmp/symposium-daemon.sock]
+    SOCKET[Unix Socket<br>/tmp/socratic-shell-daemon.sock]
     AGENT[Coding agent like<br>Claude Code or Q CLI]
-    BUFFER[(Message Buffer<br/>Per Client)]
+    REPEATER[RepeaterActor<br/>Central message router]
+    HISTORY[(Message History<br/>1000 messages)]
     
     subgraph "Client Processes"
-        CLIENT2[socratic-shell-mcp client<br/>spawned by OS X App]
-        CLIENT1[socratic-shell-mcp client<br/>spawned by VSCode]
+        CLIENT2[socratic-shell-mcp client<br/>--identity-prefix app]
+        CLIENT1[socratic-shell-mcp client<br/>--identity-prefix vscode]
     end
     
     EXT -->|spawns| CLIENT1
@@ -26,192 +27,200 @@ graph TB
     CLIENT2 <-->|stdin/stdout| SOCKET
     MCP <-->|stdin/stdout| SOCKET
 
+    SOCKET --> REPEATER
+    REPEATER --> HISTORY
+    REPEATER -->|broadcast| CLIENT1
+    REPEATER -->|broadcast| CLIENT2
+    REPEATER -->|broadcast| MCP
+
     AGENT -- starts --> MCP
-    
-    DAEMON -->|broadcasts + buffers| SOCKET
-    DAEMON --> BUFFER
     
     style DAEMON fill:#e1f5fe
     style SOCKET fill:#f3e5f5
     style CLIENT1 fill:#fff2cc
     style CLIENT2 fill:#fff2cc
+    style REPEATER fill:#e8f5e8
+    style HISTORY fill:#f0f0f0
     style AGENT fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
-    style BUFFER fill:#e8f5e8
 ```
 
-## Message Targeting and Routing
+## RepeaterActor Architecture ![Implemented](https://img.shields.io/badge/status-implemented-green)
+
+The daemon's core is built around a RepeaterActor that centralizes all message routing:
+
+### Key Components
+
+- **RepeaterActor**: Central message router that maintains subscriber list and message history
+- **Client Identity System**: Each client identifies itself with a descriptive identity on connection
+- **Message History**: In-memory buffer of recent messages for debugging and replay
+- **Debug Interface**: Commands to inspect message flow and client states
+
+### Message Flow
+
+1. **Client Connection**: Client connects to Unix socket and sends identity command
+2. **Identity Registration**: RepeaterActor records client identity and adds to subscriber list  
+3. **Message Broadcasting**: All messages are broadcast to all connected clients
+4. **History Tracking**: Messages are stored in circular buffer for debugging
+
+## Client Identity System ![Implemented](https://img.shields.io/badge/status-implemented-green)
+
+Each client establishes an identity when connecting to help with debugging and monitoring:
+
+### Identity Format
+
+Identities follow the pattern: `prefix(pid:N,cwd:…/path)`
+
+- **prefix**: Client type identifier
+- **pid**: Process ID for system correlation
+- **cwd**: Last two components of working directory
+
+### Client Types
+
+| Client Type | Identity Prefix | Example |
+|-------------|----------------|---------|
+| MCP Server | `mcp-server` | `mcp-server(pid:81332,cwd:…/symposium)` |
+| CLI Client | `client` (default) | `client(pid:12345,cwd:…/my-project)` |
+| VSCode Extension | `vscode` | `vscode(pid:67890,cwd:…/workspace)` |
+| macOS App | `app` | `app(pid:54321,cwd:…/directory)` |
+
+### Identity Commands
+
+Clients send identity commands on connection:
+
+```
+#identify:mcp-server(pid:81332,cwd:…/symposium)
+```
+
+The daemon uses these identities for:
+- Debug message attribution
+- Connection tracking
+- Process correlation
 
 ## Message Targeting and Routing ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
-### Hybrid Directory + PID Approach
-The daemon uses intelligent message targeting to support both synchronous and persistent agents:
+### Broadcast Model
 
-```typescript
-{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:ipc_message}}
-```
+The RepeaterActor uses a simple broadcast model:
+- All messages are sent to all connected clients
+- Clients perform their own filtering based on message content
+- No server-side routing logic needed
 
-### Client-Side Filtering Logic
-VSCode extensions filter incoming messages using hybrid directory + PID matching:
+### Client-Side Filtering
 
-```typescript
-{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:is_message_for_our_window}}
-```
+Each client filters messages based on:
+- Message type relevance
+- Target working directory
+- Taskspace UUID matching
 
-### Benefits of Hybrid Approach
-- **Universal Compatibility**: Works with both synchronous (terminal-based) and persistent (tmux-based) agents
-- **Precise When Possible**: Uses PID matching when available for accuracy
-- **Robgust Fallback**: Directory matching works across all execution models
-- **Multi-Window Safe**: Prevents cross-window message leakage
+This approach keeps the daemon simple while allowing flexible client-side logic.
 
-### Sender Information by Component
+## Debugging IPC Communications ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
-Different components populate sender information differently:
+The RepeaterActor architecture enables comprehensive debugging capabilities:
 
-**MCP Server (Agent Messages)**:
-```typescript
-sender: {
-    workingDirectory: "/path/to/workspace",  // Current working directory
-    taskspaceUuid: "task-ABC123",           // Extracted from directory structure
-    shellPid: 12345                        // Terminal shell PID (if available)
-}
-```
-
-**VSCode Extension Messages**:
-```typescript
-sender: {
-    workingDirectory: vscode.workspace.workspaceFolders[0].uri.fsPath,  // First workspace folder
-    taskspaceUuid: getCurrentTaskspaceUuid() || undefined,  // Extracted from directory structure (if available)
-    shellPid: undefined                         // Extensions don't provide shell PID
-}
-```
-
-**Daemon Shutdown Messages**:
-```typescript
-sender: {
-    workingDirectory: "/tmp",               // Generic path for daemon messages
-    taskspaceUuid: undefined,
-    shellPid: undefined                     // No specific PID for daemon messages
-}
-```
-
-The daemon sends `reload_window` messages to all clients when it shuts down.
-
-## Message Buffering and Replay ![Planned](https://img.shields.io/badge/status-planned-blue)
-
-### Buffering Architecture
-The daemon implements per-client message buffering to handle disconnections gracefully:
-
-```rust
-struct DaemonState {
-    clients: HashMap<ClientId, ClientConnection>,
-    message_buffers: HashMap<ClientId, VecDeque<IPCMessage>>,
-    buffer_limits: BufferConfig,
-}
-
-struct BufferConfig {
-    max_messages_per_client: usize,  // Default: 1000
-    message_ttl: Duration,           // Default: 5 minutes
-    eviction_policy: EvictionPolicy, // LRU, FIFO, etc.
-}
-```
-
-### Buffering Behavior
-1. **Message Routing**: When a message arrives, daemon attempts to deliver to target clients
-2. **Buffer on Disconnect**: If target client is disconnected, message goes to their buffer
-3. **Buffer Limits**: Enforce size and TTL limits to prevent memory exhaustion
-4. **Replay on Reconnect**: When client reconnects, replay all buffered messages in order
-5. **Buffer Cleanup**: Remove expired messages and enforce size limits
-
-### Use Cases for Buffering
-- **Agent Progress Updates**: Persistent agents can report progress while VSCode is closed
-- **User Attention Signals**: `signal_user` messages buffered until VSCode reconnects
-- **Taskspace Events**: Spawn/update notifications preserved across disconnections
-- **Development Workflow**: Daemon restarts don't lose in-flight messages
-
-### Buffering Implementation
-```rust
-impl MessageBus {
-    async fn route_message(&mut self, message: IPCMessage) -> Result<()> {
-        let target_clients = self.find_target_clients(&message).await?;
-        
-        for client_id in target_clients {
-            if let Some(client) = self.clients.get_mut(&client_id) {
-                if client.is_connected() {
-                    // Direct delivery
-                    client.send_message(message.clone()).await?;
-                } else {
-                    // Buffer for later replay
-                    self.buffer_message(client_id, message.clone()).await?;
-                }
-            }
-        }
-        Ok(())
-    }
-    
-    async fn handle_client_reconnect(&mut self, client_id: ClientId) -> Result<()> {
-        // Replay all buffered messages for this client
-        if let Some(buffer) = self.message_buffers.get_mut(&client_id) {
-            while let Some(message) = buffer.pop_front() {
-                self.clients[&client_id].send_message(message).await?;
-            }
-        }
-        Ok(())
-    }
-}
-```
-
-## Binary and Process Structure
-
-The [MCP server](./mcp-server.md) and daemon are packaged in the same binary (`socratic-shell-mcp`) with these subcommands:
+### Debug Commands
 
 ```bash
-# Start MCP server (default, no subcommand) - has embedded IPC client
-socratic-shell-mcp
+# Show recent daemon messages
+socratic-shell-mcp debug dump-messages
 
-# Start client process (spawned by VSCode extension, OS X app, etc.)
-# This will automatically launch a daemon if needed
-socratic-shell-mcp client
+# Show last 10 messages  
+socratic-shell-mcp debug dump-messages --count 10
 
-# Start daemon (usually auto-spawned by clients)  
-socratic-shell-mcp daemon
-
-# Run PID discovery probe (for testing)
-socratic-shell-mcp probe
+# Output as JSON
+socratic-shell-mcp debug dump-messages --json
 ```
 
-The daemon creates a Unix domain socket at `/tmp/symposium-daemon.sock` for IPC communication.
+### Debug Output Format
 
-## Key Architecture Principles
+```
+Recent daemon messages (3 of 15 total):
+────────────────────────────────────────────────────────────────────────────────
+[19:33:43.939] BROADCAST[mcp-server(pid:81332,cwd:…/symposium)] {"type":"taskspace_state",...}
+[19:33:44.001] BROADCAST[vscode(pid:12345,cwd:…/my-project)] {"type":"register_taskspace_window",...}
+[19:33:44.301] BROADCAST[app(pid:67890,cwd:…/workspace)] {"type":"marco",...}
+```
 
-**All logic in Rust**: The `socratic-shell-mcp` binary contains all IPC, daemon, and client logic. Other components (VSCode extension, OS X app) spawn Rust processes rather than reimplementing communication logic.
-- See: `socratic-shell/mcp-server/src/main.rs` - subcommands for `client`, `daemon` modes
-- See: `socratic-shell/vscode-extension/src/extension.ts` - spawns `socratic-shell-mcp client` process
+### Message History
 
-**Intelligent message routing**: Daemon uses hybrid directory + PID targeting to route messages accurately across different agent execution models.
-- Supports both synchronous (terminal-based) and persistent (tmux-based) agents
-- Directory-based matching with PID precision when available
+- **Capacity**: 1000 messages (configurable)
+- **Storage**: In-memory circular buffer
+- **Persistence**: Lost on daemon restart
+- **Access**: Via debug commands only
 
-**Message buffering and replay**: Daemon buffers messages when target clients are disconnected and replays them on reconnection.
-- Prevents message loss during VSCode restarts or network issues
-- Essential for persistent agents that may outlive VSCode sessions
+### Common Debugging Scenarios
 
-**Message format**: One JSON document per line over Unix domain socket at `/tmp/symposium-daemon.sock`.
-- See: `socratic-shell/mcp-server/src/daemon.rs` - socket creation and message handling
-- See: `socratic-shell/mcp-server/src/constants.rs` - `DAEMON_SOCKET_PREFIX` constant
+**Connection Issues**: Check if clients are connecting and identifying properly
+```bash
+socratic-shell-mcp debug dump-messages --count 5
+```
 
-**Automatic lifecycle**: Clients auto-spawn daemon if needed. Daemon auto-terminates after 30s idle. During development, `cargo setup --dev` kills daemon and sends `reload_window` to trigger VSCode reloads.
-- See: `socratic-shell/mcp-server/src/daemon.rs` - `run_client()` spawns daemon if needed
-- See: `setup/src/dev_setup.rs` - kills existing daemons during development
+**Message Flow**: Verify messages are being broadcast to all clients
+```bash
+socratic-shell-mcp debug dump-messages --json | jq '.[] | .from_identifier'
+```
 
-## Future Enhancements
+**Client Identity**: Confirm clients are using correct identity prefixes
+```bash
+socratic-shell-mcp debug dump-messages | grep BROADCAST
+```
 
-### HTTP-Based Communication
-[Experiment 1](../work-in-progress/big-picture/experiments/experiment-1-http-buffering-daemon.md) explores migrating from Unix sockets to HTTP for improved debugging and cross-platform compatibility.
+## Implementation Details ![Implemented](https://img.shields.io/badge/status-implemented-green)
 
-### Persistent Message Storage
-Buffered messages could be persisted to disk for daemon restart resilience, though this adds complexity.
+### Actor System
 
-### Advanced Routing
-More sophisticated routing based on message content, client capabilities, or user preferences.
+The daemon uses Tokio actors following Alice Ryhl's actor pattern:
 
-See [Communication Protocol](./protocol.md) for detailed message format specifications.
+- **RepeaterActor**: Message routing and history
+- **ClientActor**: Individual client connections  
+- **StdioHandle**: Stdin/stdout bridging
+
+### Channel Architecture
+
+- **mpsc channels**: For actor communication
+- **Unbounded channels**: For message broadcasting
+- **Oneshot channels**: For debug command responses
+
+### Error Handling
+
+- **Connection failures**: Automatic client cleanup
+- **Message parsing errors**: Logged but don't crash daemon
+- **Actor panics**: Isolated to individual actors
+
+### Performance Characteristics
+
+- **Memory usage**: O(message_history_size + active_clients)
+- **CPU usage**: O(active_clients) per message
+- **Latency**: Single-digit milliseconds for local Unix sockets
+
+## Socket Management ![Implemented](https://img.shields.io/badge/status-implemented-green)
+
+### Socket Location
+
+Default: `/tmp/socratic-shell-daemon.sock`
+Custom: `/tmp/{prefix}-daemon.sock`
+
+### Auto-Start Behavior
+
+Clients can auto-start the daemon if not running:
+```bash
+socratic-shell-mcp client --auto-start
+```
+
+### Cleanup
+
+- Socket files removed on daemon shutdown
+- Stale sockets cleaned up on startup
+- Process termination handled gracefully
+
+## Testing ![Implemented](https://img.shields.io/badge/status-implemented-green)
+
+The RepeaterActor has comprehensive unit tests covering:
+
+- **Message routing**: Broadcast to all subscribers
+- **Client management**: Add/remove subscribers
+- **Identity tracking**: Client identifier handling
+- **Message history**: Circular buffer behavior
+- **Debug commands**: History retrieval and formatting
+
+Tests use in-memory channels and mock clients for fast, reliable testing.
