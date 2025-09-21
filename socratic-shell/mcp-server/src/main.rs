@@ -139,6 +139,9 @@ async fn main() -> Result<()> {
     let flush_guard = structured_logging::init_component_tracing(component, args.options.dev_log)
         .expect("Failed to initialize logging");
 
+    // Initialize daemon logging channel (will be connected after server creation)
+    let daemon_log_rx = structured_logging::init_daemon_logging();
+
     info!("🔍 PROBE MODE DETECTED - Running PID discovery probe...");
 
     match args.command {
@@ -181,6 +184,9 @@ async fn main() -> Result<()> {
 
             // Create our server instance
             let server = DialecticServer::new(args.options.clone()).await?;
+
+            // Set up daemon logging integration
+            structured_logging::spawn_daemon_log_forwarder(daemon_log_rx, server.ipc());
 
             // Clone the IPC communicator for shutdown handling
             let ipc_for_shutdown = server.ipc().clone();
