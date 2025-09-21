@@ -391,7 +391,7 @@ async fn run_message_bus_with_shutdown_signal(
 
 /// Run as client - connects to daemon and bridges stdin/stdout using actors
 /// If auto_start is true and daemon is not running, spawns an independent daemon process
-pub async fn run_client(socket_prefix: &str, auto_start: bool, options: crate::Options) -> Result<()> {
+pub async fn run_client(socket_prefix: &str, auto_start: bool, identity_prefix: &str, options: crate::Options) -> Result<()> {
     use crate::actor::{spawn_client, StdioHandle};
 
     info!("🔌 Starting client with actor-based architecture");
@@ -400,6 +400,7 @@ pub async fn run_client(socket_prefix: &str, auto_start: bool, options: crate::O
     let (to_daemon_tx, mut from_daemon_rx) = spawn_client(
         socket_prefix,
         auto_start,
+        identity_prefix,
         options,
     );
 

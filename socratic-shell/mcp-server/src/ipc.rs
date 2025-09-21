@@ -131,6 +131,7 @@ impl IPCCommunicator {
             let (to_daemon_tx, from_daemon_rx) = crate::actor::spawn_client(
                 DAEMON_SOCKET_PREFIX,
                 true,                    // auto_start daemon
+                "mcp-server",           // identity prefix
                 options,                 // pass options for daemon spawning
             );
 

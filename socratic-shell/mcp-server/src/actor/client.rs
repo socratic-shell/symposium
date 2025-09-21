@@ -22,6 +22,8 @@ pub struct ClientActor {
     /// Socket configuration
     socket_prefix: String,
     auto_start: bool,
+    /// Identity prefix for debug logging
+    identity_prefix: String,
     /// Options for daemon spawning
     options: crate::Options,
 }
@@ -60,6 +62,7 @@ impl ClientActor {
         outbound_tx: mpsc::Sender<IPCMessage>,
         socket_prefix: String,
         auto_start: bool,
+        identity_prefix: String,
         options: crate::Options,
     ) -> Self {
         Self {
@@ -67,8 +70,27 @@ impl ClientActor {
             outbound_tx,
             socket_prefix,
             auto_start,
+            identity_prefix,
             options,
         }
+    }
+
+    /// Generate identity string with prefix, PID, and truncated CWD
+    fn generate_identity(&self) -> String {
+        let pid = std::process::id();
+        let cwd = std::env::current_dir()
+            .map(|path| {
+                let components: Vec<_> = path.components().collect();
+                if components.len() <= 2 {
+                    path.to_string_lossy().to_string()
+                } else {
+                    let last_two: Vec<_> = components.iter().rev().take(2).rev().collect();
+                    format!("…/{}", last_two.iter().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/"))
+                }
+            })
+            .unwrap_or_else(|_| "unknown".to_string());
+        
+        format!("{}(pid:{},cwd:{})", self.identity_prefix, pid, cwd)
     }
 
     async fn connect_and_run(&mut self) -> Result<()> {
@@ -100,7 +122,8 @@ impl ClientActor {
         let mut line = String::new();
 
         // Send identify command to daemon
-        let identify_msg = format!("#identify:MCP-Server-PID-{}\n", std::process::id());
+        let identity = self.generate_identity();
+        let identify_msg = format!("#identify:{}\n", identity);
         if let Err(e) = write_half.write_all(identify_msg.as_bytes()).await {
             error!("Failed to send identify command: {}", e);
         } else if let Err(e) = write_half.flush().await {
@@ -223,12 +246,13 @@ impl ClientActor {
 pub fn spawn_client(
     socket_prefix: &str,
     auto_start: bool,
+    identity_prefix: &str,
     options: crate::Options,
 ) -> (mpsc::Sender<IPCMessage>, mpsc::Receiver<IPCMessage>) {
     let (inbound_tx, inbound_rx) = mpsc::channel(32);
     let (outbound_tx, outbound_rx) = mpsc::channel(32);
 
-    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix.to_string(), auto_start, options);
+    let actor = ClientActor::new(inbound_rx, outbound_tx, socket_prefix.to_string(), auto_start, identity_prefix.to_string(), options);
     actor.spawn();
 
     // Return handle and the receiver for other actors to get messages from daemon

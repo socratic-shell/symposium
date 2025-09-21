@@ -35,6 +35,10 @@ struct DaemonArgs {
     /// Optional filename prefix to use (for testing)
     #[arg(long)]
     prefix: Option<String>,
+
+    /// Identity prefix for debug logging
+    #[arg(long, default_value = "client")]
+    identity_prefix: String,
 }
 
 #[derive(Parser, Debug)]
@@ -162,7 +166,7 @@ async fn main() -> Result<()> {
                 None => DAEMON_SOCKET_PREFIX,
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
-            socratic_shell_mcp::run_client(prefix, auto_start, args.options.clone()).await?;
+            socratic_shell_mcp::run_client(prefix, auto_start, &daemon_args.identity_prefix, args.options.clone()).await?;
         }
         Some(Command::Debug(debug_cmd)) => {
             run_debug_command(debug_cmd).await?;
