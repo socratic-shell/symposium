@@ -342,6 +342,9 @@ export function activate(context: vscode.ExtensionContext) {
     // 💡: Set up daemon client connection for message bus communication
     const daemonClient = new DaemonClient(context, outputChannel, walkthroughProvider);
     bus.setDaemonClient(daemonClient);
+    
+    // Set daemon client on global logger for unified logging
+    logger.setDaemonClient(daemonClient);
 
     daemonClient.start();
 

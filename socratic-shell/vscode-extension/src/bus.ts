@@ -27,6 +27,8 @@ export class Bus {
     // Register components as they're created
     setDaemonClient(client: DaemonClient) {
         this._daemonClient = client;
+        // Set daemon client on logger for unified logging
+        this.logger.setDaemonClient(client);
     }
 
     setWalkthroughProvider(provider: WalkthroughWebviewProvider) {
