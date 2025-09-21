@@ -182,9 +182,6 @@ async fn main() -> Result<()> {
             // Create our server instance
             let server = SymposiumServer::new(args.options.clone()).await?;
 
-            // Set up log subscriber integration
-            structured_logging::spawn_log_forwarder(server.ipc());
-
             // Clone the IPC communicator for shutdown handling
             let ipc_for_shutdown = server.ipc().clone();
 

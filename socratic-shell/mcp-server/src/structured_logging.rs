@@ -101,17 +101,7 @@ impl tracing::field::Visit for MessageVisitor {
     }
 }
 
-/// Spawn a task to forward logs to subscribers via IPC
-pub fn spawn_log_forwarder(ipc: &crate::ipc::IPCCommunicator) {
-    let mut log_rx = add_log_subscriber();
-    let ipc = ipc.clone(); // Clone the IPCCommunicator for the async task
-    tokio::spawn(async move {
-        while let Some((level, message)) = log_rx.recv().await {
-            // Forward to subscribers via IPC (send_log doesn't return a Result)
-            ipc.send_log(level, message).await;
-        }
-    });
-}
+/// Component types for logging identification
 #[derive(Debug, Clone, Copy)]
 pub enum Component {
     Daemon,

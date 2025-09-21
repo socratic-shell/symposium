@@ -15,6 +15,7 @@ use rust_embed::RustEmbed;
 use serde_json;
 use std::future::Future;
 use tracing::{info, warn};
+use crate::structured_logging;
 
 use crate::dialect::DialectInterpreter;
 use crate::eg::Eg;
@@ -167,6 +168,9 @@ impl SymposiumServer {
         ipc.send_polo(shell_pid).await?;
         info!("Sent Polo discovery message with shell PID: {}", shell_pid);
 
+        // Set up log forwarding to subscribers
+        Self::setup_log_forwarding(&ipc);
+
         // Initialize Dialect interpreter with IDE functions
         let mut interpreter = DialectInterpreter::new(ipc.clone());
         interpreter.add_standard_ide_functions();
@@ -182,6 +186,17 @@ impl SymposiumServer {
     /// Get a reference to the IPC communicator
     pub fn ipc(&self) -> &IPCCommunicator {
         &self.ipc
+    }
+
+    /// Set up log forwarding to subscribers via IPC
+    fn setup_log_forwarding(ipc: &IPCCommunicator) {
+        let mut log_rx = structured_logging::add_log_subscriber();
+        let ipc = ipc.clone();
+        tokio::spawn(async move {
+            while let Some((level, message)) = log_rx.recv().await {
+                ipc.send_log(level, message).await;
+            }
+        });
     }
 
     /// Creates a new DialecticServer in test mode
