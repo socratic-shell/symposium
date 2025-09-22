@@ -214,9 +214,8 @@ interface FileLocation {
     column: number,  // 💡: 1-based, vscode is 0-based
 }
 
-
 // 💡: Check if VSCode is running in a taskspace environment and auto-launch agent
-async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bus: Bus): Promise<void> {
+async function checkTaskspaceEnvironment(bus: Bus): Promise<void> {
     debugLog('Checking for taskspace environment...');
 
     const taskspaceUuid = getCurrentTaskspaceUuid();
@@ -245,14 +244,14 @@ async function checkTaskspaceEnvironment(outputChannel: vscode.OutputChannel, bu
             debugLog('Resuming existing taskspace');
         }
         debugLog(`Launching agent: ${response.agent_command.join(' ')}`);
-        await launchAIAgent(outputChannel, bus, response.agent_command, taskspaceUuid);
+        await launchAIAgent(bus, response.agent_command, taskspaceUuid);
     } else {
         debugLog('No taskspace state received from app');
     }
 }
 
 // 💡: Launch AI agent in terminal with provided command
-async function launchAIAgent(outputChannel: vscode.OutputChannel, bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
+async function launchAIAgent(bus: Bus, agentCommand: string[], taskspaceUuid: string): Promise<void> {
     try {
         debugLog(`Launching agent with command: ${agentCommand.join(' ')}`);
 
@@ -288,10 +287,10 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Socratic Shell extension is now active');
 
     // Create the central bus
-    const bus = new Bus(context, outputChannel);
+    const bus = new Bus(context, logger);
 
     // 💡: PID Discovery Testing - Log VSCode and terminal PIDs
-    logPIDDiscovery(outputChannel).catch(error => {
+    logPIDDiscovery().catch(error => {
         debugLog(`Error in PID discovery: ${error}`);
     });
 
@@ -340,7 +339,7 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Webview provider created successfully');
 
     // 💡: Set up daemon client connection for message bus communication
-    const daemonClient = new DaemonClient(context, outputChannel, walkthroughProvider);
+    const daemonClient = new DaemonClient(context, walkthroughProvider, logger);
     bus.setDaemonClient(daemonClient);
     
     // Set daemon client on global logger for unified logging
@@ -350,7 +349,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Check for taskspace environment and auto-launch agent if needed
     // (Must be after DaemonClient is initialized)
-    checkTaskspaceEnvironment(outputChannel, bus).catch(error => {
+    checkTaskspaceEnvironment(bus).catch(error => {
         debugLog(`Error in taskspace detection: ${error}`);
     });
 
@@ -376,7 +375,7 @@ export function activate(context: vscode.ExtensionContext) {
     // 💡: PID discovery command for testing
     const logPIDsCommand = vscode.commands.registerCommand('socratic-shell.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
-        await logPIDDiscovery(outputChannel);
+        await logPIDDiscovery();
         vscode.window.showInformationMessage('PID information logged to Socratic Shell output channel');
     });
 
@@ -408,7 +407,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 // 💡: Set up universal selection detection for interactive code review
 function setupSelectionDetection(bus: Bus): void {
-    const { context, outputChannel } = bus;
+    const { context } = bus;
 
     debugLog('Setting up universal selection detection...');
 
@@ -527,7 +526,7 @@ function getProjectPath(): string {
 }
 
 // 💡: PID Discovery Testing - Log all relevant PIDs for debugging
-async function logPIDDiscovery(outputChannel: vscode.OutputChannel): Promise<void> {
+async function logPIDDiscovery(): Promise<void> {
     debugLog('=== PID DISCOVERY TESTING ===');
 
     // Extension process info
@@ -535,7 +534,7 @@ async function logPIDDiscovery(outputChannel: vscode.OutputChannel): Promise<voi
     debugLog(`Extension parent PID: ${process.ppid}`);
 
     // Try to find VSCode PID by walking up the process tree
-    const vscodePid = findVSCodePID(outputChannel);
+    const vscodePid = findVSCodePID();
     if (vscodePid) {
         debugLog(`Found VSCode PID: ${vscodePid}`);
     } else {
@@ -571,7 +570,7 @@ async function logPIDDiscovery(outputChannel: vscode.OutputChannel): Promise<voi
 }
 
 // 💡: Attempt to find VSCode PID by walking up process tree
-function findVSCodePID(outputChannel: vscode.OutputChannel): number | null {
+function findVSCodePID(): number | null {
     const { execSync } = require('child_process');
 
     try {

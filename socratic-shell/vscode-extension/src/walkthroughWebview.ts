@@ -181,7 +181,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 break;
             case 'openFile':
                 console.log('Walkthrough: openFile command received:', message.socraticShellUrl);
-                await openSocraticShellUrl(message.socraticShellUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
+                await openSocraticShellUrl(message.socraticShellUrl, this.baseUri, this.placementMemory);
                 // After placement, update the UI
                 this.updateLinkPlacementUI(message.socraticShellUrl);
                 break;
@@ -925,7 +925,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         this.placementMemory?.delete(linkKey);
 
         // Open the link again - this will show disambiguation
-        await openSocraticShellUrl(socraticShellUrl, this.bus.outputChannel, this.baseUri, this.placementMemory);
+        await openSocraticShellUrl(socraticShellUrl, this.baseUri, this.placementMemory);
 
         // Update UI after relocation
         this.updateLinkPlacementUI(socraticShellUrl);

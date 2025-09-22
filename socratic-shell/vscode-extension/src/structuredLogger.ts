@@ -21,7 +21,13 @@ interface LogMessage {
 
 // Interface for daemon client (minimal interface for logging)
 interface IDaemonClient {
-    sendRequest<T>(type: string, payload: any, timeoutMs?: number): Promise<T | null>;
+    sendRequestNoReply(type: string, payload: any): Promise<string>
+}
+
+// Options that can be given to the logger
+export interface LogOptions {
+    // Do not log in the daemon; used for logging related to sending IPC messages
+    local?: boolean
 }
 
 export class StructuredLogger {
@@ -55,7 +61,7 @@ export class StructuredLogger {
                     level: level,
                     message: `[${this.component}:${this.pid}] ${message}`
                 };
-                await this.daemonClient.sendRequest('log', logMessage);
+                await this.daemonClient.sendRequestNoReply('log', logMessage);
             } catch (error) {
                 // Silently fail daemon logging to avoid infinite loops
                 // The output channel will still receive the message
@@ -63,37 +69,31 @@ export class StructuredLogger {
         }
     }
 
-    debug(message: string): void {
-        const formatted = this.formatMessage(LogLevel.DEBUG, message);
-        this.outputChannel.appendLine(formatted);
-        this.sendToDaemon(LogLevel.DEBUG, message);
+    debug(message: string, options?: LogOptions): void {
+        this.log(LogLevel.DEBUG, message, options);
     }
 
-    info(message: string): void {
-        const formatted = this.formatMessage(LogLevel.INFO, message);
-        this.outputChannel.appendLine(formatted);
-        this.sendToDaemon(LogLevel.INFO, message);
+    info(message: string, options?: LogOptions): void {
+        this.log(LogLevel.INFO, message, options);
     }
 
-    warn(message: string): void {
-        const formatted = this.formatMessage(LogLevel.WARN, message);
-        this.outputChannel.appendLine(formatted);
-        this.sendToDaemon(LogLevel.WARN, message);
+    warn(message: string, options?: LogOptions): void {
+        this.log(LogLevel.WARN, message, options);
     }
 
-    error(message: string): void {
-        const formatted = this.formatMessage(LogLevel.ERROR, message);
-        this.outputChannel.appendLine(formatted);
-        this.sendToDaemon(LogLevel.ERROR, message);
+    error(message: string, options?: LogOptions): void {
+        this.log(LogLevel.ERROR, message, options);
     }
 
     /**
      * Log with explicit level (useful for dynamic logging)
      */
-    log(level: LogLevel, message: string): void {
+    log(level: LogLevel, message: string, options?: LogOptions): void {
         const formatted = this.formatMessage(level, message);
         this.outputChannel.appendLine(formatted);
-        this.sendToDaemon(level, message);
+        if (!options?.local) {
+            this.sendToDaemon(level, message);            
+        }
     }
 
     /**

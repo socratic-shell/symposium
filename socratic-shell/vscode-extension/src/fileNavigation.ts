@@ -17,7 +17,6 @@ interface PlacementState {
  */
 export async function resolveSocraticShellUrlPlacement(
     socraticShellUrl: string,
-    outputChannel: vscode.OutputChannel,
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<{ range: vscode.Range; document: vscode.TextDocument } | null> {
@@ -129,12 +128,11 @@ export async function resolveSocraticShellUrlPlacement(
  */
 export async function openSocraticShellUrl(
     socraticShellUrl: string, 
-    outputChannel: vscode.OutputChannel, 
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<void> {
     // Resolve the placement
-    const resolved = await resolveSocraticShellUrlPlacement(socraticShellUrl, outputChannel, baseUri, placementMemory);
+    const resolved = await resolveSocraticShellUrlPlacement(socraticShellUrl, baseUri, placementMemory);
     if (!resolved) {
         return; // Resolution failed or was cancelled
     }

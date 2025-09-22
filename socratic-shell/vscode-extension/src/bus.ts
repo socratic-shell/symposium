@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { DaemonClient } from './ipc';
 
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
-import { StructuredLogger } from './structuredLogger';
+import { LogOptions, StructuredLogger } from './structuredLogger';
 import { getCurrentTaskspaceUuid } from './taskspaceUtils';
 import { debugLog } from './logging';
 
@@ -12,16 +12,10 @@ import { debugLog } from './logging';
  * Reduces tight coupling by providing shared access to all major components
  */
 export class Bus {
-    public context: vscode.ExtensionContext;
-    public outputChannel: vscode.OutputChannel;
-    private logger: StructuredLogger;
     private _daemonClient: DaemonClient | undefined;
     private _walkthroughProvider: WalkthroughWebviewProvider | undefined;
 
-    constructor(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel) {
-        this.context = context;
-        this.outputChannel = outputChannel;
-        this.logger = new StructuredLogger(outputChannel, 'EXTENSION-BUS');
+    constructor(public context: vscode.ExtensionContext, public logger: StructuredLogger) {
     }
 
     // Register components as they're created
@@ -180,14 +174,12 @@ export class Bus {
         this.log(`Text message sent to terminal ${selectedTerminal.terminal.name} (PID: ${selectedTerminal.shellPID})`);
     }
 
+    /**
+     * Issue a debug log
+     * 
+     * @param message message to log
+     */
     log(message: string) {
-        // Check if message is already structured (has [COMPONENT:PID] prefix)
-        if (message.match(/^\[[A-Z-]+:\d+\]/)) {
-            // Already structured, use as-is
-            debugLog(message);
-        } else {
-            // Not structured, add our prefix
-            this.logger.info(message);
-        }
+        this.logger.debug(message);
     }
 }

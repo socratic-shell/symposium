@@ -114,25 +114,28 @@ export class DaemonClient implements vscode.Disposable {
     // General request-response handling
     private pendingRequestResolvers: Map<string, (response: any) => void> = new Map();
 
-    private logger: StructuredLogger;
-
     constructor(
         private context: vscode.ExtensionContext,
-        private outputChannel: vscode.OutputChannel,
-        private walkthroughProvider: WalkthroughWebviewProvider
+        private walkthroughProvider: WalkthroughWebviewProvider,
+        private logger: StructuredLogger,
     ) {
-        this.logger = new StructuredLogger(this.outputChannel);
     }
 
     start(): void {
-        this.logger.info('Starting symposium client...');
+        this.logger.info(
+            'Starting symposium client...',
+            {local: true}
+        );
         this.startClientProcess();
     }
 
     private async startClientProcess(): Promise<void> {
         if (this.isDisposed) return;
 
-        this.logger.info(`Starting socratic-shell-mcp client via shell`);
+        this.logger.info(
+            `Starting socratic-shell-mcp client via shell`,
+            {local: true}
+        );
 
         // Spawn socratic-shell-mcp client process
         const { spawn } = require('child_process');
@@ -144,17 +147,26 @@ export class DaemonClient implements vscode.Disposable {
 
         // Handle client process events
         this.clientProcess.on('spawn', () => {
-            this.logger.info('✅ Socratic Shell client process started');
+            this.logger.info(
+                '✅ Socratic Shell client process started',
+                {local: true}
+            );
             this.setupClientCommunication();
         });
 
         this.clientProcess.on('error', (error: Error) => {
-            this.logger.error(`❌ Client process error: ${error.message}`);
+            this.logger.error(
+                `❌ Client process error: ${error.message}`,
+                { local: true }
+            );
             this.scheduleReconnect();
         });
 
         this.clientProcess.on('exit', (code: number | null) => {
-            this.logger.info(`Client process exited with code: ${code}`);
+            this.logger.info(
+                `Client process exited with code: ${code}`,
+                { local: true }
+            );
             this.scheduleReconnect();
         });
     }
@@ -171,9 +183,15 @@ export class DaemonClient implements vscode.Disposable {
                 if (line.trim()) {
                     try {
                         const message: IPCMessage = JSON.parse(line);
-                        this.logger.debug(`Received message: ${message.type} (${message.id})`);
+                        this.logger.debug(
+                            `Received message: ${message.type} (${message.id})`,
+                            { local: true }
+                        );
                         this.handleIncomingMessage(message).catch(error => {
-                            this.logger.error(`Error handling message: ${error}`);
+                            this.logger.error(
+                                `Error handling message: ${error}`,
+                                { local: true },
+                            );
                         });
                     } catch (error) {
                         // Not JSON, might be daemon startup output - ignore
@@ -185,12 +203,10 @@ export class DaemonClient implements vscode.Disposable {
         // Set up stderr reader for logging
         this.clientProcess.stderr.on('data', (data: Buffer) => {
             const stderrText = data.toString().trim();
-            // If stderr already has structured format, use as-is, otherwise add CLIENT prefix
-            if (stderrText.match(/^\[[A-Z-]+:\d+\]/)) {
-                debugLog(stderrText);
-            } else {
-                this.logger.error(`Client stderr: ${stderrText}`);
-            }
+            this.logger.error(
+                `Client stderr: ${stderrText}`,
+                { local: true }
+            );
         });
 
         // Send initial Marco message to announce presence
@@ -213,7 +229,6 @@ export class DaemonClient implements vscode.Disposable {
             debugLog(`[WINDOW REG] Auto-registration failed: ${error}`);
         }
     }
-
 
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
         // First check: is this message for our window?
@@ -411,7 +426,10 @@ export class DaemonClient implements vscode.Disposable {
             );
 
             if (!workspaceMatch) {
-                debugLog(`Debug: working directory ${sender.workingDirectory} not in our workspace`);
+                this.logger.debug(
+                    `Debug: working directory ${sender.workingDirectory} not in our workspace`,
+                    { local: true }
+                );
                 return false; // Directory not in our workspace
             }
 
@@ -422,7 +440,10 @@ export class DaemonClient implements vscode.Disposable {
                     try {
                         const terminalPid = await terminal.processId;
                         if (terminalPid === sender.shellPid) {
-                            debugLog(`Debug: shell PID ${sender.shellPid} is in our window`);
+                            this.logger.debug(
+                                `Debug: shell PID ${sender.shellPid} is in our window`,
+                                { local: true}
+                            );
                             return true; // Precise PID match
                         }
                     } catch (error) {
@@ -827,29 +848,37 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     /**
+     * Send an IPC request; does not expect any response, returns the message id
+     */
+    async sendRequestNoReply(type: string, payload: any): Promise<string> {
+        const messageId = crypto.randomUUID();
+        const message: IPCMessage = {
+            type: type,
+            id: messageId,
+            sender: {
+                workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
+                shellPid: undefined,
+                taskspaceUuid: getCurrentTaskspaceUuid() || undefined
+            },
+            payload: payload,
+        };
+
+        // Send the message
+        if (!this.clientProcess || !this.clientProcess.stdin) {
+            throw new Error('Daemon client not connected');
+        }
+
+        this.clientProcess.stdin.write(JSON.stringify(message) + '\n');
+        this.logger.info(`Sent ${type} request with ID: ${messageId}`, {local: true});
+        return messageId;
+    }
+
+    /**
      * Send an IPC request and wait for response
      */
     async sendRequest<T>(type: string, payload: any, timeoutMs: number = 5000): Promise<T | null> {
         try {
-            const messageId = crypto.randomUUID();
-            const message: IPCMessage = {
-                type: type,
-                id: messageId,
-                sender: {
-                    workingDirectory: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/tmp',
-                    shellPid: undefined,
-                    taskspaceUuid: getCurrentTaskspaceUuid() || undefined
-                },
-                payload: payload,
-            };
-
-            // Send the message
-            if (!this.clientProcess || !this.clientProcess.stdin) {
-                throw new Error('Daemon client not connected');
-            }
-
-            this.clientProcess.stdin.write(JSON.stringify(message) + '\n');
-            this.logger.info(`Sent ${type} request with ID: ${messageId}`);
+            const messageId = await this.sendRequestNoReply(type, payload);
 
             // Wait for response
             return new Promise<T | null>((resolve) => {
@@ -859,14 +888,20 @@ export class DaemonClient implements vscode.Disposable {
                 setTimeout(() => {
                     if (this.pendingRequestResolvers.has(messageId)) {
                         this.pendingRequestResolvers.delete(messageId);
-                        this.logger.error(`Request ${messageId} timed out after ${timeoutMs}ms`);
+                        this.logger.error(
+                            `Request ${messageId} timed out after ${timeoutMs}ms (payload = ${JSON.stringify(payload)})`,
+                            {local: true},
+                        );
                         resolve(null);
                     }
                 }, timeoutMs);
             });
 
         } catch (error) {
-            this.logger.error(`Error sending ${type} request: ${error}`);
+            this.logger.error(
+                `Error sending ${type} request: ${error}`,
+                {local: true}
+            );
             return null;
         }
     }
