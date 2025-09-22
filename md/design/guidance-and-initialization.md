@@ -112,39 +112,39 @@ development standards and best practices in all code work.
 ### File Organization
 
 ```
-socratic-shell/mcp-server/
+symposium/mcp-server/
 ├── src/
 │   ├── guidance/           # Guidance files exposed as MCP resources
-│   │   ├── main.md        # Collaboration patterns → @../../../socratic-shell/mcp-server/src/guidance/main.md
-│   │   ├── walkthrough-format.md → @../../../socratic-shell/mcp-server/src/guidance/walkthrough-format.md
-│   │   └── coding-guidelines.md → @../../../socratic-shell/mcp-server/src/guidance/coding-guidelines.md
-│   ├── server.rs          # MCP server with resource + prompt support → @../../../socratic-shell/mcp-server/src/server.rs
-│   ├── types.rs           # IPC message types and payloads → @../../../socratic-shell/mcp-server/src/types.rs
-│   └── ipc.rs             # IPC communication layer → @../../../socratic-shell/mcp-server/src/ipc.rs
+│   │   ├── main.md        # Collaboration patterns → @../../../symposium/mcp-server/src/guidance/main.md
+│   │   ├── walkthrough-format.md → @../../../symposium/mcp-server/src/guidance/walkthrough-format.md
+│   │   └── coding-guidelines.md → @../../../symposium/mcp-server/src/guidance/coding-guidelines.md
+│   ├── server.rs          # MCP server with resource + prompt support → @../../../symposium/mcp-server/src/server.rs
+│   ├── types.rs           # IPC message types and payloads → @../../../symposium/mcp-server/src/types.rs
+│   └── ipc.rs             # IPC communication layer → @../../../symposium/mcp-server/src/ipc.rs
 ```
 
 ### Key Implementation Files
 
-**MCP Server Core** → @../../../socratic-shell/mcp-server/src/server.rs
+**MCP Server Core** → @../../../symposium/mcp-server/src/server.rs
 - `list_resources()` - Exposes guidance files as MCP resources
 - `read_resource()` - Serves guidance file content  
 - `get_prompt()` - Implements `/yiasou` stored prompt
 - `assemble_yiasou_prompt()` - Dynamic prompt assembly with taskspace context
 - `expand_reference()` - Enhanced tool supporting guidance files and `yiasou` reference
 
-**IPC Communication** → @../../../socratic-shell/mcp-server/src/ipc.rs  
+**IPC Communication** → @../../../symposium/mcp-server/src/ipc.rs  
 - `get_taskspace_state()` - Fetches real taskspace context from daemon/app
 - Message routing and error handling for dynamic context integration
 
-**Type Definitions** → @../../../socratic-shell/mcp-server/src/types.rs
+**Type Definitions** → @../../../symposium/mcp-server/src/types.rs
 - `GetTaskspaceStatePayload` - IPC request structure
 - `TaskspaceStateResponse` - Taskspace context response
 - `IPCMessageType::GetTaskspaceState` - Message type for context fetching
 
 **Embedded Guidance Files**
-- **Collaboration Patterns** → @../../../socratic-shell/mcp-server/src/guidance/main.md
-- **Walkthrough Format** → @../../../socratic-shell/mcp-server/src/guidance/walkthrough-format.md  
-- **Coding Guidelines** → @../../../socratic-shell/mcp-server/src/guidance/coding-guidelines.md
+- **Collaboration Patterns** → @../../../symposium/mcp-server/src/guidance/main.md
+- **Walkthrough Format** → @../../../symposium/mcp-server/src/guidance/walkthrough-format.md  
+- **Coding Guidelines** → @../../../symposium/mcp-server/src/guidance/coding-guidelines.md
 
 ### Data Flow
 
@@ -349,8 +349,8 @@ The protocol implements automatic `initial_prompt` cleanup:
 ### Implementation Details
 
 **MCP Server Methods:**
-- `get_taskspace_state()` → @../../../socratic-shell/mcp-server/src/ipc.rs (read operation)
-- `update_taskspace()` → @../../../socratic-shell/mcp-server/src/ipc.rs (write operation)
+- `get_taskspace_state()` → @../../../symposium/mcp-server/src/ipc.rs (read operation)
+- `update_taskspace()` → @../../../symposium/mcp-server/src/ipc.rs (write operation)
 
 **Message Flow:**
 ```

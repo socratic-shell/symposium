@@ -61,7 +61,7 @@ pub struct MessageSender {
 
 Reference in documentation:
 ```markdown
-{{#include ../../socratic-shell/mcp-server/src/types.rs:message_sender}}
+{{#include ../../symposium/mcp-server/src/types.rs:message_sender}}
 ```
 
 ## Strict Conventions
@@ -103,7 +103,7 @@ interface IPCMessage {
 The IPCMessage structure provides the foundation for all IPC communication:
 
 ```typescript
-{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:ipc_message}}
+{{#include ../../symposium/vscode-extension/src/ipc.ts:ipc_message}}
 ```
 
 ## Anchor Naming Conventions

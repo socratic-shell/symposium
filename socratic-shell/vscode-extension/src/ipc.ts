@@ -130,15 +130,15 @@ export class DaemonClient implements vscode.Disposable {
         if (this.isDisposed) return;
 
         this.logger.info(
-            `Starting socratic-shell-mcp client via shell`,
+            `Starting symposium-mcp client via shell`,
             {local: true}
         );
 
-        // Spawn socratic-shell-mcp client process
+        // Spawn symposium-mcp client process
         const { spawn } = require('child_process');
 
         // Use shell to handle PATH resolution, same as macOS app
-        this.clientProcess = spawn('/bin/sh', ['-c', 'socratic-shell-mcp client --identity-prefix vscode'], {
+        this.clientProcess = spawn('/bin/sh', ['-c', 'symposium-mcp client --identity-prefix vscode'], {
             stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
         });
 
@@ -579,7 +579,7 @@ export class DaemonClient implements vscode.Disposable {
         this.currentReviewId = reviewId;
 
         // Automatically show the review
-        vscode.commands.executeCommand('socratic-shell.showReview');
+        vscode.commands.executeCommand('symposium.showReview');
 
         return new Promise<UserFeedback>((resolve) => {
             this.pendingFeedbackResolvers.set(reviewId, resolve);

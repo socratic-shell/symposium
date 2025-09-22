@@ -77,7 +77,7 @@ All views observe AppDelegate via `@EnvironmentObject` rather than holding direc
 ### Daemon (Node.js/TypeScript)
 - **Communication Hub**: Central IPC coordinator between Symposium app and MCP servers
 - **Message Routing**: Routes commands between components via Unix socket
-- **Socket Management**: Manages Unix socket at `~/.socratic-shell/symposium/daemon.sock`
+- **Socket Management**: Manages Unix socket at `~/.symposium/symposium/daemon.sock`
 
 ### MCP Server (Rust)  
 - **Agent Tool Integration**: Loaded and used by AI agent CLI tools (Claude Code, Q CLI)

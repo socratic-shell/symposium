@@ -1,5 +1,5 @@
-// 💡: URL parser for socratic-shell: scheme supporting flexible search and line parameters
-// Handles socratic-shell:path?search=term&line=N|N:C|N-M|N:C-M:D format as designed in issue #2
+// 💡: URL parser for symposium: scheme supporting flexible search and line parameters
+// Handles symposium:path?search=term&line=N|N:C|N-M|N:C-M:D format as designed in issue #2
 
 export interface SymposiumUrl {
     path: string;
@@ -16,24 +16,24 @@ export interface LineSpec {
 }
 
 /**
- * Parse a socratic-shell: URL into its components
+ * Parse a symposium: URL into its components
  * 
  * Supported formats:
- * - socratic-shell:path/to/file.ts
- * - socratic-shell:path/to/file.ts?regex=pattern
- * - socratic-shell:path/to/file.ts?line=42
- * - socratic-shell:path/to/file.ts?regex=pattern&line=42
- * - socratic-shell:path/to/file.ts?line=42:10 (line with column)
- * - socratic-shell:path/to/file.ts?line=42-50 (line range)
- * - socratic-shell:path/to/file.ts?line=42:10-50:20 (precise range)
+ * - symposium:path/to/file.ts
+ * - symposium:path/to/file.ts?regex=pattern
+ * - symposium:path/to/file.ts?line=42
+ * - symposium:path/to/file.ts?regex=pattern&line=42
+ * - symposium:path/to/file.ts?line=42:10 (line with column)
+ * - symposium:path/to/file.ts?line=42-50 (line range)
+ * - symposium:path/to/file.ts?line=42:10-50:20 (precise range)
  */
 export function parseSymposiumUrl(url: string): SymposiumUrl | null {
-    // 💡: Remove socratic-shell: prefix and validate scheme
-    if (!url.startsWith('socratic-shell:')) {
+    // 💡: Remove symposium: prefix and validate scheme
+    if (!url.startsWith('symposium:')) {
         return null;
     }
     
-    const urlWithoutScheme = url.substring('socratic-shell:'.length);
+    const urlWithoutScheme = url.substring('symposium:'.length);
     
     // 💡: Split path from query parameters
     const [path, queryString] = urlWithoutScheme.split('?', 2);
@@ -126,7 +126,7 @@ function parseLineSpec(lineStr: string): LineSpec | null {
  * Useful for debugging and testing
  */
 export function formatSymposiumUrl(symposiumUrl: SymposiumUrl): string {
-    let url = `socratic-shell:${symposiumUrl.path}`;
+    let url = `symposium:${symposiumUrl.path}`;
     
     const params = new URLSearchParams();
     

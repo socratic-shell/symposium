@@ -222,7 +222,7 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
     println!("\n🎉 Setup complete!");
 
     if built_mcp {
-        println!("📦 MCP server installed to ~/.cargo/bin/socratic-shell-mcp");
+        println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
     }
     if built_vscode {
         println!("📋 VSCode extension installed and ready to use");
@@ -269,7 +269,7 @@ fn get_repo_root() -> Result<PathBuf> {
 
 fn build_and_install_rust_server() -> Result<PathBuf> {
     let repo_root = get_repo_root()?;
-    let server_dir = repo_root.join("socratic-shell/mcp-server");
+    let server_dir = repo_root.join("symposium/mcp-server");
 
     println!("📦 Installing Rust MCP server...");
     println!("   Installing from: {}", server_dir.display());
@@ -293,7 +293,7 @@ fn build_and_install_rust_server() -> Result<PathBuf> {
     
     // Return full path to the installed binary
     let home = std::env::var("HOME").context("HOME environment variable not set")?;
-    Ok(PathBuf::from(home).join(".cargo/bin/socratic-shell-mcp"))
+    Ok(PathBuf::from(home).join(".cargo/bin/symposium-mcp"))
 }
 
 fn build_macos_app() -> Result<()> {
@@ -353,7 +353,7 @@ fn open_macos_app() -> Result<()> {
 
 fn build_and_install_extension() -> Result<()> {
     let repo_root = get_repo_root()?;
-    let extension_dir = repo_root.join("socratic-shell/vscode-extension");
+    let extension_dir = repo_root.join("symposium/vscode-extension");
 
     println!("\n📦 Building VSCode extension...");
 
@@ -451,7 +451,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
         "mcp",
         "add",
         "--name",
-        "socratic-shell",
+        "symposium",
         "--command",
         &binary_path.to_string_lossy(),
         "--args",
@@ -463,12 +463,12 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
 
     println!("🔧 Registering Symposium MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
 
     let output = cmd.output().context("Failed to execute q mcp add")?;
 
     if output.status.success() {
-        println!("✅ MCP server 'socratic-shell' registered successfully with Q CLI!");
+        println!("✅ MCP server 'symposium' registered successfully with Q CLI!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -481,7 +481,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
 fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
     // Check existing configuration
     let list_output = Command::new("claude")
         .args(["mcp", "list"])
@@ -497,12 +497,12 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     let list_stdout = String::from_utf8_lossy(&list_output.stdout);
     let desired_binary_str = binary_path.to_string_lossy();
 
-    // Check if socratic-shell exists with correct path
+    // Check if symposium exists with correct path
     let mut socratic_shell_exists = false;
     let mut socratic_shell_has_correct_path = false;
 
     for line in list_stdout.lines() {
-        if line.contains("socratic-shell") {
+        if line.contains("symposium") {
             socratic_shell_exists = true;
             if line.contains(desired_binary_str.as_ref()) {
                 socratic_shell_has_correct_path = true;
@@ -517,9 +517,9 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     }
 
     if socratic_shell_exists {
-        println!("🔄 Updating existing socratic-shell MCP server...");
+        println!("🔄 Updating existing symposium MCP server...");
         let remove_output = Command::new("claude")
-            .args(["mcp", "remove", "socratic-shell"])
+            .args(["mcp", "remove", "symposium"])
             .output()
             .context("Failed to execute claude mcp remove")?;
 
@@ -531,7 +531,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     }
 
     // Add MCP server
-    println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
     let config_json = format!(
         r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"socratic_shell_mcp=debug"}}}}"#,
         binary_path.display()
@@ -543,7 +543,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
             "add-json",
             "--scope",
             "user",
-            "socratic-shell",
+            "symposium",
             &config_json,
         ])
         .output()
@@ -566,7 +566,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
 fn cleanup_existing_daemon() -> Result<()> {
     println!("🧹 Cleaning up existing daemon...");
 
-    // Find socratic-shell-mcp daemon processes directly
+    // Find symposium-mcp daemon processes directly
     let ps_output = Command::new("ps")
         .args(["ux"])
         .output()
@@ -581,7 +581,7 @@ fn cleanup_existing_daemon() -> Result<()> {
     let mut killed_any = false;
 
     for line in ps_stdout.lines() {
-        if line.contains("socratic-shell-mcp daemon") {
+        if line.contains("symposium-mcp daemon") {
             // Extract PID (second column in ps ux output)
             if let Some(pid_str) = line.split_whitespace().nth(1) {
                 if let Ok(pid) = pid_str.parse::<u32>() {
@@ -617,7 +617,7 @@ fn cleanup_existing_daemon() -> Result<()> {
     }
 
     // Clean up any stale socket files
-    let socket_path = "/tmp/socratic-shell-daemon.sock";
+    let socket_path = "/tmp/symposium-daemon.sock";
     if std::path::Path::new(socket_path).exists() {
         if let Err(e) = std::fs::remove_file(socket_path) {
             println!("   ⚠️  Could not remove stale socket: {}", e);

@@ -41,7 +41,7 @@ The Dialectic MCP server is implemented in Rust for optimal performance and reli
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and install Dialectic
-git clone https://github.com/socratic-shell/dialectic.git
+git clone https://github.com/symposium/dialectic.git
 cd dialectic
 cargo setup
 ```

@@ -12,7 +12,7 @@ interface PlacementState {
 }
 
 /**
- * Resolve a socratic-shell URL to a precise location, using placement memory and user disambiguation
+ * Resolve a symposium URL to a precise location, using placement memory and user disambiguation
  * Returns the resolved location without navigating to it
  */
 export async function resolveSymposiumUrlPlacement(
@@ -21,14 +21,14 @@ export async function resolveSymposiumUrlPlacement(
     placementMemory?: Map<string, PlacementState>
 ): Promise<{ range: vscode.Range; document: vscode.TextDocument } | null> {
     try {
-        // Parse the socratic-shell URL to extract components
+        // Parse the symposium URL to extract components
         const parsed = parseSymposiumUrl(symposiumUrl);
         if (!parsed) {
-            vscode.window.showErrorMessage(`Invalid socratic-shell URL: ${symposiumUrl}`);
+            vscode.window.showErrorMessage(`Invalid symposium URL: ${symposiumUrl}`);
             return null;
         }
 
-        debugLog(`Resolving socratic-shell URL: ${symposiumUrl}`);
+        debugLog(`Resolving symposium URL: ${symposiumUrl}`);
         debugLog(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
 
         // Resolve the file path
@@ -116,14 +116,14 @@ export async function resolveSymposiumUrlPlacement(
         };
 
     } catch (error) {
-        debugLog(`Error resolving socratic-shell URL: ${error}`);
-        vscode.window.showErrorMessage(`Failed to resolve socratic-shell URL: ${error}`);
+        debugLog(`Error resolving symposium URL: ${error}`);
+        vscode.window.showErrorMessage(`Failed to resolve symposium URL: ${error}`);
         return null;
     }
 }
 
 /**
- * Open a file location specified by a socratic-shell URL
+ * Open a file location specified by a symposium URL
  * Full implementation with regex search support extracted from reviewWebview
  */
 export async function openSymposiumUrl(
@@ -148,7 +148,7 @@ export async function openSymposiumUrl(
     // Add line decorations for better visibility
     const decorationRanges = createDecorationRanges(
         document, 
-        undefined, // No line constraint for socratic-shell URLs
+        undefined, // No line constraint for symposium URLs
         range.start.line + 1, // Convert back to 1-based for createDecorationRanges
         range.start.character + 1, 
         undefined // No search result highlighting needed

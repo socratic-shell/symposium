@@ -1,12 +1,12 @@
 {
-  "name": "socratic-shell",
+  "name": "symposium",
   "displayName": "Symposium",
   "description": "",
   "version": "0.1.0",
-  "publisher": "socratic-shell",
+  "publisher": "symposium",
   "repository": {
     "type": "git",
-    "url": "https://github.com/socratic-shell/symposium.git"
+    "url": "https://github.com/symposium/symposium.git"
   },
   "license": "MIT",
   "engines": {
@@ -22,49 +22,49 @@
   "contributes": {
     "commands": [
       {
-        "command": "socratic-shell.showReview",
+        "command": "symposium.showReview",
         "title": "Show Review",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.copyReview",
+        "command": "symposium.copyReview",
         "title": "Copy Review",
         "category": "Symposium",
         "icon": "$(copy)"
       },
       {
-        "command": "socratic-shell.logPIDs",
+        "command": "symposium.logPIDs",
         "title": "Log PIDs",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.showFileDiff",
+        "command": "symposium.showFileDiff",
         "title": "Show File Diff",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.addComment",
+        "command": "symposium.addComment",
         "title": "Add Comment",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.addCommentReply",
+        "command": "symposium.addCommentReply",
         "title": "Add Comment Reply",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.addWalkthroughComment",
+        "command": "symposium.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
         "category": "Symposium"
       },
       {
-        "command": "socratic-shell.toggleComments",
+        "command": "symposium.toggleComments",
         "title": "Toggle Comments",
         "category": "Symposium",
         "icon": "$(comment)"
       },
       {
-        "command": "socratic-shell.toggleWindowTitle",
+        "command": "symposium.toggleWindowTitle",
         "title": "Toggle Window Title",
         "category": "Symposium"
       }
@@ -72,16 +72,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "socratic-shell",
+          "id": "symposium",
           "title": "Symposium",
           "icon": "activitybar-logo.svg"
         }
       ]
     },
     "views": {
-      "socratic-shell": [
+      "symposium": [
         {
-          "id": "socratic-shell.walkthrough",
+          "id": "symposium.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
         }
@@ -90,7 +90,7 @@
     "menus": {
       "comments/commentThread/context": [
         {
-          "command": "socratic-shell.addWalkthroughComment",
+          "command": "symposium.addWalkthroughComment",
           "group": "inline@1",
           "when": "commentController == dialectic-walkthrough"
         }

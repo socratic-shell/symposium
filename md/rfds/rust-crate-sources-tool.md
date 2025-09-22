@@ -121,7 +121,7 @@ The tool accepts an optional `version` parameter as a semver range (using the sa
 ## Impl phases
 
 ### Phase 1: Core Integration ✅ (Completed)
-1. Copy `eg` library source into `socratic-shell/mcp-server/src/eg/`
+1. Copy `eg` library source into `symposium/mcp-server/src/eg/`
 2. Add required dependencies to Cargo.toml
 3. Implement unified `get_rust_crate_source` tool with conditional response fields
 4. Fix import paths and module structure

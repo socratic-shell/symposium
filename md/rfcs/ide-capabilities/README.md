@@ -2,7 +2,7 @@
 
 *A natural language interface to VSCode and Language Server Protocol features*
 
-**Tracking Issue**: [#8](https://github.com/socratic-shell/dialectic/issues/8)
+**Tracking Issue**: [#8](https://github.com/symposium/dialectic/issues/8)
 
 ## Problem Statement
 

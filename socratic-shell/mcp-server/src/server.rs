@@ -448,7 +448,7 @@ impl SymposiumServer {
     /// This tool allows LLMs to retrieve the full context for a compact symposium-ref reference.
     // ANCHOR: expand_reference_tool
     #[tool(description = "
-        Expand a compact reference (denoted as `<socratic-shell-ref id='..'/>`) to get full context. \
+        Expand a compact reference (denoted as `<symposium-ref id='..'/>`) to get full context. \
         Invoke with the contents of `id` attribute. Returns structured JSON with all available context data. \
     ")]
     async fn expand_reference(
@@ -995,7 +995,7 @@ impl ServerHandler for SymposiumServer {
             protocol_version: ProtocolVersion::V_2024_11_05,
             capabilities: ServerCapabilities::builder().enable_tools().enable_resources().enable_prompts().build(),
             server_info: Implementation {
-                name: "socratic-shell-mcp".to_string(),
+                name: "symposium-mcp".to_string(),
                 version: "0.1.0".to_string(),
             },
             instructions: Some(

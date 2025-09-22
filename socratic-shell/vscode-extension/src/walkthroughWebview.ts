@@ -65,7 +65,7 @@ interface WalkthroughData {
 }
 
 export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'socratic-shell.walkthrough';
+    public static readonly viewType = 'symposium.walkthrough';
 
     private _view?: vscode.WebviewView;
     private md: MarkdownIt;
@@ -107,12 +107,12 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             const token = tokens[idx];
             const href = token.attrGet('href');
 
-            if (href && href.startsWith('socratic-shell:')) {
+            if (href && href.startsWith('symposium:')) {
                 const linkKey = `link:${href}`;
                 const placementState = this.placementMemory?.get(linkKey);
 
                 token.attrSet('href', 'javascript:void(0)');
-                token.attrSet('data-socratic-shell-url', href);
+                token.attrSet('data-symposium-url', href);
                 token.attrSet('class', 'file-ref');
 
                 if (placementState?.isPlaced) {
@@ -143,7 +143,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             if (openToken) {
                 const href = openToken.attrGet('href');
                 console.log('[RENDERER] Processing link_close for href:', href);
-                if (href && href.startsWith('socratic-shell:')) {
+                if (href && href.startsWith('symposium:')) {
                     const linkKey = `link:${href}`;
                     const placementState = this.placementMemory?.get(linkKey);
                     const isPlaced = placementState?.isPlaced || false;
@@ -153,7 +153,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     const action = isPlaced ? 'relocate' : 'place';
                     const title = isPlaced ? 'Relocate this link' : 'Place this link';
 
-                    const result = `</a><button class="placement-icon" data-socratic-shell-url="${href}" data-action="${action}" title="${title}">${icon}</button>`;
+                    const result = `</a><button class="placement-icon" data-symposium-url="${href}" data-action="${action}" title="${title}">${icon}</button>`;
                     console.log('[RENDERER] Generated icon HTML:', result);
                     return result;
                 }
@@ -235,7 +235,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
 
             // Recreate the comment controller for future use
             this.commentController = vscode.comments.createCommentController(
-                'socratic-shell-walkthrough',
+                'symposium-walkthrough',
                 'Dialectic Walkthrough'
             );
 
@@ -440,7 +440,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             // Create comment controller if it doesn't exist
             if (!this.commentController) {
                 this.commentController = vscode.comments.createCommentController(
-                    'socratic-shell-walkthrough',
+                    'symposium-walkthrough',
                     'Dialectic Walkthrough Comments'
                 );
 
@@ -468,7 +468,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
             if (comment.comment && comment.comment.length > 0) {
                 const commentText = comment.comment.join('\n\n');
                 // Add reply button as a command link in the comment body
-                const commentWithReply = `${commentText}\n\n---\n[Reply](command:socratic-shell.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
+                const commentWithReply = `${commentText}\n\n---\n[Reply](command:symposium.replyToWalkthroughComment?${encodeURIComponent(JSON.stringify({
                     file: uri.fsPath,
                     range: { start: { line: startLine + 1 }, end: { line: endLine + 1 } },
                     comment: commentText
@@ -1330,7 +1330,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Handle placement icon clicks
                         if (target.classList.contains('placement-icon')) {
                             event.preventDefault();
-                            const symposiumUrl = target.getAttribute('data-socratic-shell-url');
+                            const symposiumUrl = target.getAttribute('data-symposium-url');
                             const action = target.getAttribute('data-action');
                             
                             console.log('[Walkthrough] Placement icon clicked:', symposiumUrl, 'action:', action);
@@ -1352,7 +1352,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Check if clicked element or parent has dialectic URL (link text clicked)
                         let element = target;
                         while (element && element !== document) {
-                            const symposiumUrl = element.getAttribute('data-socratic-shell-url');
+                            const symposiumUrl = element.getAttribute('data-symposium-url');
                             if (symposiumUrl && element.classList.contains('file-ref')) {
                                 event.preventDefault();
                                 console.log('[Walkthrough] Link text clicked - navigating:', symposiumUrl);
@@ -1370,15 +1370,15 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     // Function to add placement icons to all dialectic links
                     function addPlacementIcons() {
                         console.log('[ICONS] Adding placement icons to dialectic links');
-                        const dialecticLinks = document.querySelectorAll('a[data-socratic-shell-url]');
+                        const dialecticLinks = document.querySelectorAll('a[data-symposium-url]');
                         console.log('[ICONS] Found', dialecticLinks.length, 'dialectic links');
                         
                         dialecticLinks.forEach((link, index) => {
-                            const symposiumUrl = link.getAttribute('data-socratic-shell-url');
+                            const symposiumUrl = link.getAttribute('data-symposium-url');
                             console.log('[ICONS] Processing link', index, 'URL:', symposiumUrl);
                             
                             // Check if ANY placement icon already exists for this URL
-                            const existingIcons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + symposiumUrl + '"]');
+                            const existingIcons = document.querySelectorAll('.placement-icon[data-symposium-url="' + symposiumUrl + '"]');
                             if (existingIcons.length > 0) {
                                 console.log('[ICONS] Icon already exists for URL:', symposiumUrl, 'count:', existingIcons.length);
                                 return;
@@ -1387,7 +1387,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                             // Create placement icon
                             const icon = document.createElement('button');
                             icon.className = 'placement-icon';
-                            icon.setAttribute('data-socratic-shell-url', symposiumUrl);
+                            icon.setAttribute('data-symposium-url', symposiumUrl);
                             icon.setAttribute('data-action', 'place');
                             icon.setAttribute('title', 'Place this link');
                             icon.textContent = '🔍'; // Default to search icon
@@ -1406,11 +1406,11 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         const allIcons = document.querySelectorAll('.placement-icon');
                         console.log('[PLACEMENT] All placement icons in DOM:', allIcons.length);
                         allIcons.forEach((icon, i) => {
-                            console.log('[PLACEMENT] Icon ' + i + ': data-socratic-shell-url="' + icon.getAttribute('data-socratic-shell-url') + '" text="' + icon.textContent + '"');
+                            console.log('[PLACEMENT] Icon ' + i + ': data-symposium-url="' + icon.getAttribute('data-symposium-url') + '" text="' + icon.textContent + '"');
                         });
                         
                         // Update placement icons
-                        const icons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + symposiumUrl + '"]');
+                        const icons = document.querySelectorAll('.placement-icon[data-symposium-url="' + symposiumUrl + '"]');
                         console.log('[PLACEMENT] Found', icons.length, 'icons to update for URL:', symposiumUrl);
                         
                         icons.forEach((icon, index) => {
@@ -1429,7 +1429,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         });
                         
                         // Update link data attributes
-                        const links = document.querySelectorAll('.file-ref[data-socratic-shell-url="' + symposiumUrl + '"]');
+                        const links = document.querySelectorAll('.file-ref[data-symposium-url="' + symposiumUrl + '"]');
                         console.log('[PLACEMENT] Found', links.length, 'links to update');
                         links.forEach(link => {
                             link.setAttribute('data-placement-state', isPlaced ? 'placed' : 'unplaced');

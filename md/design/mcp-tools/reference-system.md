@@ -4,10 +4,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:expand_reference_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:expand_reference_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:expand_reference_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:expand_reference_tool}}
 ```
 
 **Use case**: Retrieve stored context for compact references. Also retrieves the bootup prompt ("yiasou") and the various guidance files that are embedded (e.g., "main.md").

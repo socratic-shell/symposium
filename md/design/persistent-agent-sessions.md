@@ -184,4 +184,4 @@ symposium-mcp agent attach q-test
 
 - [Implementation Overview](./implementation-overview.md) - Current synchronous agent system
 - [Taskspace Bootup Flow](../work-in-progress/mvp/taskspace-bootup-flow.md) - How agents are currently launched
-- [Agent Manager Source](../../socratic-shell/mcp-server/src/agent_manager.rs) - Implementation details
+- [Agent Manager Source](../../symposium/mcp-server/src/agent_manager.rs) - Implementation details

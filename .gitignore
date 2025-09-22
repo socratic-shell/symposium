@@ -29,9 +29,9 @@ killme.*
 xxx.*
 
 # Node.js (VSCode extension)
-socratic-shell/vscode-extension/node_modules/
-socratic-shell/vscode-extension/out/
-socratic-shell/vscode-extension/*.vsix
+symposium/vscode-extension/node_modules/
+symposium/vscode-extension/out/
+symposium/vscode-extension/*.vsix
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

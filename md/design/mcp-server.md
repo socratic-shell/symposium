@@ -1,6 +1,6 @@
 # MCP Server Overview
 
-The Symposium MCP server (`socratic-shell-mcp`) provides a comprehensive set of tools for AI assistants to interact with VSCode and coordinate taskspace orchestration.
+The Symposium MCP server (`symposium-mcp`) provides a comprehensive set of tools for AI assistants to interact with VSCode and coordinate taskspace orchestration.
 
 ## Tool Categories
 
@@ -39,7 +39,7 @@ The server is configured through your AI assistant's MCP settings:
 {
   "mcpServers": {
     "symposium": {
-      "command": "/path/to/socratic-shell-mcp",
+      "command": "/path/to/symposium-mcp",
       "args": ["server"]
     }
   }

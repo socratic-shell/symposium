@@ -9,15 +9,15 @@ graph TB
     OSX[macOS App]
     MCP[MCP Server<br/>with embedded client]
     EXT[VSCode extension]
-    DAEMON[socratic-shell-mcp daemon<br/>Auto-spawned if needed]
-    SOCKET[Unix Socket<br>/tmp/socratic-shell-daemon.sock]
+    DAEMON[symposium-mcp daemon<br/>Auto-spawned if needed]
+    SOCKET[Unix Socket<br>/tmp/symposium-daemon.sock]
     AGENT[Coding agent like<br>Claude Code or Q CLI]
     REPEATER[RepeaterActor<br/>Central message router]
     HISTORY[(Message History<br/>1000 messages)]
     
     subgraph "Client Processes"
-        CLIENT2[socratic-shell-mcp client<br/>--identity-prefix app]
-        CLIENT1[socratic-shell-mcp client<br/>--identity-prefix vscode]
+        CLIENT2[symposium-mcp client<br/>--identity-prefix app]
+        CLIENT1[symposium-mcp client<br/>--identity-prefix vscode]
     end
     
     EXT -->|spawns| CLIENT1
@@ -122,13 +122,13 @@ The RepeaterActor architecture enables comprehensive debugging capabilities:
 
 ```bash
 # Show recent daemon messages
-socratic-shell-mcp debug dump-messages
+symposium-mcp debug dump-messages
 
 # Show last 10 messages  
-socratic-shell-mcp debug dump-messages --count 10
+symposium-mcp debug dump-messages --count 10
 
 # Output as JSON
-socratic-shell-mcp debug dump-messages --json
+symposium-mcp debug dump-messages --json
 ```
 
 ### Debug Output Format
@@ -152,17 +152,17 @@ Recent daemon messages (3 of 15 total):
 
 **Connection Issues**: Check if clients are connecting and identifying properly
 ```bash
-socratic-shell-mcp debug dump-messages --count 5
+symposium-mcp debug dump-messages --count 5
 ```
 
 **Message Flow**: Verify messages are being broadcast to all clients
 ```bash
-socratic-shell-mcp debug dump-messages --json | jq '.[] | .from_identifier'
+symposium-mcp debug dump-messages --json | jq '.[] | .from_identifier'
 ```
 
 **Client Identity**: Confirm clients are using correct identity prefixes
 ```bash
-socratic-shell-mcp debug dump-messages | grep BROADCAST
+symposium-mcp debug dump-messages | grep BROADCAST
 ```
 
 ## Implementation Details ![Implemented](https://img.shields.io/badge/status-implemented-green)
@@ -197,14 +197,14 @@ The daemon uses Tokio actors following Alice Ryhl's actor pattern:
 
 ### Socket Location
 
-Default: `/tmp/socratic-shell-daemon.sock`
+Default: `/tmp/symposium-daemon.sock`
 Custom: `/tmp/{prefix}-daemon.sock`
 
 ### Auto-Start Behavior
 
 Clients can auto-start the daemon if not running:
 ```bash
-socratic-shell-mcp client --auto-start
+symposium-mcp client --auto-start
 ```
 
 ### Cleanup

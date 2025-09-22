@@ -302,13 +302,13 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Register walkthrough comment reply command (legacy - may not be needed)
-    const walkthroughCommentCommand = vscode.commands.registerCommand('socratic-shell.addWalkthroughComment',
+    const walkthroughCommentCommand = vscode.commands.registerCommand('symposium.addWalkthroughComment',
         (reply: vscode.CommentReply) => walkthroughProvider.handleCommentSubmission(reply)
     );
     context.subscriptions.push(walkthroughCommentCommand);
 
     // Register new walkthrough comment reply command that uses symposium-ref
-    const walkthroughReplyCommand = vscode.commands.registerCommand('socratic-shell.replyToWalkthroughComment',
+    const walkthroughReplyCommand = vscode.commands.registerCommand('symposium.replyToWalkthroughComment',
         async (commentData: { file: string; range: { start: { line: number }; end: { line: number } }; comment: string }) => {
             try {
                 console.log('Walkthrough reply command called with data:', commentData);
@@ -358,29 +358,29 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register review action command for tree view buttons
     // 💡: Show review command - displays the walkthrough panel
-    const showReviewCommand = vscode.commands.registerCommand('socratic-shell.showReview', () => {
+    const showReviewCommand = vscode.commands.registerCommand('symposium.showReview', () => {
         // Focus on the walkthrough webview panel
-        vscode.commands.executeCommand('socratic-shell.walkthrough.focus');
+        vscode.commands.executeCommand('symposium.walkthrough.focus');
     });
 
-    const reviewActionCommand = vscode.commands.registerCommand('socratic-shell.reviewAction', (action: string) => {
+    const reviewActionCommand = vscode.commands.registerCommand('symposium.reviewAction', (action: string) => {
         daemonClient.handleReviewAction(action);
     });
 
     // 💡: Copy review command is now handled via webview postMessage
-    const copyReviewCommand = vscode.commands.registerCommand('socratic-shell.copyReview', () => {
+    const copyReviewCommand = vscode.commands.registerCommand('symposium.copyReview', () => {
         vscode.window.showInformationMessage('Use the Copy Review button in the review panel');
     });
 
     // 💡: PID discovery command for testing
-    const logPIDsCommand = vscode.commands.registerCommand('socratic-shell.logPIDs', async () => {
+    const logPIDsCommand = vscode.commands.registerCommand('symposium.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
         await logPIDDiscovery();
         vscode.window.showInformationMessage('PID information logged to Symposium output channel');
     });
 
     // Window title toggle command for POC
-    const toggleWindowTitleCommand = vscode.commands.registerCommand('socratic-shell.toggleWindowTitle', async () => {
+    const toggleWindowTitleCommand = vscode.commands.registerCommand('symposium.toggleWindowTitle', async () => {
         const config = vscode.workspace.getConfiguration();
         const currentTitle = config.get<string>('window.title') || '';
 
@@ -444,7 +444,7 @@ function setupSelectionDetection(bus: Bus): void {
                         vscode.CodeActionKind.QuickFix
                     );
                     action.command = {
-                        command: 'socratic-shell.chatAboutSelection',
+                        command: 'symposium.chatAboutSelection',
                         title: 'Discuss in Symposium'
                     };
                     action.isPreferred = true; // Show at top of list
@@ -460,7 +460,7 @@ function setupSelectionDetection(bus: Bus): void {
     );
 
     // 💡: Register command for when user clicks the code action
-    const chatIconCommand = vscode.commands.registerCommand('socratic-shell.chatAboutSelection', async () => {
+    const chatIconCommand = vscode.commands.registerCommand('symposium.chatAboutSelection', async () => {
         if (currentSelection) {
             const selectedText = currentSelection.editor.document.getText(currentSelection.selection);
             const filePath = currentSelection.editor.document.fileName;

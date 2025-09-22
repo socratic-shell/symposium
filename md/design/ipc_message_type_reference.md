@@ -41,7 +41,7 @@ For each message type that is sent in the record we record
 
 **Payload**: 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:polo_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:polo_payload}}
 ```
 
 **Expected response**: None (broadcast response)
@@ -56,7 +56,7 @@ For each message type that is sent in the record we record
 
 **Payload**: 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:store_reference_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:store_reference_payload}}
 ```
 **Expected response**: `response` with success confirmation
 
@@ -70,7 +70,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```typescript
-{{#include ../../socratic-shell/vscode-extension/src/extension.ts:taskspace_roll_call_payload}}
+{{#include ../../symposium/vscode-extension/src/extension.ts:taskspace_roll_call_payload}}
 ```
 
 **Expected response**: `response` with `TaskspaceStateResponse`
@@ -85,7 +85,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```typescript
-{{#include ../../socratic-shell/vscode-extension/src/extension.ts:register_taskspace_window_payload}}
+{{#include ../../symposium/vscode-extension/src/extension.ts:register_taskspace_window_payload}}
 ```
 
 **Expected response**: `response` with success confirmation
@@ -100,7 +100,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:present_walkthrough_params}}
+{{#include ../../symposium/mcp-server/src/types.rs:present_walkthrough_params}}
 ```
 
 **Expected response**: None (display command)
@@ -115,7 +115,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:log_params}}
+{{#include ../../symposium/mcp-server/src/types.rs:log_params}}
 ```
 
 **Expected response**: None (logging command)
@@ -225,7 +225,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:user_feedback_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:user_feedback_payload}}
 ```
 **Expected response**: `response` with acknowledgment
 
@@ -239,7 +239,7 @@ For each message type that is sent in the record we record
 
 **Payload**: 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:spawn_taskspace_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:spawn_taskspace_payload}}
 ```
 **Expected response**: `response` with taskspace info
 
@@ -254,7 +254,7 @@ For each message type that is sent in the record we record
 **Payload**:
 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:log_progress_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:log_progress_payload}}
 ```
 **Expected response**: None (display command)
 
@@ -268,7 +268,7 @@ For each message type that is sent in the record we record
 
 **Payload**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:signal_user_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:signal_user_payload}}
 ```
 
 **Expected response**: None (notification)
@@ -283,7 +283,7 @@ For each message type that is sent in the record we record
 
 **Payload**: 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:update_taskspace_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:update_taskspace_payload}}
 ```
 **Expected response**: `response` with success confirmation
 
@@ -299,7 +299,7 @@ For each message type that is sent in the record we record
 
 **Payload**: 
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:delete_taskspace_payload}}
+{{#include ../../symposium/mcp-server/src/types.rs:delete_taskspace_payload}}
 ```
 
 **Expected response**: `response` with success confirmation (sent after user confirms) or error (if user cancels)
@@ -336,12 +336,12 @@ The IPC message format is consistent across all components:
 
 **Rust (MCP Server)**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:ipc_message}}
+{{#include ../../symposium/mcp-server/src/types.rs:ipc_message}}
 ```
 
 **TypeScript (VSCode Extension)**:
 ```typescript
-{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:ipc_message}}
+{{#include ../../symposium/vscode-extension/src/ipc.ts:ipc_message}}
 ```
 
 **Swift (Symposium App)**:
@@ -351,12 +351,12 @@ The IPC message format is consistent across all components:
 
 **Rust (MCP Server)**:
 ```rust,no_run,noplayground
-{{#include ../../socratic-shell/mcp-server/src/types.rs:message_sender}}
+{{#include ../../symposium/mcp-server/src/types.rs:message_sender}}
 ```
 
 **TypeScript (VSCode Extension)**:
 ```typescript
-{{#include ../../socratic-shell/vscode-extension/src/ipc.ts:message_sender}}
+{{#include ../../symposium/vscode-extension/src/ipc.ts:message_sender}}
 ```
 
 **Swift (Symposium App)**:

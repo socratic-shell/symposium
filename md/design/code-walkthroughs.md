@@ -125,13 +125,13 @@ Clicking on the icon.
 
 ### Actions
 
-When the user clicks the action button, the given text is sent to the LLM using the [Discuss in Symposium](./ask-socratic-shell.md) mechanism and the terminal is selected. To avoid triggering action, newlines are stripped from the string and replaced with spaces. Users can press enter themselves.
+When the user clicks the action button, the given text is sent to the LLM using the [Discuss in Symposium](./ask-symposium.md) mechanism and the terminal is selected. To avoid triggering action, newlines are stripped from the string and replaced with spaces. Users can press enter themselves.
 
 ### Responding to comments
 
 Each comment has a button on it that says "Reply".
 
-Clicking that button sends text to the LLM using the [Discuss in Symposium](./ask-socratic-shell.md) mechanism:
+Clicking that button sends text to the LLM using the [Discuss in Symposium](./ask-symposium.md) mechanism:
 
 ```
 <context>In reply to comment on file.rs?regex (line XXX).</context>

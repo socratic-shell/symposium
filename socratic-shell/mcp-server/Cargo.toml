@@ -1,5 +1,5 @@
 [package]
-name = "socratic-shell-mcp"
+name = "symposium-mcp"
 version = "0.1.0"
 edition = "2024"
 description = "Rust implementation of Symposium MCP server for code review integration"
@@ -11,7 +11,7 @@ name = "socratic_shell_mcp"
 path = "src/lib.rs"
 
 [[bin]]
-name = "socratic-shell-mcp"
+name = "symposium-mcp"
 path = "src/main.rs"
 
 [dependencies]

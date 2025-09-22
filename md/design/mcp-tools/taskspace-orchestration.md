@@ -4,10 +4,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:spawn_taskspace_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:spawn_taskspace_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:spawn_taskspace_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:spawn_taskspace_tool}}
 ```
 
 **Use case**: Create new collaborative workspaces for specific tasks
@@ -16,10 +16,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:update_taskspace_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:update_taskspace_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:update_taskspace_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:update_taskspace_tool}}
 ```
 
 **Use case**: Update taskspace name and description based on user interaction
@@ -32,16 +32,16 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:log_progress_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:log_progress_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:log_progress_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:log_progress_tool}}
 ```
 
 **Progress categories**:
 
 ```rust
-{{#include ../../../socratic-shell/mcp-server/src/types.rs:progress_category}}
+{{#include ../../../symposium/mcp-server/src/types.rs:progress_category}}
 ```
 
 **Use case**: Keep users informed of agent progress and status
@@ -50,10 +50,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:signal_user_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:signal_user_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:signal_user_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:signal_user_tool}}
 ```
 
 **Use case**: Alert users when agents need help or input

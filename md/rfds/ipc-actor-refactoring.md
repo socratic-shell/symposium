@@ -8,7 +8,7 @@
 
 > What are you proposing to change? Bullet points welcome.
 
-* Refactor the complex IPC code in `socratic-shell/mcp-server/src/ipc.rs` into focused Tokio actors following Alice Ryhl's actor pattern
+* Refactor the complex IPC code in `symposium/mcp-server/src/ipc.rs` into focused Tokio actors following Alice Ryhl's actor pattern
 * Split monolithic `IPCCommunicator` into single-responsibility actors that communicate via channels
 * Extract daemon communication logic from the `daemon` module into reusable channel-based actors
 * Make the system more testable by isolating concerns and enabling actor-level unit testing

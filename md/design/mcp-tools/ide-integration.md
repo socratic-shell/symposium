@@ -4,7 +4,7 @@
 
 ```rust
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:get_selection_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:get_selection_tool}}
 ```
 
 **Returns**: `{ selectedText: string | null }`  
@@ -14,10 +14,10 @@
 
 ```rust
 // --- Parameters -----------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:ide_operation_params}}
+{{#include ../../../symposium/mcp-server/src/server.rs:ide_operation_params}}
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:ide_operation_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:ide_operation_tool}}
 ```
 
 **Common Dialect functions**:

@@ -18,7 +18,7 @@ use socratic_shell_mcp::{
 };
 
 #[derive(Parser)]
-#[command(name = "socratic-shell-mcp")]
+#[command(name = "symposium-mcp")]
 #[command(about = "Symposium MCP Server for VSCode integration")]
 struct Args {
     #[command(flatten)]

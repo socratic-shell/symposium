@@ -11,7 +11,7 @@
 *Implementation pending - will update existing code reviews.*
 
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:update_review_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:update_review_tool}}
 ```
 
 **Use case**: Manage review workflows and collect user feedback
@@ -20,7 +20,7 @@
 
 ```rust
 // --- Tool definition ------------------
-{{#include ../../../socratic-shell/mcp-server/src/server.rs:get_review_status_tool}}
+{{#include ../../../symposium/mcp-server/src/server.rs:get_review_status_tool}}
 ```
 
 **Use case**: Check review state and progress

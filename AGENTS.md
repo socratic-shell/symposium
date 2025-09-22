@@ -16,7 +16,7 @@ The implementation overview chapter is particularly useful for highlighting the 
 
 ## Work Tracking
 
-We track all pending work in GitHub issues on the socratic-shell/symposium repository. When starting work on an issue that is complex enough to merit a new chapter in the documentation, create design documents initially in the `md/work-in-progress/` section of the mdbook. These documents are refined as work progresses and eventually moved to the main book sections once the work is complete. Post updates on tracking issues when checkpointing work.
+We track all pending work in GitHub issues on the symposium/symposium repository. When starting work on an issue that is complex enough to merit a new chapter in the documentation, create design documents initially in the `md/work-in-progress/` section of the mdbook. These documents are refined as work progresses and eventually moved to the main book sections once the work is complete. Post updates on tracking issues when checkpointing work.
 
 ## Instructions
 

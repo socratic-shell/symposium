@@ -69,7 +69,7 @@ impl VersionResolver {
     /// Get latest version from crates.io
     async fn get_latest_version(&self, crate_name: &str) -> Result<String> {
         let client = crates_io_api::AsyncClient::new(
-            "eg-library (https://github.com/socratic-shell/eg)",
+            "eg-library (https://github.com/symposium/eg)",
             std::time::Duration::from_millis(1000),
         ).map_err(|e| EgError::Other(e.to_string()))?;
 
@@ -82,7 +82,7 @@ impl VersionResolver {
     /// Get all available versions from crates.io
     async fn get_available_versions(&self, crate_name: &str) -> Result<Vec<Version>> {
         let client = crates_io_api::AsyncClient::new(
-            "eg-library (https://github.com/socratic-shell/eg)",
+            "eg-library (https://github.com/symposium/eg)",
             std::time::Duration::from_millis(1000),
         ).map_err(|e| EgError::Other(e.to_string()))?;
 
