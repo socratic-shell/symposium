@@ -1,4 +1,4 @@
-// Reference actor - handles storage and retrieval of socratic shell references
+// Reference actor - handles storage and retrieval of symposium references
 
 use anyhow::bail;
 use serde::Serialize;

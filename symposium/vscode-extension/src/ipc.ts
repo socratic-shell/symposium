@@ -249,7 +249,7 @@ export class DaemonClient implements vscode.Disposable {
                 this.walkthroughProvider.showWalkthroughHtml(walkthroughPayload.content);
 
                 // Activate the walkthrough panel so users can see it
-                vscode.commands.executeCommand('socratic-shell.walkthrough.focus');
+                vscode.commands.executeCommand('symposium.walkthrough.focus');
 
                 // Send success response back through daemon
                 this.sendResponse(message.id, { success: true });
