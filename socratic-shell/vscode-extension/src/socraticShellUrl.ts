@@ -125,17 +125,17 @@ function parseLineSpec(lineStr: string): LineSpec | null {
  * Convert a SocratiShellUrl back to string format
  * Useful for debugging and testing
  */
-export function formatSymposiumUrl(socraticShellUrl: SymposiumUrl): string {
-    let url = `socratic-shell:${socraticShellUrl.path}`;
+export function formatSymposiumUrl(symposiumUrl: SymposiumUrl): string {
+    let url = `socratic-shell:${symposiumUrl.path}`;
     
     const params = new URLSearchParams();
     
-    if (socraticShellUrl.regex) {
-        params.set('regex', socraticShellUrl.regex);
+    if (symposiumUrl.regex) {
+        params.set('regex', symposiumUrl.regex);
     }
     
-    if (socraticShellUrl.line) {
-        params.set('line', formatLineSpec(socraticShellUrl.line));
+    if (symposiumUrl.line) {
+        params.set('line', formatLineSpec(symposiumUrl.line));
     }
     
     const queryString = params.toString();

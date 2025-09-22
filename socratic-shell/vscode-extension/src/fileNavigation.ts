@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { debugLog } from './logging';
-import { parseSymposiumUrl, SymposiumUrl } from './socraticShellUrl';
+import { parseSymposiumUrl, SymposiumUrl } from './symposiumUrl';
 import { searchInFile, getBestSearchResult, formatSearchResults, needsDisambiguation } from './searchEngine';
 
 // Placement state for unified link and comment management
@@ -16,19 +16,19 @@ interface PlacementState {
  * Returns the resolved location without navigating to it
  */
 export async function resolveSymposiumUrlPlacement(
-    socraticShellUrl: string,
+    symposiumUrl: string,
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<{ range: vscode.Range; document: vscode.TextDocument } | null> {
     try {
         // Parse the socratic-shell URL to extract components
-        const parsed = parseSymposiumUrl(socraticShellUrl);
+        const parsed = parseSymposiumUrl(symposiumUrl);
         if (!parsed) {
-            vscode.window.showErrorMessage(`Invalid socratic-shell URL: ${socraticShellUrl}`);
+            vscode.window.showErrorMessage(`Invalid socratic-shell URL: ${symposiumUrl}`);
             return null;
         }
 
-        debugLog(`Resolving socratic-shell URL: ${socraticShellUrl}`);
+        debugLog(`Resolving socratic-shell URL: ${symposiumUrl}`);
         debugLog(`Parsed components: ${JSON.stringify(parsed, null, 2)}`);
 
         // Resolve the file path
@@ -60,7 +60,7 @@ export async function resolveSymposiumUrlPlacement(
                     }
                 } else {
                     // Check if we have a stored placement
-                    const linkKey = `link:${socraticShellUrl}`;
+                    const linkKey = `link:${symposiumUrl}`;
                     const placementState = placementMemory?.get(linkKey);
                     
                     if (placementState?.isPlaced && placementState.chosenLocation) {
@@ -127,12 +127,12 @@ export async function resolveSymposiumUrlPlacement(
  * Full implementation with regex search support extracted from reviewWebview
  */
 export async function openSymposiumUrl(
-    socraticShellUrl: string, 
+    symposiumUrl: string, 
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<void> {
     // Resolve the placement
-    const resolved = await resolveSymposiumUrlPlacement(socraticShellUrl, baseUri, placementMemory);
+    const resolved = await resolveSymposiumUrlPlacement(symposiumUrl, baseUri, placementMemory);
     if (!resolved) {
         return; // Resolution failed or was cancelled
     }
@@ -411,7 +411,7 @@ async function showSearchDisambiguation(
  */
 function createDecorationRanges(
     document: vscode.TextDocument, 
-    lineSpec?: import('./socraticShellUrl').LineSpec, 
+    lineSpec?: import('./symposiumUrl').LineSpec, 
     targetLine?: number, 
     targetColumn?: number,
     searchResult?: import('./searchEngine').SearchResult

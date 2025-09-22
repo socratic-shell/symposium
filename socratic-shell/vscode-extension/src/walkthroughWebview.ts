@@ -180,14 +180,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 await this.clearWalkthrough();
                 break;
             case 'openFile':
-                console.log('Walkthrough: openFile command received:', message.socraticShellUrl);
-                await openSymposiumUrl(message.socraticShellUrl, this.baseUri, this.placementMemory);
+                console.log('Walkthrough: openFile command received:', message.symposiumUrl);
+                await openSymposiumUrl(message.symposiumUrl, this.baseUri, this.placementMemory);
                 // After placement, update the UI
-                this.updateLinkPlacementUI(message.socraticShellUrl);
+                this.updateLinkPlacementUI(message.symposiumUrl);
                 break;
             case 'relocateLink':
-                console.log('Walkthrough: relocateLink command received:', message.socraticShellUrl);
-                await this.relocateLink(message.socraticShellUrl);
+                console.log('Walkthrough: relocateLink command received:', message.symposiumUrl);
+                await this.relocateLink(message.symposiumUrl);
                 break;
             case 'action':
                 console.log('Walkthrough: action received:', message.message);
@@ -919,31 +919,31 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         };
     }
 
-    private async relocateLink(socraticShellUrl: string): Promise<void> {
+    private async relocateLink(symposiumUrl: string): Promise<void> {
         // Remove the current placement to force re-disambiguation
-        const linkKey = `link:${socraticShellUrl}`;
+        const linkKey = `link:${symposiumUrl}`;
         this.placementMemory?.delete(linkKey);
 
         // Open the link again - this will show disambiguation
-        await openSymposiumUrl(socraticShellUrl, this.baseUri, this.placementMemory);
+        await openSymposiumUrl(symposiumUrl, this.baseUri, this.placementMemory);
 
         // Update UI after relocation
-        this.updateLinkPlacementUI(socraticShellUrl);
+        this.updateLinkPlacementUI(symposiumUrl);
     }
 
-    private updateLinkPlacementUI(socraticShellUrl: string): void {
+    private updateLinkPlacementUI(symposiumUrl: string): void {
         if (!this._view) return;
 
-        const linkKey = `link:${socraticShellUrl}`;
+        const linkKey = `link:${symposiumUrl}`;
         const placementState = this.placementMemory?.get(linkKey);
         const isPlaced = placementState?.isPlaced || false;
 
-        console.log(`[Walkthrough] Updating UI for ${socraticShellUrl}: isPlaced=${isPlaced}, placementState=`, placementState);
+        console.log(`[Walkthrough] Updating UI for ${symposiumUrl}: isPlaced=${isPlaced}, placementState=`, placementState);
 
         // Send update to webview
         this._view.webview.postMessage({
             type: 'updateLinkPlacement',
-            socraticShellUrl: socraticShellUrl,
+            symposiumUrl: symposiumUrl,
             isPlaced: isPlaced
         });
     }
@@ -1330,20 +1330,20 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Handle placement icon clicks
                         if (target.classList.contains('placement-icon')) {
                             event.preventDefault();
-                            const socraticShellUrl = target.getAttribute('data-socratic-shell-url');
+                            const symposiumUrl = target.getAttribute('data-socratic-shell-url');
                             const action = target.getAttribute('data-action');
                             
-                            console.log('[Walkthrough] Placement icon clicked:', socraticShellUrl, 'action:', action);
+                            console.log('[Walkthrough] Placement icon clicked:', symposiumUrl, 'action:', action);
                             
                             if (action === 'relocate') {
                                 vscode.postMessage({
                                     command: 'relocateLink',
-                                    socraticShellUrl: socraticShellUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                             } else {
                                 vscode.postMessage({
                                     command: 'openFile',
-                                    socraticShellUrl: socraticShellUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                             }
                             return;
@@ -1352,14 +1352,14 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         // Check if clicked element or parent has dialectic URL (link text clicked)
                         let element = target;
                         while (element && element !== document) {
-                            const socraticShellUrl = element.getAttribute('data-socratic-shell-url');
-                            if (socraticShellUrl && element.classList.contains('file-ref')) {
+                            const symposiumUrl = element.getAttribute('data-socratic-shell-url');
+                            if (symposiumUrl && element.classList.contains('file-ref')) {
                                 event.preventDefault();
-                                console.log('[Walkthrough] Link text clicked - navigating:', socraticShellUrl);
+                                console.log('[Walkthrough] Link text clicked - navigating:', symposiumUrl);
                                 
                                 vscode.postMessage({
                                     command: 'openFile',
-                                    socraticShellUrl: socraticShellUrl
+                                    symposiumUrl: symposiumUrl
                                 });
                                 return;
                             }
@@ -1374,20 +1374,20 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         console.log('[ICONS] Found', dialecticLinks.length, 'dialectic links');
                         
                         dialecticLinks.forEach((link, index) => {
-                            const socraticShellUrl = link.getAttribute('data-socratic-shell-url');
-                            console.log('[ICONS] Processing link', index, 'URL:', socraticShellUrl);
+                            const symposiumUrl = link.getAttribute('data-socratic-shell-url');
+                            console.log('[ICONS] Processing link', index, 'URL:', symposiumUrl);
                             
                             // Check if ANY placement icon already exists for this URL
-                            const existingIcons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + socraticShellUrl + '"]');
+                            const existingIcons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + symposiumUrl + '"]');
                             if (existingIcons.length > 0) {
-                                console.log('[ICONS] Icon already exists for URL:', socraticShellUrl, 'count:', existingIcons.length);
+                                console.log('[ICONS] Icon already exists for URL:', symposiumUrl, 'count:', existingIcons.length);
                                 return;
                             }
                             
                             // Create placement icon
                             const icon = document.createElement('button');
                             icon.className = 'placement-icon';
-                            icon.setAttribute('data-socratic-shell-url', socraticShellUrl);
+                            icon.setAttribute('data-socratic-shell-url', symposiumUrl);
                             icon.setAttribute('data-action', 'place');
                             icon.setAttribute('title', 'Place this link');
                             icon.textContent = '🔍'; // Default to search icon
@@ -1399,8 +1399,8 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                     }
 
                     // Function to update link rendering after placement changes
-                    function updateLinkPlacement(socraticShellUrl, isPlaced) {
-                        console.log('[PLACEMENT] updateLinkPlacement called with:', socraticShellUrl, 'isPlaced:', isPlaced);
+                    function updateLinkPlacement(symposiumUrl, isPlaced) {
+                        console.log('[PLACEMENT] updateLinkPlacement called with:', symposiumUrl, 'isPlaced:', isPlaced);
                         
                         // Debug: show all placement icons in the DOM
                         const allIcons = document.querySelectorAll('.placement-icon');
@@ -1410,8 +1410,8 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         });
                         
                         // Update placement icons
-                        const icons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + socraticShellUrl + '"]');
-                        console.log('[PLACEMENT] Found', icons.length, 'icons to update for URL:', socraticShellUrl);
+                        const icons = document.querySelectorAll('.placement-icon[data-socratic-shell-url="' + symposiumUrl + '"]');
+                        console.log('[PLACEMENT] Found', icons.length, 'icons to update for URL:', symposiumUrl);
                         
                         icons.forEach((icon, index) => {
                             console.log('[PLACEMENT] Updating icon', index, 'current text:', icon.textContent);
@@ -1429,7 +1429,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                         });
                         
                         // Update link data attributes
-                        const links = document.querySelectorAll('.file-ref[data-socratic-shell-url="' + socraticShellUrl + '"]');
+                        const links = document.querySelectorAll('.file-ref[data-socratic-shell-url="' + symposiumUrl + '"]');
                         console.log('[PLACEMENT] Found', links.length, 'links to update');
                         links.forEach(link => {
                             link.setAttribute('data-placement-state', isPlaced ? 'placed' : 'unplaced');
@@ -1627,8 +1627,8 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                                 console.error('[ERROR] Content element not found!');
                             }
                         } else if (message.type === 'updateLinkPlacement') {
-                            console.log('[PLACEMENT] Updating link placement:', message.socraticShellUrl, 'isPlaced:', message.isPlaced);
-                            updateLinkPlacement(message.socraticShellUrl, message.isPlaced);
+                            console.log('[PLACEMENT] Updating link placement:', message.symposiumUrl, 'isPlaced:', message.isPlaced);
+                            updateLinkPlacement(message.symposiumUrl, message.isPlaced);
                         } else if (message.type === 'updateCommentDisplay') {
                             console.log('[COMMENT] Updating comment display:', message.commentId, message.chosenLocation);
                             updateCommentDisplay(message.commentId, message.chosenLocation);
