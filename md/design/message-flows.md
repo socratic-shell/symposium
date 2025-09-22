@@ -33,9 +33,9 @@ sequenceDiagram
     end
 ```
 
-## Ask Symposium Flow
+## Discuss in Symposium Flow
 
-When a user selects code and uses "Ask Symposium":
+When a user selects code and uses "Discuss in Symposium":
 
 ```mermaid
 sequenceDiagram
@@ -46,7 +46,7 @@ sequenceDiagram
     participant Term as Target Terminal
     participant AI as AI Assistant
 
-    User->>Ext: Select code + "Ask Symposium"
+    User->>Ext: Select code + "Discuss in Symposium"
     Ext->>Registry: Get active terminals
     Registry->>Ext: Return AI-enabled terminal PIDs
     
@@ -99,7 +99,7 @@ sequenceDiagram
     Ext->>Registry: Add PID 12345
     Ext->>Registry: Add PID 67890
     
-    Note over Ext,Registry: Registry rebuilt, Ask Symposium works again
+    Note over Ext,Registry: Registry rebuilt, Discuss in Symposium works again
 ```
 
 ## Discovery Protocol (Marco-Polo)

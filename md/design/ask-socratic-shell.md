@@ -1,4 +1,4 @@
-# Ask Symposium
+# Discuss in Symposium
 
 How users can quickly share code context with AI assistants running in terminals by selecting code and clicking the chat icon.
 

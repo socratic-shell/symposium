@@ -30,7 +30,7 @@ A# Summary
         - [Reference System Tools](./design/mcp-tools/reference-system.md)
         - [Rust Development Tools](./design/mcp-tools/rust-development.md)
     - [Symposium Reference System](./design/socratic-shell-ref-system.md)
-    - [Ask Symposium](./design/ask-socratic-shell.md)
+    - [Discuss in Symposium](./design/ask-socratic-shell.md)
     - [Code walkthroughs](./design/walkthroughs.md)
         - [Walkthrough format](./design/walkthrough-format.md)
         - [Comment Interactions](./design/walkthrough-comment-interactions.md)

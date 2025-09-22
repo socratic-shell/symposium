@@ -241,7 +241,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
 
             // Set options to enable submit button
             this.commentController.options = {
-                prompt: 'Ask Symposium...',
+                prompt: 'Discuss in Symposium...',
                 placeHolder: 'Type your question or comment here...'
             };
         }

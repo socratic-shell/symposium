@@ -1,4 +1,4 @@
-# Code walkthroughs and Ask Symposium
+# Code walkthroughs and Discuss in Symposium
 
 This document defines the expected user workflows for walkthrough features in Dialectic.
 

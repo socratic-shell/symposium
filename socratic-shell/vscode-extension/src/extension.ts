@@ -399,7 +399,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, daemonClient, toggleWindowTitleCommand);
 
-    // Return API for Ask Symposium integration
+    // Return API for Discuss in Symposium integration
     return {
         discoverActiveShells: () => daemonClient.discoverActiveShells()
     };
@@ -440,12 +440,12 @@ function setupSelectionDetection(bus: Bus): void {
                 // Only show when there's a non-empty selection
                 if (!range.isEmpty) {
                     const action = new vscode.CodeAction(
-                        'Ask Symposium',
+                        'Discuss in Symposium',
                         vscode.CodeActionKind.QuickFix
                     );
                     action.command = {
                         command: 'socratic-shell.chatAboutSelection',
-                        title: 'Ask Symposium'
+                        title: 'Discuss in Symposium'
                     };
                     action.isPreferred = true; // Show at top of list
 

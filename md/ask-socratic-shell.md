@@ -1,18 +1,18 @@
-# Ask Symposium
+# Discuss in Symposium
 
-Ask Symposium lets you send selected code directly to your AI assistant for discussion, creating a seamless bridge between your editor and AI chat sessions.
+Discuss in Symposium lets you send selected code directly to your AI assistant for discussion, creating a seamless bridge between your editor and AI chat sessions.
 
 ## How It Works
 
 When you select code in VSCode, Dialectic automatically detects which terminals have active AI assistants and routes your selection to the right place.
 
-## Using Ask Symposium
+## Using Discuss in Symposium
 
 ### 1. Select Code
 Highlight any code in your VSCode editor - a function, a few lines, or even a single variable.
 
 ### 2. Trigger the Action
-Right-click and choose **"Ask Symposium"** from the context menu, or use the lightbulb quick action that appears.
+Right-click and choose **"Discuss in Symposium"** from the context menu, or use the lightbulb quick action that appears.
 
 ### 3. Choose Your AI (if needed)
 - **Single AI assistant**: Your message goes directly to that terminal
@@ -76,4 +76,4 @@ This gives your AI assistant:
 - **Use consistently**: The system remembers your preferred terminal for quick access
 - **Multiple windows**: Each VSCode window tracks its own AI assistants independently
 
-Ask Symposium eliminates the friction of copying code to chat - just select, click, and discuss!
+Discuss in Symposium eliminates the friction of copying code to chat - just select, click, and discuss!
