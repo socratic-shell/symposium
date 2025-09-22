@@ -1,4 +1,8 @@
-## Symposium
+<center>
+    <img src="./artwork/logo-alcove.svg" alt="Symposium Logo" width="50%"/>
+    <br>
+    <h2>Symposium</h2>
+</center>
 
 Symposium is a "meta-IDE" that orchestrates multiple *taskspaces*. A *taskspace* is the combination of an AI agent and a window (could be an IDE, a terminal, an Emacs.app window, etc) that permits editing. Symposium is intentionally generic with respect to what AI agents are in use and what kind of windows are in use.
 
