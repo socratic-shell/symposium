@@ -108,16 +108,29 @@ impl RepeaterActor {
         }
         self.message_history.push_back(logged_message);
 
-        // Broadcast to all subscribers, removing closed channels
-        self.subscribers.retain(|sender| {
-            match sender.send(content.clone()) {
-                Ok(_) => true,
-                Err(_) => {
-                    // Channel is closed, remove this subscriber
-                    false
+        // Check if this is a log message and skip broadcasting if so
+        let mut is_log = false;
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(msg_type) = parsed.get("type").and_then(|t| t.as_str()) {
+                if msg_type == "log" {
+                    // Don't broadcast log messages to avoid loops and noise
+                    is_log = true;
                 }
             }
-        });
+        }
+
+        // For anything other than a log message, broadcast to all subscribers, removing closed channels
+        if !is_log {
+            self.subscribers.retain(|sender| {
+                match sender.send(content.clone()) {
+                    Ok(_) => true,
+                    Err(_) => {
+                        // Channel is closed, remove this subscriber
+                        false
+                    }
+                }
+            });
+        }
 
         info!("Broadcast message from client {} ({}) to {} subscribers", from_client_id, from_identifier, self.subscribers.len());
     }

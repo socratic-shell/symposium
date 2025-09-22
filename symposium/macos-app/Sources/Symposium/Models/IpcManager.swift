@@ -332,8 +332,6 @@ class IpcManager: ObservableObject {
     }
 
     private func handleIncomingMessage(_ messageString: String) {
-        Logger.shared.log("IpcManager[\(instanceId)]: Received message: \(messageString)")
-
         guard let messageData = messageString.data(using: .utf8) else {
             Logger.shared.log("IpcManager[\(instanceId)]: Failed to convert message to data")
             return
@@ -361,7 +359,6 @@ class IpcManager: ObservableObject {
                 Logger.shared.log(
                     "IpcManager[\(instanceId)]: Unknown message type: \(message.type)")
             }
-
         } catch {
             Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse message: \(error)")
         }
