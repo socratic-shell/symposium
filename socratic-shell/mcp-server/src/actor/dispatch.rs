@@ -33,7 +33,7 @@ struct DispatchRequest {
     /// If `Some`, then this is a channel on which the
     /// sender expects a reply. We will wait for a reply
     /// to `message.id` and then send the value.
-    reply_tx: Option<oneshot::Sender<serde_json::Value>>,
+    reply_tx: Option<oneshot::Sender<ResponsePayload>>,
 }
 
 /// A [Tokio actor][] that shepherds the connection to the daemon.
@@ -66,7 +66,7 @@ struct DispatchActor {
     /// But if the reply arrives before we get that notification, we may find
     /// that the Sender in this map is closed when we send the data along.
     /// That's ok.
-    pending_replies: HashMap<String, oneshot::Sender<serde_json::Value>>,
+    pending_replies: HashMap<String, oneshot::Sender<ResponsePayload>>,
 }
 
 impl Actor for DispatchActor {
@@ -159,10 +159,18 @@ impl DispatchActor {
                         sender = message.sender,
                     );
 
-                    // This is a reply to a pending request
-                    if let Err(e) = reply_tx.send(message.payload) {
-                        // Ignore send errors - the listener may have timed out and closed the channel
-                        tracing::debug!("Could not forward response: {e:?}");
+                    // This is a reply to a pending request.
+                    match ResponsePayload::deserialize(&message.payload) {
+                        Ok(payload) => {
+                            if let Err(e) = reply_tx.send(payload) {
+                                // Ignore send errors - the listener may have timed out and closed the channel
+                                tracing::debug!("Could not forward response: {e:?}");
+                            }
+                        }
+                        Err(e) => {
+                            tracing::debug!("Error parsing reply as a `ResponsePayload`: error={e:?}, payload={:?}", message.payload);
+                            return;
+                        }
                     }
                 }
             }
@@ -343,26 +351,24 @@ impl DispatchHandle {
             .send(DispatchRequest { message, reply_tx })
             .await?;
 
-        let reply_payload = match reply_rx {
+        match reply_rx {
             Some(reply_rx) => tokio::select! {
-                result = reply_rx => {
-                    result?
+                response = reply_rx => {
+                    // Extract data from ResponsePayload wrapper
+                    let response = response?;
+                    if !response.success || response.data.is_none() {
+                        return Err(anyhow::anyhow!("Request failed: {}", response.error.unwrap_or_default()));
+                    }
+                    
+                    Ok(<M::Reply>::deserialize(response.data.unwrap())?)
                 }
                 _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
                     return Err(anyhow::anyhow!("Request timed out after 30 seconds"));
                 }
             },
 
-            None => serde_json::Value::Null,
-        };
-
-        // Extract data from ResponsePayload wrapper
-        let response = ResponsePayload::<M::Reply>::deserialize(&reply_payload)?;
-        if !response.success {
-            return Err(anyhow::anyhow!("Request failed: {}", response.error.unwrap_or_default()));
+            None => Ok(serde_json::from_value(serde_json::Value::Null)?),
         }
-        
-        Ok(response.data.unwrap_or_else(|| serde_json::from_value(serde_json::Value::Null).unwrap()))
     }
 
 }
