@@ -291,20 +291,14 @@ impl IPCCommunicator {
         Ok(selection)
     }
 
-    pub async fn send_log(&self, level: LogLevel, message: String) {
-        // Always log locally using Rust logging infrastructure
-        match level {
-            LogLevel::Info => info!("{}", message),
-            LogLevel::Error => error!("{}", message),
-            LogLevel::Debug => debug!("{}", message),
-        }
-
+    /// Sends a log message out over the IPC bus
+    pub async fn send_log_message(&self, level: LogLevel, message: String) {
         // In test mode, only do local logging
         if self.test_mode {
             return;
         }
 
-        // Use new actor-based dispatch system
+        // Dispatch log over the IPC bus to get a central record
         let log_message = crate::types::LogMessage { level, message };
         if let Err(e) = self.dispatch_handle.send(log_message).await {
             // If IPC fails, we still have local logging above

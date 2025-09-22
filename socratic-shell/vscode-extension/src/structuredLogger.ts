@@ -50,17 +50,10 @@ export class StructuredLogger {
         this.daemonClient = client;
     }
 
-    private formatMessage(level: LogLevel, message: string): string {
-        return `[${this.component}:${this.pid}] ${level.toUpperCase()} ${message}`;
-    }
-
     private async sendToDaemon(level: LogLevel, message: string): Promise<void> {
         if (this.daemonClient) {
             try {
-                const logMessage: LogMessage = {
-                    level: level,
-                    message: `[${this.component}:${this.pid}] ${message}`
-                };
+                const logMessage: LogMessage = { level, message };
                 await this.daemonClient.sendRequestNoReply('log', logMessage);
             } catch (error) {
                 // Silently fail daemon logging to avoid infinite loops
@@ -89,8 +82,7 @@ export class StructuredLogger {
      * Log with explicit level (useful for dynamic logging)
      */
     log(level: LogLevel, message: string, options?: LogOptions): void {
-        const formatted = this.formatMessage(level, message);
-        this.outputChannel.appendLine(formatted);
+        this.outputChannel.appendLine(`[${level}] ${message}`);
         if (!options?.local) {
             this.sendToDaemon(level, message);            
         }
@@ -107,14 +99,4 @@ export class StructuredLogger {
         }
         return subLogger;
     }
-}
-
-/**
- * Factory function to create a structured logger
- */
-export function createStructuredLogger(
-    outputChannel: vscode.OutputChannel,
-    component: string = 'EXTENSION'
-): StructuredLogger {
-    return new StructuredLogger(outputChannel, component);
 }

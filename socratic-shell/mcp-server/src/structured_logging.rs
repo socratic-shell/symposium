@@ -3,11 +3,9 @@
 //! Provides consistent log formatting across daemon, MCP server, and extension components.
 //! Each log entry includes component type, process ID, and structured message.
 
-use std::fmt;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tracing::{Event, Level, Subscriber};
-use tracing_subscriber::fmt::{FormatEvent, FormatFields, format::Writer};
 use tracing_subscriber::layer::{Context, SubscriberExt};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
@@ -35,21 +33,9 @@ fn send_to_subscribers(level: LogLevel, message: String) {
 }
 
 /// Custom tracing layer that sends logs to subscribers
-pub struct DaemonLogLayer {
-    component: Component,
-    pid: u32,
-}
+pub struct ForwardToSubscriberLayer;
 
-impl DaemonLogLayer {
-    pub fn new(component: Component) -> Self {
-        Self {
-            component,
-            pid: std::process::id(),
-        }
-    }
-}
-
-impl<S> tracing_subscriber::Layer<S> for DaemonLogLayer
+impl<S> tracing_subscriber::Layer<S> for ForwardToSubscriberLayer
 where
     S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
@@ -62,17 +48,13 @@ where
             Level::DEBUG => LogLevel::Debug,
             Level::TRACE => LogLevel::Debug, // Map TRACE to Debug
         };
-
-        // Format the message with component prefix
-        let mut message = format!("[{}:{}] ", self.component, self.pid);
         
         // Extract the message from the event
         let mut visitor = MessageVisitor::new();
         event.record(&mut visitor);
-        message.push_str(&visitor.message);
 
         // Send to subscribers
-        send_to_subscribers(level, message);
+        send_to_subscribers(level, visitor.message);
     }
 }
 
@@ -101,80 +83,10 @@ impl tracing::field::Visit for MessageVisitor {
     }
 }
 
-/// Component types for logging identification
-#[derive(Debug, Clone, Copy)]
-pub enum Component {
-    Daemon,
-    McpServer,
-    Client,
-}
-
-impl fmt::Display for Component {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Component::Daemon => write!(f, "DAEMON"),
-            Component::McpServer => write!(f, "MCP-SERVER"),
-            Component::Client => write!(f, "CLIENT"),
-        }
-    }
-}
-
-/// Custom formatter that adds component and PID prefixes to all log messages
-pub struct ComponentFormatter {
-    component: Component,
-    pid: u32,
-}
-
-impl ComponentFormatter {
-    pub fn new(component: Component) -> Self {
-        Self {
-            component,
-            pid: std::process::id(),
-        }
-    }
-}
-
-impl<S, N> FormatEvent<S, N> for ComponentFormatter
-where
-    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
-{
-    fn format_event(
-        &self,
-        ctx: &tracing_subscriber::fmt::FmtContext<'_, S, N>,
-        mut writer: Writer<'_>,
-        event: &Event<'_>,
-    ) -> fmt::Result {
-        // Write the component prefix
-        write!(&mut writer, "[{}:{}] ", self.component, self.pid)?;
-
-        // Write the log level
-        let level = *event.metadata().level();
-        let level_str = match level {
-            Level::ERROR => "ERROR",
-            Level::WARN => "WARN",
-            Level::INFO => "INFO",
-            Level::DEBUG => "DEBUG",
-            Level::TRACE => "TRACE",
-        };
-        write!(&mut writer, "{} ", level_str)?;
-
-        // Write the message
-        ctx.field_format().format_fields(writer.by_ref(), event)?;
-
-        writeln!(&mut writer)?;
-        Ok(())
-    }
-}
-
 /// Initialize tracing with component-prefixed logging that sends to both stderr and daemon
 pub fn init_component_tracing(
-    component: Component,
     enable_dev_log: bool,
 ) -> Result<Option<tracing_appender::non_blocking::WorkerGuard>, Box<dyn std::error::Error>> {
-    let formatter = ComponentFormatter::new(component);
-    let daemon_layer = DaemonLogLayer::new(component);
-
     if enable_dev_log {
         use std::fs::OpenOptions;
         use tracing_appender::non_blocking;
@@ -190,11 +102,10 @@ pub fn init_component_tracing(
         tracing_subscriber::registry()
             .with(
                 tracing_subscriber::fmt::layer()
-                    .event_format(formatter)
                     .with_writer(file_writer)
                     .with_filter(tracing_subscriber::filter::LevelFilter::DEBUG)
             )
-            .with(daemon_layer)
+            .with(ForwardToSubscriberLayer)
             .init();
 
         eprintln!(
@@ -208,25 +119,12 @@ pub fn init_component_tracing(
         tracing_subscriber::registry()
             .with(
                 tracing_subscriber::fmt::layer()
-                    .event_format(formatter)
                     .with_writer(std::io::stderr)
                     .with_filter(tracing_subscriber::EnvFilter::from_default_env())
             )
-            .with(daemon_layer)
+            .with(ForwardToSubscriberLayer)
             .init();
 
         Ok(None)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_component_display() {
-        assert_eq!(format!("{}", Component::Daemon), "DAEMON");
-        assert_eq!(format!("{}", Component::McpServer), "MCP-SERVER");
-        assert_eq!(format!("{}", Component::Client), "CLIENT");
     }
 }

@@ -9,7 +9,7 @@ use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
 /// Maximum number of messages to keep in history
-const MAX_MESSAGE_HISTORY: usize = 32_000;
+const MAX_MESSAGE_HISTORY: usize = 1024;
 
 /// Messages sent to the repeater actor
 #[derive(Debug)]

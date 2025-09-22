@@ -104,9 +104,6 @@ export class DaemonClient implements vscode.Disposable {
     // MARCO/POLO discovery: temporary storage for discovery responses
     private discoveryResponses: Map<number, PoloDiscoveryPayload> = new Map();
 
-    // Terminal registry for Ask Socratic Shell integration
-    private activeTerminals: Set<number> = new Set();
-
     // Review feedback handling
     private pendingFeedbackResolvers: Map<string, (feedback: UserFeedback) => void> = new Map();
     private currentReviewId?: string;
@@ -231,14 +228,13 @@ export class DaemonClient implements vscode.Disposable {
     }
 
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
-        // First check: is this message for our window?
-        // Marco messages (no shellPid) are broadcasts that everyone should ignore
-        if (message.sender.shellPid && !await this.isMessageForOurWindow(message.sender)) {
-            return; // Silently ignore messages for other windows
-        }
-
         // Forward compatibility: only process known message types
         if (message.type === 'present_walkthrough') {
+            if (!await this.isMessageForOurWindow(message.sender)) {
+                debugLog(`Ignoring ${message.type} request: not for our window`, { local: true });
+                return; // Silently ignore messages for other windows
+            }
+
             try {
                 const walkthroughPayload = message.payload as PresentWalkthroughPayload;
                 this.logger.debug(`Received walkthrough with base_uri: ${walkthroughPayload.base_uri}`);
@@ -262,6 +258,11 @@ export class DaemonClient implements vscode.Disposable {
                 });
             }
         } else if (message.type === 'get_selection') {
+            if (!await this.isMessageForOurWindow(message.sender)) {
+                debugLog(`Ignoring ${message.type} request: not for our window`, { local: true });
+                return; // Silently ignore messages for other windows
+            }
+
             try {
                 const selectionData = this.getCurrentSelection();
                 this.sendResponse(message.id, {
@@ -275,59 +276,38 @@ export class DaemonClient implements vscode.Disposable {
                     error: error instanceof Error ? error.message : String(error)
                 });
             }
-        } else if (message.type === 'log') {
-            // Handle log messages - no response needed, just display in output channel
-            try {
-                const logPayload = message.payload as LogPayload;
-
-                const levelPrefix = logPayload.level.toUpperCase();
-                debugLog(`[${levelPrefix}] ${logPayload.message}`);
-            } catch (error) {
-                debugLog(`Error handling log message: ${error}`);
-            }
         } else if (message.type === 'polo') {
+            if (!await this.isMessageForOurWindow(message.sender)) {
+                debugLog(`Ignoring ${message.type} request: not for our window`, { local: true });
+                return; // Silently ignore messages for other windows
+            }
+
             // Handle Polo messages during discovery
             try {
                 const shellPid = message.sender.shellPid;
                 if (shellPid) {
-                    debugLog(`[DISCOVERY] MCP server connected in terminal PID ${shellPid}`);
+                    debugLog(`MCP server connected in terminal PID ${shellPid}`);
 
                     // Store in discovery responses for MARCO/POLO protocol
                     this.discoveryResponses.set(shellPid, {
                         taskspace_uuid: message.sender.taskspaceUuid || undefined,
                         working_directory: message.sender.workingDirectory
                     });
-
-                    // Also add to terminal registry for Ask Socratic Shell integration
-                    this.activeTerminals.add(shellPid);
-                    debugLog(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
                 }
             } catch (error) {
                 debugLog(`Error handling polo message: ${error}`);
             }
-        } else if (message.type === 'goodbye') {
-            // Handle Goodbye messages - just log for now (no persistent registry)
-            try {
-                const shellPid = message.sender.shellPid || 'persistent';
-                debugLog(`[DISCOVERY] MCP server disconnected from terminal PID ${shellPid}`);
-
-                // Remove from terminal registry for Ask Socratic Shell integration (only if we have a PID)
-                if (message.sender.shellPid) {
-                    this.activeTerminals.delete(message.sender.shellPid);
-                }
-                debugLog(`[REGISTRY] Active terminals: [${Array.from(this.activeTerminals).join(', ')}]`);
-            } catch (error) {
-                debugLog(`Error handling goodbye message: ${error}`);
-            }
-        } else if (message.type === 'marco') {
-            // Ignore Marco messages - these are broadcasts we send, MCP servers respond to them
-            // Extensions don't need to respond to Marco broadcasts
         } else if (message.type === 'resolve_symbol_by_name') {
+            if (!await this.isMessageForOurWindow(message.sender)) {
+                debugLog(`Ignoring ${message.type} request: not for our window`, { local: true });
+                return; // Silently ignore messages for other windows
+            }
+
             // Handle symbol resolution requests from MCP server
             try {
                 const symbolPayload = message.payload as ResolveSymbolPayload;
 
-                debugLog(`[LSP] Resolving symbol: ${symbolPayload.name}`);
+                debugLog(`Resolving symbol: ${symbolPayload.name}`);
 
                 // Call VSCode's LSP to find symbol definitions
                 const symbols = await this.resolveSymbolByName(symbolPayload.name);
@@ -344,6 +324,11 @@ export class DaemonClient implements vscode.Disposable {
                 });
             }
         } else if (message.type === 'find_all_references') {
+            if (!await this.isMessageForOurWindow(message.sender)) {
+                debugLog(`Ignoring ${message.type} request: not for our window`, { local: true });
+                return; // Silently ignore messages for other windows
+            }
+
             // Handle find references requests from MCP server
             try {
                 const referencesPayload = message.payload as FindReferencesPayload;
@@ -364,18 +349,8 @@ export class DaemonClient implements vscode.Disposable {
                     error: error instanceof Error ? error.message : String(error)
                 });
             }
-        } else if (message.type === 'log') {
-            // Handle log messages from daemon/MCP servers with structured formatting
-            try {
-                const logPayload = message.payload as { level: string; message: string };
-                // The message already has structured prefix from Rust side, display as-is
-                debugLog(logPayload.message);
-            } catch (error) {
-                debugLog(`Error handling log message: ${error}`);
-            }
         } else if (message.type === 'reload_window') {
             // Handle reload window signal from daemon (on shutdown)
-            this.logger.info('Received reload_window signal from daemon, reloading window...');
             vscode.commands.executeCommand('workbench.action.reloadWindow');
         } else if (message.type === 'response') {
             // Handle responses to our requests
@@ -394,22 +369,19 @@ export class DaemonClient implements vscode.Disposable {
             // Handle taskspace roll call - check if this is our taskspace and register window
             try {
                 const rollCallPayload = message.payload as TaskspaceRollCallPayload;
-                debugLog(`[WINDOW REG] Received roll call for taskspace: ${rollCallPayload.taskspace_uuid}`);
 
                 // Check if this roll call is for our taskspace
                 const currentTaskspaceUuid = getCurrentTaskspaceUuid();
                 if (currentTaskspaceUuid === rollCallPayload.taskspace_uuid) {
-                    debugLog(`[WINDOW REG] Roll call matches our taskspace, registering window`);
                     await this.registerWindow(rollCallPayload.taskspace_uuid);
                 } else {
-                    debugLog(`[WINDOW REG] Roll call not for us (ours: ${currentTaskspaceUuid}, theirs: ${rollCallPayload.taskspace_uuid})`);
+                    debugLog(`Ignoring ${message.type} request for ${rollCallPayload.taskspace_uuid}, not for our taskspace ${currentTaskspaceUuid}`, { local: true });
                 }
             } catch (error) {
                 debugLog(`Error handling taskspace_roll_call: ${error}`);
             }
         } else {
-            // Forward compatibility: silently ignore unknown message types for our window
-            // Only log if this was actually meant for us (not a broadcast)
+            // Ignore other messages.
         }
     }
 
@@ -451,15 +423,15 @@ export class DaemonClient implements vscode.Disposable {
                         continue;
                     }
                 }
-                debugLog(`Debug: shell PID ${sender.shellPid} not found in our terminals`);
+                debugLog(`Debug: shell PID ${sender.shellPid} not found in our terminals`, { local: true });
                 return false; // shellPid provided but not found in our terminals
             }
 
             // 3. If no shellPid (persistent agent case), accept based on directory match
-            debugLog(`Debug: accepting message from ${sender.workingDirectory} (persistent agent, no PID)`);
+            debugLog(`Debug: accepting message from ${sender.workingDirectory} (persistent agent, no PID)`, { local: true });
             return true;
         } catch (error) {
-            debugLog(`Error checking if message is for our window: ${error}`);
+            debugLog(`Error checking if message is for our window: ${error}`, { local: true });
             // On error, default to processing the message (fail open)
             return true;
         }

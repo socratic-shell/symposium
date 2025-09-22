@@ -14,7 +14,7 @@ use socratic_shell_mcp::{
     AgentManager,
     SymposiumServer,
     constants::DAEMON_SOCKET_PREFIX,
-    structured_logging::{self, Component},
+    structured_logging,
 };
 
 #[derive(Parser)]
@@ -128,15 +128,8 @@ enum AgentCommand {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Determine component type based on command
-    let component = match &args.command {
-        Some(Command::Daemon { .. }) => Component::Daemon,
-        Some(Command::Client { .. }) => Component::Client,
-        _ => Component::McpServer,
-    };
-
     // Initialize structured logging with component-specific prefixes
-    let flush_guard = structured_logging::init_component_tracing(component, args.options.dev_log)
+    let flush_guard = structured_logging::init_component_tracing(args.options.dev_log)
         .expect("Failed to initialize logging");
 
     info!("🔍 PROBE MODE DETECTED - Running PID discovery probe...");
