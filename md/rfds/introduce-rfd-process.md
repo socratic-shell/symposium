@@ -78,7 +78,7 @@ I am anticipating that we'll quickly want to have multiple designers who can mov
 
 ## Why "Request for Dialog" and not "Request for Comment"?
 
-Well, partly as a nod to socratic dialogs, but also because "dialog" emphasizes conversation and exploration rather than just collecting feedback on a predetermined design. It fits better with our collaborative development philosophy.
+Well, partly as a nod to Socratic dialogs, but also because "dialog" emphasizes conversation and exploration rather than just collecting feedback on a predetermined design. It fits better with our collaborative development philosophy.
 
 ## Why not use Rust's RFC template as is?
 
