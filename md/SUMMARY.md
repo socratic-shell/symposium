@@ -1,4 +1,4 @@
-A# Summary
+# Summary
 
 <!-- 
     AGENTS: Please keep this design documentation up-to-date/
