@@ -98,7 +98,7 @@ interface StoreReferencePayload {
 
 interface PresentWalkthroughPayload {
     content: string;  // HTML content with resolved XML elements
-    base_uri: string;
+    baseUri: string;
 }
 
 // ANCHOR: taskspace_roll_call_payload

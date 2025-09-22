@@ -252,9 +252,11 @@ pub struct ResponsePayload<T = serde_json::Value> {
     pub success: bool,
 
     /// Optional error message
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub error: Option<String>,
 
     /// Optional data payload for responses
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub data: Option<T>,
 }
 

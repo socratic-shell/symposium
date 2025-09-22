@@ -50,7 +50,7 @@ interface StoreReferencePayload {
 
 interface PresentWalkthroughPayload {
     content: string;
-    base_uri: string;
+    baseUri: string;
 }
 
 interface TaskspaceRollCallPayload {
@@ -237,12 +237,12 @@ export class DaemonClient implements vscode.Disposable {
 
             try {
                 const walkthroughPayload = message.payload as PresentWalkthroughPayload;
-                this.logger.debug(`Received walkthrough with base_uri: ${walkthroughPayload.base_uri}`);
+                this.logger.debug(`Received walkthrough with baseUri: ${walkthroughPayload.baseUri}`);
                 this.logger.debug(`Content length: ${walkthroughPayload.content.length} chars`);
 
                 // Set base URI for file resolution
-                if (walkthroughPayload.base_uri) {
-                    this.walkthroughProvider.setBaseUri(walkthroughPayload.base_uri);
+                if (walkthroughPayload.baseUri) {
+                    this.walkthroughProvider.setBaseUri(walkthroughPayload.baseUri);
                 }
 
                 // Show walkthrough HTML content in webview
