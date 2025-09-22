@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { debugLog } from './logging';
-import { parseSocraticShellUrl, SocraticShellUrl } from './socraticShellUrl';
+import { parseSymposiumUrl, SymposiumUrl } from './socraticShellUrl';
 import { searchInFile, getBestSearchResult, formatSearchResults, needsDisambiguation } from './searchEngine';
 
 // Placement state for unified link and comment management
@@ -15,14 +15,14 @@ interface PlacementState {
  * Resolve a socratic-shell URL to a precise location, using placement memory and user disambiguation
  * Returns the resolved location without navigating to it
  */
-export async function resolveSocraticShellUrlPlacement(
+export async function resolveSymposiumUrlPlacement(
     socraticShellUrl: string,
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<{ range: vscode.Range; document: vscode.TextDocument } | null> {
     try {
         // Parse the socratic-shell URL to extract components
-        const parsed = parseSocraticShellUrl(socraticShellUrl);
+        const parsed = parseSymposiumUrl(socraticShellUrl);
         if (!parsed) {
             vscode.window.showErrorMessage(`Invalid socratic-shell URL: ${socraticShellUrl}`);
             return null;
@@ -126,13 +126,13 @@ export async function resolveSocraticShellUrlPlacement(
  * Open a file location specified by a socratic-shell URL
  * Full implementation with regex search support extracted from reviewWebview
  */
-export async function openSocraticShellUrl(
+export async function openSymposiumUrl(
     socraticShellUrl: string, 
     baseUri?: vscode.Uri,
     placementMemory?: Map<string, PlacementState>
 ): Promise<void> {
     // Resolve the placement
-    const resolved = await resolveSocraticShellUrlPlacement(socraticShellUrl, baseUri, placementMemory);
+    const resolved = await resolveSymposiumUrlPlacement(socraticShellUrl, baseUri, placementMemory);
     if (!resolved) {
         return; // Resolution failed or was cancelled
     }

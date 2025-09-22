@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as MarkdownIt from 'markdown-it';
-import { openSocraticShellUrl } from './fileNavigation';
+import { openSymposiumUrl } from './fileNavigation';
 import { Bus } from './bus';
 
 // Placement state for unified link and comment management
@@ -181,7 +181,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
                 break;
             case 'openFile':
                 console.log('Walkthrough: openFile command received:', message.socraticShellUrl);
-                await openSocraticShellUrl(message.socraticShellUrl, this.baseUri, this.placementMemory);
+                await openSymposiumUrl(message.socraticShellUrl, this.baseUri, this.placementMemory);
                 // After placement, update the UI
                 this.updateLinkPlacementUI(message.socraticShellUrl);
                 break;
@@ -925,7 +925,7 @@ export class WalkthroughWebviewProvider implements vscode.WebviewViewProvider {
         this.placementMemory?.delete(linkKey);
 
         // Open the link again - this will show disambiguation
-        await openSocraticShellUrl(socraticShellUrl, this.baseUri, this.placementMemory);
+        await openSymposiumUrl(socraticShellUrl, this.baseUri, this.placementMemory);
 
         // Update UI after relocation
         this.updateLinkPlacementUI(socraticShellUrl);

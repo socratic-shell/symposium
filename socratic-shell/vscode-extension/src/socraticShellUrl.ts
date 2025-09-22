@@ -1,7 +1,7 @@
 // 💡: URL parser for socratic-shell: scheme supporting flexible search and line parameters
 // Handles socratic-shell:path?search=term&line=N|N:C|N-M|N:C-M:D format as designed in issue #2
 
-export interface SocraticShellUrl {
+export interface SymposiumUrl {
     path: string;
     regex?: string;
     line?: LineSpec;
@@ -27,7 +27,7 @@ export interface LineSpec {
  * - socratic-shell:path/to/file.ts?line=42-50 (line range)
  * - socratic-shell:path/to/file.ts?line=42:10-50:20 (precise range)
  */
-export function parseSocraticShellUrl(url: string): SocraticShellUrl | null {
+export function parseSymposiumUrl(url: string): SymposiumUrl | null {
     // 💡: Remove socratic-shell: prefix and validate scheme
     if (!url.startsWith('socratic-shell:')) {
         return null;
@@ -42,7 +42,7 @@ export function parseSocraticShellUrl(url: string): SocraticShellUrl | null {
         return null;
     }
     
-    const result: SocraticShellUrl = { path };
+    const result: SymposiumUrl = { path };
     
     // 💡: Parse query parameters if present
     if (queryString) {
@@ -125,7 +125,7 @@ function parseLineSpec(lineStr: string): LineSpec | null {
  * Convert a SocratiShellUrl back to string format
  * Useful for debugging and testing
  */
-export function formatSocraticShellUrl(socraticShellUrl: SocraticShellUrl): string {
+export function formatSymposiumUrl(socraticShellUrl: SymposiumUrl): string {
     let url = `socratic-shell:${socraticShellUrl.path}`;
     
     const params = new URLSearchParams();
