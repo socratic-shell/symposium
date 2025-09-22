@@ -2852,49 +2852,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "symposium-mcp"
-version = "0.1.0"
-dependencies = [
- "annotate-snippets",
- "anyhow",
- "cargo_metadata",
- "chrono",
- "clap",
- "crates_io_api",
- "dirs",
- "expect-test",
- "flate2",
- "futures",
- "git2",
- "home",
- "ignore",
- "indoc",
- "nix",
- "pulldown-cmark 0.13.0",
- "pulldown-cmark-to-cmark",
- "regex",
- "reqwest",
- "rmcp",
- "rust-embed",
- "schemars",
- "scopeguard",
- "semver",
- "serde",
- "serde_json",
- "tar",
- "tempfile",
- "test-utils",
- "thiserror 1.0.69",
- "tokio",
- "tokio-test",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "urlencoding",
- "uuid",
-]
-
-[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2936,6 +2893,49 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "symposium-mcp"
+version = "0.1.0"
+dependencies = [
+ "annotate-snippets",
+ "anyhow",
+ "cargo_metadata",
+ "chrono",
+ "clap",
+ "crates_io_api",
+ "dirs",
+ "expect-test",
+ "flate2",
+ "futures",
+ "git2",
+ "home",
+ "ignore",
+ "indoc",
+ "nix",
+ "pulldown-cmark 0.13.0",
+ "pulldown-cmark-to-cmark",
+ "regex",
+ "reqwest",
+ "rmcp",
+ "rust-embed",
+ "schemars",
+ "scopeguard",
+ "semver",
+ "serde",
+ "serde_json",
+ "tar",
+ "tempfile",
+ "test-utils",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+]
 
 [[package]]
 name = "syn"
