@@ -2,91 +2,49 @@
 
 *Target: 5-minute screencast*
 
-## Opening: Rust + Socratic Shell Mission (1 minute)
+## Opening: Rust + Symposium Mission (1 minute)
 
-*Camera just shows me, hanging out on my couch.*
+Hi! My name is Niko Matsakis. If you don't know me, I'm one of the lead designers of the Rust programming language. I'm also a Senior Principal Engineer at Amazon. But I'm not here to talk about either of those. I'm here to talk about *Symposium*, a new open-source project I'm kicking off.
 
-Hi! My name is Niko Matsakis. If you don't know me, I'm one of the lead designers of the Rust programming language and I'm also a Senior Principal Engineer. This video is meant as an introduction to the Socratic Shell github org -- and to show off the first project we've been working on!
+Symposium started because, as I was working with AI agents, I found there was a kind of gap. I wanted better support for the iterative, collaborative way I was working, where me and the agent are working together to solve tricky problems. And I wanted them to do a better job with generating code, especially Rust code. And I wanted these tools to be unopinionated. I wanted to be able to try out different agents, work with different editors, etc.
 
-Well, I say "we", but at the moment, the Socratic Shell project is just me -- but that's why I'm making this video! I am interesting in creating an open-source org dedicated to exploring the potential for AI to make programming easier, more collaborative, and -- well -- just plain *joyful*.
+I'll demo what I've got so far in a second, and I think it's pretty cool, but it's also not what I'm most excited about. What I'm most excited about is idea of a **community of developers keen to explore the best ways to use AI**. An open-source community where those developers will collaborate to build tools supporting those workflows. If we do our job right, I'd like those tools to go further, creating conventions that allow library authors the ability to influence and steer AI agents -- such as telling them how to upgrade your library, what patterns work best, or what patterns to avoid.
 
-I know there's a lot of skepticism about AI. I've got concerns too. I'm worried about power usage, for example, though I have faith in the smart people banging on the problem that things will get more efficient. And I don't love hallucinations, though I don't honestly find that to be that different from what you see on your average web search these days. If it ain't Wikipedia, I don't trust it.
+I know that there are a lot of AI skeptics out there, and there are good reasons for that. It uses a lot of power. It hallucinates. It gets stuck on complex problems. And a lot of companies, including my employer, are adding chatbots into every nook and cranny of their products. All of these things are truth.
 
-But for me, using AI tools has just been *tremendously* empowering. It's not just that I get more done, it's that I have a lot more fun doing it.
+And yet, it's *also* true that AI has unlocked something for me. Suddenly, I feel free to take on any project I want to pursue. Now, if I want to dive into a new area, I can fire up Claude -- I've mostly worked with Claude, but I imagine the same is true for other models too -- and I know we'll be able to get started. I can help Claude when they hallucinate and get stuck. And when we hit problems that neither of us know how to solve, we can dig into it together.
 
-*[Open terminal/Q CLI]*
+In short, to me, AI is all about empowerment. And that has me excited, since empowering developers is what I love the most.
 
-Now, I want to show you what I mean by collaborative programming, but first I need to figure out what would make a good demo. Let me think through this with my AI partner...
+## Demo
 
-## Live Brainstorming Session (2 minutes)
+*View switches over to VSCode*
 
-*[Start conversation with AI in terminal]*
+OK, enough talking, let's me show you how Symposium works. Remember I was telling you that I have adopted an iterative, collaborative workflow? Well, that means that the first thing I generally do is brainstorming. I approach this more or less like I would talking to a human.
 
-[Your actual brainstorming conversation about demo tasks]
+*Niko types:* Hi Claude, how are you?
 
-Me: "So I'm trying to figure out what would make a compelling demo for Symposium. I want to show the collaborative aspect, but I need a concrete task that's not too complex but shows real value..."
+You see how I'm starting with a bit of pleasantries? Maybe that seems weird to you, but it serves a purpose. Remember, LLMs are, fundamentally, completion engines. This means they take their cues from the tone that you use with them. So if you treat them kindly, they'll return the favor.
 
-*[Show real back-and-forth with the AI]*
+*Claude responds:* ... 
 
-[AI suggests various options - badge indicators, search enhancements, UI improvements]
+*Niko types (and reads aloud as he does so):* We're actually live here! I'm preparing a demo of Symposium. I was hoping you could help me, I want to show off some of its features. I'm wondering what might make the point most effectively. What do you think?
 
-[You explore the pros and cons of each]
+*Claude responds:* ... 
 
-Me: "The badge indicator idea is interesting... You see, when an agent hits some kind of problem, it can use this 'signal user' tool to let you know that it wants help. I'd like to extend the app to show a badge on the dock icon so we know that we have been signalled."
+*Niko types (and reads aloud as he does so):* Oh, I have an idea. I think one of the coolest things about Symposium is the way that it helps you to learn new things, so let's focus on that. How about we just show a bit of how the codebase works?
 
-[AI responds with implementation thoughts, scope considerations]
+*Claude responds:* ... 
 
-*[Reach the decision point]*
+*Niko types:* Yeah, how about this. I'm a sucker for meta-recurisve nonsense. So how about you present me a walkthrough showing what happens when you present a walkthrough. =) Start from the point where the MCP tool is invoked and show how the data passes through the code and into the VSCode extension to be rendered. 
 
-Me: "Yeah, that badge indicator idea sounds perfect - visual, useful, good scope for a demo. And maybe I could pair it with brainstorming about enhancing the IDE search context..."
+*Claude shows a walkthrough:* ... 
 
-## The Meta Moment (30 seconds)
+So, "walkthroughs" are one of the core parts of symposium. They are an MCP tool where the LLM prepares markdown for you. This markdown gets rendered in the VSCode extension. And it can include some extra things, such as mermaid, or comments on particular lines of code. When I'm diving into a new code base, walkthroughs are a key part of how I do it now -- I ask the LLM to talk me through what I want to learn.
 
-*[Pause the conversation]*
+And here's the cool part -- walkthroughs are also interactive. For example, I can click on Reply here, and you see that it inserts this little XML Tag into my session. When I press enter, the agent is going to look this up, figure out what I am replying to, and compose a sensible reply.
 
-Alright, that sounds like a good task. Let's spawn a taskspace for it.
+You can also use this to "tag" parts of your code by selecting it and clicking Ask Socratic Shell. Same idea.
 
-*[Launch Symposium, show empty panel]*
+*Claude makes edits:* ...
 
-And THIS is exactly what Symposium does! Symposium is one of two projects in the Socratic Shell org. It's an OS X app, though I'd love to have some folks help me port it to windows or linux (hint, hint).
-
-You can think of it like a "meta IDE". When you run symposium, you point it at a git repository. It will create a checkout and then help you coordinate various worktrees.
-
-*[Open the Symposium.symposium project]*
-
-In this case I'm going to be using Symposium on itself - we just planned this task together, and now we're going to execute it using the tool itself.
-
-These subdirectories are called *taskspaces*. Each taskspace is a git worktree exploring a particular task-- but each taskspace also has an AI agent in it, pursuing some task.
-
-## Execute the Plan (1.5 minutes)
-
-*[Click new taskspace button]*
-
-So, with symposium, you can really easily start up a new taskspace. I'll create one for the badge indicator task we just brainstormed.
-
-*[Create taskspace with the badge implementation task]*
-
-So, for this taskspace, I'm going to be adding that feature we just discussed - showing a badge on the dock icon when agents signal for help.
-
-*[Set up the taskspace with the specific prompt]*
-
-*[Click spawn taskspace again for the brainstorming task]*
-
-And I'll make a second taskspace for that other idea - exploring how to enhance the IDE search with automatic context.
-
-*[Show both taskspaces in panel]*
-
-Now you can see I have these two taskspaces going. When I click on them, a VSCode window opens up in that new taskspace with an AI agent ready to work on the task.
-
-*[Show the agents starting to work, maybe some progress updates]*
-
-[Continue with implementation, walkthrough, interaction as the agents work on the tasks we just collaboratively planned]
-
----
-
-## Notes for Yourself
-
-- Emphasize the recursive nature: planning the demo → using the tool → executing the plan
-- Show genuine collaborative thinking in the brainstorming section
-- Make the transition from brainstorming to Symposium feel natural and revelatory
-- Keep the energy of "we just figured this out together and now we're doing it"

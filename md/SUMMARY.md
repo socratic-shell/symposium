@@ -68,6 +68,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [Draft]() <!-- Early drafts, people start things in this section -->
     - [Persistent Agents](./rfds/persistent-agents.md)
     - [Tile-based Window Management](./rfds/tile-based-window-management.md)
+    - [GitDiff Elements in Walkthroughs](./rfds/gitdiff-elements.md)
 - [To be removed (yet?)]() <!-- Decided against doing this for now -->
 - [Completed]() <!-- Work is complete -->
     - [Introduce RFD Process](./rfds/introduce-rfd-process.md)

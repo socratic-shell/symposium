@@ -6,7 +6,7 @@ Walkthroughs are interactive markdown documents that help explain code changes, 
 
 The walkthrough system consists of three main components:
 
-1. **Markdown + XML Format**: Authors write walkthroughs using markdown with embedded XML elements (`<comment>`, `<gitdiff>`, `<action>`, `<mermaid>`)
+1. **Markdown + XML Format**: Authors write walkthroughs using markdown with embedded XML elements (`<comment>`, `<action>`, `<mermaid>`)
 2. **Server-side Parser**: The MCP server's `walkthrough_parser` module converts the markdown to HTML, resolving code locations and generating interactive elements
 3. **VSCode Integration**: The VSCode extension renders the processed HTML in a webview with click handlers and interactive features
 
@@ -37,7 +37,6 @@ When a walkthrough is presented:
 Walkthroughs are authored as standard markdown documents with embedded XML elements for interactive features:
 
 - `<comment location="...">` - Contextual comments at specific code locations
-- `<gitdiff range="...">` - Embedded git diffs showing code changes  
 - `<action button="...">` - Interactive buttons for follow-up tasks
 - `<mermaid>` - Architecture diagrams and flowcharts
 
@@ -52,7 +51,7 @@ For complete format specification and usage guidelines, see the [AI guidance doc
 The `WalkthroughParser` in `symposium/mcp-server/src/walkthrough_parser.rs` handles the conversion from markdown+XML to interactive HTML:
 
 1. **Markdown Parsing**: Uses `pulldown_cmark` to parse markdown into a stream of events
-2. **XML Detection**: Identifies inline and block-level XML elements (`<comment>`, `<gitdiff>`, `<action>`, `<mermaid>`)
+2. **XML Detection**: Identifies inline and block-level XML elements (`<comment>`, `<action>`, `<mermaid>`)
 3. **Sequential Processing**: Processes events one by one, collecting content between opening and closing tags
 4. **Element Resolution**: For each XML element:
    - Parses attributes using `quick_xml`
@@ -88,25 +87,6 @@ Output HTML:
             <div class="comment-text">This function validates authentication tokens</div>
         </div>
     </div>
-</div>
-```
-
-#### GitDiff Element Processing
-
-Input:
-```xml
-<gitdiff range="HEAD~2..HEAD" />
-```
-
-Internal processing:
-1. Parse commit range using `GitService`
-2. Generate file changes data structure
-3. Create placeholder HTML (full diff rendering to be implemented)
-
-Output HTML:
-```html
-<div class="gitdiff-container" style="border: 1px solid var(--vscode-panel-border); ...">
-    <div style="padding: 12px;">GitDiff rendering: HEAD~2..HEAD</div>
 </div>
 ```
 
