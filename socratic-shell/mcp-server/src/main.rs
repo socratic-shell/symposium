@@ -353,7 +353,7 @@ async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
                             .unwrap_or_default()
                             .format("%H:%M:%S%.3f");
                         
-                        println!("[{}] BROADCAST[{}] {}", time_str, identifier, content);
+                        println!("[{}, {}] {}", time_str, identifier, content);
                     } else {
                         println!("Malformed message: {}", msg);
                     }
