@@ -8,38 +8,16 @@
 -->
 
 - [Introduction](./introduction.md)
-- [Installation and setup](./setup.md)
-
-# Design and implementation
-
-- [Implementation Overview](./design/implementation-overview.md)
-- [mdbook Conventions](./design/mdbook-conventions.md)
-- [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
-- [Guidance and Initialization](./design/guidance-and-initialization.md)
-- [Taskspace Deletion System](./design/taskspace-deletion.md)
-- [IPC Communication and Daemon Architecture](./design/daemon.md)
-    - [IPC message type reference](./design/ipc_message_type_reference.md)
-- [Agent manager](./design/agent-manager.md)
-- [Symposium MCP server + IDE extension specifics]()
-    - [MCP Server Actor Architecture](./design/mcp-server-actor-architecture.md)
-    - [MCP Server Tools](./design/mcp-server.md)
-        - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
-        - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
-        - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
-        - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
-        - [Reference System Tools](./design/mcp-tools/reference-system.md)
-        - [Rust Development Tools](./design/mcp-tools/rust-development.md)
-    - [Symposium Reference System](./design/symposium-ref-system.md)
-    - [Discuss in Symposium](./design/discuss-in-symposium.md)
-    - [Code walkthroughs](./design/walkthroughs.md)
-        - [Walkthrough format](./design/walkthrough-format.md)
-        - [Comment Interactions](./design/walkthrough-comment-interactions.md)
-    - [Dialect language](./design/dialect-language.md)
-- [Symposium application specifics]()
-    - [Startup and Window Management](./design/startup-and-window-management.md)
-    - [Stacked Windows](./design/stacked-windows.md)
-    - [Window Stacking Design](./design/window-stacking-design.md)
-    - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
+- [Setup and quick start](./setup.md)
+- [MCP server features](./features.md)
+    - [Walkthroughs](./features/walkthrough.md)
+    - [Discuss in Symposium](./features/discuss.md)
+    - [IDE integration](./features/ide.md)
+    - [Rust-specific](./features/rust.md)
+        - [Get crate source](./features/rust.md)
+- [Desktop add features](./features.md)
+    - [Taskspaces](./features/taskspaces.md)
+- [How to contribute to Symposium](./contribution.md)
 
 # Requests for Dialog
 
@@ -73,6 +51,37 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [Completed]() <!-- Work is complete -->
     - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
     - [IPC Actor Refactoring](./rfds/ipc-actor-refactoring.md)
+
+# Design and implementation
+
+- [Implementation Overview](./design/implementation-overview.md)
+- [mdbook Conventions](./design/mdbook-conventions.md)
+- [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
+- [Guidance and Initialization](./design/guidance-and-initialization.md)
+- [Taskspace Deletion System](./design/taskspace-deletion.md)
+- [IPC Communication and Daemon Architecture](./design/daemon.md)
+    - [IPC message type reference](./design/ipc_message_type_reference.md)
+- [Agent manager](./design/agent-manager.md)
+- [Symposium MCP server + IDE extension specifics]()
+    - [MCP Server Actor Architecture](./design/mcp-server-actor-architecture.md)
+    - [MCP Server Tools](./design/mcp-server.md)
+        - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
+        - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
+        - [Synthetic Pull Request Tools](./design/mcp-tools/synthetic-prs.md)
+        - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
+        - [Reference System Tools](./design/mcp-tools/reference-system.md)
+        - [Rust Development Tools](./design/mcp-tools/rust-development.md)
+    - [Symposium Reference System](./design/symposium-ref-system.md)
+    - [Discuss in Symposium](./design/discuss-in-symposium.md)
+    - [Code walkthroughs](./design/walkthroughs.md)
+        - [Walkthrough format](./design/walkthrough-format.md)
+        - [Comment Interactions](./design/walkthrough-comment-interactions.md)
+    - [Dialect language](./design/dialect-language.md)
+- [Symposium application specifics]()
+    - [Startup and Window Management](./design/startup-and-window-management.md)
+    - [Stacked Windows](./design/stacked-windows.md)
+    - [Window Stacking Design](./design/window-stacking-design.md)
+    - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
 
 # Work in Progress
 

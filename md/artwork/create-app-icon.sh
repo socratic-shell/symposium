@@ -5,7 +5,7 @@
 
 set -e
 
-LOGO_SVG="./logo.svg"
+LOGO_SVG="./logo-alcove.svg"
 ICON_NAME="AppIcon"
 OUTPUT_DIR="../symposium/macos-app"
 TEMP_DIR="/tmp/symposium-icon-$$"
