@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Dancing+Script:wght@400;700&family=Permanent+Marker&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Dancing+Script:wght@400;700&family=Permanent+Marker&family=Open+Sans:wght@300;400;500;600&display=swap');
+
+body {
+    font-family: 'Open Sans', sans-serif;
+}
 
 .hero-title {
     font-family: 'Bungee', cursive;
