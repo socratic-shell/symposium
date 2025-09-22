@@ -216,20 +216,11 @@ export class DaemonClient implements vscode.Disposable {
 
 
     private async handleIncomingMessage(message: IPCMessage): Promise<void> {
-        this.logger.debug(`handleIncomingMessage(\
-            type = ${JSON.stringify(message.type)}, \
-            sender = ${JSON.stringify(message.sender)}, \
-            id=${message.id}, \
-            payload = ${JSON.stringify(message.payload)}\
-        )`);
-
         // First check: is this message for our window?
         // Marco messages (no shellPid) are broadcasts that everyone should ignore
         if (message.sender.shellPid && !await this.isMessageForOurWindow(message.sender)) {
-            this.logger.debug("message not intended for us");
             return; // Silently ignore messages for other windows
         }
-
 
         // Forward compatibility: only process known message types
         if (message.type === 'present_walkthrough') {

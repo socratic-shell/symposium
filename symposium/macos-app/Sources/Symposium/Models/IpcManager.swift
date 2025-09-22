@@ -356,8 +356,7 @@ class IpcManager: ObservableObject {
             case "register_taskspace_window":
                 handleRegisterTaskspaceWindow(message: message)
             default:
-                Logger.shared.log(
-                    "IpcManager[\(instanceId)]: Unknown message type: \(message.type)")
+                break // ignore other types of messages 
             }
         } catch {
             Logger.shared.log("IpcManager[\(instanceId)]: Failed to parse message: \(error)")

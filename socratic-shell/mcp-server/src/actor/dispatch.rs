@@ -140,14 +140,13 @@ impl DispatchActor {
     }
 
     async fn handle_incoming_message(&mut self, message: IPCMessage) {
-        tracing::debug!("Received {mty:?} message with id `{id}` from {sender:?}",
-            id = message.id,
-            mty = message.message_type,
-            sender = message.sender,
-        );
-
         match message.message_type {
             crate::types::IPCMessageType::Marco => {
+                tracing::debug!("Received `marco` message with id `{id}` from {sender:?}",
+                    id = message.id,
+                    sender = message.sender,
+                );
+
                 // Marco we just handle right here. It's so simple it's not worth factoring out.
                 if let Err(e) = self.send_polo().await {
                     tracing::error!("Failed to route Marco message: {}", e);
@@ -155,27 +154,36 @@ impl DispatchActor {
             }
             crate::types::IPCMessageType::Response => {
                 if let Some(reply_tx) = self.pending_replies.remove(&message.id) {
-                    tracing::debug!("reply received, forwarding to the waiting actor");
+                    tracing::debug!("Received `response` to message with id `{id}` from {sender:?}",
+                        id = message.id,
+                        sender = message.sender,
+                    );
 
                     // This is a reply to a pending request
                     if let Err(e) = reply_tx.send(message.payload) {
                         // Ignore send errors - the listener may have timed out and closed the channel
-                        tracing::debug!("error forwarding, likely because actor had timed out: {e:?}");
+                        tracing::debug!("Could not forward response: {e:?}");
                     }
                 }
             }
             crate::types::IPCMessageType::StoreReference => {
+                tracing::debug!("Received `store_reference` with id `{id}` from {sender:?}",
+                    id = message.id,
+                    sender = message.sender,
+                );
+
                 if let Some(reference) = &self.reference_handle {
                     if let Err(e) = self.handle_store_reference(message, reference).await {
                         tracing::error!("Failed to handle StoreReference message: {}", e);
                     }
                 } else {
                     tracing::debug!(
-                        "Received StoreReference message but no Reference actor available"
+                        "No Reference actor available"
                     );
                 }
             }
             _ => {
+                // Ignore other messages, not relevant to us
             }
         }
     }
