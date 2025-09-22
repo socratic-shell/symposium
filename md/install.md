@@ -1,4 +1,4 @@
-# Installation and setup
+# Installation
 
 This project is still under **heavy development**. Be aware that it may "eat your laundry".
 

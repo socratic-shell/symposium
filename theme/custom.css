@@ -1,0 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=Dancing+Script:wght@400;700&family=Permanent+Marker&display=swap');
+
+.hero-title {
+    font-family: 'Bungee', cursive;
+    font-size: 8rem;
+    margin: 1rem 0 0.5rem 0;
+    color: #333;
+}
+
+.hero-subtitle {
+    font-family: 'Dancing Script', cursive;
+    font-size: 4rem;
+    font-weight: 400;
+    margin: 0.5rem 0 2rem 0;
+    color: #666;
+}
+
+.action-links {
+    margin: 3rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+}
+
+.action-link {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 2rem;
+    color: #333;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.action-link:hover {
+    color: #666;
+    text-decoration: underline;
+}
+
+.separator {
+    font-size: 2.5rem;
+    color: #999;
+    font-weight: 300;
+}

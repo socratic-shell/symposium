@@ -10,15 +10,15 @@
 # User guide
 
 - [Introduction](./introduction.md)
-- [Setup and quick start](./setup.md)
-- [Features in depth](./features.md)
-    - [Walkthroughs](./features/walkthrough.md)
-    - [Discuss in Symposium](./features/discuss.md)
-    - [IDE integration](./features/ide.md)
-    - [Rust-specific](./features/rust.md)
-        - [Get crate source](./features/get_crate_source.md)
-    - [Taskspaces](./features/taskspaces.md)
-- [How to contribute to Symposium](./contributing.md)
+- [Install](./install.md)
+- [Learn more](./learn-more.md)
+    - [Walkthroughs](./learn-more/walkthrough.md)
+    - [Discuss in Symposium](./learn-more/discuss.md)
+    - [IDE integration](./learn-more/ide.md)
+    - [Rust-specific](./learn-more/rust.md)
+        - [Get crate source](./learn-more/get_crate_source.md)
+    - [Taskspaces](./learn-more/taskspaces.md)
+- [Contribute](./contribute.md)
 
 # Requests for Dialog
 
