@@ -208,16 +208,16 @@ impl DispatchActor {
         self.respond_to(&message.id, result).await
     }
 
-    async fn respond_to(
+    async fn respond_to<T: Serialize + std::fmt::Debug>(
         &self,
         incoming_message_id: &String,
-        data: Result<impl Serialize, impl Display>,
+        data: Result<T, impl Display>,
     ) -> anyhow::Result<()> {
         let payload = match data {
             Ok(data) => ResponsePayload {
                 success: true,
                 error: None,
-                data: Some(serde_json::to_value(data)?),
+                data: Some(data),
             },
             Err(err) => ResponsePayload {
                 success: false,
@@ -356,7 +356,13 @@ impl DispatchHandle {
             None => serde_json::Value::Null,
         };
 
-        Ok(<M::Reply>::deserialize(reply_payload)?)
+        // Extract data from ResponsePayload wrapper
+        let response = ResponsePayload::<M::Reply>::deserialize(&reply_payload)?;
+        if !response.success {
+            return Err(anyhow::anyhow!("Request failed: {}", response.error.unwrap_or_default()));
+        }
+        
+        Ok(response.data.unwrap_or_else(|| serde_json::from_value(serde_json::Value::Null).unwrap()))
     }
 
 }

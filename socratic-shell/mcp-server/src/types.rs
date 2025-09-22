@@ -247,15 +247,15 @@ impl IpcPayload for FindAllReferencesPayload {
 
 /// Payload for Response messages (replaces IPCResponse struct)
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ResponsePayload {
+pub struct ResponsePayload<T = serde_json::Value> {
     /// Whether the operation succeeded
     pub success: bool,
 
     /// Optional error message
     pub error: Option<String>,
 
-    /// Optional data payload for responses like get_selection
-    pub data: Option<serde_json::Value>,
+    /// Optional data payload for responses
+    pub data: Option<T>,
 }
 
 /// Sender information for message routing
