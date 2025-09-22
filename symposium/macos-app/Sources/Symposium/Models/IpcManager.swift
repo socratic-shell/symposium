@@ -728,8 +728,7 @@ class IpcManager: ObservableObject {
 
     func sendBroadcastMessage<T: Codable>(type: String, payload: T) {
         guard let inputPipe = self.inputPipe else {
-            Logger.shared.log(
-                "IpcManager[\(instanceId)]: Cannot send broadcast message - no input pipe")
+            // Don't log here - causes infinite recursion with Logger
             return
         }
 
