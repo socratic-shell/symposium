@@ -14,13 +14,13 @@ use rmcp::{
 use rust_embed::RustEmbed;
 use serde_json;
 use std::future::Future;
-use tracing::{info, warn};
+use tracing::{debug, error, info, warn};
 use crate::structured_logging;
 
 use crate::dialect::DialectInterpreter;
 use crate::eg::Eg;
 use crate::ipc::IPCCommunicator;
-use crate::types::{LogLevel, PresentWalkthroughParams};
+use crate::types::PresentWalkthroughParams;
 use serde::{Deserialize, Serialize};
 
 /// Embedded guidance files for agent initialization
@@ -164,12 +164,11 @@ impl SymposiumServer {
         ipc.initialize().await?;
         info!("IPC communication with message bus daemon initialized");
 
-        // Send unsolicited Polo message to announce our presence
-        ipc.send_polo(shell_pid).await?;
-        info!("Sent Polo discovery message with shell PID: {}", shell_pid);
-
         // Set up log forwarding to subscribers
         Self::setup_log_forwarding(&ipc);
+
+        // Send unsolicited Polo message to announce our presence
+        ipc.send_polo(shell_pid).await?;
 
         // Initialize Dialect interpreter with IDE functions
         let mut interpreter = DialectInterpreter::new(ipc.clone());
@@ -194,7 +193,7 @@ impl SymposiumServer {
         let ipc = ipc.clone();
         tokio::spawn(async move {
             while let Some((level, message)) = log_rx.recv().await {
-                ipc.send_log(level, message).await;
+                ipc.send_log_message(level, message).await;
             }
         });
     }
@@ -277,16 +276,7 @@ impl SymposiumServer {
         Parameters(params): Parameters<PresentWalkthroughParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: present_walkthrough_tool
-        // Log the tool call via IPC (also logs locally)
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!(
-                    "Received present_walkthrough tool call with markdown content ({} chars)",
-                    params.content.len()
-                ),
-            )
-            .await;
+        debug!("Received present_walkthrough tool call with markdown content ({} chars)", params.content.len());
 
         // Parse markdown with XML elements and resolve Dialect expressions
         let mut parser =
@@ -324,12 +314,7 @@ impl SymposiumServer {
         })?;
 
         // Log success
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                "Walkthrough successfully sent to VSCode".to_string(),
-            )
-            .await;
+        info!("Walkthrough successfully sent to VSCode");
 
         Ok(CallToolResult::success(vec![Content::text(
             "Walkthrough successfully processed and presented in VSCode",
@@ -350,21 +335,8 @@ impl SymposiumServer {
     )]
     async fn get_selection(&self) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: get_selection_tool
-        // Log the tool call via IPC (also logs locally)
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                "Received get_selection tool call".to_string(),
-            )
-            .await;
-
         // Request current selection from VSCode extension via IPC
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                "Requesting current selection from VSCode extension...".to_string(),
-            )
-            .await;
+        info!("Requesting current selection from VSCode extension...");
 
         let result = self.ipc.get_selection().await.map_err(|e| {
             McpError::internal_error(
@@ -381,12 +353,7 @@ impl SymposiumServer {
             "no selection"
         };
 
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                format!("Selection retrieved: {}", status_msg),
-            )
-            .await;
+        info!("selection retrieved: {}", status_msg);
 
         // Convert result to JSON and return
         let json_content = Content::json(result).map_err(|e| {
@@ -424,21 +391,9 @@ impl SymposiumServer {
         Parameters(params): Parameters<IdeOperationParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: ide_operation_tool
-        // Log the tool call via IPC (also logs locally)
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!(
-                    "Received ide_operation tool call with program: {:?}",
-                    params.program
-                ),
-            )
-            .await;
+        debug!("Received ide_operation tool call with program: {:?}", params.program);
 
-        // Execute the Dialect program using spawn_blocking to handle non-Send future
-        self.ipc
-            .send_log(LogLevel::Info, "Executing Dialect program...".to_string())
-            .await;
+        info!("Executing Dialect program...");
 
         let program = params.program;
         let mut interpreter = self.interpreter.clone();
@@ -467,12 +422,7 @@ impl SymposiumServer {
             )
         })?;
 
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                format!("Dialect execution completed successfully"),
-            )
-            .await;
+        info!("Dialect execution completed successfully");
 
         // Convert result to JSON and return
         let json_content = Content::json(result).map_err(|e| {
@@ -506,21 +456,11 @@ impl SymposiumServer {
         Parameters(params): Parameters<ExpandReferenceParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: expand_reference_tool
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!("Expanding reference: {}", params.id),
-            )
-            .await;
+        debug!("Expanding reference: {}", params.id);
 
         // First, try to get from reference actor
         if let Some(context) = self.reference_handle.get_reference(&params.id).await {
-            self.ipc
-                .send_log(
-                    LogLevel::Info,
-                    format!("Reference {} expanded successfully", params.id),
-                )
-                .await;
+            info!("Reference {} expanded successfully", params.id);
 
             return Ok(CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&context).map_err(|e| {
@@ -538,12 +478,7 @@ impl SymposiumServer {
         if let Some(file) = GuidanceFiles::get(&params.id) {
             let content = String::from_utf8_lossy(&file.data);
 
-            self.ipc
-                .send_log(
-                    LogLevel::Info,
-                    format!("Guidance file {} loaded successfully", params.id),
-                )
-                .await;
+            info!("Guidance file {} loaded successfully", params.id);
 
             return Ok(CallToolResult::success(vec![Content::text(
                 content.to_string(),
@@ -554,12 +489,7 @@ impl SymposiumServer {
         if params.id == "yiasou" || params.id == "hi" {
             match self.assemble_yiasou_prompt().await {
                 Ok(prompt_content) => {
-                    self.ipc
-                        .send_log(
-                            LogLevel::Info,
-                            "Yiasou prompt assembled successfully via expand_reference".to_string(),
-                        )
-                        .await;
+                    info!("Yiasou prompt assembled successfully via expand_reference");
 
                     return Ok(CallToolResult::success(vec![Content::text(prompt_content)]));
                 }
@@ -575,9 +505,7 @@ impl SymposiumServer {
         }
 
         // Not found in either store
-        self.ipc
-            .send_log(LogLevel::Info, format!("Reference {} not found", params.id))
-            .await;
+        info!("Reference {} not found", params.id);
 
         Err(McpError::invalid_params(
             "Reference not found",
@@ -601,12 +529,7 @@ impl SymposiumServer {
         Parameters(params): Parameters<SpawnTaskspaceParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: spawn_taskspace_tool
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                format!("Creating new taskspace: {}", params.name),
-            )
-            .await;
+        info!("Creating new taskspace: {}", params.name);
 
         // Send spawn_taskspace message to Symposium app via daemon
         match self
@@ -619,12 +542,7 @@ impl SymposiumServer {
             .await
         {
             Ok(()) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Info,
-                        format!("Taskspace '{}' created successfully", params.name),
-                    )
-                    .await;
+                info!("Taskspace '{}' created successfully", params.name);
 
                 Ok(CallToolResult::success(vec![Content::text(format!(
                     "Taskspace '{}' created successfully",
@@ -632,12 +550,7 @@ impl SymposiumServer {
                 ))]))
             }
             Err(e) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Failed to create taskspace '{}': {}", params.name, e),
-                    )
-                    .await;
+                error!("Failed to create taskspace '{}': {}", params.name, e);
 
                 Err(McpError::internal_error(
                     "Failed to create taskspace",
@@ -672,12 +585,7 @@ impl SymposiumServer {
             _ => crate::types::ProgressCategory::Info, // Default to info for unknown categories
         };
 
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!("Logging progress: {} ({})", params.message, params.category),
-            )
-            .await;
+        debug!("Logging progress: {} ({})", params.message, params.category);
 
         // Send log_progress message to Symposium app via daemon
         match self
@@ -686,9 +594,7 @@ impl SymposiumServer {
             .await
         {
             Ok(()) => {
-                self.ipc
-                    .send_log(LogLevel::Info, "Progress logged successfully".to_string())
-                    .await;
+                info!("Progress logged successfully");
 
                 Ok(CallToolResult::success(vec![Content::text(format!(
                     "Progress logged: {}",
@@ -696,9 +602,7 @@ impl SymposiumServer {
                 ))]))
             }
             Err(e) => {
-                self.ipc
-                    .send_log(LogLevel::Error, format!("Failed to log progress: {}", e))
-                    .await;
+                error!("Failed to log progress: {}", e);
 
                 Err(McpError::internal_error(
                     "Failed to log progress",
@@ -723,22 +627,12 @@ impl SymposiumServer {
         Parameters(params): Parameters<SignalUserParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: signal_user_tool
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                format!("Requesting user attention: {}", params.message),
-            )
-            .await;
+        info!("Requesting user attention: {}", params.message);
 
         // Send signal_user message to Symposium app via daemon
         match self.ipc.signal_user(params.message.clone()).await {
             Ok(()) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Info,
-                        "User attention requested successfully".to_string(),
-                    )
-                    .await;
+                info!("User attention requested successfully");
 
                 Ok(CallToolResult::success(vec![Content::text(format!(
                     "User attention requested: {}",
@@ -746,12 +640,7 @@ impl SymposiumServer {
                 ))]))
             }
             Err(e) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Failed to request user attention: {}", e),
-                    )
-                    .await;
+                error!("Failed to request user attention: {}", e);
 
                 Err(McpError::internal_error(
                     "Failed to request user attention",
@@ -774,15 +663,7 @@ impl SymposiumServer {
         Parameters(params): Parameters<UpdateTaskspaceParams>,
     ) -> Result<CallToolResult, McpError> {
         // ANCHOR_END: update_taskspace_tool
-        self.ipc
-            .send_log(
-                LogLevel::Info,
-                format!(
-                    "Updating taskspace: {} - {}",
-                    params.name, params.description
-                ),
-            )
-            .await;
+        info!("Updating taskspace: {} - {}", params.name, params.description);
 
         // Send update_taskspace message to Symposium app via daemon
         match self
@@ -791,9 +672,7 @@ impl SymposiumServer {
             .await
         {
             Ok(state) => {
-                self.ipc
-                    .send_log(LogLevel::Info, "Taskspace updated successfully".to_string())
-                    .await;
+                info!("Taskspace updated successfully");
 
                 // Note: GUI app automatically clears initial_prompt on update
                 let status_msg = if state.initial_prompt.is_none() {
@@ -811,12 +690,7 @@ impl SymposiumServer {
                 Ok(CallToolResult::success(vec![Content::text(status_msg)]))
             }
             Err(e) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Failed to update taskspace: {}", e),
-                    )
-                    .await;
+                error!("Failed to update taskspace: {}", e);
 
                 Err(McpError::internal_error(
                     "Failed to update taskspace",
@@ -835,28 +709,19 @@ impl SymposiumServer {
                        close associated VSCode windows, and clean up git worktrees."
     )]
     async fn delete_taskspace(&self) -> Result<CallToolResult, McpError> {
-        self.ipc
-            .send_log(LogLevel::Info, "Deleting current taskspace".to_string())
-            .await;
+        info!("Deleting current taskspace");
 
         // Send delete_taskspace message to Symposium app via daemon
         match self.ipc.delete_taskspace().await {
             Ok(()) => {
-                self.ipc
-                    .send_log(LogLevel::Info, "Taskspace deletion initiated".to_string())
-                    .await;
+                info!("Taskspace deletion initiated");
 
                 Ok(CallToolResult::success(vec![Content::text(
                     "Taskspace deletion initiated successfully".to_string(),
                 )]))
             }
             Err(e) => {
-                self.ipc
-                    .send_log(
-                        LogLevel::Error,
-                        format!("Failed to delete taskspace: {}", e),
-                    )
-                    .await;
+                error!("Failed to delete taskspace: {}", e);
 
                 Err(McpError::internal_error(
                     "Failed to delete taskspace",
@@ -874,12 +739,7 @@ impl SymposiumServer {
         &self,
         Parameters(GetRustCrateSourceParams { crate_name, version, pattern }): Parameters<GetRustCrateSourceParams>,
     ) -> Result<CallToolResult, McpError> {
-        self.ipc
-            .send_log(
-                LogLevel::Debug,
-                format!("Getting Rust crate source for '{}' version: {:?} pattern: {:?}", crate_name, version, pattern),
-            )
-            .await;
+        debug!("Getting Rust crate source for '{}' version: {:?} pattern: {:?}", crate_name, version, pattern);
 
         let has_pattern = pattern.is_some();
         let mut search = Eg::rust_crate(&crate_name);
