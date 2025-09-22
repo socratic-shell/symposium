@@ -457,13 +457,13 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
         "--args",
         "--dev-log",
         "--env",
-        "RUST_LOG=socratic_shell_mcp=debug",
+        "RUST_LOG=symposium_mcp=debug",
         "--force", // Always overwrite existing configuration
     ]);
 
     println!("🔧 Registering Symposium MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
 
     let output = cmd.output().context("Failed to execute q mcp add")?;
 
@@ -481,7 +481,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
 fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
     // Check existing configuration
     let list_output = Command::new("claude")
         .args(["mcp", "list"])
@@ -498,25 +498,25 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     let desired_binary_str = binary_path.to_string_lossy();
 
     // Check if symposium exists with correct path
-    let mut socratic_shell_exists = false;
-    let mut socratic_shell_has_correct_path = false;
+    let mut symposium_exists = false;
+    let mut symposium_has_correct_path = false;
 
     for line in list_stdout.lines() {
         if line.contains("symposium") {
-            socratic_shell_exists = true;
+            symposium_exists = true;
             if line.contains(desired_binary_str.as_ref()) {
-                socratic_shell_has_correct_path = true;
+                symposium_has_correct_path = true;
                 break;
             }
         }
     }
 
-    if socratic_shell_exists && socratic_shell_has_correct_path {
+    if symposium_exists && symposium_has_correct_path {
         println!("✅ Symposium MCP server already configured with correct path");
         return Ok(true);
     }
 
-    if socratic_shell_exists {
+    if symposium_exists {
         println!("🔄 Updating existing symposium MCP server...");
         let remove_output = Command::new("claude")
             .args(["mcp", "remove", "symposium"])
@@ -531,9 +531,9 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     }
 
     // Add MCP server
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
+    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
     let config_json = format!(
-        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"socratic_shell_mcp=debug"}}}}"#,
+        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
         binary_path.display()
     );
 

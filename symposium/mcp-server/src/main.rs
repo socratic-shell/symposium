@@ -10,7 +10,7 @@ use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing::{error, info};
 
-use socratic_shell_mcp::{
+use symposium_mcp::{
     AgentManager,
     SymposiumServer,
     constants::DAEMON_SOCKET_PREFIX,
@@ -28,7 +28,7 @@ struct Args {
     command: Option<Command>,
 }
 
-use socratic_shell_mcp::Options;
+use symposium_mcp::Options;
 
 #[derive(Parser, Debug)]
 struct DaemonArgs {
@@ -151,7 +151,7 @@ async fn main() -> Result<()> {
             info!(
                 "🚀 DAEMON MODE - Starting message bus daemon with prefix {prefix}, idle timeout {idle_timeout}s",
             );
-            socratic_shell_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
+            symposium_mcp::run_daemon_with_idle_timeout(prefix, idle_timeout, None).await?;
         }
         Some(Command::Client { daemon_args, auto_start }) => {
             let prefix = match &daemon_args.prefix {
@@ -159,7 +159,7 @@ async fn main() -> Result<()> {
                 None => DAEMON_SOCKET_PREFIX,
             };
             info!("🔌 CLIENT MODE - Connecting to daemon with prefix {prefix}",);
-            socratic_shell_mcp::run_client(prefix, auto_start, &daemon_args.identity_prefix, args.options.clone()).await?;
+            symposium_mcp::run_client(prefix, auto_start, &daemon_args.identity_prefix, args.options.clone()).await?;
         }
         Some(Command::Debug(debug_cmd)) => {
             run_debug_command(debug_cmd).await?;
@@ -211,7 +211,7 @@ async fn run_pid_probe() -> Result<()> {
     info!("MCP Server PID: {}", current_pid);
 
     // Try to walk up the process tree to find VSCode
-    match socratic_shell_mcp::find_vscode_pid_from_mcp(current_pid).await {
+    match symposium_mcp::find_vscode_pid_from_mcp(current_pid).await {
         Ok(Some((vscode_pid, terminal_shell_pid))) => {
             info!("✅ SUCCESS: Found VSCode PID: {}", vscode_pid);
             info!("✅ SUCCESS: Terminal Shell PID: {}", terminal_shell_pid);
@@ -277,7 +277,7 @@ async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
 }
 
 async fn run_debug_command(debug_cmd: DebugCommand) -> Result<()> {
-    use socratic_shell_mcp::constants;
+    use symposium_mcp::constants;
     use tokio::io::{AsyncWriteExt, AsyncBufReadExt};
     use tokio::net::UnixStream;
     

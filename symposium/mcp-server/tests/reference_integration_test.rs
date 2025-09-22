@@ -1,6 +1,6 @@
 use serde_json::json;
-use socratic_shell_mcp::actor::{DispatchHandle, ReferenceHandle};
-use socratic_shell_mcp::types::{IPCMessage, IPCMessageType, MessageSender, StoreReferencePayload};
+use symposium_mcp::actor::{DispatchHandle, ReferenceHandle};
+use symposium_mcp::types::{IPCMessage, IPCMessageType, MessageSender, StoreReferencePayload};
 use tokio::sync::mpsc;
 
 #[tokio::test]

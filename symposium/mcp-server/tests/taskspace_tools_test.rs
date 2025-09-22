@@ -1,7 +1,7 @@
 //! Integration tests for taskspace orchestration MCP tools
 
-use socratic_shell_mcp::SymposiumServer;
-use socratic_shell_mcp::types::*;
+use symposium_mcp::SymposiumServer;
+use symposium_mcp::types::*;
 use serde_json;
 
 #[tokio::test]

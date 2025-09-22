@@ -7,7 +7,7 @@ authors = ["Niko Matsakis"]
 license = "MIT"
 
 [lib]
-name = "socratic_shell_mcp"
+name = "symposium_mcp"
 path = "src/lib.rs"
 
 [[bin]]
