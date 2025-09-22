@@ -91,8 +91,8 @@ Each VSCode window can have its own review, allowing you to work on multiple pro
 - **During debugging**: Understand complex code sections
 - **For team handoffs**: Create documentation for colleagues
 
-### Combine with Ask Socratic Shell
-1. **Select confusing code** → Ask Socratic Shell → Get explanation
+### Combine with Ask Symposium
+1. **Select confusing code** → Ask Symposium → Get explanation
 2. **Request broader review** → Get full walkthrough with context
 3. **Navigate between** code and documentation seamlessly
 

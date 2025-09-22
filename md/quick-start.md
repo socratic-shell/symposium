@@ -45,7 +45,7 @@ AI: "Good point! Let me refactor that and update the review"
 
 The review automatically updates to reflect the changes.
 
-## Workflow 2: Ask Socratic Shell
+## Workflow 2: Ask Symposium
 
 ### 1. Select Code
 
@@ -53,7 +53,7 @@ Highlight any code in your VSCode editor - a function, a problematic section, or
 
 ### 2. Ask Your AI
 
-Right-click and choose **"Ask Socratic Shell"** from the context menu, or use the lightbulb quick action.
+Right-click and choose **"Ask Symposium"** from the context menu, or use the lightbulb quick action.
 
 ### 3. Choose Terminal (if needed)
 
@@ -89,7 +89,7 @@ Each VSCode window works independently:
 
 ## Tips
 
-- **Use both workflows together**: Ask Socratic Shell for specific questions, review presentation for comprehensive documentation
+- **Use both workflows together**: Ask Symposium for specific questions, review presentation for comprehensive documentation
 - **Navigate seamlessly**: Click between review references and continue discussions
 - **Iterative refinement**: Reviews evolve as you discuss and improve the code
 - **Copy for commits**: Export reviews as commit messages to preserve collaborative context

@@ -1,5 +1,5 @@
 #!/usr/bin/env cargo
-//! Socratic Shell Development Setup Tool
+//! Symposium Development Setup Tool
 //!
 //! Builds the Rust MCP server, VSCode extension, and configures them for use
 //! with AI assistants like Claude CLI and Q CLI.
@@ -12,9 +12,9 @@ use std::process::Command;
 #[derive(Parser)]
 #[command(
     name = "setup",
-    about = "Build Socratic Shell components and set up for development with AI assistants",
+    about = "Build Symposium components and set up for development with AI assistants",
     long_about = r#"
-Build Socratic Shell components and set up for development with AI assistants
+Build Symposium components and set up for development with AI assistants
 
 Examples:
   cargo setup                           # Show help and usage
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
     let build_mcp = args.all || args.mcp;
     let build_app = args.all || args.app;
 
-    println!("🐚 Socratic Shell Development Setup");
+    println!("🐚 Symposium Development Setup");
     println!("{}", "=".repeat(35));
 
     // Check prerequisites based on what we're building
@@ -127,7 +127,7 @@ fn main() -> Result<()> {
 }
 
 fn show_help() {
-    println!("🎭 Socratic Shell Development Setup");
+    println!("🎭 Symposium Development Setup");
     println!("{}", "=".repeat(35));
     println!();
     println!("Usage: cargo setup [OPTIONS]");
@@ -245,7 +245,7 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
         println!("\n📝 Next steps:");
         println!("1. Restart VSCode to activate the extension");
         println!("2. Ask your AI assistant to present a code review");
-        println!("3. Reviews will appear in the Socratic Shell panel in VSCode");
+        println!("3. Reviews will appear in the Symposium panel in VSCode");
     }
 
     Ok(())
@@ -461,7 +461,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
         "--force", // Always overwrite existing configuration
     ]);
 
-    println!("🔧 Registering Socratic Shell MCP server with Q CLI...");
+    println!("🔧 Registering Symposium MCP server with Q CLI...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
 
@@ -479,7 +479,7 @@ fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
 }
 
 fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
-    println!("🔧 Configuring Socratic Shell MCP server with Claude Code...");
+    println!("🔧 Configuring Symposium MCP server with Claude Code...");
     println!("   Binary path: {}", binary_path.display());
     println!("   Development mode: logging to /tmp/socratic-shell-mcp.log with RUST_LOG=socratic_shell_mcp=debug");
     // Check existing configuration
@@ -512,7 +512,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
     }
 
     if socratic_shell_exists && socratic_shell_has_correct_path {
-        println!("✅ Socratic Shell MCP server already configured with correct path");
+        println!("✅ Symposium MCP server already configured with correct path");
         return Ok(true);
     }
 
@@ -550,7 +550,7 @@ fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
         .context("Failed to execute claude mcp add")?;
 
     if add_output.status.success() {
-        println!("✅ Socratic Shell MCP server registered successfully with Claude Code!");
+        println!("✅ Symposium MCP server registered successfully with Claude Code!");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&add_output.stderr);

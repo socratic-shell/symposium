@@ -1,11 +1,11 @@
 ---
 name: "MCP Tool Usage Suggestions"
-description: "Guidelines for effective use of Socratic Shell's MCP tools"
+description: "Guidelines for effective use of Symposium's MCP tools"
 ---
 
 # MCP Tool Usage Suggestions
 
-*Making the most of Socratic Shell's MCP tools for effective collaboration*
+*Making the most of Symposium's MCP tools for effective collaboration*
 
 ## Signal Completion
 

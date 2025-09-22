@@ -74,7 +74,7 @@ Yes. Early in a project, a BDFL is a good fit to maintain velocity and to have a
 
 ## So...why does this talk about a core team?
 
-I am anticipating that we'll quickly want to have multiple designers who can move designs forward and not funnel *everything* through the "BDFL". Therefore, I created the idea of a "design team" and made the "BDFL" the lead of that team. But I've intentionally kept the *final* decision about RFDs falling under the lead, which means fundamentally the character of Socratic Shell remains under the lead's purview and influence. I expect that if the project is a success we will extend the governance structure in time but I didn't want to do that in advance.
+I am anticipating that we'll quickly want to have multiple designers who can move designs forward and not funnel *everything* through the "BDFL". Therefore, I created the idea of a "design team" and made the "BDFL" the lead of that team. But I've intentionally kept the *final* decision about RFDs falling under the lead, which means fundamentally the character of Symposium remains under the lead's purview and influence. I expect that if the project is a success we will extend the governance structure in time but I didn't want to do that in advance.
 
 ## Why "Request for Dialog" and not "Request for Comment"?
 

@@ -1,10 +1,10 @@
 # mdbook Conventions
 
-*Documentation standards and best practices for the Socratic Shell project*
+*Documentation standards and best practices for the Symposium project*
 
 ## Purpose
 
-This mdbook captures the high-level structure, design decisions, and architectural patterns of the Socratic Shell codebase. It serves as a living document that stays synchronized with the actual implementation.
+This mdbook captures the high-level structure, design decisions, and architectural patterns of the Symposium codebase. It serves as a living document that stays synchronized with the actual implementation.
 
 ## Core Principles
 

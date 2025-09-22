@@ -73,7 +73,7 @@ interface TaskspaceStateRequest {
 }
 
 /**
- * Response from Socratic Shell app when querying taskspace state
+ * Response from Symposium app when querying taskspace state
  * Contains taskspace metadata for agent initialization
  */
 interface TaskspaceStateResponse {
@@ -257,7 +257,7 @@ async function launchAIAgent(bus: Bus, agentCommand: string[], taskspaceUuid: st
 
         // Create new terminal for the agent
         const terminal = vscode.window.createTerminal({
-            name: `Socratic Shell`,
+            name: `Symposium`,
             cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath
         });
 
@@ -278,13 +278,13 @@ async function launchAIAgent(bus: Bus, agentCommand: string[], taskspaceUuid: st
 export function activate(context: vscode.ExtensionContext) {
 
     // 💡: Create dedicated output channel for cleaner logging
-    const outputChannel = vscode.window.createOutputChannel('Socratic Shell');
+    const outputChannel = vscode.window.createOutputChannel('Symposium');
     
     // Create global logger for the extension
     const logger = new StructuredLogger(outputChannel, 'EXTENSION');
     globalLogger = logger; // Set global reference
-    logger.info('Socratic Shell extension is now active');
-    console.log('Socratic Shell extension is now active');
+    logger.info('Symposium extension is now active');
+    console.log('Symposium extension is now active');
 
     // Create the central bus
     const bus = new Bus(context, logger);
@@ -376,7 +376,7 @@ export function activate(context: vscode.ExtensionContext) {
     const logPIDsCommand = vscode.commands.registerCommand('socratic-shell.logPIDs', async () => {
         outputChannel.show(); // Bring output channel into focus
         await logPIDDiscovery();
-        vscode.window.showInformationMessage('PID information logged to Socratic Shell output channel');
+        vscode.window.showInformationMessage('PID information logged to Symposium output channel');
     });
 
     // Window title toggle command for POC
@@ -399,7 +399,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(showReviewCommand, reviewActionCommand, copyReviewCommand, logPIDsCommand, daemonClient, toggleWindowTitleCommand);
 
-    // Return API for Ask Socratic Shell integration
+    // Return API for Ask Symposium integration
     return {
         discoverActiveShells: () => daemonClient.discoverActiveShells()
     };
@@ -432,7 +432,7 @@ function setupSelectionDetection(bus: Bus): void {
         }
     });
 
-    // 💡: Register Code Action Provider for "Socratic Shell" section
+    // 💡: Register Code Action Provider for "Symposium" section
     const codeActionProvider = vscode.languages.registerCodeActionsProvider(
         '*', // All file types
         {
@@ -440,12 +440,12 @@ function setupSelectionDetection(bus: Bus): void {
                 // Only show when there's a non-empty selection
                 if (!range.isEmpty) {
                     const action = new vscode.CodeAction(
-                        'Ask Socratic Shell',
+                        'Ask Symposium',
                         vscode.CodeActionKind.QuickFix
                     );
                     action.command = {
                         command: 'socratic-shell.chatAboutSelection',
-                        title: 'Ask Socratic Shell'
+                        title: 'Ask Symposium'
                     };
                     action.isPreferred = true; // Show at top of list
 

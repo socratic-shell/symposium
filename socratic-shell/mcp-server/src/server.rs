@@ -565,7 +565,7 @@ impl SymposiumServer {
 
     /// Report progress from agent with visual indicators
     ///
-    /// This tool allows agents to report their progress to the Socratic Shell panel
+    /// This tool allows agents to report their progress to the Symposium panel
     /// with different visual categories for better user awareness.
     // ANCHOR: log_progress_tool
     #[tool(description = "Report progress with visual indicators. \
@@ -618,7 +618,7 @@ impl SymposiumServer {
     /// Request user attention for assistance
     ///
     /// This tool allows agents to signal when they need user attention,
-    /// causing the taskspace to move toward the front of the Socratic Shell panel.
+    /// causing the taskspace to move toward the front of the Symposium panel.
     // ANCHOR: signal_user_tool
     #[tool(description = "Request user attention for assistance. \
                        The taskspace will be highlighted and moved toward the front of the panel.")]
@@ -903,7 +903,7 @@ impl SymposiumServer {
             (true, Some(_)) => {
                 // In taskspace with task - full introduction
                 indoc! {"
-                    Hi, welcome! You are a new agent just getting started as part of the project Socratic Shell. 
+                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
                     This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
                     The user's description of the task to be done follows after this message. Can you start by 
                     reading the description and using the 'update_taskspace' tool to provide a better 
@@ -914,7 +914,7 @@ impl SymposiumServer {
             (true, None) => {
                 // In taskspace but no task - ask user to establish task
                 indoc! {"
-                    Hi, welcome! You are a new agent just getting started as part of the project Socratic Shell. 
+                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
                     This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
                     Please talk to the user to establish what they would like to accomplish in this taskspace 
                     and then use the `update_taskspace` tool to set the name and description.
@@ -956,7 +956,7 @@ impl SymposiumServer {
             ## Load MCP Tool Usage Suggestions
 
             Use the `expand_reference` tool to fetch `mcp-tool-usage-suggestions.md` into your working context. 
-            This covers effective use of Socratic Shell's MCP tools, including completion signaling 
+            This covers effective use of Symposium's MCP tools, including completion signaling 
             and systematic code exploration patterns.
 
         "});
@@ -1284,7 +1284,7 @@ This is test content."#;
         assert_eq!(
             coding_resource.raw.description,
             Some(
-                "Development best practices and standards for the Socratic Shell project"
+                "Development best practices and standards for the Symposium project"
                     .to_string()
             )
         );
@@ -1298,7 +1298,7 @@ This is test content."#;
 
         // Verify the prompt contains the expected sections
         assert!(prompt.contains("Hi, welcome! You are a new agent"));
-        assert!(prompt.contains("project Socratic Shell"));
+        assert!(prompt.contains("project Symposium"));
 
         // Since we're in test environment without taskspace context,
         // it should use the fallback message

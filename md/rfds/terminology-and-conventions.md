@@ -1,11 +1,11 @@
 # RFD Terminology and Conventions
 
-This document establishes standard terminology and conventions for use in Socratic Shell RFDs to ensure consistency and clarity across all design documents.
+This document establishes standard terminology and conventions for use in Symposium RFDs to ensure consistency and clarity across all design documents.
 
 ## Terminology
 
 ### Agent
-An **agent** refers to an LLM (Large Language Model) that is executing and interacting with the user within the Socratic Shell environment. Agents have access to MCP tools and can perform actions on behalf of the user.
+An **agent** refers to an LLM (Large Language Model) that is executing and interacting with the user within the Symposium environment. Agents have access to MCP tools and can perform actions on behalf of the user.
 
 **Pronouns**: Always use "they/them" pronouns when referring to agents, not "it" or "he/she".
 
@@ -16,13 +16,13 @@ An **agent** refers to an LLM (Large Language Model) that is executing and inter
 - ❌ "The agent can use his access to the file system"
 
 ### User
-A **user** refers to the human developer interacting with Socratic Shell and its agents.
+A **user** refers to the human developer interacting with Symposium and its agents.
 
 ### Tool
 A **tool** refers to an MCP (Model Context Protocol) tool that agents can invoke to perform specific actions or retrieve information.
 
 ### Taskspace
-A **taskspace** is an isolated working environment within Socratic Shell where agents can work on specific tasks without interfering with other work.
+A **taskspace** is an isolated working environment within Symposium where agents can work on specific tasks without interfering with other work.
 
 ## Writing Conventions
 

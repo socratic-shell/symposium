@@ -145,7 +145,7 @@ export class DaemonClient implements vscode.Disposable {
         // Handle client process events
         this.clientProcess.on('spawn', () => {
             this.logger.info(
-                '✅ Socratic Shell client process started',
+                '✅ Symposium client process started',
                 {local: true}
             );
             this.setupClientCommunication();
@@ -890,7 +890,7 @@ export class DaemonClient implements vscode.Disposable {
             this.clientProcess = null;
         }
 
-        debugLog('Socratic Shell client disposed');
+        debugLog('Symposium client disposed');
     }
 
     /**

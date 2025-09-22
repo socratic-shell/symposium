@@ -2,7 +2,7 @@
 name = "socratic-shell-mcp"
 version = "0.1.0"
 edition = "2024"
-description = "Rust implementation of Socratic Shell MCP server for code review integration"
+description = "Rust implementation of Symposium MCP server for code review integration"
 authors = ["Niko Matsakis"]
 license = "MIT"
 

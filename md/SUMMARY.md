@@ -20,7 +20,7 @@ A# Summary
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
     - [IPC message type reference](./design/ipc_message_type_reference.md)
 - [Agent manager](./design/agent-manager.md)
-- [Socratic Shell MCP server + IDE extension specifics]()
+- [Symposium MCP server + IDE extension specifics]()
     - [MCP Server Actor Architecture](./design/mcp-server-actor-architecture.md)
     - [MCP Server Tools](./design/mcp-server.md)
         - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
@@ -29,8 +29,8 @@ A# Summary
         - [Taskspace Orchestration Tools](./design/mcp-tools/taskspace-orchestration.md)
         - [Reference System Tools](./design/mcp-tools/reference-system.md)
         - [Rust Development Tools](./design/mcp-tools/rust-development.md)
-    - [Socratic Shell Reference System](./design/socratic-shell-ref-system.md)
-    - [Ask Socratic Shell](./design/ask-socratic-shell.md)
+    - [Symposium Reference System](./design/socratic-shell-ref-system.md)
+    - [Ask Symposium](./design/ask-socratic-shell.md)
     - [Code walkthroughs](./design/walkthroughs.md)
         - [Walkthrough format](./design/walkthrough-format.md)
         - [Comment Interactions](./design/walkthrough-comment-interactions.md)
@@ -45,7 +45,7 @@ A# Summary
 
 <!--
 
-A "Request for Dialog" (RFD) is Socratic Shell's version of the RFC process.
+A "Request for Dialog" (RFD) is Symposium's version of the RFC process.
 
 Each entry here maps to a file whose name is the shorthand name for the RFD, e.g.,  `./rfds/ide-operations.md`. 
 
@@ -53,7 +53,7 @@ The RFD tracks the feature's progress from design to implementation. They are li
 
 RFDs may have other associated files in a directory, e.g., `./rfds/ide-operations/auxiliary-data.md`.
 
-RFDs are moved from section to section by the Socratic Shell team members only.
+RFDs are moved from section to section by the Symposium team members only.
 
 People can propose an RFD by create a PR adding a new file into the early drafts section. It should have a suitable name using "kebab-case" conventions.
 

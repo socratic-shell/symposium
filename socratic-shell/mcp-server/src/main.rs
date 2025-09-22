@@ -1,6 +1,6 @@
 #!/usr/bin/env cargo run --
 
-//! Socratic Shell MCP Server - Rust Implementation
+//! Symposium MCP Server - Rust Implementation
 //!
 //! Provides tools for AI assistants to display code reviews in VSCode.
 //! Acts as a communication bridge between AI and the VSCode extension via IPC.
@@ -19,7 +19,7 @@ use socratic_shell_mcp::{
 
 #[derive(Parser)]
 #[command(name = "socratic-shell-mcp")]
-#[command(about = "Socratic Shell MCP Server for VSCode integration")]
+#[command(about = "Symposium MCP Server for VSCode integration")]
 struct Args {
     #[command(flatten)]
     options: Options,
@@ -169,7 +169,7 @@ async fn main() -> Result<()> {
             run_agent_manager(agent_cmd).await?;
         }
         None => {
-            info!("Starting Socratic Shell MCP Server (Rust)");
+            info!("Starting Symposium MCP Server (Rust)");
             info!("MCP Server working directory: {:?}", std::env::current_dir());
 
             // Create our server instance
@@ -183,12 +183,12 @@ async fn main() -> Result<()> {
                 error!("MCP server error: {:?}", e);
             })?;
 
-            info!("Socratic Shell MCP Server is ready and listening");
+            info!("Symposium MCP Server is ready and listening");
 
             // Wait for the service to complete
             service.waiting().await?;
 
-            info!("Socratic Shell MCP Server shutting down");
+            info!("Symposium MCP Server shutting down");
 
             // Send Goodbye discovery message before shutdown
             if let Err(e) = ipc_for_shutdown.shutdown().await {

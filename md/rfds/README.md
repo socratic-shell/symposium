@@ -2,11 +2,11 @@
 
 {RFD:introduce-rfd-process}
 
-A "Request for Dialog" (RFD) is Socratic Shell's version of the RFC process. RFDs are the primary mechanism for proposing new features, collecting community input on an issue, and documenting design decisions.
+A "Request for Dialog" (RFD) is Symposium's version of the RFC process. RFDs are the primary mechanism for proposing new features, collecting community input on an issue, and documenting design decisions.
 
 ## When to write an RFD
 
-You should consider writing an RFD if you intend to make a "substantial" change to Socratic Shell or its documentation. What constitutes a "substantial" change is evolving based on community norms and varies depending on what part of the ecosystem you are proposing to change.
+You should consider writing an RFD if you intend to make a "substantial" change to Symposium or its documentation. What constitutes a "substantial" change is evolving based on community norms and varies depending on what part of the ecosystem you are proposing to change.
 
 Some changes do not require an RFD:
 - Rephrasing, reorganizing or refactoring

@@ -1,4 +1,4 @@
-# Code walkthroughs and Ask Socratic Shell
+# Code walkthroughs and Ask Symposium
 
 This document defines the expected user workflows for walkthrough features in Dialectic.
 
@@ -71,6 +71,6 @@ This document defines the expected user workflows for walkthrough features in Di
 **Expected Behavior**: Comment thread should either clear the reply or indicate it was sent to the AI.
 
 ### 🚨 Symposium-Ref Resolution Issue
-**Problem**: Socratic Shell references (`<symposium-ref id="..."/>`) fail to resolve.
+**Problem**: Symposium references (`<symposium-ref id="..."/>`) fail to resolve.
 
 **Expected Behavior**: References should expand to provide context to the AI assistant.

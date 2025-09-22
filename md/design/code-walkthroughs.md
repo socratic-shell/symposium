@@ -96,7 +96,7 @@ We begin with examples before defining the full structure. A *walkthrough* is de
 
 ## Interaction
 
-When the MCP tool is triggered, the Socratic Shell pane renders the given walkthrough.
+When the MCP tool is triggered, the Symposium pane renders the given walkthrough.
 It also renders a "clear" button to clear the current code review.
 
 ### Rendering the walkthrough
@@ -125,13 +125,13 @@ Clicking on the icon.
 
 ### Actions
 
-When the user clicks the action button, the given text is sent to the LLM using the [Ask Socratic Shell](./ask-socratic-shell.md) mechanism and the terminal is selected. To avoid triggering action, newlines are stripped from the string and replaced with spaces. Users can press enter themselves.
+When the user clicks the action button, the given text is sent to the LLM using the [Ask Symposium](./ask-socratic-shell.md) mechanism and the terminal is selected. To avoid triggering action, newlines are stripped from the string and replaced with spaces. Users can press enter themselves.
 
 ### Responding to comments
 
 Each comment has a button on it that says "Reply".
 
-Clicking that button sends text to the LLM using the [Ask Socratic Shell](./ask-socratic-shell.md) mechanism:
+Clicking that button sends text to the LLM using the [Ask Symposium](./ask-socratic-shell.md) mechanism:
 
 ```
 <context>In reply to comment on file.rs?regex (line XXX).</context>

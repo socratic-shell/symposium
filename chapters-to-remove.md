@@ -7,7 +7,7 @@ I'm going to mark them with either:
 * X -- outdated, delete
 * ? -- preserve for now, we will revisit
 
-- X [Repository Restructure: Socratic Shell + Symposium Split](./work-in-progress/rebrand.md)
+- X [Repository Restructure: Symposium + Symposium Split](./work-in-progress/rebrand.md)
 - X [Startup Window Management Implementation](./work-in-progress/startup-window-management.md)
 - X [Triple-Tickification: XML to Markdown Code Blocks](./work-in-progress/triple-tickification.md)
 - ? [Big picture plans](./work-in-progress/big-picture.md)

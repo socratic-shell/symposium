@@ -1,6 +1,6 @@
 {
   "name": "socratic-shell",
-  "displayName": "Socratic Shell",
+  "displayName": "Symposium",
   "description": "",
   "version": "0.1.0",
   "publisher": "socratic-shell",
@@ -24,56 +24,56 @@
       {
         "command": "socratic-shell.showReview",
         "title": "Show Review",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.copyReview",
         "title": "Copy Review",
-        "category": "Socratic Shell",
+        "category": "Symposium",
         "icon": "$(copy)"
       },
       {
         "command": "socratic-shell.logPIDs",
         "title": "Log PIDs",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.showFileDiff",
         "title": "Show File Diff",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.addComment",
         "title": "Add Comment",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.addCommentReply",
         "title": "Add Comment Reply",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.addWalkthroughComment",
         "title": "Add Walkthrough Comment",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       },
       {
         "command": "socratic-shell.toggleComments",
         "title": "Toggle Comments",
-        "category": "Socratic Shell",
+        "category": "Symposium",
         "icon": "$(comment)"
       },
       {
         "command": "socratic-shell.toggleWindowTitle",
         "title": "Toggle Window Title",
-        "category": "Socratic Shell"
+        "category": "Symposium"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "socratic-shell",
-          "title": "Socratic Shell",
+          "title": "Symposium",
           "icon": "activitybar-logo.svg"
         }
       ]

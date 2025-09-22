@@ -2,7 +2,7 @@
 
 > What are you proposing to change?
 
-Extend Socratic Shell with a new `get_rust_crate_source` MCP tool that will direct agents to the sources from Rust crates and help to find examples of code that uses particular APIs.
+Extend Symposium with a new `get_rust_crate_source` MCP tool that will direct agents to the sources from Rust crates and help to find examples of code that uses particular APIs.
 
 # Status quo
 
@@ -23,7 +23,7 @@ Our MCP server will leverage those sources.
 
 > What are you proposing to improve the situation?
 
-Integrate Rust crate source exploration capabilities directly into the Socratic Shell MCP server through a unified `get_rust_crate_source` tool that:
+Integrate Rust crate source exploration capabilities directly into the Symposium MCP server through a unified `get_rust_crate_source` tool that:
 
 - **Extracts crate sources** to a local cache directory for exploration
 - **Matches versions** with the current Rust crate `Cargo.toml`, if the crate is in use; otherwise gets the most recent version
@@ -33,13 +33,13 @@ Integrate Rust crate source exploration capabilities directly into the Socratic 
 - **Provides conditional responses** - only includes search results when a pattern is provided
 - **Caches extractions** to avoid redundant downloads and improve performance
 
-This eliminates the need for separate MCP servers and provides seamless integration with the existing Socratic Shell ecosystem.
+This eliminates the need for separate MCP servers and provides seamless integration with the existing Symposium ecosystem.
 
 # Shiny future
 
 > How will things will play out once this feature exists?
 
-When developers ask the agent to work with a crate that they do not know, they will invoke the `get_rust_crate_source` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and provide accurate usage examples. Developers working in Socratic Shell will have seamless access to Rust crate exploration:
+When developers ask the agent to work with a crate that they do not know, they will invoke the `get_rust_crate_source` MCP tool and read in the crate source. The agent will be able to give the names of specific APIs and provide accurate usage examples. Developers working in Symposium will have seamless access to Rust crate exploration:
 
 - **Unified Interface**: Single `get_rust_crate_source` tool handles both extraction and searching
 - **IDE Integration**: Results appear directly in the IDE with proper formatting and links
@@ -135,7 +135,7 @@ The tool accepts an optional `version` parameter as a semver range (using the sa
 ### Phase 3: Enhanced Features (Future)
 1. Configurable context lines for search results
 2. Search scope options (examples only vs. all source)
-3. Integration with other Socratic Shell tools for enhanced workflows
+3. Integration with other Symposium tools for enhanced workflows
 4. Smart dependency resolution (use the version that the main crate being modified depends on directly)
 
 # Frequently asked questions
