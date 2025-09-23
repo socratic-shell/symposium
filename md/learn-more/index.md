@@ -18,7 +18,7 @@
   <h2>Collaborative</h2>
   <p>We value rich interactions where humans and agents work together to explore complex ideas.</p>
   <ul class="tenet-examples">
-    <li class="works"><a href="./interactive-walkthroughs.md">Interactive walkthroughs</a></li>
+    <li class="works"><a href="./walkthroughs.md">Interactive walkthroughs</a></li>
     <li class="works"><a href="./collaborative-prompts.md">Collaborative prompts</a></li>
     <li class="works"><a href="./ide-integration.md">IDE integration for context-aware discussions</a></li>
   </ul>

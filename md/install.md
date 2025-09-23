@@ -16,6 +16,10 @@ We aim to support as many tools as we can, but we currently have support only fo
 
 ## Instructions
 
+### Mac OS X
+
+If you are on a Mac, you can install with
+
 * Install and configure
     * A supported agentic tool
     * A supported editor
