@@ -24,7 +24,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .warning-banner {
-    font-family: 'Dancing Script', cursive;
+    font-family: 'Open Sans', sans-serif;
     font-size: 1.6rem;
     color: #ad160c;
     margin: 0;
@@ -45,7 +45,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .action-link {
-    font-family: 'Dancing Script', cursive;
+    font-family: 'Open Sans', sans-serif;
     font-size: 2rem;
     color: #372b2f !important;
     text-decoration: none;
