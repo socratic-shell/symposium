@@ -8,9 +8,9 @@
   <h2>Open</h2>
   <p>We are an independent community focused on exploring what AI has to offer.</p>
   <ul class="tenet-examples">
-    <li class="works">Open-source codebase</li>
+    <li class="works"><a href="https://github.com/symposium-dev/symposium/">Open-source codebase</a></li>
     <li class="works"><a href="../rfds/index.html">RFD process</a></li>
-    <li class="works">Code of conduct</li>
+    <li class="works"><a href="https://github.com/symposium-dev/symposium/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
   </ul>
 </div>
 
@@ -19,8 +19,8 @@
   <p>We value rich interactions where humans and agents work together to explore complex ideas.</p>
   <ul class="tenet-examples">
     <li class="works"><a href="./interactive-walkthroughs.md">Interactive walkthroughs</a></li>
-    <li class="works">Collaborative prompts</li>
-    <li class="works">IDE integration for context-aware discussions</li>
+    <li class="works"><a href="./collaborative-prompts.md">Collaborative prompts</a></li>
+    <li class="works"><a href="./ide-integration.md">IDE integration for context-aware discussions</a></li>
   </ul>
 </div>
 
@@ -28,11 +28,10 @@
   <h2>Orchestrated</h2>
   <p>We build tools to manage multiple agents, keeping you up-to-date on their progress.</p>
   <ul class="tenet-examples">
-    <li class="works">Taskspaces for multiple AI workspaces</li>
-    <li class="works">Separate contexts per project</li>
-    <li class="help-wanted">Cross-platform taskspaces <a href="https://github.com/symposium/symposium/issues/cross-platform"></a></li>
-    <li class="help-wanted">Agent delegation and handoffs <a href="./rfds/agent-delegation.md"></a></li>
-    <li class="help-wanted">Asynchronous background agents <a href="./rfds/async-agents.md"></a></li>
+    <li class="works">Taskspaces on your local machine</li>
+    <li class="help-wanted"><a href="../rfds/persistent-agents.md">Asynchronous background agents</a></li>
+    <li class="help-wanted">Remotely hosted taskspaces</li>
+    <li class="help-wanted">Windows, Linux apps</li>
   </ul>
 </div>
 
