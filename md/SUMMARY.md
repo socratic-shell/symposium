@@ -57,14 +57,12 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 - [Implementation Overview](./design/implementation-overview.md)
 - [mdbook Conventions](./design/mdbook-conventions.md)
-- [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
-- [Guidance and Initialization](./design/guidance-and-initialization.md)
-- [Taskspace Deletion System](./design/taskspace-deletion.md)
+- [Collaborative prompt engineering](./collaborative-prompting.md)
 - [IPC Communication and Daemon Architecture](./design/daemon.md)
     - [IPC message type reference](./design/ipc_message_type_reference.md)
-- [Agent manager](./design/agent-manager.md)
-- [Symposium MCP server + IDE extension specifics]()
+- [Symposium MCP server + IDE extension specifics](./design/mcp-server-ide.md)
     - [MCP Server Actor Architecture](./design/mcp-server-actor-architecture.md)
+    - [Guidance and Initialization](./design/guidance-and-initialization.md)
     - [MCP Server Tools](./design/mcp-server.md)
         - [IDE Integration Tools](./design/mcp-tools/ide-integration.md)
         - [Code Walkthrough Tools](./design/mcp-tools/walkthroughs.md)
@@ -78,12 +76,14 @@ People can propose an RFD by create a PR adding a new file into the early drafts
         - [Walkthrough format](./design/walkthrough-format.md)
         - [Comment Interactions](./design/walkthrough-comment-interactions.md)
     - [Dialect language](./design/dialect-language.md)
-- [Symposium application specifics]()
+- [Symposium application specifics](./design/symposium-app-specifics.md)
     - [Startup and Window Management](./design/startup-and-window-management.md)
     - [Stacked Windows](./design/stacked-windows.md)
     - [Window Stacking Design](./design/window-stacking-design.md)
     - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
-- [Collaborative prompt engineering]
+    - [Taskspace Deletion System](./design/taskspace-deletion.md)
+- [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
+    - [Agent manager](./design/agent-manager.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more

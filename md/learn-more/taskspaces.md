@@ -1,106 +1,43 @@
 # Taskspaces
 
-![Taskspace screenshot](./taskspaces.md)
+*Taskspaces* are a way to orchestrate multiple agents working on different copies of your code. They are supported via the Symposium OS X application:
 
-*Taskspaces* are a way to orchestrate multiple agents working on different copies of your code. They are supported via the Symposium OS X application.
-When using agents it is natural to want to do multithings at one time. The Symposium GUI app is designed to help you manage that *Taskspaces* are 
+![Taskspace screenshot](./taskspaces.png)
 
-*Isolated workspaces for focused collaboration*
+Currently, taskspaces are all stored on your local machine and agents run synchronously -- i.e., when your editor is not active, the agent is also not active. But we would like to support remote development (e.g., cloud-hosted or via ssh) and persistent agents (see the {RFD:persistent-agents} RFD).
 
-## What are Taskspaces?
+## How to use them
 
-Taskspaces are isolated copies of your project where you can work with AI assistance without affecting your main development environment. Each taskspace is a separate workspace that provides a clean, focused environment for exploration, experimentation, and collaboration.
+Launch the Desktop app. Create a new project and give it the URL of your git repository. This will clone your git repository.
 
-## Key Benefits
+### Granting permissions
 
-### Safe Experimentation
-- Work on ideas without risk to your main codebase
-- Try different approaches in parallel taskspaces
-- Easy cleanup when exploration is complete
-- No fear of breaking existing work
+The Desktop app is designed to work with any editor. It does this by using the Mac OS X Accessibility APIs to move windows from the outside and screen capture APIs to capture screenshots. You need to grand these permissions.
 
-### Focused Collaboration
-- Each taskspace has a specific purpose and scope
-- Conversations stay relevant to the current task
-- Clear boundaries help maintain context
-- Progress tracking per workspace
+### Creating taskspaces
 
-### Seamless Integration
-- Full access to your project's code and structure
-- Git integration for version control within taskspaces
-- IDE integration maintains familiar development environment
-- Easy switching between taskspaces and main project
+Create your first taskspace with the "+" button. VSCode will launch and open up the agent.
 
-## How Taskspaces Work
+Once in the taskspace, you can spawn a new taskspace by telling the agent to "spawn a new taskspace" and describing the task you would like to perform in that space.
 
-### Creation
-When you create a new taskspace:
-1. A complete copy of your project is created
-2. The AI assistant is initialized with project context
-3. You can set a specific name and description for the task
-4. Work begins in the isolated environment
+### Taskspace logs and signals
 
-### Collaboration
-Within a taskspace, you can:
-- Have context-aware conversations about your code
-- Generate interactive walkthroughs of changes
-- Get assistance with implementation and debugging
-- Create documentation alongside development
+The agent has accept to MCP tools to [report logs and signal for your attention](../design/mcp-tools/taskspace-orchestration.md). Logs reported in this way will show up in the Desktop app.
 
-### Completion
-When work is finished:
-- Review and commit changes within the taskspace
-- Merge valuable work back to your main project
-- Archive or delete the taskspace
-- Preserve conversation history and insights
+### Stacked windows
 
-## Use Cases
+If you check the "Stack Windows" button, then all of your editor windows will be arranged into a stack so that only one is visible at any time. When you click on a taskspace, it will be brought to the top of the stack. When you drag or resize windows, the others in the stack will follow behind.
 
-### Code Exploration
-- Understanding unfamiliar codebases
-- Exploring different architectural approaches
-- Learning new frameworks or patterns
-- Investigating bugs or performance issues
+### Activating and deactivating a taskspace
 
-### Feature Development
-- Prototyping new features
-- Refactoring existing code
-- Adding tests and documentation
-- Experimenting with different implementations
+When you close the window for your editor, the taskspace will be "deactivated". This currently means that the agent is halted.
 
-### Learning and Onboarding
-- Getting familiar with project structure
-- Understanding team conventions and patterns
-- Learning from AI explanations and walkthroughs
-- Building confidence before making changes
+When you click a deactivated taskspace, the window will re-open and the agent will be reinvoked and asked to resume your conversation.
 
-## Best Practices
+### Deleting taskspaces
 
-### Naming and Organization
-- Use descriptive names that reflect the task purpose
-- Include relevant context in the description
-- Keep taskspaces focused on specific goals
-- Clean up completed or abandoned taskspaces regularly
+You can delete a taskspace with the trashcan button or by asking the agent to "delete this taskspace".
 
-### Collaboration Patterns
-- Start with exploration before implementation
-- Use "Make it so?" to confirm readiness before major changes
-- Call "meta moments" to improve collaboration in real-time
-- Signal completion when work is finished
+## How it is implemented
 
-### Integration with Main Project
-- Regularly sync with main branch to avoid conflicts
-- Review changes carefully before merging back
-- Document insights and decisions for future reference
-- Share learnings with team members
-
-## Getting Started
-
-1. **Create a taskspace** - Choose a specific task or exploration goal
-2. **Set context** - Provide a clear name and description
-3. **Begin collaboration** - Start with questions and exploration
-4. **Work iteratively** - Make changes, test, and refine
-5. **Signal completion** - Clearly indicate when work is finished
-6. **Review and integrate** - Merge valuable changes back to main project
-
-Taskspaces provide the foundation for effective human-AI collaboration by creating safe, focused environments where both parties can work together without constraints or fear of disruption.
+The Desktop app is [written in Swift](../design/implementation-overview.md). You will find documentation on in the [Symposium application specifics](../design/symposium-app-specifics.md) section.
