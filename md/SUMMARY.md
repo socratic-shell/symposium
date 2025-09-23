@@ -15,6 +15,7 @@
   - [Interactive walkthroughs](./learn-more/interactive-walkthroughs.md)
   - [Collaborative prompts](./learn-more/collaborative-prompts.md)
   - [IDE integration](./learn-more/ide-integration.md)
+  - [Taskspaces](./learn-more/taskspaces.md)
 - [Contribute](./contribute.md)
 
 # Requests for Dialog
