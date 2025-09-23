@@ -13,4 +13,4 @@
 
 ## Reporting
 
-If you need to report conduct issues, please reach out to the project maintainers through GitHub issues or direct contact.
+If you need to report conduct issues, please reach out [Niko Matsakis](mailto:rust@nikomatsakis.com)
