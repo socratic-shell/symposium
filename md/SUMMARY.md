@@ -13,6 +13,8 @@
 - [Install](./install.md)
 - [Learn more](./learn-more/index.md)
   - [Interactive walkthroughs](./learn-more/interactive-walkthroughs.md)
+  - [Collaborative prompts](./learn-more/collaborative-prompts.md)
+  - [IDE integration](./learn-more/ide-integration.md)
 - [Contribute](./contribute.md)
 
 # Requests for Dialog
@@ -79,10 +81,6 @@ People can propose an RFD by create a PR adding a new file into the early drafts
     - [Stacked Windows](./design/stacked-windows.md)
     - [Window Stacking Design](./design/window-stacking-design.md)
     - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
-
-# Work in Progress
-
-<!-- WIP chapters will be recreated as needed -->
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more
