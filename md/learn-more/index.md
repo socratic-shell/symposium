@@ -9,7 +9,7 @@
   <p>We are an independent community focused on exploring what AI has to offer.</p>
   <ul class="tenet-examples">
     <li class="works">Open-source codebase</li>
-    <li class="works">RFD process</li>
+    <li class="works"><a href="../rfds/index.html">RFD process</a></li>
     <li class="works">Code of conduct</li>
   </ul>
 </div>

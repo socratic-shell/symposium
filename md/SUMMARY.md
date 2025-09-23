@@ -33,7 +33,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 -->
 
-- [About RFDs](./rfds/README.md)
+- [About RFDs](./rfds/index.md)
     - [RFD Template](./rfds/TEMPLATE.md)
     - [Terminology and Conventions](./rfds/terminology-and-conventions.md)
 - [Preview](./rfds/preview.md) <!-- Close to ready, highlighted for attention -->
