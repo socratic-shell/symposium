@@ -1,5 +1,6 @@
 <center>
     <img src="./artwork/logo-alcove.svg" alt="Symposium Logo" width="50%"/>
+    <div class="warning-banner">⚠️ Pre-alpha software: may eat your laundry</div>
     <br>
     <div class="hero-title">Symposium</div>
     <div class="hero-subtitle">Collaborative AI built collaboratively</div>

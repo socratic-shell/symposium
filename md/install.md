@@ -1,6 +1,6 @@
 # Installation
 
-This project is still under **heavy development**. Be aware that it may "eat your laundry".
+<div class="warning-banner">⚠️ Pre-alpha software: may eat your laundry</div>
 
 ## Supported
 

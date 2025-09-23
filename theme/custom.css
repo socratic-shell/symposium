@@ -5,13 +5,13 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Merriweather', serif;
+    font-family: 'Bungee', cursive;
 }
 
 .hero-title {
     font-family: 'Bungee', cursive;
     font-size: 8rem;
-    margin: 1rem 0 0.5rem 0;
+    margin: 0.5rem 0 0.5rem 0;
     color: #333;
 }
 
@@ -21,6 +21,19 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 400;
     margin: 0.5rem 0 2rem 0;
     color: #666;
+}
+
+.warning-banner {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 1.6rem;
+    color: #ad160c;
+    margin: 0;
+    padding: 0;
+    width: 50%;
+    text-align: center;
+    background: rgba(173, 22, 12, 0.05);
+    border-radius: 6px;
+    line-height: 1.2;
 }
 
 .action-links {
