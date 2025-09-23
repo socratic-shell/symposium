@@ -68,6 +68,83 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 300;
 }
 
+/* Tenets grid styling */
+.tenets-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.tenet-section {
+    padding: 1.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.tenet-section h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+    color: #ad160c;
+}
+
+.tenet-section p {
+    margin: 0.5rem 0 1rem 0;
+    color: #666;
+    font-style: italic;
+}
+
+.tenet-examples {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tenet-examples li {
+    padding: 0.4rem 0;
+    text-indent: -1.25em;
+    padding-left: 1.25em;
+}
+
+.tenet-examples li.works::before {
+    content: "✅ ";
+}
+
+.tenet-examples li.help-wanted::before {
+    content: "🙋 ";
+}
+
+.tenet-examples li.help-wanted::after {
+    content: "";
+    display: inline-block;
+    width: 150px;
+    height: 1em;
+    background-image: url("https://img.shields.io/badge/status-help%20wanted-red");
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+.feature-list li.works {
+    color: #2d5a2d;
+}
+
+.feature-list li.help-wanted {
+    color: #ad160c;
+}
+
+.feature-list li.help-wanted a {
+    color: #ad160c;
+    text-decoration: none;
+}
+
+.feature-list li.help-wanted a:hover {
+    text-decoration: underline;
+}
+
 /* Add spacer for landing page when menu bar is hidden */
 body[data-no-menu-bar] #content {
     padding-top: 4rem;

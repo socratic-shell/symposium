@@ -11,13 +11,8 @@
 
 - [Introduction](./introduction.md)
 - [Install](./install.md)
-- [Learn more](./learn-more.md)
-    - [Walkthroughs](./learn-more/walkthrough.md)
-    - [Discuss in Symposium](./learn-more/discuss.md)
-    - [IDE integration](./learn-more/ide.md)
-    - [Rust-specific](./learn-more/rust.md)
-        - [Get crate source](./learn-more/get_crate_source.md)
-    - [Taskspaces](./learn-more/taskspaces.md)
+- [Learn more](./learn-more/index.md)
+  - [Interactive walkthroughs](./learn-more/interactive-walkthroughs.md)
 - [Contribute](./contribute.md)
 
 # Requests for Dialog
