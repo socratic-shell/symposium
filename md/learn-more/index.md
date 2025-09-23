@@ -51,10 +51,8 @@
   <h2>Interoperable</h2>
   <p>Use the editors you use. We love standards and widespread conventions, not lock-in.</p>
   <ul class="tenet-examples">
-    <li class="works">Claude integration</li>
-    <li class="works">Q CLI support</li>
-    <li class="works">VSCode integration</li>
-    <li class="works">Built on MCP standards</li>
+    <li class="works">CLI tools: Claude Code, Q CLI</li>
+    <li class="works">Editors: VSCode integration</li>
     <li class="help-wanted">Additional AI models <a href="https://github.com/symposium/symposium/issues/models"></a></li>
     <li class="help-wanted">IntelliJ support <a href="https://github.com/symposium/symposium/issues/intellij"></a></li>
     <li class="help-wanted">NeoVim integration <a href="https://github.com/symposium/symposium/issues/neovim"></a></li>
