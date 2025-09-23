@@ -16,6 +16,7 @@
   - [Collaborative prompts](./learn-more/collaborative-prompts.md)
   - [IDE integration](./learn-more/ide-integration.md)
   - [Taskspaces](./learn-more/taskspaces.md)
+  - [API examples](./learn-more/api-examples.md)
   - [Symposium references](./learn-more/symposium-ref.md)
 - [Contribute](./contribute.md)
 
