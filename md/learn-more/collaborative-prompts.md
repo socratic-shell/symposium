@@ -1,6 +1,6 @@
 # Collaborative Prompts
 
-One of Symposium's big goals is to encourage a *collaborative* style of working with agents. Agents are often geared for action; when you are first experimenting, the agent will leap forward and built complex constructs as if by magic. This is impressive at first, but quickly becomes frustrating. It turns out that many of us speak quite ambiguously, and the default behavior of many agents is to do their best to give you what you asked for, even though often that is not what you really wanted.
+One of Symposium's big goals is to encourage a *collaborative* style of working with agents. Agents are often geared for action; when you are first experimenting, the agent will leap forward and built complex constructs as if by magic. This is impressive at first, but quickly becomes frustrating. 
 
 Symposium includes an initial prompt that is meant to put agents in a more reflective mood. You can access this prompt by executing the stored prompt "hi" (e.g., `/symposium:hi` in Claude Code or `@hi` in Q CLI). 
 

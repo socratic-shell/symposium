@@ -16,7 +16,6 @@
   - [Collaborative prompts](./learn-more/collaborative-prompts.md)
   - [IDE integration](./learn-more/ide-integration.md)
   - [Taskspaces](./learn-more/taskspaces.md)
-  - [API examples](./learn-more/api-examples.md)
   - [Symposium references](./learn-more/symposium-ref.md)
 - [Contribute](./contribute.md)
 
@@ -84,7 +83,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
     - [Stacked Windows](./design/stacked-windows.md)
     - [Window Stacking Design](./design/window-stacking-design.md)
     - [Window Stacking Scenario Walkthrough](./design/window-stacking-scenario.md)
-- [Collaborative prompt engineering](./collaborative-prompting.md)
+- [Collaborative prompt engineering]
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more

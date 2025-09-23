@@ -16,17 +16,31 @@ We aim to support as many tools as we can, but we currently have support only fo
 
 ## Instructions
 
-### Mac OS X
+### Using the Symposium GUI app
 
-If you are on a Mac, you can install with
+If you are on a Mac, we recommend you use the Symposium GUI app. This app will allow you to have multiple [taskspaces](./learn-more/taskspaces.md) at once, letting you use many agents concurrently.
 
-* Install and configure
-    * A supported agentic tool
-    * A supported editor
+Steps to open the app:
+
 * Clone the project from github
     * `git clone https://github.com/symposium-dev/symposium`
 * To build and start the desktop app (OS X only):
     * `cargo setup --all --open`
-* To install the IDE + MCP tool:
-    * Run `cargo setup --vscode --mcp`
 
+### Using the VSCode plugin + the MCP server
+
+If you don't want to use the GUI app, or you don't have a Mac, you can use the VSCode plugin and the MCP server independently:
+
+* Clone the project from github
+    * `git clone https://github.com/symposium-dev/symposium`
+* To build and start the desktop app (OS X only):
+    * `cargo setup --vscode --mcp`
+
+### Using just the MCP server
+
+You can also use *just* the MCP server. This will give access to some limited functionality such as the ablity to [fetch Rust crate sources](./learn-more/api-examples.md).
+
+* Clone the project from github
+    * `git clone https://github.com/symposium-dev/symposium`
+* To build and start the desktop app (OS X only):
+    * `cargo setup --mcp`

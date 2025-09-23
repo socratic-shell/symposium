@@ -1,5 +1,10 @@
 # Taskspaces
 
+![Taskspace screenshot](./taskspaces.md)
+
+*Taskspaces* are a way to orchestrate multiple agents working on different copies of your code. They are supported via the Symposium OS X application.
+When using agents it is natural to want to do multithings at one time. The Symposium GUI app is designed to help you manage that *Taskspaces* are 
+
 *Isolated workspaces for focused collaboration*
 
 ## What are Taskspaces?

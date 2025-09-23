@@ -20,7 +20,6 @@
   <ul class="tenet-examples">
     <li class="works"><a href="./walkthroughs.md">Interactive walkthroughs</a></li>
     <li class="works"><a href="./collaborative-prompts.md">Collaborative prompts</a></li>
-    <li class="works"><a href="./ide-integration.md">IDE integration for context-aware discussions</a></li>
   </ul>
 </div>
 
@@ -28,7 +27,7 @@
   <h2>Orchestrated</h2>
   <p>We build tools to manage multiple agents, keeping you up-to-date on their progress.</p>
   <ul class="tenet-examples">
-    <li class="works">Taskspaces on your local machine</li>
+    <li class="works"><a href="./taskspaces.md">Taskspaces on your local machine</a></li>
     <li class="help-wanted"><a href="../rfds/persistent-agents.md">Asynchronous background agents</a></li>
     <li class="help-wanted">Remotely hosted taskspaces</li>
     <li class="help-wanted">Windows, Linux apps</li>
@@ -39,7 +38,8 @@
   <h2>Decentralized</h2>
   <p>We want to engage library authors in making their users successful with AI.</p>
   <ul class="tenet-examples">
-    <li class="works">Find examples from crates automatically</li>
+    <li class="works"><a href="./api-examples.md">Help LLMs find Rust examples and crate sources</a></li>
+    <li class="works"><a href="./ide-integration.md">IDE integration for context-aware discussions</a></li>
     <li class="help-wanted">Crate-author guidance system <a href="./rfds/crate-author-guidance.md"></a></li>
     <li class="help-wanted">Library-provided MCP servers <a href="./rfds/library-mcp-servers.md"></a></li>
     <li class="help-wanted">Community pattern sharing <a href="./rfds/community-patterns.md"></a></li>
