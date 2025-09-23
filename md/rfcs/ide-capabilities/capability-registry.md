@@ -1,1 +1,0 @@
-# RFC: Capability registry
