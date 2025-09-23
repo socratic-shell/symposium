@@ -1,6 +1,6 @@
 # Interactive Walkthroughs
 
-![Screenshot of a walkthrough in progress](./walkthrough.png)
+[![Screenshot of a walkthrough in progress](./walkthrough.png)](./walkthrough.png)
 
 Interactive walkthroughs let agents present code explanations with visual diagrams, comments, and interactive elements directly in your IDE.
 

@@ -2,7 +2,7 @@
 
 *Taskspaces* are a way to orchestrate multiple agents working on different copies of your code. They are supported via the Symposium OS X application:
 
-![Taskspace screenshot](./taskspaces.png)
+[![Taskspace screenshot](./taskspaces.png)](./taskspaces.png)
 
 Currently, taskspaces are all stored on your local machine and agents run synchronously -- i.e., when your editor is not active, the agent is also not active. But we would like to support remote development (e.g., cloud-hosted or via ssh) and persistent agents (see the {RFD:persistent-agents} RFD).
 
