@@ -106,8 +106,9 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 # Research reports
 
-- [Language Server Protocol Overview](./research/lsp-overview/README.md)
-    - [Base Protocol](./research/lsp-overview/base-protocol.md)
-    - [Language Features](./research/lsp-overview/language-features.md)
-    - [Implementation Guide](./research/lsp-overview/implementation-guide.md)
-    - [Message Reference](./research/lsp-overview/message-reference.md)
+- [Research reports](./research/index.md)
+    - [Language Server Protocol Overview](./research/lsp-overview/README.md)
+        - [Base Protocol](./research/lsp-overview/base-protocol.md)
+        - [Language Features](./research/lsp-overview/language-features.md)
+        - [Implementation Guide](./research/lsp-overview/implementation-guide.md)
+        - [Message Reference](./research/lsp-overview/message-reference.md)
