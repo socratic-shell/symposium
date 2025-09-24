@@ -52,7 +52,7 @@ jobs:
           ${{ runner.os }}-node-
           
     - name: Run CI build
-      run: cargo setup --ci
+      run: cargo setup ci
       
     - name: Run Rust tests
       run: cargo test --workspace

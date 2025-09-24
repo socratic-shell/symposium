@@ -18,7 +18,7 @@ Build Symposium components and set up for development with AI assistants
 
 Examples:
   cargo setup                           # Show help and usage
-  cargo setup --ci                     # CI mode: build all components without installation
+  cargo setup ci                       # CI mode: build all components without installation
   cargo setup --all                    # Build everything and setup for development
   cargo setup --vscode                 # Build/install VSCode extension only
   cargo setup --mcp                    # Build/install MCP server only
@@ -35,9 +35,8 @@ Prerequisites:
 "#
 )]
 struct Args {
-    /// CI mode: build all components for continuous integration
-    #[arg(long)]
-    ci: bool,
+    #[command(subcommand)]
+    command: Option<Commands>,
 
     /// Build all components (VSCode extension, MCP server, and macOS app)
     #[arg(long)]
@@ -64,11 +63,17 @@ struct Args {
     restart: bool,
 }
 
+#[derive(Parser)]
+enum Commands {
+    /// CI mode: build all components for continuous integration
+    Ci,
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Handle CI mode first
-    if args.ci {
+    // Handle CI subcommand first
+    if let Some(Commands::Ci) = args.command {
         return run_ci_mode();
     }
 
@@ -143,10 +148,7 @@ fn show_help() {
     println!("Usage: cargo setup [OPTIONS]");
     println!();
     println!("Options:");
-    println!("  --ci                 CI mode: build all components for continuous integration");
-    println!(
-        "  --all                Build all components (VSCode extension, MCP server, and macOS app)"
-    );
+    println!("  --all                Build all components (VSCode extension, MCP server, and macOS app)");
     println!("  --vscode             Build/install VSCode extension");
     println!("  --mcp                Build/install MCP server");
     println!("  --app                Build the Symposium macOS app");
@@ -154,8 +156,11 @@ fn show_help() {
     println!("  --restart            Restart MCP daemon after building (requires --mcp)");
     println!("  --help               Show this help message");
     println!();
+    println!("Subcommands:");
+    println!("  ci                   CI mode: build all components for continuous integration");
+    println!();
     println!("Examples:");
-    println!("  cargo setup --ci                     # CI build (all components)");
+    println!("  cargo setup ci                       # CI build (all components)");
     println!("  cargo setup --all                    # Build everything");
     println!("  cargo setup --vscode                 # Build VSCode extension only");
     println!("  cargo setup --mcp --restart          # Build MCP server and restart daemon");
