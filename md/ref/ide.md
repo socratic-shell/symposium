@@ -1,1 +1,3 @@
-# IDE integration
+# IDE integrations
+
+Features related to IDEs.

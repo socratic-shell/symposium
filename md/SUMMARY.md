@@ -20,11 +20,17 @@
     - [Unopinionated setup](./get-started/unopinionated.md)
 - [Contribute](./contribute.md)
 - [Reference guide](./ref/index.md)
-    - [Taskspaces](./ref/taskspaces.md)
-    - [Interactive walkthroughs](./ref/walkthroughs.md)
-    - [IDE integration](./ref/ide-integration.md)
+    - [Symposium application](./ref/app.md)
+        - [Symposium projects](./ref/symposium-projects.md)
+        - [Taskspaces](./ref/taskspaces.md)
+    - [IDE integrations](./ref/ide.md)
+        - [Interactive walkthroughs](./ref/walkthroughs.md)
+        - [Discuss with Symposium](./ref/discuss.md)
+        - [IDE operations](./ref/ide-operations.md)
+        - [Symposium references](./ref/symposium-ref.md)
     - [Collaborative prompts](./ref/collaborative-prompts.md)
-    - [Symposium references](./ref/symposium-ref.md)
+    - [Rust-specific operations](./ref/rust.md)
+        - [Get crate source](./ref/get-rust-crate-source.md)
 
 # Requests for Dialog
 
