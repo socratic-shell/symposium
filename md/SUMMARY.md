@@ -7,17 +7,26 @@
     whne looking to learn more details about a specific area.
 -->
 
-# User guide
-
 - [Introduction](./introduction.md)
-- [Install](./install.md)
-- [Learn more](./learn-more/index.md)
-  - [Interactive walkthroughs](./learn-more/walkthroughs.md)
-  - [Collaborative prompts](./learn-more/collaborative-prompts.md)
-  - [IDE integration](./learn-more/ide-integration.md)
-  - [Taskspaces](./learn-more/taskspaces.md)
-  - [Symposium references](./learn-more/symposium-ref.md)
+- [About](./about.md)
+- [Get started](./get-started/index.md)
+    - [Install](./get-started/install.md)
+    - [Create Symposium project](./get-started/symposium-project.md)
+    - [Taskspaces](./get-started/taskspaces.md)
+    - [Walkthroughs](./get-started/walkthroughs.md)
+    - [Get Rust crate sources](./get-started/rust_crate_source.md)
+    - [Say "hi"](./get-started/say-hi.md)
+    - [Unopinionated setup](./get-started/unopinionated.md)
+- [Tenets](./tenets.md)
 - [Contribute](./contribute.md)
+
+# User's reference
+
+- [Taskspaces](./ref/taskspaces.md)
+- [Interactive walkthroughs](./ref/walkthroughs.md)
+- [IDE integration](./ref/ide-integration.md)
+- [Collaborative prompts](./ref/collaborative-prompts.md)
+- [Symposium references](./ref/symposium-ref.md)
 
 # Requests for Dialog
 
