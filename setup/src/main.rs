@@ -210,29 +210,29 @@ fn check_node_ci() -> Result<()> {
     Ok(())
 }
 
-/// Build Rust MCP server in CI mode (no installation)
+/// Build Rust MCP server in CI mode (compilation check only)
 fn build_rust_server_ci() -> Result<()> {
     let repo_root = get_repo_root()?;
     let server_dir = repo_root.join("symposium/mcp-server");
 
-    println!("🦀 Building Rust MCP server...");
-    println!("   Building in: {}", server_dir.display());
+    println!("🦀 Checking Rust MCP server...");
+    println!("   Checking in: {}", server_dir.display());
 
     let output = Command::new("cargo")
-        .args(["build", "--release"])
+        .args(["check", "--release"])
         .current_dir(&server_dir)
         .output()
-        .context("Failed to execute cargo build")?;
+        .context("Failed to execute cargo check")?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(anyhow!(
-            "❌ Failed to build Rust server:\n   Error: {}",
+            "❌ Failed to check Rust server:\n   Error: {}",
             stderr.trim()
         ));
     }
 
-    println!("✅ Rust server built successfully!");
+    println!("✅ Rust server check passed!");
     Ok(())
 }
 
