@@ -53,16 +53,17 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [About RFDs](./rfds/index.md)
     - [RFD Template](./rfds/TEMPLATE.md)
     - [Terminology and Conventions](./rfds/terminology-and-conventions.md)
-- [Preview](./rfds/preview.md) <!-- Close to ready, highlighted for attention -->
-    - [Taskspace Deletion Dialog Confirmation](./rfds/taskspace-deletion-dialog-confirmation.md)
-    - [Rust Crate Sources Tool](./rfds/rust-crate-sources-tool.md)
-- [Invited -- help wanted!](./rfds/invited.md) <!-- This where I want someone to take it over -->
-- [Draft](./rfds/draft.md) <!-- Early drafts, people start things in this section -->
-    - [Persistent Agents](./rfds/persistent-agents.md)
-    - [Tile-based Window Management](./rfds/tile-based-window-management.md)
-    - [GitDiff Elements in Walkthroughs](./rfds/gitdiff-elements.md)
-- [To be removed (yet?)](./rfds/to-be-removed.md) <!-- Decided against doing this for now -->
-- [Completed](./rfds/completed.md) <!-- Work is complete -->
+- [In-progress RFDs](./rfds/in-progress.md)
+    - [Invited](./rfds/invited.md) <!-- This where I want someone to take it over -->
+    - [Draft](./rfds/draft.md) <!-- Early drafts, people start things in this section -->
+        - [Persistent Agents](./rfds/persistent-agents.md)
+        - [Tile-based Window Management](./rfds/tile-based-window-management.md)
+        - [GitDiff Elements in Walkthroughs](./rfds/gitdiff-elements.md)
+    - [Preview](./rfds/preview.md) <!-- Close to ready, highlighted for attention -->
+        - [Taskspace Deletion Dialog Confirmation](./rfds/taskspace-deletion-dialog-confirmation.md)
+        - [Rust Crate Sources Tool](./rfds/rust-crate-sources-tool.md)
+    - [To be removed (yet?)](./rfds/to-be-removed.md) <!-- Decided against doing this for now -->
+- [Completed RFDs](./rfds/completed.md) <!-- Work is complete -->
     - [Introduce RFD Process](./rfds/introduce-rfd-process.md)
     - [IPC Actor Refactoring](./rfds/ipc-actor-refactoring.md)
 
