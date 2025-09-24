@@ -9,6 +9,7 @@
 
 - [Introduction](./introduction.md)
 - [About](./about.md)
+    - [Tenets and design goals](./tenets.md)
 - [Get started](./get-started/index.md)
     - [Install](./get-started/install.md)
     - [Create Symposium project](./get-started/symposium-project.md)
@@ -17,16 +18,13 @@
     - [Get Rust crate sources](./get-started/rust_crate_source.md)
     - [Say "hi"](./get-started/say-hi.md)
     - [Unopinionated setup](./get-started/unopinionated.md)
-- [Tenets](./tenets.md)
 - [Contribute](./contribute.md)
-
-# User's reference
-
-- [Taskspaces](./ref/taskspaces.md)
-- [Interactive walkthroughs](./ref/walkthroughs.md)
-- [IDE integration](./ref/ide-integration.md)
-- [Collaborative prompts](./ref/collaborative-prompts.md)
-- [Symposium references](./ref/symposium-ref.md)
+- [Reference guide](./ref/index.md)
+    - [Taskspaces](./ref/taskspaces.md)
+    - [Interactive walkthroughs](./ref/walkthroughs.md)
+    - [IDE integration](./ref/ide-integration.md)
+    - [Collaborative prompts](./ref/collaborative-prompts.md)
+    - [Symposium references](./ref/symposium-ref.md)
 
 # Requests for Dialog
 
