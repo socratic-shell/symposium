@@ -358,6 +358,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ci"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "which",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"

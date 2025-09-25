@@ -52,7 +52,7 @@ jobs:
           ${{ runner.os }}-node-
           
     - name: Run CI check
-      run: cargo setup ci check
+      run: cargo ci check
       
     - name: Run CI tests
-      run: cargo setup ci test
+      run: cargo ci test

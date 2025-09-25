@@ -18,9 +18,6 @@ Build Symposium components and set up for development with AI assistants
 
 Examples:
   cargo setup                           # Show help and usage
-  cargo setup ci                       # CI mode: check all components compile (default)
-  cargo setup ci check                 # CI mode: check all components compile
-  cargo setup ci test                  # CI mode: run all tests
   cargo setup --all                    # Build everything and setup for development
   cargo setup --vscode                 # Build/install VSCode extension only
   cargo setup --mcp                    # Build/install MCP server only
@@ -28,6 +25,8 @@ Examples:
   cargo setup --app                    # Build macOS app only
   cargo setup --app --open             # Build macOS app and launch it
   cargo setup --vscode --mcp --app     # Build all components (same as --all)
+
+For CI builds, use: cargo ci check / cargo ci test
 
 Prerequisites:
   - Rust and Cargo (https://rustup.rs/)
@@ -37,9 +36,6 @@ Prerequisites:
 "#
 )]
 struct Args {
-    #[command(subcommand)]
-    command: Option<Commands>,
-
     /// Build all components (VSCode extension, MCP server, and macOS app)
     #[arg(long)]
     all: bool,
@@ -65,36 +61,10 @@ struct Args {
     restart: bool,
 }
 
-#[derive(Parser)]
-enum Commands {
-    /// CI mode: build all components for continuous integration
-    Ci {
-        #[command(subcommand)]
-        command: Option<CiCommands>,
-    },
-}
-
-#[derive(Parser)]
-enum CiCommands {
-    /// Check that all components compile
-    Check,
-    /// Run all tests
-    Test,
-}
-
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Handle CI subcommand first
-    if let Some(Commands::Ci { command }) = args.command {
-        return match command {
-            Some(CiCommands::Check) => run_ci_check(),
-            Some(CiCommands::Test) => run_ci_test(),
-            None => run_ci_check(), // Default to check if no subcommand
-        };
-    }
-
-    // Validate flag combinations for regular mode
+    // Validate flag combinations
     if args.open && !args.app && !args.all {
         return Err(anyhow!("❌ --open requires --app"));
     }
@@ -173,70 +143,14 @@ fn show_help() {
     println!("  --restart            Restart MCP daemon after building (requires --mcp)");
     println!("  --help               Show this help message");
     println!();
-    println!("Subcommands:");
-    println!("  ci                   CI mode: check compilation and run tests");
-    println!("    ci check           Check that all components compile");
-    println!("    ci test            Run all tests");
+    println!("For CI builds, use: cargo ci check / cargo ci test");
     println!();
     println!("Examples:");
-    println!("  cargo setup ci                       # CI check (default)");
-    println!("  cargo setup ci check                 # Check compilation");
-    println!("  cargo setup ci test                  # Run all tests");
     println!("  cargo setup --all                    # Build everything");
     println!("  cargo setup --vscode                 # Build VSCode extension only");
     println!("  cargo setup --mcp --restart          # Build MCP server and restart daemon");
     println!("  cargo setup --app --open             # Build and launch macOS app");
     println!("  cargo setup --vscode --mcp --app     # Build all components");
-}
-
-/// CI check mode: verify all components compile
-fn run_ci_check() -> Result<()> {
-    println!("🤖 Symposium CI Check");
-    println!("{}", "=".repeat(26));
-
-    // Check basic prerequisites for CI
-    check_rust()?;
-    check_node_ci()?;
-
-    // Check all components compile
-    build_rust_server_ci()?;
-    build_extension_ci()?;
-    
-    // Only build macOS app on macOS
-    if cfg!(target_os = "macos") {
-        build_macos_app_ci()?;
-    } else {
-        println!("⏭️  Skipping macOS app build (not on macOS)");
-    }
-
-    println!("\n✅ All components check passed!");
-    Ok(())
-}
-
-/// CI test mode: run all tests
-fn run_ci_test() -> Result<()> {
-    println!("🤖 Symposium CI Test");
-    println!("{}", "=".repeat(25));
-
-    // Check basic prerequisites for CI
-    check_rust()?;
-    check_node_ci()?;
-
-    // Run Rust tests
-    run_rust_tests()?;
-    
-    // Run TypeScript tests if they exist
-    run_typescript_tests()?;
-    
-    // Run Swift tests if they exist (macOS only)
-    if cfg!(target_os = "macos") {
-        run_swift_tests()?;
-    } else {
-        println!("⏭️  Skipping Swift tests (not on macOS)");
-    }
-
-    println!("\n✅ All tests completed!");
-    Ok(())
 }
 
 fn check_rust() -> Result<()> {
@@ -245,213 +159,6 @@ fn check_rust() -> Result<()> {
             "❌ Error: Cargo not found. Please install Rust first.\n   Visit: https://rustup.rs/"
         ));
     }
-    Ok(())
-}
-
-fn check_node_ci() -> Result<()> {
-    if which::which("npm").is_err() {
-        return Err(anyhow!(
-            "❌ Error: npm not found. Please install Node.js first.\n   Visit: https://nodejs.org/"
-        ));
-    }
-    Ok(())
-}
-
-/// Build Rust MCP server in CI mode (compilation check only)
-fn build_rust_server_ci() -> Result<()> {
-    let repo_root = get_repo_root()?;
-    let server_dir = repo_root.join("symposium/mcp-server");
-
-    println!("🦀 Checking Rust MCP server...");
-    println!("   Checking in: {}", server_dir.display());
-
-    let output = Command::new("cargo")
-        .args(["check", "--release"])
-        .current_dir(&server_dir)
-        .output()
-        .context("Failed to execute cargo check")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Failed to check Rust server:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ Rust server check passed!");
-    Ok(())
-}
-
-/// Build VSCode extension in CI mode (no installation)
-fn build_extension_ci() -> Result<()> {
-    let repo_root = get_repo_root()?;
-    let extension_dir = repo_root.join("symposium/vscode-extension");
-
-    println!("\n📦 Building VSCode extension...");
-
-    // Install dependencies
-    println!("📥 Installing extension dependencies...");
-    let output = Command::new("npm")
-        .args(["ci"]) // Use npm ci for faster, reproducible builds in CI
-        .current_dir(&extension_dir)
-        .output()
-        .context("Failed to execute npm ci")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Failed to install extension dependencies:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    // Build extension for production
-    println!("🔨 Building extension...");
-    let output = Command::new("npm")
-        .args(["run", "webpack"])
-        .current_dir(&extension_dir)
-        .output()
-        .context("Failed to execute npm run webpack")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Failed to build extension:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ VSCode extension built successfully!");
-    Ok(())
-}
-
-/// Build macOS app in CI mode
-fn build_macos_app_ci() -> Result<()> {
-    let repo_root = get_repo_root()?;
-    let app_dir = repo_root.join("symposium").join("macos-app");
-
-    println!("\n🍎 Building macOS application...");
-    println!("   Building in: {}", app_dir.display());
-
-    let output = Command::new("swift")
-        .args(["build", "--configuration", "release"])
-        .current_dir(&app_dir)
-        .output()
-        .context("Failed to execute swift build")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(anyhow!(
-            "❌ Failed to build macOS app:\n   stdout: {}\n   stderr: {}",
-            stdout.trim(),
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ macOS application built successfully!");
-    Ok(())
-}
-
-/// Run Rust tests
-fn run_rust_tests() -> Result<()> {
-    let repo_root = get_repo_root()?;
-
-    println!("🦀 Running Rust tests...");
-    println!("   Testing workspace in: {}", repo_root.display());
-
-    let output = Command::new("cargo")
-        .args(["test", "--workspace"])
-        .current_dir(&repo_root)
-        .output()
-        .context("Failed to execute cargo test")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Rust tests failed:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ Rust tests passed!");
-    Ok(())
-}
-
-/// Run TypeScript tests if they exist
-fn run_typescript_tests() -> Result<()> {
-    let repo_root = get_repo_root()?;
-    let extension_dir = repo_root.join("symposium/vscode-extension");
-
-    println!("\n📦 Checking for TypeScript tests...");
-
-    // Check if package.json has a test script
-    let package_json_path = extension_dir.join("package.json");
-    if !package_json_path.exists() {
-        println!("⏭️  No package.json found, skipping TypeScript tests");
-        return Ok(());
-    }
-
-    let package_json = std::fs::read_to_string(&package_json_path)
-        .context("Failed to read package.json")?;
-
-    if !package_json.contains("\"test\"") {
-        println!("⏭️  No test script found in package.json, skipping TypeScript tests");
-        return Ok(());
-    }
-
-    println!("🔨 Running TypeScript tests...");
-    let output = Command::new("npm")
-        .args(["test"])
-        .current_dir(&extension_dir)
-        .output()
-        .context("Failed to execute npm test")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ TypeScript tests failed:\n   Error: {}",
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ TypeScript tests passed!");
-    Ok(())
-}
-
-/// Run Swift tests if they exist
-fn run_swift_tests() -> Result<()> {
-    let repo_root = get_repo_root()?;
-    let app_dir = repo_root.join("symposium").join("macos-app");
-
-    println!("\n🍎 Checking for Swift tests...");
-
-    // Check if Tests directory exists
-    let tests_dir = app_dir.join("Tests");
-    if !tests_dir.exists() {
-        println!("⏭️  No Tests directory found, skipping Swift tests");
-        return Ok(());
-    }
-
-    println!("🔨 Running Swift tests...");
-    let output = Command::new("swift")
-        .args(["test"])
-        .current_dir(&app_dir)
-        .output()
-        .context("Failed to execute swift test")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(anyhow!(
-            "❌ Swift tests failed:\n   stdout: {}\n   stderr: {}",
-            stdout.trim(),
-            stderr.trim()
-        ));
-    }
-
-    println!("✅ Swift tests passed!");
     Ok(())
 }
 
