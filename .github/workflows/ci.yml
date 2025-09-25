@@ -51,27 +51,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
           
-    - name: Run CI build
-      run: cargo setup ci
+    - name: Run CI check
+      run: cargo setup ci check
       
-    - name: Run Rust tests
-      run: cargo test --workspace
-      
-    - name: Run TypeScript tests (if they exist)
-      run: |
-        cd symposium/vscode-extension
-        if [ -f "package.json" ] && grep -q '"test"' package.json; then
-          npm test
-        else
-          echo "No TypeScript tests found, skipping"
-        fi
-        
-    - name: Run Swift tests (if they exist)
-      if: runner.os == 'macOS'
-      run: |
-        cd symposium/macos-app
-        if [ -d "Tests" ]; then
-          swift test
-        else
-          echo "No Swift tests found, skipping"
-        fi
+    - name: Run CI tests
+      run: cargo setup ci test
