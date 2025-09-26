@@ -1,5 +1,39 @@
 import Foundation
 
+/// Errors that can occur during project validation
+enum ProjectValidationError: LocalizedError {
+    case missingProjectFile
+    case invalidProjectStructure
+    case directoryNotAccessible
+    case unknownValidationFailure
+    
+    var errorDescription: String? {
+        switch self {
+        case .missingProjectFile:
+            return "This directory is not a valid Symposium project"
+        case .invalidProjectStructure:
+            return "The project structure is invalid or corrupted"
+        case .directoryNotAccessible:
+            return "Unable to access the selected directory"
+        case .unknownValidationFailure:
+            return "An unknown error occurred while validating the project"
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .missingProjectFile:
+            return "Please select a directory that contains a project.json file, or create a new project instead."
+        case .invalidProjectStructure:
+            return "Try selecting a different project directory or create a new project."
+        case .directoryNotAccessible:
+            return "Check that you have permission to access this directory and try again."
+        case .unknownValidationFailure:
+            return "Please try selecting a different directory or create a new project."
+        }
+    }
+}
+
 /// Version 0 project structure for backward compatibility
 private struct ProjectV0: Codable {
     let id: UUID
@@ -124,6 +158,29 @@ struct Project: Codable, Identifiable {
     static func isValidProjectDirectory(_ path: String) -> Bool {
         let projectFilePath = "\(path)/project.json"
         return FileManager.default.fileExists(atPath: projectFilePath)
+    }
+    
+    /// Validate project directory with detailed error reporting
+    static func validateProjectDirectory(_ path: String) -> Result<Void, ProjectValidationError> {
+        // Check if directory is accessible
+        guard FileManager.default.fileExists(atPath: path) else {
+            return .failure(.directoryNotAccessible)
+        }
+        
+        let projectFilePath = "\(path)/project.json"
+        
+        // Check if project.json exists
+        guard FileManager.default.fileExists(atPath: projectFilePath) else {
+            return .failure(.missingProjectFile)
+        }
+        
+        // Attempt to load and validate project structure
+        do {
+            _ = try Project.load(from: path)
+            return .success(())
+        } catch {
+            return .failure(.invalidProjectStructure)
+        }
     }
     
     /// Find taskspace by UUID
