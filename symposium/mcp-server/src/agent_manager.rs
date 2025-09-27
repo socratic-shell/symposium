@@ -8,7 +8,7 @@
 //! - `teetty` (https://github.com/mitsuhiko/teetty) - for terminal session management
 //! This would give us more control over session lifecycle and eliminate tmux dependency.
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -96,10 +96,17 @@ impl AgentManager {
             }
         }
 
-        let output = tmux_cmd.output()?;
+        let output = tmux_cmd.output()
+            .with_context(|| format!("Failed to execute tmux command for session {}", uuid))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("Failed to create tmux session: {}", stderr));
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return Err(anyhow!(
+                "Failed to create tmux session {}:\n  stdout: {}\n  stderr: {}",
+                uuid,
+                stdout.trim(),
+                stderr.trim()
+            ));
         }
 
         // Create session metadata
