@@ -46,6 +46,11 @@ private struct ProjectV0: Codable {
 
 /// Represents a Symposium project containing multiple taskspaces
 struct Project: Codable, Identifiable {
+    
+    /// Computed property for repository path
+    var repoPath: String {
+        return "\(directoryPath)/.git"
+    }
     let version: Int
     let id: UUID
     let name: String

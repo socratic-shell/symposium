@@ -3,10 +3,10 @@ import CoreGraphics
 import Foundation
 import Combine
 
-/// Manages project creation, loading, and operations
+/// Manages project creation, loading, and operations  
 class ProjectManager: ObservableObject, IpcMessageDelegate {
     @Published var currentProject: Project?
-    @Published var isLoading = false
+    @Published var isLoading = false  
     @Published var errorMessage: String?
     @Published var taskspaceScreenshots: [UUID: NSImage] = [:]
 
@@ -104,7 +104,40 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     deinit {
         Logger.shared.log("ProjectManager[\(instanceId)]: Cleaning up")
-        stopWindowCloseDetection()
+        // stopWindowCloseDetection() // TODO: Implement this method
+    }
+    
+
+    
+    /// Execute a process and return results
+    private func executeProcess(
+        executable: String,
+        arguments: [String],
+        workingDirectory: String? = nil
+    ) throws -> (exitCode: Int32, stdout: String, stderr: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        
+        if let workDir = workingDirectory {
+            process.currentDirectoryURL = URL(fileURLWithPath: workDir)
+        }
+        
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+        
+        let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
+        let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+        
+        return (process.terminationStatus, stdout, stderr)
     }
 
     /// Open an existing Symposium project
@@ -386,39 +419,42 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         // Remove git worktree - MUST use worktreeDir (includes repo name), not taskspaceDir
         // Command must run from bare repository directory (project.directoryPath)
-        let worktreeProcess = Process()
-        worktreeProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        worktreeProcess.arguments = ["worktree", "remove", worktreeDir, "--force"]
-        worktreeProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
-
         Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
 
-        try worktreeProcess.run()
-        worktreeProcess.waitUntilExit()
+        do {
+            let result = try executeProcess(
+                executable: "/usr/bin/git",
+                arguments: ["worktree", "remove", worktreeDir, "--force"],
+                workingDirectory: project.directoryPath
+            )
 
-        if worktreeProcess.terminationStatus != 0 {
-            Logger.shared.log(
-                "Warning: Failed to remove git worktree, falling back to directory removal")
-            // Fallback: remove directory if worktree removal failed
+            if result.exitCode != 0 {
+                Logger.shared.log(
+                    "Warning: Failed to remove git worktree, falling back to directory removal")
+                // Fallback: remove directory if worktree removal failed
+                try FileManager.default.removeItem(atPath: taskspaceDir)
+            } else {
+                Logger.shared.log("Successfully removed git worktree: \(worktreeDir)")
+            }
+        } catch {
+            Logger.shared.log("Error executing worktree remove: \(error), falling back to directory removal")
             try FileManager.default.removeItem(atPath: taskspaceDir)
-        } else {
-            Logger.shared.log("Successfully removed git worktree: \(worktreeDir)")
         }
 
         // Optionally delete the branch
         if deleteBranch && !branchName.isEmpty {
-            let branchProcess = Process()
-            branchProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-            branchProcess.arguments = ["branch", "-D", branchName]
-            branchProcess.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+            do {
+                let result = try executeProcess(
+                    executable: "/usr/bin/git",
+                    arguments: ["branch", "-D", branchName],
+                    workingDirectory: project.directoryPath
+                )
 
-            try branchProcess.run()
-            branchProcess.waitUntilExit()
-
-            if branchProcess.terminationStatus != 0 {
-                Logger.shared.log("Warning: Failed to delete branch \(branchName)")
-            } else {
-                Logger.shared.log("ProjectManager[\(instanceId)]: Deleted branch \(branchName)")
+                if result.exitCode != 0 {
+                    Logger.shared.log("Warning: Failed to delete branch \(branchName)")
+                } else {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: Deleted branch \(branchName)")
+                }
             }
         }
 
@@ -501,13 +537,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     /// Check if branch is merged into base branch
     /// 
-    /// CRITICAL: Use baseBranch directly, don't add "origin/" prefix!
-    /// getBaseBranch() already returns "origin/main", adding another "origin/" 
-    /// creates invalid "origin/origin/main" causing command failures.
+    /// Note: getBaseBranch() returns just the branch name (e.g., "main"), 
+    /// so we need to add "origin/" prefix for remote comparison.
     private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["merge-base", "--is-ancestor", branchName, baseBranch]
+        let remoteBranch = "origin/\(baseBranch)"
+        process.arguments = ["merge-base", "--is-ancestor", branchName, remoteBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
         try process.run()
@@ -519,11 +555,12 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Count commits in branch that are not in base branch
     ///
     /// Uses `git rev-list --count <branch> --not <baseBranch>` to count unmerged commits.
-    /// CRITICAL: Use baseBranch directly - it already includes "origin/" prefix from getBaseBranch().
+    /// Note: getBaseBranch() returns just the branch name, so we add "origin/" prefix.
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", baseBranch]
+        let remoteBranch = "origin/\(baseBranch)"
+        process.arguments = ["rev-list", "--count", "\(branchName)", "--not", remoteBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
         let pipe = Pipe()
@@ -626,6 +663,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         isLoading = true
         defer { isLoading = false }
 
+        // Track completed stages for error reporting
+        var completedStages: [String] = []
+        
+
+        
+        Logger.shared.log("ProjectManager[\(instanceId)]: Starting taskspace creation for '\(name)'")
+
         // Create taskspace with provided values
         let taskspace = Taskspace(
             name: name,
@@ -633,60 +677,176 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
             initialPrompt: initialPrompt
         )
 
-        // Create taskspace directory
+        // STAGE 1: Create taskspace directory
+        Logger.shared.log("ProjectManager[\(instanceId)]: Stage 1/5 - Creating taskspace directory")
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
-        try FileManager.default.createDirectory(
-            atPath: taskspaceDir,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
-
-        // Ensure bare repository exists (create if this is the first taskspace)
-        if !bareRepositoryExists(in: project.directoryPath) {
-            Logger.shared.log(
-                "ProjectManager[\(instanceId)]: Creating bare repository for first taskspace")
-            let bareProcess = Process()
-            bareProcess.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-            bareProcess.arguments = [
-                "clone", "--bare", project.gitURL, "\(project.directoryPath)/.git",
-            ]
-
-            try bareProcess.run()
-            bareProcess.waitUntilExit()
-
-            if bareProcess.terminationStatus != 0 {
-                throw ProjectError.gitCloneFailed
-            }
-        } else {
-            Logger.shared.log("ProjectManager[\(instanceId)]: Bare repository already exists")
+        do {
+            try FileManager.default.createDirectory(
+                atPath: taskspaceDir,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+            completedStages.append("Created taskspace directory")
+            Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 1/5 completed - Directory created at \(taskspaceDir)")
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 1/5 failed - Directory creation failed")
+            throw ProjectError.taskspaceDirectoryCreationFailed(
+                taskspaceName: name,
+                path: taskspaceDir,
+                underlyingError: error
+            )
         }
 
-        // Create worktree for this taskspace with unique branch
+        // STAGE 2: Ensure bare repository exists (create if this is the first taskspace)
+        Logger.shared.log("ProjectManager[\(instanceId)]: Stage 2/5 - Ensuring bare repository exists")
+        if !bareRepositoryExists(in: project.repoPath) {
+            Logger.shared.log("ProjectManager[\(instanceId)]: Creating bare repository for first taskspace")
+            
+            do {
+                // Step 1: Clone bare into the main directory (not .git subdirectory)
+                let cloneResult = try executeProcess(
+                    executable: "/usr/bin/git",
+                    arguments: ["clone", "--bare", project.gitURL, project.repoPath]
+                )
+
+                if cloneResult.exitCode != 0 {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 2/5 failed - Bare repository clone failed with exit code \(cloneResult.exitCode)")
+                    throw ProjectError.bareRepositoryCreationFailed(
+                        gitURL: project.gitURL,
+                        targetPath: project.directoryPath,
+                        exitCode: cloneResult.exitCode,
+                        completedStages: completedStages
+                    )
+                }
+                
+                // Step 2: Set up remote tracking branches
+                Logger.shared.log("ProjectManager[\(instanceId)]: Setting up remote tracking branches")
+                let configResult = try executeProcess(
+                    executable: "/usr/bin/git",
+                    arguments: ["config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"],
+                    workingDirectory: project.directoryPath
+                )
+                
+                if configResult.exitCode != 0 {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to configure remote tracking branches (exit code \(configResult.exitCode))")
+                }
+                
+                // Step 3: Fetch origin to populate remote tracking branches
+                Logger.shared.log("ProjectManager[\(instanceId)]: Fetching origin to populate remote tracking branches")
+                let fetchResult = try executeProcess(
+                    executable: "/usr/bin/git",
+                    arguments: ["fetch", "origin"],
+                    workingDirectory: project.directoryPath
+                )
+                
+                if fetchResult.exitCode != 0 {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to fetch origin (exit code \(fetchResult.exitCode))")
+                }
+                
+                // Step 4: Set up symbolic reference for origin/HEAD
+                Logger.shared.log("ProjectManager[\(instanceId)]: Setting up symbolic reference for origin/HEAD")
+                let remoteResult = try executeProcess(
+                    executable: "/usr/bin/git",
+                    arguments: ["remote", "set-head", "origin", "--auto"],
+                    workingDirectory: project.directoryPath
+                )
+                
+                if remoteResult.exitCode == 0 {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Symbolic reference set up successfully")
+                } else {
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to set up symbolic reference (exit code \(remoteResult.exitCode)), will use fallback detection")
+                }
+                
+                completedStages.append("Created bare repository with proper setup")
+                Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 2/5 completed - Bare repository created and configured")
+            } catch let error as ProjectError {
+                throw error
+            } catch {
+                Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 2/5 failed - Process execution failed: \(error)")
+                throw ProjectError.bareRepositoryCreationFailed(
+                    gitURL: project.gitURL,
+                    targetPath: project.directoryPath,
+                    exitCode: -1,
+                    completedStages: completedStages
+                )
+            }
+        } else {
+            completedStages.append("Verified bare repository exists")
+            Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 2/5 completed - Bare repository already exists")
+        }
+
+        // STAGE 3: Determine the base branch to start from
+        Logger.shared.log("ProjectManager[\(instanceId)]: Stage 3/5 - Detecting base branch")
+        let baseBranch: String
+        do {
+            baseBranch = try getBaseBranch(for: project)
+            completedStages.append("Detected base branch: \(baseBranch)")
+            Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 3/5 completed - Base branch: \(baseBranch)")
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 3/5 failed - Base branch detection failed")
+            throw ProjectError.baseBranchDetectionFailed(
+                projectPath: project.directoryPath,
+                completedStages: completedStages
+            )
+        }
+
+        // STAGE 4: Create worktree for this taskspace with unique branch
+        Logger.shared.log("ProjectManager[\(instanceId)]: Stage 4/5 - Creating git worktree")
         // CAREFUL: When adding new steps to taskspace creation, you likely need to modify `findStaleTaskspaces` as well to check for this.
         let branchName = "taskspace-\(taskspace.id.uuidString)"
         let repoName = extractRepoName(from: project.gitURL)
         let worktreeDir = "\(taskspaceDir)/\(repoName)"
 
-        // Determine the base branch to start from
-        let baseBranch = try getBaseBranch(for: project)
-        Logger.shared.log(
-            "ProjectManager[\(instanceId)]: Creating worktree with branch \(branchName) from \(baseBranch)"
-        )
+        Logger.shared.log("ProjectManager[\(instanceId)]: Creating worktree with branch \(branchName) from \(baseBranch)")
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["worktree", "add", worktreeDir, "-b", branchName, baseBranch]
-        process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+        do {
+            let result = try executeProcess(
+                executable: "/usr/bin/git",
+                arguments: ["worktree", "add", worktreeDir, "-b", branchName, baseBranch],
+                workingDirectory: project.directoryPath
+            )
 
-        try process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus != 0 {
-            throw ProjectError.gitCloneFailed
+            if result.exitCode != 0 {
+                Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 4/5 failed - Worktree creation failed with exit code \(result.exitCode)")
+                throw ProjectError.worktreeCreationFailed(
+                    branchName: branchName,
+                    worktreePath: worktreeDir,
+                    baseBranch: baseBranch,
+                    exitCode: result.exitCode,
+                    completedStages: completedStages
+                )
+            }
+            
+            completedStages.append("Created git worktree and branch")
+            Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 4/5 completed - Worktree created at \(worktreeDir)")
+        } catch let error as ProjectError {
+            throw error
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 4/5 failed - Process execution failed: \(error)")
+            throw ProjectError.worktreeCreationFailed(
+                branchName: branchName,
+                worktreePath: worktreeDir,
+                baseBranch: baseBranch,
+                exitCode: -1,
+                completedStages: completedStages
+            )
         }
 
-        // Save taskspace metadata
-        try taskspace.save(in: project.directoryPath)
+        // STAGE 5: Save taskspace metadata
+        Logger.shared.log("ProjectManager[\(instanceId)]: Stage 5/5 - Saving taskspace metadata")
+        do {
+            try taskspace.save(in: project.directoryPath)
+            completedStages.append("Saved taskspace metadata")
+            Logger.shared.log("ProjectManager[\(instanceId)]: ✅ Stage 5/5 completed - Metadata saved")
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: ❌ Stage 5/5 failed - Metadata save failed")
+            throw ProjectError.taskspaceMetadataSaveFailed(
+                taskspaceName: name,
+                projectPath: project.directoryPath,
+                underlyingError: error,
+                completedStages: completedStages
+            )
+        }
 
         // Add to current project
         DispatchQueue.main.async {
@@ -698,7 +858,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Auto-activate new taskspace by launching VSCode
         launchVSCode(for: taskspace, in: project.directoryPath)
         Logger.shared.log(
-            "ProjectManager[\(instanceId)]: Created and activated new taskspace '\(taskspace.name)'"
+            "ProjectManager[\(instanceId)]: 🎉 Successfully created and activated taskspace '\(taskspace.name)' - All 5 stages completed"
         )
     }
 
@@ -712,53 +872,89 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     private func getBaseBranch(for project: Project) throws -> String {
         // If project specifies a default branch, use it
         if let defaultBranch = project.defaultBranch, !defaultBranch.isEmpty {
+            Logger.shared.log("ProjectManager[\(instanceId)]: Using configured default branch: \(defaultBranch)")
             return defaultBranch
         }
 
+        Logger.shared.log("ProjectManager[\(instanceId)]: No default branch configured, auto-detecting from git")
+
         // Auto-detect origin's default branch
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        process.arguments = ["symbolic-ref", "refs/remotes/origin/HEAD"]
-        process.currentDirectoryURL = URL(fileURLWithPath: project.directoryPath)
+        do {
+            let result = try executeProcess(
+                executable: "/usr/bin/git",
+                arguments: ["symbolic-ref", "refs/remotes/origin/HEAD"],
+                workingDirectory: project.directoryPath
+            )
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus == 0 {
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(
-                in: .whitespacesAndNewlines)
-            {
-                // Output is like "refs/remotes/origin/main", extract "origin/main"
-                if output.hasPrefix("refs/remotes/") {
-                    return String(output.dropFirst("refs/remotes/".count))
+            if result.exitCode == 0 {
+                let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Output is like "refs/remotes/origin/main", extract just "main"
+                if output.hasPrefix("refs/remotes/origin/") {
+                    let branchName = String(output.dropFirst("refs/remotes/origin/".count))
+                    Logger.shared.log("ProjectManager[\(instanceId)]: Auto-detected base branch: \(branchName)")
+                    return branchName
                 }
+            } else {
+                Logger.shared.log("ProjectManager[\(instanceId)]: Git symbolic-ref failed with exit code \(result.exitCode)")
             }
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: Failed to execute git symbolic-ref: \(error.localizedDescription)")
         }
 
-        // Fallback to origin/main
+        // Try alternative method: check available remote branches
+        Logger.shared.log("ProjectManager[\(instanceId)]: Trying alternative method to detect base branch")
+        do {
+            let result = try executeProcess(
+                executable: "/usr/bin/git",
+                arguments: ["branch", "-r"],
+                workingDirectory: project.directoryPath
+            )
+
+            if result.exitCode == 0 {
+                let branches = result.stdout.components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty && !$0.contains("->") }
+                
+                // Look for common default branch names and return just the branch name
+                for commonBranch in ["origin/main", "origin/master", "origin/develop"] {
+                    if branches.contains(commonBranch) {
+                        let branchName = String(commonBranch.dropFirst("origin/".count))
+                        Logger.shared.log("ProjectManager[\(instanceId)]: Found common branch: \(commonBranch), using: \(branchName)")
+                        return branchName
+                    }
+                }
+                
+                // Use the first available origin branch
+                if let firstOriginBranch = branches.first(where: { $0.hasPrefix("origin/") }) {
+                    let branchName = String(firstOriginBranch.dropFirst("origin/".count))
+                    Logger.shared.log("ProjectManager[\(instanceId)]: Using first available origin branch: \(firstOriginBranch), extracted: \(branchName)")
+                    return branchName
+                }
+                
+                Logger.shared.log("ProjectManager[\(instanceId)]: Available remote branches: \(branches.joined(separator: ", "))")
+            }
+        } catch {
+            Logger.shared.log("ProjectManager[\(instanceId)]: Failed to list remote branches: \(error.localizedDescription)")
+        }
+
+        // Final fallback to main
         Logger.shared.log(
-            "ProjectManager[\(instanceId)]: Could not detect origin's default branch, falling back to origin/main"
+            "ProjectManager[\(instanceId)]: Could not detect any suitable base branch, falling back to main"
         )
-        return "origin/main"
+        return "main"
     }
 
     /// Check if a bare git repository exists at the project path
     private func bareRepositoryExists(in projectPath: String) -> Bool {
-        let gitPath = "\(projectPath)/.git"
         let fileManager = FileManager.default
 
-        // Check if .git exists
-        guard fileManager.fileExists(atPath: gitPath) else {
+        // Check if config file exists (bare repos have config in root, not .git subdirectory)
+        let configPath = "\(projectPath)/config"
+        guard fileManager.fileExists(atPath: configPath) else {
             return false
         }
 
         // Check if it's a bare repository by looking for the 'bare' config
-        let configPath = "\(gitPath)/config"
         guard let configContent = try? String(contentsOfFile: configPath) else {
             return false
         }
@@ -775,6 +971,13 @@ enum ProjectError: LocalizedError {
     case failedToSaveProject
     case noCurrentProject
     case gitCloneFailed
+    
+    // Enhanced taskspace creation errors with context
+    case taskspaceDirectoryCreationFailed(taskspaceName: String, path: String, underlyingError: Error)
+    case bareRepositoryCreationFailed(gitURL: String, targetPath: String, exitCode: Int32, completedStages: [String])
+    case baseBranchDetectionFailed(projectPath: String, completedStages: [String])
+    case worktreeCreationFailed(branchName: String, worktreePath: String, baseBranch: String, exitCode: Int32, completedStages: [String])
+    case taskspaceMetadataSaveFailed(taskspaceName: String, projectPath: String, underlyingError: Error, completedStages: [String])
 
     var errorDescription: String? {
         switch self {
@@ -790,6 +993,84 @@ enum ProjectError: LocalizedError {
             return "No project is currently loaded"
         case .gitCloneFailed:
             return "Failed to clone git repository"
+            
+        case .taskspaceDirectoryCreationFailed(let taskspaceName, let path, let underlyingError):
+            return """
+            Failed to create taskspace directory during taskspace creation.
+            
+            Taskspace: '\(taskspaceName)'
+            Target path: \(path)
+            Stage: Creating taskspace directory (step 1 of 5)
+            Completed stages: None
+            
+            Underlying error: \(underlyingError.localizedDescription)
+            
+            This usually indicates a filesystem permission issue or insufficient disk space.
+            """;
+            
+        case .bareRepositoryCreationFailed(let gitURL, let targetPath, let exitCode, let completedStages):
+            return """
+            Failed to create bare git repository during taskspace creation.
+            
+            Git URL: \(gitURL)
+            Target path: \(targetPath)
+            Stage: Creating bare repository (step 2 of 5)
+            Completed stages: \(completedStages.joined(separator: ", "))
+            Git exit code: \(exitCode)
+            
+            This usually indicates:
+            - Network connectivity issues
+            - Invalid git URL or authentication problems
+            - Insufficient disk space
+            - Git is not installed or not in PATH
+            """
+            
+        case .baseBranchDetectionFailed(let projectPath, let completedStages):
+            return """
+            Failed to detect base branch during taskspace creation.
+            
+            Project path: \(projectPath)
+            Stage: Detecting base branch (step 3 of 5)
+            Completed stages: \(completedStages.joined(separator: ", "))
+            
+            This usually indicates:
+            - The bare repository was not created properly
+            - No remote branches are available
+            - Git configuration issues
+            """
+            
+        case .worktreeCreationFailed(let branchName, let worktreePath, let baseBranch, let exitCode, let completedStages):
+            return """
+            Failed to create git worktree during taskspace creation.
+            
+            Branch name: \(branchName)
+            Worktree path: \(worktreePath)
+            Base branch: \(baseBranch)
+            Stage: Creating git worktree (step 4 of 5)
+            Completed stages: \(completedStages.joined(separator: ", "))
+            Git exit code: \(exitCode)
+            
+            This usually indicates:
+            - The base branch '\(baseBranch)' does not exist
+            - Branch name '\(branchName)' already exists
+            - Filesystem permission issues
+            - Corrupted git repository
+            """
+            
+        case .taskspaceMetadataSaveFailed(let taskspaceName, let projectPath, let underlyingError, let completedStages):
+            return """
+            Failed to save taskspace metadata during taskspace creation.
+            
+            Taskspace: '\(taskspaceName)'
+            Project path: \(projectPath)
+            Stage: Saving taskspace metadata (step 5 of 5)
+            Completed stages: \(completedStages.joined(separator: ", "))
+            
+            Underlying error: \(underlyingError.localizedDescription)
+            
+            The git worktree was created successfully, but metadata could not be saved.
+            This usually indicates filesystem permission issues.
+            """
         }
     }
 }
