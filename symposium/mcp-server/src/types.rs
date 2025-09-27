@@ -110,8 +110,6 @@ impl IpcPayload for PresentWalkthroughMessage {
 /// Polo discovery message - announces presence with shell PID
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoloMessage {
-    #[serde(rename = "terminalShellPid")]
-    pub terminal_shell_pid: u32,
 }
 
 impl IpcPayload for PoloMessage {

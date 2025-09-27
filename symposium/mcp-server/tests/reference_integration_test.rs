@@ -57,7 +57,7 @@ async fn test_reference_integration_via_dispatch_actor() {
     let reference_handle = ReferenceHandle::new();
 
     // Create dispatch handle with the reference handle
-    let _dispatch_handle = DispatchHandle::new(mock_rx, client_tx, 12345, reference_handle.clone());
+    let _dispatch_handle = DispatchHandle::new(mock_rx, client_tx, Some(12345), reference_handle.clone());
 
     // Test data
     let test_context = json!({
