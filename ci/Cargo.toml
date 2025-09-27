@@ -1,0 +1,17 @@
+[package]
+name = "ci"
+version = "0.1.0"
+edition = "2024"
+authors = ["Niko Matsakis"]
+description = "Symposium CI tool for building and testing all components"
+
+[[bin]]
+name = "ci"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+
+# Additional dependencies for CI functionality
+which = { workspace = true }

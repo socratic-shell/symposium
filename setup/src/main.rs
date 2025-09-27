@@ -26,11 +26,13 @@ Examples:
   cargo setup --app --open             # Build macOS app and launch it
   cargo setup --vscode --mcp --app     # Build all components (same as --all)
 
+For CI builds, use: cargo ci check / cargo ci test
+
 Prerequisites:
   - Rust and Cargo (https://rustup.rs/)
   - Node.js and npm (for VSCode extension)
-  - VSCode with 'code' command available
-  - Q CLI or Claude Code (for MCP server)
+  - VSCode with 'code' command available (for development setup)
+  - Q CLI or Claude Code (for MCP server setup)
 "#
 )]
 struct Args {
@@ -62,7 +64,7 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Validate flag combinations first
+    // Validate flag combinations
     if args.open && !args.app && !args.all {
         return Err(anyhow!("❌ --open requires --app"));
     }
@@ -133,15 +135,15 @@ fn show_help() {
     println!("Usage: cargo setup [OPTIONS]");
     println!();
     println!("Options:");
-    println!(
-        "  --all                Build all components (VSCode extension, MCP server, and macOS app)"
-    );
+    println!("  --all                Build all components (VSCode extension, MCP server, and macOS app)");
     println!("  --vscode             Build/install VSCode extension");
     println!("  --mcp                Build/install MCP server");
     println!("  --app                Build the Symposium macOS app");
     println!("  --open               Open the app after building (requires --app)");
     println!("  --restart            Restart MCP daemon after building (requires --mcp)");
     println!("  --help               Show this help message");
+    println!();
+    println!("For CI builds, use: cargo ci check / cargo ci test");
     println!();
     println!("Examples:");
     println!("  cargo setup --all                    # Build everything");

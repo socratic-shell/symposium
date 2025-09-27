@@ -72,6 +72,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [Design details](./design/index.md)
     - [Implementation Overview](./design/implementation-overview.md)
     - [mdbook Conventions](./design/mdbook-conventions.md)
+    - [CI Tool](./design/ci-tool.md)
     - [Collaborative prompt engineering](./collaborative-prompting.md)
     - [IPC Communication and Daemon Architecture](./design/daemon.md)
         - [IPC message type reference](./design/ipc_message_type_reference.md)
