@@ -288,6 +288,14 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
+    fn tmux_available() -> bool {
+        Command::new("tmux")
+            .arg("-V")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
     #[tokio::test]
     async fn test_agent_manager_creation() {
         let temp_dir = tempdir().unwrap();
@@ -299,6 +307,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_session_persistence() {
+        if !tmux_available() {
+            eprintln!("⏭️  Skipping test_session_persistence: tmux not available");
+            return;
+        }
         let temp_dir = tempdir().unwrap();
         let sessions_file = temp_dir.path().join("sessions.json");
         
