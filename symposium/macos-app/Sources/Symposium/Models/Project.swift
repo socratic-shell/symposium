@@ -51,6 +51,7 @@ struct Project: Codable, Identifiable {
     var repoPath: String {
         return "\(directoryPath)/.git"
     }
+    
     let version: Int
     let id: UUID
     let name: String
@@ -58,11 +59,12 @@ struct Project: Codable, Identifiable {
     let directoryPath: String
     let agent: String?
     let defaultBranch: String?
+    let remoteName: String
     var taskspaces: [Taskspace] = []
     let createdAt: Date
     var stackedWindowsEnabled: Bool = false
     
-    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil, defaultBranch: String? = nil) {
+    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil, defaultBranch: String? = nil, remoteName: String = "origin") {
         self.version = 2
         self.id = UUID()
         self.name = name
@@ -70,12 +72,13 @@ struct Project: Codable, Identifiable {
         self.directoryPath = directoryPath
         self.agent = agent
         self.defaultBranch = defaultBranch
+        self.remoteName = remoteName
         self.createdAt = Date()
         self.stackedWindowsEnabled = false
     }
     
     // Internal initializer for migration
-    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, defaultBranch: String?, taskspaces: [Taskspace], createdAt: Date, stackedWindowsEnabled: Bool = false) {
+    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, defaultBranch: String?, remoteName: String, taskspaces: [Taskspace], createdAt: Date, stackedWindowsEnabled: Bool = false) {
         self.version = version
         self.id = id
         self.name = name
@@ -83,6 +86,7 @@ struct Project: Codable, Identifiable {
         self.directoryPath = directoryPath
         self.agent = agent
         self.defaultBranch = defaultBranch
+        self.remoteName = remoteName
         self.taskspaces = taskspaces
         self.createdAt = createdAt
         self.stackedWindowsEnabled = stackedWindowsEnabled
@@ -126,6 +130,7 @@ struct Project: Codable, Identifiable {
                     directoryPath: project.directoryPath,
                     agent: project.agent,
                     defaultBranch: project.defaultBranch,
+                    remoteName: "origin",
                     taskspaces: project.taskspaces,
                     createdAt: project.createdAt,
                     stackedWindowsEnabled: false
@@ -147,6 +152,7 @@ struct Project: Codable, Identifiable {
                 directoryPath: legacyProject.directoryPath,
                 agent: nil,
                 defaultBranch: nil,
+                remoteName: "origin",
                 taskspaces: legacyProject.taskspaces,
                 createdAt: legacyProject.createdAt,
                 stackedWindowsEnabled: false

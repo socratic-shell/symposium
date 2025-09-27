@@ -538,11 +538,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Check if branch is merged into base branch
     /// 
     /// Note: getBaseBranch() returns just the branch name (e.g., "main"), 
-    /// so we need to add "origin/" prefix for remote comparison.
+    /// so we need to add remote prefix for remote comparison.
     private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
+        guard let project = currentProject else { return false }
+        
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        let remoteBranch = "origin/\(baseBranch)"
+        let remoteBranch = "\(project.remoteName)/\(baseBranch)"
         process.arguments = ["merge-base", "--is-ancestor", branchName, remoteBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
@@ -555,11 +557,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Count commits in branch that are not in base branch
     ///
     /// Uses `git rev-list --count <branch> --not <baseBranch>` to count unmerged commits.
-    /// Note: getBaseBranch() returns just the branch name, so we add "origin/" prefix.
+    /// Note: getBaseBranch() returns just the branch name, so we add remote prefix.
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
+        guard let project = currentProject else { return 0 }
+        
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        let remoteBranch = "origin/\(baseBranch)"
+        let remoteBranch = "\(project.remoteName)/\(baseBranch)"
         process.arguments = ["rev-list", "--count", "\(branchName)", "--not", remoteBranch]
         process.currentDirectoryURL = URL(fileURLWithPath: directory)
 
@@ -723,7 +727,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                 Logger.shared.log("ProjectManager[\(instanceId)]: Setting up remote tracking branches")
                 let configResult = try executeProcess(
                     executable: "/usr/bin/git",
-                    arguments: ["config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"],
+                    arguments: ["config", "remote.\(project.remoteName).fetch", "+refs/heads/*:refs/remotes/\(project.remoteName)/*"],
                     workingDirectory: project.directoryPath
                 )
                 
@@ -731,23 +735,23 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                     Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to configure remote tracking branches (exit code \(configResult.exitCode))")
                 }
                 
-                // Step 3: Fetch origin to populate remote tracking branches
-                Logger.shared.log("ProjectManager[\(instanceId)]: Fetching origin to populate remote tracking branches")
+                // Step 3: Fetch remote to populate remote tracking branches
+                Logger.shared.log("ProjectManager[\(instanceId)]: Fetching \(project.remoteName) to populate remote tracking branches")
                 let fetchResult = try executeProcess(
                     executable: "/usr/bin/git",
-                    arguments: ["fetch", "origin"],
+                    arguments: ["fetch", project.remoteName],
                     workingDirectory: project.directoryPath
                 )
                 
                 if fetchResult.exitCode != 0 {
-                    Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to fetch origin (exit code \(fetchResult.exitCode))")
+                    Logger.shared.log("ProjectManager[\(instanceId)]: ⚠️ Warning: Failed to fetch \(project.remoteName) (exit code \(fetchResult.exitCode))")
                 }
                 
-                // Step 4: Set up symbolic reference for origin/HEAD
-                Logger.shared.log("ProjectManager[\(instanceId)]: Setting up symbolic reference for origin/HEAD")
+                // Step 4: Set up symbolic reference for remote/HEAD
+                Logger.shared.log("ProjectManager[\(instanceId)]: Setting up symbolic reference for \(project.remoteName)/HEAD")
                 let remoteResult = try executeProcess(
                     executable: "/usr/bin/git",
-                    arguments: ["remote", "set-head", "origin", "--auto"],
+                    arguments: ["remote", "set-head", project.remoteName, "--auto"],
                     workingDirectory: project.directoryPath
                 )
                 
@@ -878,19 +882,20 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
         Logger.shared.log("ProjectManager[\(instanceId)]: No default branch configured, auto-detecting from git")
 
-        // Auto-detect origin's default branch
+        // Auto-detect remote's default branch
         do {
             let result = try executeProcess(
                 executable: "/usr/bin/git",
-                arguments: ["symbolic-ref", "refs/remotes/origin/HEAD"],
+                arguments: ["symbolic-ref", "refs/remotes/\(project.remoteName)/HEAD"],
                 workingDirectory: project.directoryPath
             )
 
             if result.exitCode == 0 {
                 let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                 // Output is like "refs/remotes/origin/main", extract just "main"
-                if output.hasPrefix("refs/remotes/origin/") {
-                    let branchName = String(output.dropFirst("refs/remotes/origin/".count))
+                let remotePrefix = "refs/remotes/\(project.remoteName)/"
+                if output.hasPrefix(remotePrefix) {
+                    let branchName = String(output.dropFirst(remotePrefix.count))
                     Logger.shared.log("ProjectManager[\(instanceId)]: Auto-detected base branch: \(branchName)")
                     return branchName
                 }
@@ -916,18 +921,19 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
                     .filter { !$0.isEmpty && !$0.contains("->") }
                 
                 // Look for common default branch names and return just the branch name
-                for commonBranch in ["origin/main", "origin/master", "origin/develop"] {
+                let remotePrefix = "\(project.remoteName)/"
+                for commonBranch in ["\(project.remoteName)/main", "\(project.remoteName)/master", "\(project.remoteName)/develop"] {
                     if branches.contains(commonBranch) {
-                        let branchName = String(commonBranch.dropFirst("origin/".count))
+                        let branchName = String(commonBranch.dropFirst(remotePrefix.count))
                         Logger.shared.log("ProjectManager[\(instanceId)]: Found common branch: \(commonBranch), using: \(branchName)")
                         return branchName
                     }
                 }
                 
-                // Use the first available origin branch
-                if let firstOriginBranch = branches.first(where: { $0.hasPrefix("origin/") }) {
-                    let branchName = String(firstOriginBranch.dropFirst("origin/".count))
-                    Logger.shared.log("ProjectManager[\(instanceId)]: Using first available origin branch: \(firstOriginBranch), extracted: \(branchName)")
+                // Use the first available remote branch
+                if let firstRemoteBranch = branches.first(where: { $0.hasPrefix(remotePrefix) }) {
+                    let branchName = String(firstRemoteBranch.dropFirst(remotePrefix.count))
+                    Logger.shared.log("ProjectManager[\(instanceId)]: Using first available \(project.remoteName) branch: \(firstRemoteBranch), extracted: \(branchName)")
                     return branchName
                 }
                 
