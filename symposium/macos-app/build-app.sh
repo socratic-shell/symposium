@@ -36,9 +36,9 @@ else
     echo "Warning: AppIcon.icns not found, app will use default icon"
 fi
 
-# Sign the app bundle
+# Sign the app bundle with ad-hoc signing
 echo "Signing app bundle..."
-codesign --sign "Apple Development: niko@alum.mit.edu (S7V42UKLD6)" --force --deep "${APP_BUNDLE}"
+codesign --sign "-" --force --deep "${APP_BUNDLE}"
 
 if [ $? -eq 0 ]; then
     echo "✅ App bundle created and signed successfully at ${APP_BUNDLE}"

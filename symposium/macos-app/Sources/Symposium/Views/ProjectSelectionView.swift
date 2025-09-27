@@ -8,6 +8,7 @@ struct ProjectSelectionView: View {
     let onProjectSelected: (String) -> Void
     @State private var showingNewProjectDialog = false
     @State private var showingDirectoryPicker = false
+    @State private var pendingValidationError: ProjectValidationError? = nil
 
     private var hasValidAgent: Bool {
         agentManager.availableAgents.first(where: { $0.type == settingsManager.selectedAgent })?
@@ -130,7 +131,17 @@ struct ProjectSelectionView: View {
                 Logger.shared.log("File picker succeeded with URLs: \(urls)")
                 if let url = urls.first {
                     Logger.shared.log("Selected URL: \(url.path)")
-                    openProject(at: url.path)
+                    
+                    // Immediate validation with deferred user feedback
+                    switch Project.validateProjectDirectory(url.path) {
+                    case .success():
+                        Logger.shared.log("Project validation successful, opening project")
+                        openProject(at: url.path)
+                    case .failure(let error):
+                        Logger.shared.log("Project validation failed: \(error)")
+                        // Store error to present after file picker closes
+                        pendingValidationError = error
+                    }
                 } else {
                     Logger.shared.log("ERROR: No URL selected from file picker")
                 }
@@ -138,6 +149,20 @@ struct ProjectSelectionView: View {
                 Logger.shared.log("ERROR: File picker failed: \(error)")
                 print("Failed to select directory: \(error.localizedDescription)")
             }
+        }
+        .onChange(of: showingDirectoryPicker) { _, isShowing in
+            // Present validation error alert after file picker closes
+            if !isShowing, let error = pendingValidationError {
+                Logger.shared.log("File picker closed, presenting validation error alert")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    ProjectValidationAlert.present(for: error)
+                    pendingValidationError = nil
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showNewProjectDialog)) { _ in
+            Logger.shared.log("Received showNewProjectDialog notification, opening new project dialog")
+            showingNewProjectDialog = true
         }
         .sheet(isPresented: $showingNewProjectDialog) {
             NewProjectDialog(onProjectSelected: onProjectSelected)
