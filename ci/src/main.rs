@@ -234,18 +234,14 @@ fn run_rust_tests() -> Result<()> {
     println!("🦀 Running Rust tests...");
     println!("   Testing workspace in: {}", repo_root.display());
 
-    let output = Command::new("cargo")
+    let status = Command::new("cargo")
         .args(["test", "--workspace"])
         .current_dir(&repo_root)
-        .output()
+        .status()
         .context("Failed to execute cargo test")?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "❌ Rust tests failed:\n   Error: {}",
-            stderr.trim()
-        ));
+    if !status.success() {
+        return Err(anyhow!("❌ Rust tests failed"));
     }
 
     println!("✅ Rust tests passed!");
