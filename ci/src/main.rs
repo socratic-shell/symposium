@@ -248,6 +248,7 @@ fn run_rust_tests() -> Result<()> {
 
     let status = Command::new("cargo")
         .args(["test", "--workspace"])
+        .env("RUST_BACKTRACE", "1")
         .current_dir(&repo_root)
         .status()
         .context("Failed to execute cargo test")?;
