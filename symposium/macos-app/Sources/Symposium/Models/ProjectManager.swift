@@ -537,7 +537,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
 
     /// Check if branch is merged into base branch
     /// 
-    /// Note: getBaseBranch() now returns just the branch name (e.g., "main"), 
+    /// Note: getBaseBranch() returns just the branch name (e.g., "main"), 
     /// so we need to add "origin/" prefix for remote comparison.
     private func isBranchMerged(branchName: String, baseBranch: String, in directory: String) throws -> Bool {
         let process = Process()
@@ -555,7 +555,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// Count commits in branch that are not in base branch
     ///
     /// Uses `git rev-list --count <branch> --not <baseBranch>` to count unmerged commits.
-    /// Note: getBaseBranch() now returns just the branch name, so we add "origin/" prefix.
+    /// Note: getBaseBranch() returns just the branch name, so we add "origin/" prefix.
     private func getUnmergedCommitCount(branchName: String, baseBranch: String, in directory: String) throws -> Int {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
