@@ -31,6 +31,7 @@ struct Args {
     command: Option<Commands>,
 }
 
+// ANCHOR: commands
 #[derive(Parser)]
 enum Commands {
     /// Check that all components compile
@@ -38,6 +39,7 @@ enum Commands {
     /// Run all tests
     Test,
 }
+// ANCHOR_END: commands
 
 fn main() -> Result<()> {
     let args = Args::parse();
@@ -49,6 +51,7 @@ fn main() -> Result<()> {
     }
 }
 
+// ANCHOR: run_check
 /// Check that all components compile
 fn run_check() -> Result<()> {
     println!("🤖 Symposium CI Check");
@@ -72,7 +75,9 @@ fn run_check() -> Result<()> {
     println!("\n✅ All components check passed!");
     Ok(())
 }
+// ANCHOR_END: run_check
 
+// ANCHOR: run_test
 /// Run all tests
 fn run_test() -> Result<()> {
     println!("🤖 Symposium CI Test");
@@ -96,6 +101,7 @@ fn run_test() -> Result<()> {
     println!("\n✅ All tests completed!");
     Ok(())
 }
+// ANCHOR_END: run_test
 
 fn check_rust() -> Result<()> {
     if which::which("cargo").is_err() {
@@ -130,6 +136,7 @@ fn get_repo_root() -> Result<PathBuf> {
     Ok(manifest_path)
 }
 
+// ANCHOR: check_rust_server
 /// Check Rust MCP server compilation
 fn check_rust_server() -> Result<()> {
     let repo_root = get_repo_root()?;
@@ -155,7 +162,9 @@ fn check_rust_server() -> Result<()> {
     println!("✅ Rust server check passed!");
     Ok(())
 }
+// ANCHOR_END: check_rust_server
 
+// ANCHOR: build_extension
 /// Build VSCode extension
 fn build_extension() -> Result<()> {
     let repo_root = get_repo_root()?;
@@ -198,7 +207,9 @@ fn build_extension() -> Result<()> {
     println!("✅ VSCode extension built successfully!");
     Ok(())
 }
+// ANCHOR_END: build_extension
 
+// ANCHOR: build_macos_app
 /// Build macOS app
 fn build_macos_app() -> Result<()> {
     let repo_root = get_repo_root()?;
@@ -226,6 +237,7 @@ fn build_macos_app() -> Result<()> {
     println!("✅ macOS application built successfully!");
     Ok(())
 }
+// ANCHOR_END: build_macos_app
 
 /// Run Rust tests
 fn run_rust_tests() -> Result<()> {
