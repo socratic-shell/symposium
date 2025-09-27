@@ -143,15 +143,18 @@ impl SymposiumServer {
     }
 
     pub async fn new(options: crate::Options) -> Result<Self> {
-        // First, discover VSCode PID by walking up the process tree
+        // Try to discover VSCode PID by walking up the process tree
         let current_pid = std::process::id();
-        let Some((vscode_pid, shell_pid)) =
-            crate::pid_discovery::find_vscode_pid_from_mcp(current_pid).await?
-        else {
-            anyhow::bail!("Could not discover VSCode PID from process tree");
+        let shell_pid = match crate::pid_discovery::find_vscode_pid_from_mcp(current_pid).await? {
+            Some((vscode_pid, shell_pid)) => {
+                info!("Discovered VSCode PID: {vscode_pid} and shell PID: {shell_pid}");
+                Some(shell_pid)
+            }
+            None => {
+                info!("Could not discover VSCode PID from process tree - continuing without shell PID");
+                None
+            }
         };
-
-        info!("Discovered VSCode PID: {vscode_pid} and shell PID: {shell_pid}");
 
         // Connect to the global message bus daemon (started by VSCode extension or other clients)
 
@@ -168,7 +171,7 @@ impl SymposiumServer {
         Self::setup_log_forwarding(&ipc);
 
         // Send unsolicited Polo message to announce our presence
-        ipc.send_polo(shell_pid).await?;
+        ipc.send_polo().await?;
 
         // Initialize Dialect interpreter with IDE functions
         let mut interpreter = DialectInterpreter::new(ipc.clone());
