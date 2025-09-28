@@ -1,5 +1,39 @@
 import Foundation
 
+/// Errors that can occur during project validation
+enum ProjectValidationError: LocalizedError {
+    case missingProjectFile
+    case invalidProjectStructure
+    case directoryNotAccessible
+    case unknownValidationFailure
+    
+    var errorDescription: String? {
+        switch self {
+        case .missingProjectFile:
+            return "This directory is not a valid Symposium project"
+        case .invalidProjectStructure:
+            return "The project structure is invalid or corrupted"
+        case .directoryNotAccessible:
+            return "Unable to access the selected directory"
+        case .unknownValidationFailure:
+            return "An unknown error occurred while validating the project"
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .missingProjectFile:
+            return "Please select a directory that contains a project.json file, or create a new project instead."
+        case .invalidProjectStructure:
+            return "Try selecting a different project directory or create a new project."
+        case .directoryNotAccessible:
+            return "Check that you have permission to access this directory and try again."
+        case .unknownValidationFailure:
+            return "Please try selecting a different directory or create a new project."
+        }
+    }
+}
+
 /// Version 0 project structure for backward compatibility
 private struct ProjectV0: Codable {
     let id: UUID
@@ -12,6 +46,12 @@ private struct ProjectV0: Codable {
 
 /// Represents a Symposium project containing multiple taskspaces
 struct Project: Codable, Identifiable {
+    
+    /// Computed property for repository path
+    var repoPath: String {
+        return "\(directoryPath)/.git"
+    }
+    
     let version: Int
     let id: UUID
     let name: String
@@ -19,11 +59,12 @@ struct Project: Codable, Identifiable {
     let directoryPath: String
     let agent: String?
     let defaultBranch: String?
+    let remoteName: String
     var taskspaces: [Taskspace] = []
     let createdAt: Date
     var stackedWindowsEnabled: Bool = false
     
-    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil, defaultBranch: String? = nil) {
+    init(name: String, gitURL: String, directoryPath: String, agent: String? = nil, defaultBranch: String? = nil, remoteName: String = "origin") {
         self.version = 2
         self.id = UUID()
         self.name = name
@@ -31,12 +72,13 @@ struct Project: Codable, Identifiable {
         self.directoryPath = directoryPath
         self.agent = agent
         self.defaultBranch = defaultBranch
+        self.remoteName = remoteName
         self.createdAt = Date()
         self.stackedWindowsEnabled = false
     }
     
     // Internal initializer for migration
-    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, defaultBranch: String?, taskspaces: [Taskspace], createdAt: Date, stackedWindowsEnabled: Bool = false) {
+    private init(version: Int, id: UUID, name: String, gitURL: String, directoryPath: String, agent: String?, defaultBranch: String?, remoteName: String, taskspaces: [Taskspace], createdAt: Date, stackedWindowsEnabled: Bool = false) {
         self.version = version
         self.id = id
         self.name = name
@@ -44,6 +86,7 @@ struct Project: Codable, Identifiable {
         self.directoryPath = directoryPath
         self.agent = agent
         self.defaultBranch = defaultBranch
+        self.remoteName = remoteName
         self.taskspaces = taskspaces
         self.createdAt = createdAt
         self.stackedWindowsEnabled = stackedWindowsEnabled
@@ -87,6 +130,7 @@ struct Project: Codable, Identifiable {
                     directoryPath: project.directoryPath,
                     agent: project.agent,
                     defaultBranch: project.defaultBranch,
+                    remoteName: "origin",
                     taskspaces: project.taskspaces,
                     createdAt: project.createdAt,
                     stackedWindowsEnabled: false
@@ -108,6 +152,7 @@ struct Project: Codable, Identifiable {
                 directoryPath: legacyProject.directoryPath,
                 agent: nil,
                 defaultBranch: nil,
+                remoteName: "origin",
                 taskspaces: legacyProject.taskspaces,
                 createdAt: legacyProject.createdAt,
                 stackedWindowsEnabled: false
@@ -124,6 +169,29 @@ struct Project: Codable, Identifiable {
     static func isValidProjectDirectory(_ path: String) -> Bool {
         let projectFilePath = "\(path)/project.json"
         return FileManager.default.fileExists(atPath: projectFilePath)
+    }
+    
+    /// Validate project directory with detailed error reporting
+    static func validateProjectDirectory(_ path: String) -> Result<Void, ProjectValidationError> {
+        // Check if directory is accessible
+        guard FileManager.default.fileExists(atPath: path) else {
+            return .failure(.directoryNotAccessible)
+        }
+        
+        let projectFilePath = "\(path)/project.json"
+        
+        // Check if project.json exists
+        guard FileManager.default.fileExists(atPath: projectFilePath) else {
+            return .failure(.missingProjectFile)
+        }
+        
+        // Attempt to load and validate project structure
+        do {
+            _ = try Project.load(from: path)
+            return .success(())
+        } catch {
+            return .failure(.invalidProjectStructure)
+        }
     }
     
     /// Find taskspace by UUID
