@@ -107,7 +107,8 @@ pub struct IPCCommunicator {
 
     /// Terminal shell PID for this MCP server instance
     /// Reported to extension during handshake for smart terminal selection
-    terminal_shell_pid: u32,
+    /// None when VSCode PID discovery fails (e.g., persistent agents)
+    terminal_shell_pid: Option<u32>,
 
     /// When true, disables actual IPC communication and uses only local logging.
     /// Used during unit testing to avoid requiring a running VSCode extension.
@@ -119,11 +120,11 @@ pub struct IPCCommunicator {
 
 impl IPCCommunicator {
     pub async fn new(
-        shell_pid: u32,
+        shell_pid: Option<u32>,
         reference_handle: crate::actor::ReferenceHandle,
         options: crate::Options,
     ) -> Result<Self> {
-        info!("Creating IPC communicator for shell PID {shell_pid}");
+        info!("Creating IPC communicator for shell PID {shell_pid:?}");
 
         // Create actor system alongside existing connection management
         let dispatch_handle = {
@@ -161,7 +162,7 @@ impl IPCCommunicator {
 
         Self {
             dispatch_handle: crate::actor::dispatch::DispatchHandle::spawn_with_mock(mock_fn),
-            terminal_shell_pid: 0, // Dummy PID for test mode
+            terminal_shell_pid: None,
             test_mode: true,
         }
     }
@@ -307,39 +308,41 @@ impl IPCCommunicator {
     }
 
     /// Send Polo discovery message (MCP server announces presence with shell PID)
-    pub async fn send_polo(&self, terminal_shell_pid: u32) -> Result<()> {
+    pub async fn send_polo(&self) -> Result<()> {
         if self.test_mode {
             info!(
-                "Polo discovery message sent (test mode) with shell PID: {}",
-                terminal_shell_pid
+                "Polo discovery message sent (test mode) with shell PID: {:?}",
+                self.terminal_shell_pid
             );
             return Ok(());
         }
 
         // Use new actor-based dispatch system
-        let polo_message = crate::types::PoloMessage { terminal_shell_pid };
+        // Note: PoloMessage payload is empty; shell_pid is in MessageSender
+        let polo_message = crate::types::PoloMessage {};
         self.dispatch_handle
             .send(polo_message)
             .await
             .map_err(|e| IPCError::SendError(format!("Failed to send Polo via actors: {}", e)))?;
         info!(
-            "Polo discovery message sent via actor system with shell PID: {}",
-            terminal_shell_pid
+            "Polo discovery message sent via actor system with shell PID: {:?}",
+            self.terminal_shell_pid
         );
         Ok(())
     }
 
     /// Send Goodbye discovery message (MCP server announces departure with shell PID)
-    pub async fn send_goodbye(&self, terminal_shell_pid: u32) -> Result<()> {
+    pub async fn send_goodbye(&self) -> Result<()> {
         if self.test_mode {
             info!(
-                "Goodbye discovery message sent (test mode) with shell PID: {}",
-                terminal_shell_pid
+                "Goodbye discovery message sent (test mode) with shell PID: {:?}",
+                self.terminal_shell_pid
             );
             return Ok(());
         }
 
         // Use new actor-based dispatch system
+        // Note: GoodbyePayload is empty; shell_pid is in MessageSender
         let goodbye_payload = crate::types::GoodbyePayload {};
         self.dispatch_handle
             .send(goodbye_payload)
@@ -348,8 +351,8 @@ impl IPCCommunicator {
                 IPCError::SendError(format!("Failed to send Goodbye via actors: {}", e))
             })?;
         info!(
-            "Goodbye discovery message sent via actor system with shell PID: {}",
-            terminal_shell_pid
+            "Goodbye discovery message sent via actor system with shell PID: {:?}",
+            self.terminal_shell_pid
         );
         Ok(())
     }
@@ -539,7 +542,7 @@ impl IPCCommunicator {
             return Ok(());
         }
 
-        self.send_goodbye(self.terminal_shell_pid).await?;
+        self.send_goodbye().await?;
         info!("Sent Goodbye discovery message during shutdown");
         Ok(())
     }
