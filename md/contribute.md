@@ -18,8 +18,8 @@ To propose a new RFD, create a pull request adding your proposal to the [Draft s
 
 Pull requests are welcome! Whether it's bug fixes, documentation improvements, or small feature additions, we appreciate all contributions.
 
-- Browse the [GitHub repository](https://github.com/symposium/symposium)
-- Check out existing [issues](https://github.com/symposium/symposium/issues) 
+- Browse the [GitHub repository](https://github.com/symposium-dev/symposium/)
+- Check out existing [issues](https://github.com/symposium-dev/symposium/issues) 
 - Read our [development setup guide](./design/implementation-overview.md)
 
 ## Get involved
