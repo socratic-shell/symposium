@@ -1,0 +1,3 @@
+[submodule "external/github-mcp-server"]
+	path = external/github-mcp-server
+	url = https://github.com/github/github-mcp-server.git
