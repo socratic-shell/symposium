@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "servers": {
+    "symposium-git": {
+      "name": "Symposium Git MCP Server",
+      "description": "Git repository management and GitHub integration for Symposium",
+      "command": "github-mcp-server",
+      "args": ["stdio"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    "symposium": {
+      "name": "Symposium MCP Server", 
+      "description": "Symposium's built-in MCP server for code review integration",
+      "command": "symposium-mcp",
+      "args": [],
+      "env": {},
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  }
+}
