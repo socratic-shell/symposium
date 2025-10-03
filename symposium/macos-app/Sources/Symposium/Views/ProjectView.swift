@@ -632,12 +632,16 @@ struct TaskspaceCard: View {
                 projectManager: projectManager,
                 deleteBranch: $deleteBranch,
                 onConfirm: {
-                    do {
-                        try projectManager.deleteTaskspace(taskspace, deleteBranch: deleteBranch)
-                    } catch {
-                        Logger.shared.log("Failed to delete taskspace: \(error)")
+                    Task {
+                        do {
+                            try await projectManager.deleteTaskspace(taskspace, deleteBranch: deleteBranch)
+                        } catch {
+                            Logger.shared.log("Failed to delete taskspace: \(error)")
+                        }
+                        await MainActor.run {
+                            showingDeleteConfirmation = false
+                        }
                     }
-                    showingDeleteConfirmation = false
                 },
                 onCancel: {
                     // Send cancellation response for pending deletion request

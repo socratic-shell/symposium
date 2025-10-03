@@ -402,13 +402,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// - taskspaceDir = /path/task-UUID (taskspace directory)
     /// - worktreeDir = /path/task-UUID/reponame (actual git worktree)
     /// - Git commands must target worktreeDir and run from project.directoryPath (bare repo)
-    func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) throws {
+    func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) async throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        await MainActor.run { isLoading = true }
+        defer { Task { @MainActor in isLoading = false } }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
         let repoName = extractRepoName(from: project.gitURL)
@@ -459,7 +459,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Remove from current project
-        DispatchQueue.main.async {
+        await MainActor.run {
             var updatedProject = project
             updatedProject.taskspaces.removeAll { $0.id == taskspace.id }
             self.currentProject = updatedProject
