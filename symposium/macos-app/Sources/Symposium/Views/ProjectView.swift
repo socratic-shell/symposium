@@ -678,6 +678,7 @@ struct DeleteTaskspaceDialog: View {
     let onCancel: () -> Void
     
     @State private var cachedBranchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) = ("", false, 0, false)
+    @State private var isLoadingBranchInfo = true
     
     var body: some View {
         VStack(spacing: 20) {
@@ -687,7 +688,15 @@ struct DeleteTaskspaceDialog: View {
             Text("Are you sure you want to delete '\(taskspaceName)'? This will permanently remove all files and cannot be undone.")
                 .multilineTextAlignment(.center)
             
-            if !cachedBranchInfo.branchName.isEmpty {
+            if isLoadingBranchInfo {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Checking branch status...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else if !cachedBranchInfo.branchName.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Toggle("Also delete the branch `\(cachedBranchInfo.branchName)` from git", isOn: $deleteBranch)
@@ -765,6 +774,8 @@ struct DeleteTaskspaceDialog: View {
                 cachedBranchInfo = await Task.detached {
                     manager.getTaskspaceBranchInfo(for: ts)
                 }.value
+                
+                isLoadingBranchInfo = false
                 
                 // Set default deleteBranch toggle based on safety analysis
                 deleteBranch = (cachedBranchInfo.unmergedCommits == 0 && !cachedBranchInfo.hasUncommittedChanges)
