@@ -140,6 +140,27 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return (process.terminationStatus, stdout, stderr)
     }
 
+    private func executeProcessAsync(
+        executable: String,
+        arguments: [String],
+        workingDirectory: String? = nil
+    ) async throws -> (exitCode: Int32, stdout: String, stderr: String) {
+        return try await withCheckedThrowingContinuation { continuation in
+            Task.detached {
+                do {
+                    let result = try self.executeProcess(
+                        executable: executable,
+                        arguments: arguments,
+                        workingDirectory: workingDirectory
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     /// Open an existing Symposium project
     func openProject(at directoryPath: String) throws {
         isLoading = true
@@ -422,7 +443,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
 
         do {
-            let result = try executeProcess(
+            let result = try await executeProcessAsync(
                 executable: "/usr/bin/git",
                 arguments: ["worktree", "remove", worktreeDir, "--force"],
                 workingDirectory: project.directoryPath
@@ -444,7 +465,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Optionally delete the branch
         if deleteBranch && !branchName.isEmpty {
             do {
-                let result = try executeProcess(
+                let result = try await executeProcessAsync(
                     executable: "/usr/bin/git",
                     arguments: ["branch", "-D", branchName],
                     workingDirectory: project.directoryPath
