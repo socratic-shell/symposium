@@ -27,7 +27,7 @@ Today, using Symposium requires creating a separate "Symposium project" that is 
 When users create a Symposium project, they get a structure like:
 ```
 /path/to/symposium-projects/my-project/
-├── .git/                    # Fresh clone of their repository
+├── .git/                    # Bare clone of their repository (a bit unusual)
 ├── .symposium/
 │   ├── project.json         # Project configuration
 │   └── task-$UUID/          # Individual taskspaces
