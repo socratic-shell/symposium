@@ -59,6 +59,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
         - [Persistent Agents](./rfds/persistent-agents.md)
         - [Tile-based Window Management](./rfds/tile-based-window-management.md)
         - [GitDiff Elements in Walkthroughs](./rfds/gitdiff-elements.md)
+        - [Embedded Project Design](./rfds/embedded-project-design.md)
     - [Preview](./rfds/preview.md) <!-- Close to ready, highlighted for attention -->
         - [Taskspace Deletion Dialog Confirmation](./rfds/taskspace-deletion-dialog-confirmation.md)
         - [Rust Crate Sources Tool](./rfds/rust-crate-sources-tool.md)
