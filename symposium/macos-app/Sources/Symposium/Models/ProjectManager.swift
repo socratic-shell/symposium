@@ -140,6 +140,27 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         return (process.terminationStatus, stdout, stderr)
     }
 
+    private func executeProcessAsync(
+        executable: String,
+        arguments: [String],
+        workingDirectory: String? = nil
+    ) async throws -> (exitCode: Int32, stdout: String, stderr: String) {
+        return try await withCheckedThrowingContinuation { continuation in
+            Task.detached {
+                do {
+                    let result = try self.executeProcess(
+                        executable: executable,
+                        arguments: arguments,
+                        workingDirectory: workingDirectory
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     /// Open an existing Symposium project
     func openProject(at directoryPath: String) throws {
         isLoading = true
@@ -402,13 +423,13 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     /// - taskspaceDir = /path/task-UUID (taskspace directory)
     /// - worktreeDir = /path/task-UUID/reponame (actual git worktree)
     /// - Git commands must target worktreeDir and run from project.directoryPath (bare repo)
-    func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) throws {
+    func deleteTaskspace(_ taskspace: Taskspace, deleteBranch: Bool = false) async throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        await MainActor.run { isLoading = true }
+        defer { Task { @MainActor in isLoading = false } }
 
         let taskspaceDir = taskspace.directoryPath(in: project.directoryPath)
         let repoName = extractRepoName(from: project.gitURL)
@@ -422,7 +443,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         Logger.shared.log("Attempting to remove worktree: \(worktreeDir) from directory: \(project.directoryPath)")
 
         do {
-            let result = try executeProcess(
+            let result = try await executeProcessAsync(
                 executable: "/usr/bin/git",
                 arguments: ["worktree", "remove", worktreeDir, "--force"],
                 workingDirectory: project.directoryPath
@@ -444,7 +465,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         // Optionally delete the branch
         if deleteBranch && !branchName.isEmpty {
             do {
-                let result = try executeProcess(
+                let result = try await executeProcessAsync(
                     executable: "/usr/bin/git",
                     arguments: ["branch", "-D", branchName],
                     workingDirectory: project.directoryPath
@@ -459,7 +480,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         }
 
         // Remove from current project
-        DispatchQueue.main.async {
+        await MainActor.run {
             var updatedProject = project
             updatedProject.taskspaces.removeAll { $0.id == taskspace.id }
             self.currentProject = updatedProject
