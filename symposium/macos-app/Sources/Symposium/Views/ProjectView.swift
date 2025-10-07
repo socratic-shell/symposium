@@ -386,6 +386,7 @@ struct TaskspaceCard: View {
     @ObservedObject var projectManager: ProjectManager
     @State private var showingDeleteConfirmation = false
     @State private var deleteBranch = false
+    @State private var cachedBranchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) = ("", false, 0, false)
     @State private var isHovered = false
     @State private var isPressed = false
     
@@ -632,12 +633,16 @@ struct TaskspaceCard: View {
                 projectManager: projectManager,
                 deleteBranch: $deleteBranch,
                 onConfirm: {
-                    do {
-                        try projectManager.deleteTaskspace(taskspace, deleteBranch: deleteBranch)
-                    } catch {
-                        Logger.shared.log("Failed to delete taskspace: \(error)")
+                    Task {
+                        do {
+                            try await projectManager.deleteTaskspace(taskspace, deleteBranch: deleteBranch)
+                        } catch {
+                            Logger.shared.log("Failed to delete taskspace: \(error)")
+                        }
+                        await MainActor.run {
+                            showingDeleteConfirmation = false
+                        }
                     }
-                    showingDeleteConfirmation = false
                 },
                 onCancel: {
                     // Send cancellation response for pending deletion request
@@ -672,14 +677,8 @@ struct DeleteTaskspaceDialog: View {
     let onConfirm: () -> Void
     let onCancel: () -> Void
     
-    /// Computed property that gets fresh branch info when dialog renders
-    /// 
-    /// CRITICAL: This computes fresh data every time the dialog appears, not cached data.
-    /// Users may make commits between app startup and deletion, so stale info could 
-    /// show incorrect warnings leading to accidental data loss.
-    private var branchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) {
-        projectManager.getTaskspaceBranchInfo(for: taskspace)
-    }
+    @State private var cachedBranchInfo: (branchName: String, isMerged: Bool, unmergedCommits: Int, hasUncommittedChanges: Bool) = ("", false, 0, false)
+    @State private var isLoadingBranchInfo = true
     
     var body: some View {
         VStack(spacing: 20) {
@@ -689,27 +688,35 @@ struct DeleteTaskspaceDialog: View {
             Text("Are you sure you want to delete '\(taskspaceName)'? This will permanently remove all files and cannot be undone.")
                 .multilineTextAlignment(.center)
             
-            if !branchInfo.branchName.isEmpty {
+            if isLoadingBranchInfo {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Checking branch status...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else if !cachedBranchInfo.branchName.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Toggle("Also delete the branch `\(branchInfo.branchName)` from git", isOn: $deleteBranch)
+                        Toggle("Also delete the branch `\(cachedBranchInfo.branchName)` from git", isOn: $deleteBranch)
                         Spacer()
                     }
                     
-                    if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
+                    if cachedBranchInfo.unmergedCommits > 0 || cachedBranchInfo.hasUncommittedChanges {
                         VStack(alignment: .leading, spacing: 4) {
-                            if branchInfo.unmergedCommits > 0 {
+                            if cachedBranchInfo.unmergedCommits > 0 {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
-                                    Text("\(branchInfo.unmergedCommits) commit\(branchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch.")
+                                    Text("\(cachedBranchInfo.unmergedCommits) commit\(cachedBranchInfo.unmergedCommits == 1 ? "" : "s") from this branch do not appear in the main branch.")
                                         .font(.caption)
                                         .foregroundColor(.orange)
                                 }
                                 .padding(.leading, 20)
                             }
                             
-                            if branchInfo.hasUncommittedChanges {
+                            if cachedBranchInfo.hasUncommittedChanges {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
@@ -720,7 +727,7 @@ struct DeleteTaskspaceDialog: View {
                                 .padding(.leading, 20)
                             }
                             
-                            if branchInfo.unmergedCommits > 0 || branchInfo.hasUncommittedChanges {
+                            if cachedBranchInfo.unmergedCommits > 0 || cachedBranchInfo.hasUncommittedChanges {
                                 HStack {
                                     Image(systemName: "exclamationmark.triangle.fill")
                                         .foregroundColor(.orange)
@@ -761,10 +768,18 @@ struct DeleteTaskspaceDialog: View {
             }
         }
         .onAppear {
-            // Set default deleteBranch toggle based on safety analysis
-            // Safe branches (no unmerged commits, no uncommitted changes): checked by default (encourage cleanup)
-            // Risky branches: unchecked by default (prevent accidental loss)
-            deleteBranch = (branchInfo.unmergedCommits == 0 && !branchInfo.hasUncommittedChanges)
+            Task {
+                let manager = projectManager
+                let ts = taskspace
+                cachedBranchInfo = await Task.detached {
+                    manager.getTaskspaceBranchInfo(for: ts)
+                }.value
+                
+                isLoadingBranchInfo = false
+                
+                // Set default deleteBranch toggle based on safety analysis
+                deleteBranch = (cachedBranchInfo.unmergedCommits == 0 && !cachedBranchInfo.hasUncommittedChanges)
+            }
         }
         .padding()
         .frame(width: 400)
