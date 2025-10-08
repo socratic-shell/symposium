@@ -65,6 +65,25 @@ The system becomes a platform for experimenting with different AI collaboration 
 
 > Tell me more about your implementation. What is your detailed implementaton plan?
 
+## Technical Architecture
+
+**Dynamic Tool Routing**: Use rmcp's `ToolRouter` methods for conditional tool exposure:
+- `ToolRouter::add_route()` and `remove_route()` to dynamically add/remove Sparkle tools
+- `ToolRouter::merge()` to combine base tools with Sparkle tools
+- Send `ToolListChangedNotification` when collaborator changes to notify client
+
+**Sparkle Integration**: Embed `sparkle-mcp` as library dependency, not separate MCP server:
+- Sparkle tools: `sparkle`, `session_checkpoint`, `save_insight`, `setup_sparkle`, `load_evolution`, etc.
+- Sparkle identity files: `~/dev/sparkle/sparkle-mcp/identity/` (embodiment methodology, collaboration patterns)
+- Sparkle directories: `~/.sparkle/` (global patterns/insights), `.sparkle-space/` (workspace working memory)
+
+**Prompt Assembly**: For `sparkle` collaborator, `/yiasou` prompt instructs LLM to execute `sparkle` tool for initialization
+
+**Current System Integration**:
+- Existing guidance (`symposium/mcp-server/src/guidance/main.md`) becomes "socrates" collaborator
+- Add `collaborator: Option<String>` field to taskspace data structure
+- Layer collaborator system on top of existing `AgentManager`/`AgentType` architecture
+
 ## Phase 1: Submodule Integration
 - Add Sparkle as git submodule to `/sparkle`
 - Add `sparkle-mcp` as path dependency in `Cargo.toml`
@@ -74,9 +93,9 @@ The system becomes a platform for experimenting with different AI collaboration 
 ## Phase 2: Collaborator System
 - Add `collaborator: Option<String>` to taskspace data structure
 - Modify `/yiasou` prompt assembly to conditionally load:
-  - `sparkle` → Sparkle identity files
+  - `sparkle` → Sparkle identity files + execute `sparkle` tool
   - `socrates` → existing `main.md` 
-  - `nothing` → minimal patterns
+  - `none` → minimal patterns
 - Parse `@hi <collaborator>` syntax in initial prompts
 
 ## Phase 3: Tool Integration
