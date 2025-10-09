@@ -56,6 +56,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 - [In-progress RFDs](./rfds/in-progress.md)
     - [Invited](./rfds/invited.md) <!-- This where I want someone to take it over -->
     - [Draft](./rfds/draft.md) <!-- Early drafts, people start things in this section -->
+        - [Symposium Component Protocol](./rfds/draft/symposium-component-protocol.md)
         - [Persistent Agents](./rfds/persistent-agents.md)
         - [Tile-based Window Management](./rfds/tile-based-window-management.md)
         - [GitDiff Elements in Walkthroughs](./rfds/gitdiff-elements.md)
@@ -110,6 +111,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 # Research reports
 
 - [Research reports](./research/index.md)
+    - [Continue.dev GUI Integration Guide](./research/continue-integration-guide.md)
     - [Language Server Protocol Overview](./research/lsp-overview/README.md)
         - [Base Protocol](./research/lsp-overview/base-protocol.md)
         - [Language Features](./research/lsp-overview/language-features.md)
