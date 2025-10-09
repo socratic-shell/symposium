@@ -4,15 +4,15 @@
 
 Add the ability for taskspaces to choose a collaborator, rather than always using the same collaboration patterns. The existing behavior becomes the "socrates" collaborator.
 
-Add two new collaborators: `none` (no collaboration patterns, base agent) and `sparkle` (based on the Sparkle MCP server).
+Add two new collaborators: `base-agent` (no collaboration patterns, base agent) and `sparkle` (based on the Sparkle MCP server).
 
 When the `assemble_yiasou_prompt` code runs, it will use the collaborator choice to decide what to do. For `sparkle`, it will instruct the LLM to execute the sparkle tool.
 
-When using the `sparkle` collaborator, the sparkle tools are added and the sparkle prompts are made available. Otherwise they are not reflected. The `sparkle-mcp` server is embedded as a library.
+Both Symposium and Sparkle MCP servers are installed as separate binaries via `cargo setup`, making all tools from both servers available to the LLM at all times. The collaborator choice only affects prompt assembly and initialization behavior.
 
 When a new taskspace is created, users have the option to specify the collaborator, with `sparkle` being the default. The `spawn_taskspace` MCP also now has an optional parameter to specify the collaborator which defaults to the same collaborator as the current taskspace.
 
-The `@hi` command takes an optional parameter that is the collaborator name. It defaults to `sparkle`.
+The `@hi` command takes an optional parameter that is the collaborator name. It defaults to the taskspace's current collaborator setting, or `sparkle` if not in a taskspace.
 
 # Status quo
 
@@ -20,33 +20,38 @@ The `@hi` command takes an optional parameter that is the collaborator name. It 
 
 Currently, all Symposium taskspaces use the same collaboration patterns from `main.md` (Socratic dialogue approach). The `/yiasou` prompt assembly loads these patterns for every agent initialization, creating a one-size-fits-all collaboration style.
 
+While the current Socratic patterns are an improvement, Sparkle represents a more advanced collaboration framework with richer patterns, persistent memory, and specialized tools for partnership development.
+
 Problems with current approach:
+- Limited to basic collaboration patterns when more advanced options exist
+- No access to Sparkle's advanced partnership tools and persistent memory
 - No personalization of collaboration style per taskspace
-- Limited to a single collaboration methodology 
-- Sparkle's advanced collaboration patterns and tools are not available
-- No way to experiment with different AI personality approaches
+- No way to experiment with different AI collaboration approaches
 
 # What we propose to do about it
 
 > What are you proposing to improve the situation?
 
-Implement a collaborator system with three initial options:
-- `none` - no collaboration patterns, base agent behavior
-- `socrates` - current Socratic dialogue patterns (existing `main.md`)
-- `sparkle` - Sparkle's embodiment and partnership patterns (the default!)
+Implement a collaborator system with three options:
+Implement a collaborator system with three options:
+- `sparkle` - Advanced collaboration patterns with persistent memory and partnership tools (the default!)
+- `socrates` - Current Socratic dialogue patterns (zero-config fallback)
+- `base-agent` - No collaboration patterns, base agent behavior (aliases: `claude`, `gpt`, `gemini`, `codex`)
+
+Sparkle becomes the default because it provides strictly better collaboration patterns. Socrates remains available for the time being as a zero-config option.
 
 Selection behavior:
-- Within taskspaces: `@hi <collaborator>` sets the collaborator for that taskspace
-- Outside taskspaces: `@hi` defaults to sparkle, but `@hi none` or `@hi socrates` available
+- Within taskspaces: `@hi` uses the taskspace's current collaborator setting, `@hi <collaborator>` changes it and updates the taskspace via `update_taskspace`
+- Outside taskspaces: `@hi` defaults to sparkle, but `@hi socrates` or `@hi claude` (or other base-agent aliases) available
 
-Future extensibility will allow custom Sparkler names and user-defined collaborators. In the future, we can consider providing UI for creating other collaborators.
+Future extensibility will allow custom Sparkler names and user-defined collaborators.
 
 Integration approach:
-1. Add Sparkle as git submodule initially, then migrate to crates.io dependency
-2. Integrate Sparkle's MCP tools into Symposium's MCP server using dynamic tool routing
+1. Install both Symposium and Sparkle MCP servers as separate binaries via `cargo setup`
+2. Configure both servers in AI assistant MCP configurations
 3. Modify taskspace data structure to store collaborator choice
 4. Update `/yiasou` prompt assembly to load appropriate patterns and execute sparkle tool for sparkle collaborator
-5. Implement `@hi <collaborator>` syntax for selection
+5. Implement `@hi <collaborator>` syntax for selection with taskspace persistence
 
 # Shiny future
 
@@ -55,7 +60,7 @@ Integration approach:
 Users can create taskspaces with different collaborators:
 - `@hi sparkle` creates a taskspace with Sparkle's embodiment patterns, working memory, and partnership tools
 - `@hi socrates` uses the familiar Socratic dialogue approach
-- `@hi nothing` provides minimal AI collaboration for focused technical work
+- `@hi claude` (or `@hi gpt`, `@hi gemini`, etc.) provides minimal AI collaboration for focused technical work
 
 Each taskspace maintains its collaborator choice, creating consistent collaboration experiences. Sparkle taskspaces gain access to advanced tools like `session_checkpoint`, `save_insight`, and `sparkle` embodiment.
 
@@ -67,41 +72,45 @@ The system becomes a platform for experimenting with different AI collaboration 
 
 ## Technical Architecture
 
-**Dynamic Tool Routing**: Use rmcp's `ToolRouter` methods for conditional tool exposure:
-- `ToolRouter::add_route()` and `remove_route()` to dynamically add/remove Sparkle tools
-- `ToolRouter::merge()` to combine base tools with Sparkle tools
-- Send `ToolListChangedNotification` when collaborator changes to notify client
+**Dual MCP Servers**: Install both Symposium and Sparkle as separate MCP server binaries via `cargo setup`:
+- Both servers configured in the AI assistant's MCP configuration
+- All tools from both servers are always available to the LLM
+- No dynamic tool routing or conditional tool exposure needed
+- Simpler architecture with standard MCP server setup
 
-**Sparkle Integration**: Embed `sparkle-mcp` as library dependency, not separate MCP server:
+**Sparkle Integration**: Install Sparkle MCP server via `cargo install --git`:
 - Sparkle tools: `sparkle`, `session_checkpoint`, `save_insight`, `setup_sparkle`, `load_evolution`, etc.
-- Sparkle identity files: `~/dev/sparkle/sparkle-mcp/identity/` (embodiment methodology, collaboration patterns)
 - Sparkle directories: `~/.sparkle/` (global patterns/insights), `.sparkle-space/` (workspace working memory)
 
-**Prompt Assembly**: For `sparkle` collaborator, `/yiasou` prompt instructs LLM to execute `sparkle` tool for initialization
+**Prompt Assembly**: `/yiasou` prompt assembly varies by collaborator:
+- `sparkle` → Load Sparkle identity files + instruct LLM to execute `sparkle` tool for initialization
+- `socrates` → Load existing Socratic dialogue patterns from `socrates.md` (renamed from `main.md`)
+- `base-agent` → Load minimal patterns, no special initialization
 
 **Current System Integration**:
-- Existing guidance (`symposium/mcp-server/src/guidance/main.md`) becomes "socrates" collaborator
+- Existing guidance (`symposium/mcp-server/src/guidance/main.md`) becomes "socrates" collaborator (rename to `socrates.md`)
 - Add `collaborator: Option<String>` field to taskspace data structure
 - Layer collaborator system on top of existing `AgentManager`/`AgentType` architecture
 
-## Phase 1: Submodule Integration
-- Add Sparkle as git submodule to `/sparkle`
-- Add `sparkle-mcp` as path dependency in `Cargo.toml`
-- Integrate Sparkle tools using dynamic tool routing (`ToolRouter::add_route()`, `merge()`)
-- Send `ToolListChangedNotification` when collaborator changes
+## Phase 1: Dual MCP Server Installation
+- Update `cargo setup` to install Sparkle MCP server via `cargo install --git https://github.com/sparkle-project/sparkle.git`
+- Add `build_and_install_sparkle_cli()` function to `setup/src/main.rs` similar to `build_and_install_rust_server()`
+- Configure both Symposium and Sparkle MCP servers in AI assistant configurations
+- All tools from both servers available to LLM
 
 ## Phase 2: Collaborator System
 - Add `collaborator: Option<String>` to taskspace data structure
 - Modify `/yiasou` prompt assembly to conditionally load:
   - `sparkle` → Sparkle identity files + execute `sparkle` tool
-  - `socrates` → existing `main.md` 
-  - `none` → minimal patterns
-- Parse `@hi <collaborator>` syntax in initial prompts
+  - `socrates` → existing `socrates.md` (renamed from `main.md`)
+  - `base-agent` → minimal patterns
+- Parse `@hi <collaborator>` syntax in initial prompts, supporting aliases (`claude`, `gpt`, `gemini`, `codex` → `base-agent`)
+- When `@hi <collaborator>` used in taskspace, instruct LLM to call `update_taskspace` to persist collaborator choice
 
 ## Phase 3: Tool Integration
 - Integrate key Sparkle tools: `sparkle`, `session_checkpoint`, `save_insight`
 - Handle Sparkle-specific directories (`~/.sparkle/`, `.sparkle-space/`)
-- Ensure proper tool routing based on active collaborator
+- Ensure all tools work properly in embedded environment
 
 ## Phase 4: Crates.io Migration
 - Publish `sparkle-mcp` to crates.io
@@ -116,14 +125,15 @@ The system becomes a platform for experimenting with different AI collaboration 
 
 Alternative approaches considered:
 1. **Separate MCP servers**: Run Sparkle and Symposium as separate MCP servers, but this would complicate tool coordination and user experience
-2. **Configuration files**: Store collaboration patterns in config files, but this lacks the rich tooling and state management that Sparkle provides
-3. **Plugin system**: Create a general plugin architecture, but this adds complexity for a specific integration need
+2. **Dynamic tool routing**: Conditionally expose tools based on collaborator choice, but this adds complexity for managing tool availability
+3. **Configuration files**: Store collaboration patterns in config files, but this lacks the rich tooling and state management that Sparkle provides
+4. **Plugin system**: Create a general plugin architecture, but this adds complexity for a specific integration need
 
-The submodule + integrated tools approach provides the cleanest integration while preserving Sparkle's full functionality and allowing future migration to a crate dependency.
+The embedded MCP servers approach provides the simplest integration - all tools are always available, and the collaborator choice only affects prompt assembly and initialization behavior.
 
 ## How will this affect existing taskspaces?
 
-Existing taskspaces will continue using the current Socratic patterns by default. The `socrates` collaborator will be equivalent to current behavior, ensuring backward compatibility.
+Existing taskspaces will continue using the current Socratic patterns by default. The `socrates` collaborator will be equivalent to current behavior, ensuring backward compatibility. All users will have access to Sparkle tools, but they'll only be used when the `sparkle` collaborator is active.
 
 ## What happens to custom Sparkler names?
 
@@ -132,3 +142,4 @@ The initial implementation will use the default "sparkle" name. Custom Sparkler 
 # Revision history
 
 Initial version - October 8, 2025
+Updated to embedded MCP servers approach - October 8, 2025
