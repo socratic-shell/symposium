@@ -278,13 +278,13 @@ impl DispatchHandle {
     pub fn new(
         client_rx: mpsc::Receiver<IPCMessage>,
         client_tx: mpsc::Sender<IPCMessage>,
-        shell_pid: Option<u32>,
+        shell_pid: u32,
         reference_handle: crate::actor::ReferenceHandle,
     ) -> Self {
         let (actor_tx, actor_rx) = mpsc::channel(32);
 
         let sender = create_sender(shell_pid);
-        info!("MCP server sender with PID {shell_pid:?} sender info: {sender:?}");
+        info!("MCP server sender with PID {shell_pid} sender info: {sender:?}");
 
         let actor = DispatchActor::new(
             actor_rx,
@@ -364,7 +364,7 @@ impl DispatchHandle {
                     let data = response.data.unwrap_or(serde_json::Value::Null);
                     Ok(<M::Reply>::deserialize(data)?)
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {
                     return Err(anyhow::anyhow!("Request timed out after 30 seconds"));
                 }
             },
@@ -375,7 +375,7 @@ impl DispatchHandle {
 
 }
 
-fn create_sender(shell_pid: Option<u32>) -> crate::types::MessageSender {
+fn create_sender(shell_pid: u32) -> crate::types::MessageSender {
     // Try to extract taskspace UUID from directory structure
     let taskspace_uuid = crate::ipc::extract_project_info()
         .map(|(_, uuid)| uuid)
@@ -383,7 +383,7 @@ fn create_sender(shell_pid: Option<u32>) -> crate::types::MessageSender {
     crate::types::MessageSender {
         working_directory: working_directory(),
         taskspace_uuid,
-        shell_pid,
+        shell_pid: Some(shell_pid),
     }
 }
 
