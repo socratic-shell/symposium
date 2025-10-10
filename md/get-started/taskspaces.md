@@ -12,7 +12,7 @@ Launch the Desktop app. Create a new project and give it the URL of your git rep
 
 ### Granting permissions
 
-The Desktop app is designed to work with any editor. It does this by using the Mac OS X Accessibility APIs to move windows from the outside and screen capture APIs to capture screenshots. You need to grand these permissions.
+The Desktop app is designed to work with any editor. It does this by using the Mac OS X Accessibility APIs to move windows from the outside and screen capture APIs to capture screenshots. You need to grant these permissions.
 
 ### Creating taskspaces
 
