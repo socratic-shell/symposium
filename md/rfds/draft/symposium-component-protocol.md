@@ -221,7 +221,7 @@ HTML panels provide a content display mechanism that extends beyond simple text-
 
 File comments enable agents to place contextual annotations directly in source code, creating a more integrated development experience than separate chat windows.
 
-**Comment Placement:** If the editor provides the `file_comment` capability, agents can place comments using the `_show_file_comment` message: `{ "id": "$UUID", "url": "...", "start": {"line": L, ("column": C)? }, ("end": {"line": L, ("column": C)?})?, "can_reply": boolean }`.
+**Comment Placement:** If the editor provides the `file_comment` capability, agents can place comments using the `_scp/file_comment/show` message: `{ "id": "$UUID", "url": "...", "start": {"line": L, ("column": C)? }, ("end": {"line": L, ("column": C)?})?, "can_reply": boolean }`.
 
 **Position Specification:** Comments are positioned using line and column coordinates. If the start column is omitted, it defaults to the beginning of the line. If the end column is omitted, it defaults to the end of the line. If the end position is entirely omitted, the comment spans from the start position to the end of that line.
 
@@ -234,6 +234,121 @@ SCP provides a logging capability that enables observability and testing through
 **Log Messages:** Agents and proxies can send `_scp/log` messages upstream: `{ "level": "info|warn|error|debug", "message": "...", ("data": {...})? }`. The editor receives these messages and can display them in output panels, write them to log files, or use them for test assertions.
 
 **Testing Integration:** The logging capability is particularly valuable for scenario-based testing, where test frameworks can assert on expected log patterns to verify proxy behavior and message flow through the chain.
+
+# Implementation progress
+
+> What is the current status of implementation and what are the next steps?
+
+## Phase 1: TypeScript ACP Server + Test Harness
+
+**Status:** Not started
+
+**Goal:** Build and test basic ACP communication with fast iteration cycle.
+
+**Architecture:** TypeScript ACP Server (standalone)
+
+**Implementation:**
+- Build dummy ACP server in TypeScript using `@zed-industries/agent-client-protocol`
+- Create test harness that can directly import and test server logic
+- Implement basic `initialize`, `newSession`, `prompt` handlers
+
+**Key Test:** `basic-echo.test.ts`
+- Send "Hello, world" → get "Hello, user" response
+- Validates ACP protocol implementation and basic message flow
+- No compilation step needed - fast test iteration
+
+## Phase 2: Continue.dev GUI Integration
+
+**Status:** Not started
+
+**Goal:** Connect Continue.dev GUI to TypeScript ACP server through VSCode extension.
+
+**Architecture:** Continue.dev GUI ↔ VSCode Extension (TypeScript ACP client) ↔ TypeScript ACP Server
+
+**Implementation:**
+- Integrate Continue.dev React GUI into VSCode extension webview
+- Use TypeScript ACP client to spawn and communicate with server subprocess
+- Implement Continue.dev message protocol translation to ACP
+
+**Key Test:** Manual verification + log inspection
+- Type in Continue.dev GUI → see ACP messages in VSCode output logs → response appears in GUI
+- Validates full GUI ↔ server communication chain
+
+## Phase 3: ToAgent Bridge (Rust)
+
+**Status:** Not started
+
+**Goal:** Build the critical SCP-to-ACP bridge component that enables MCP tool forwarding.
+
+**Architecture:** VSCode Extension ↔ ToAgent Bridge (Rust) ↔ TypeScript Dummy Agent
+
+**Implementation:**
+- Build ToAgent bridge in Rust that implements SCP protocol
+- Convert "scp" transport MCP tools to stdio transport (dummy shim binaries)
+- Handle `_scp/mcp` message routing between extension and downstream agent
+- Forward standard ACP messages bidirectionally
+
+**Key Test:** `mcp-bridge.test.ts`
+- Send "hi" → agent invokes MCP tool → bridge routes `_scp/mcp` to extension → tool logs "I got this message: Hi" → responds "Hola"
+- Validates MCP-over-SCP architecture and message routing
+
+## Phase 4: IDE Operations Proxy (Rust)
+
+**Status:** Not started
+
+**Goal:** Port existing IDE operations to Rust SCP proxy architecture.
+
+**Architecture:** VSCode Extension ↔ IDE Operations Proxy (Rust) ↔ ToAgent Bridge ↔ Dummy Agent
+
+**Implementation:**
+- Port IDE operations from existing Symposium MCP server to Rust SCP proxy
+- Implement file operations, code navigation, selection handling
+- Insert proxy between extension and ToAgent bridge
+
+**Key Test:** `ide-operations.test.ts`
+- Request file operations → proxy handles IDE calls → logs show successful operations
+- Validates Rust proxy architecture with real functionality
+
+## Phase 5: Walkthrough Proxy (Rust)
+
+**Status:** Not started
+
+**Goal:** Implement rich content capabilities with HTML panels and file comments.
+
+**Architecture:** VSCode Extension ↔ Walkthrough Proxy (Rust) ↔ IDE Operations Proxy ↔ ToAgent Bridge ↔ Dummy Agent
+
+**Implementation:**
+- Build walkthrough proxy that generates `_scp/html_panel/show` and `_scp/file_comment/show` messages
+- Implement walkthrough markdown parsing and content generation
+- Handle user interactions with panels and comments
+
+**Key Test:** `walkthrough-display.test.ts`
+- Request walkthrough → HTML panel appears in VSCode → file comments placed in editor
+- Validates full SCP rich content capabilities end-to-end
+
+## Testing Strategy
+
+**Scenario-Based Testing:**
+- Each test is a directory containing mock agent scripts and test files
+- Tests instantiate SCP proxy chains with mock agents as final components
+- VSCode extension logs all key events to Output window for test assertions
+- BDD-style tests: "when user says X, expect these log messages"
+
+**Test Structure:**
+```
+test-scenarios/
+├── basic-echo/
+│   ├── agent.ts (TypeScript mock agent)
+│   └── basic-echo.test.ts
+├── mcp-bridge/
+│   ├── agent.ts
+│   └── mcp-bridge.test.ts
+└── walkthrough-display/
+    ├── agent.ts
+    └── walkthrough-display.test.ts
+```
+
+**Observability:** All components use `_scp/log` messages for structured logging, enabling test assertions on expected behavior patterns.
 
 # Frequently asked questions
 

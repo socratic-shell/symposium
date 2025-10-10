@@ -112,6 +112,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
 
 - [Research reports](./research/index.md)
     - [Continue.dev GUI Integration Guide](./research/continue-integration-guide.md)
+    - [VSCode Extension Testing](./research/vscode-testing.md)
     - [Language Server Protocol Overview](./research/lsp-overview/README.md)
         - [Base Protocol](./research/lsp-overview/base-protocol.md)
         - [Language Features](./research/lsp-overview/language-features.md)
