@@ -175,11 +175,11 @@ An SCP-aware agent or proxy provides the following capability during ACP initial
 The `proxy` flag indicates whether this SCP server is a *proxy* or a *final agent*:
 
 * An SCP *agent* (`proxy = false`)  is the final node in the chain. It behaves like an ACP server except that it supports [MCP tools over SCP](#mcp-tools-over-scp) and other future SCP extensions.
-* An SCP *proxy* (`proxy = true`) is an intermediate node in the chain. Proxies expect to be initialized with a [`_proxy` request](#the-_proxy-request) before they can be used. Until the `_proxy` chain is established, any other requests  result in an error. Once established, the proxy chain cannot be changed.
+* An SCP *proxy* (`proxy = true`) is an intermediate node in the chain. Proxies expect to be initialized with a [`_scp/proxy` request](#the-_scpproxy-request) before they can be used. Until the `_scp/proxy` chain is established, any other requests  result in an error. Once established, the proxy chain cannot be changed.
 
-### The `_proxy` request
+### The `_scp/proxy` request
 
-The `_proxy` request contains an array of `ScpServer` structures. These structures follow the same format as ACP's [`McpServer`](https://agentclientprotocol.com/protocol/schema#mcpserver) specification, with only stdio transport mode supported initially. This allows proxies to launch and connect to their downstream components using the same patterns established by ACP.
+The `_scp/proxy` request contains an array of `ScpServer` structures. These structures follow the same format as ACP's [`McpServer`](https://agentclientprotocol.com/protocol/schema#mcpserver) specification, with only stdio transport mode supported initially. This allows proxies to launch and connect to their downstream components using the same patterns established by ACP.
 
 The proxy handles launching and connecting to downstream SCP servers using the same mechanisms it would use for MCP servers. This reuses existing process management and communication patterns while extending them for the proxy chain architecture.
 
@@ -189,7 +189,7 @@ SCP extends the ACP protocol to allow MCP tools to be provided by proxies in the
 
 **SCP Transport Extension:** When an agent advertises support for `"symposium"`, the ACP `McpServer` structure is extended with a new transport type: `{ "type": "scp", "name": "..." }`. This transport type indicates that the MCP server is provided by a proxy in the SCP chain rather than by an external process.
 
-**Message Forwarding:** When the agent invokes an MCP tool using the "scp" transport, the message is forwarded to the ACP editor as an `"_mcp"` request. The request contains an object `{"name": "...", "message": M}` that embeds the original MCP message `M` along with the name of the target proxy. This allows the editor to route the message to the appropriate proxy in the chain.
+**Message Forwarding:** When the agent invokes an MCP tool using the "scp" transport, the message is forwarded to the ACP editor as an `_scp/mcp` request. The request contains an object `{"name": "...", "message": M}` that embeds the original MCP message `M` along with the name of the target proxy. This allows the editor to route the message to the appropriate proxy in the chain.
 
 **Bidirectional Communication:** This mechanism enables full MCP protocol support through the proxy chain, including tool invocation, resource access, and prompt templates. Proxies can provide MCP tools that appear transparent to the agent while actually being handled by components earlier in the chain.
 
@@ -209,11 +209,11 @@ HTML panels provide a content display mechanism that extends beyond simple text-
 
 **Panel Management:** If the editor provides the `html_panel` capability, agents can manage panels through three core operations:
 
-- **Show/Update Panel:** The `_show_html_panel` message creates or updates a panel: `{ "id": "$UUID", ("label": "text")?, ("contents": "...html...")? }`. If a panel with the given ID already exists, it updates the provided fields (label and/or contents) and brings the panel to the front. For new panels, both label and contents must be provided or the message results in an error.
+- **Show/Update Panel:** The `_scp/html_panel/show` message creates or updates a panel: `{ "id": "$UUID", ("label": "text")?, ("contents": "...html...")? }`. If a panel with the given ID already exists, it updates the provided fields (label and/or contents) and brings the panel to the front. For new panels, both label and contents must be provided or the message results in an error.
 
-- **Clear Panel:** The `_clear_html_panel` message removes a panel: `{ "id": "$UUID" }`. This allows agents to clean up panels that are no longer needed.
+- **Clear Panel:** The `_scp/html_panel/clear` message removes a panel: `{ "id": "$UUID" }`. This allows agents to clean up panels that are no longer needed.
 
-- **Query Panel:** The `_get_html_panel` message retrieves current panel state: `{ "id": "$UUID" }`. This returns either null (if the panel doesn't exist) or the current contents, enabling agents to check panel state before updates.
+- **Query Panel:** The `_scp/html_panel/get` message retrieves current panel state: `{ "id": "$UUID" }`. This returns either null (if the panel doesn't exist) or the current contents, enabling agents to check panel state before updates.
 
 **Widget Support:** Panels can contain interactive widgets that provide structured ways for users to interact with the content. This enables interfaces beyond static HTML display.
 
@@ -226,6 +226,14 @@ File comments enable agents to place contextual annotations directly in source c
 **Position Specification:** Comments are positioned using line and column coordinates. If the start column is omitted, it defaults to the beginning of the line. If the end column is omitted, it defaults to the end of the line. If the end position is entirely omitted, the comment spans from the start position to the end of that line.
 
 **Interactive Comments:** The `can_reply` flag determines whether the comment includes user interaction capabilities. When true, users can reply to the comment, creating a threaded discussion directly in the code. This enables collaborative code review and explanation workflows.
+
+### Logging
+
+SCP provides a logging capability that enables observability and testing throughout the proxy chain. This allows proxies and agents to send structured log messages that can be captured by the editor for debugging, testing, and monitoring purposes.
+
+**Log Messages:** Agents and proxies can send `_scp/log` messages upstream: `{ "level": "info|warn|error|debug", "message": "...", ("data": {...})? }`. The editor receives these messages and can display them in output panels, write them to log files, or use them for test assertions.
+
+**Testing Integration:** The logging capability is particularly valuable for scenario-based testing, where test frameworks can assert on expected log patterns to verify proxy behavior and message flow through the chain.
 
 # Frequently asked questions
 
