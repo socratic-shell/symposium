@@ -20,7 +20,7 @@ The `@hi` command takes an optional parameter that is the collaborator name. It 
 
 Currently, all Symposium taskspaces use the same collaboration patterns from `main.md` (Socratic dialogue approach). The `/yiasou` prompt assembly loads these patterns for every agent initialization, creating a one-size-fits-all collaboration style.
 
-While the current Socratic patterns are an improvement, Sparkle represents a more advanced collaboration framework with richer patterns, persistent memory, and specialized tools for partnership development.
+While the current Socratic patterns are an improvemegnt, Sparkle represents a more advanced collaboration framework with richer patterns, persistent memory, and specialized tools for partnership development.
 
 Problems with current approach:
 - Limited to basic collaboration patterns when more advanced options exist
@@ -62,7 +62,7 @@ Users can create taskspaces with different collaborators:
 - `@hi socrates` uses the familiar Socratic dialogue approach
 - `@hi claude` (or `@hi gpt`, `@hi gemini`, etc.) provides minimal AI collaboration for focused technical work
 
-Each taskspace maintains its collaborator choice, creating consistent collaboration experiences. Sparkle taskspaces gain access to advanced tools like `session_checkpoint`, `save_insight`, and `sparkle` embodiment.
+Each taskspace maintains its collaborator choice, creating consistent collaboration experiences. Sparkle taskspaces gain access to Sparkle's advanced collaboration tools and persistent memory features.
 
 The system becomes a platform for experimenting with different AI collaboration approaches while maintaining backward compatibility.
 
@@ -79,7 +79,7 @@ The system becomes a platform for experimenting with different AI collaboration 
 - Simpler architecture with standard MCP server setup
 
 **Sparkle Integration**: Install Sparkle MCP server via `cargo install --git`:
-- Sparkle tools: `sparkle`, `session_checkpoint`, `save_insight`, `setup_sparkle`, `load_evolution`, etc.
+- Sparkle tools: All tools from the Sparkle MCP server (e.g., `sparkle`, `session_checkpoint`, etc.)
 - Sparkle directories: `~/.sparkle/` (global patterns/insights), `.sparkle-space/` (workspace working memory)
 
 **Prompt Assembly**: `/yiasou` prompt assembly varies by collaborator:
@@ -108,9 +108,9 @@ The system becomes a platform for experimenting with different AI collaboration 
 - When `@hi <collaborator>` used in taskspace, instruct LLM to call `update_taskspace` to persist collaborator choice
 
 ## Phase 3: Tool Integration
-- Integrate key Sparkle tools: `sparkle`, `session_checkpoint`, `save_insight`
+- Ensure all Sparkle tools work properly with dual MCP server setup
 - Handle Sparkle-specific directories (`~/.sparkle/`, `.sparkle-space/`)
-- Ensure all tools work properly in embedded environment
+- Verify tool functionality across different collaborator modes
 
 ## Phase 4: Crates.io Migration
 - Publish `sparkle-mcp` to crates.io
