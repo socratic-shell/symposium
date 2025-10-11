@@ -5,16 +5,10 @@
 //! Provides tools for AI assistants to display code reviews in VSCode.
 //! Acts as a communication bridge between AI and the VSCode extension via IPC.
 
-use anyhow::{Result, Context};
+use anyhow::Result;
 use clap::Parser;
 use rmcp::{ServiceExt, transport::stdio};
-use tracing::{error, info, warn};
-use std::collections::HashMap;
-use std::process::{Child, Command as ProcessCommand, Stdio};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
+use tracing::{error, info};
 
 use symposium_mcp::{
     AgentManager,
@@ -22,160 +16,6 @@ use symposium_mcp::{
     constants::DAEMON_SOCKET_PREFIX,
     structured_logging,
 };
-
-// git MCP Configuration Types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct McpServerConfig {
-    name: String,
-    description: String,
-    command: String,
-    args: Vec<String>,
-    env: HashMap<String, String>,
-    transport: TransportConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct TransportConfig {
-    #[serde(rename = "type")]
-    transport_type: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct McpConfig {
-    servers: HashMap<String, McpServerConfig>,
-}
-
-struct McpServerProcess {
-    config: McpServerConfig,
-    process: Option<Child>,
-}
-
-struct McpManager {
-    servers: Arc<Mutex<HashMap<String, McpServerProcess>>>,
-    config: McpConfig,
-}
-
-impl McpManager {
-    fn new(config: McpConfig) -> Self {
-        Self {
-            servers: Arc::new(Mutex::new(HashMap::new())),
-            config,
-        }
-    }
-    async fn start_server(&self, server_id: &str) -> Result<()> {
-        let mut servers = self.servers.lock().await;
-        if servers.contains_key(server_id) { warn!("MCP server '{}' is already running", server_id);return Ok(());}
-
-        let config = self.config.servers.get(server_id)
-            .context(format!("MCP server '{}' not found in configuration", server_id))?;
-
-        info!("Starting MCP server: {}", config.name);
-        let mut cmd = ProcessCommand::new(&config.command);
-        cmd.args(&config.args)
-           .stdin(Stdio::piped())
-           .stdout(Stdio::piped())
-           .stderr(Stdio::piped());
-
-        for (key, value) in &config.env {
-            let expanded_value = expand_env_var(value);
-            cmd.env(key, expanded_value);
-        }
-        let process = cmd.spawn()
-            .context(format!("Failed to start MCP server '{}'", server_id))?;
-        let server_process = McpServerProcess {
-            config: config.clone(),
-            process: Some(process),
-        };
-        servers.insert(server_id.to_string(), server_process);
-        info!("MCP server '{}' started successfully", server_id);
-        Ok(())
-    }
-    async fn stop_server(&self, server_id: &str) -> Result<()> {
-        let mut servers = self.servers.lock().await;
-        
-        if let Some(mut server_process) = servers.remove(server_id) {
-            if let Some(mut process) = server_process.process.take() {
-                info!("Stopping MCP server: {}", server_id);
-                match process.kill() {
-                    Ok(_) => {
-                        let _ = process.wait();
-                        info!("MCP server '{}' stopped successfully", server_id);
-                    }
-                    Err(e) => {
-                        error!("Failed to stop MCP server '{}': {}", server_id, e);
-                        return Err(e.into());
-                    }
-                }
-            }
-        } else {
-            warn!("MCP server '{}' is not running", server_id);
-        }
-        Ok(())
-    }
-
-    async fn start_all_servers(&self) -> Result<()> {
-        info!("Starting all configured MCP servers");
-        for server_id in self.config.servers.keys() {
-            if let Err(e) = self.start_server(server_id).await {
-                error!("Failed to start MCP server '{}': {}", server_id, e);
-            }
-        }
-        Ok(())
-    }
-
-    async fn stop_all_servers(&self) -> Result<()> {
-        info!("Stopping all MCP servers");
-        let server_ids: Vec<String> = {
-            let servers = self.servers.lock().await;
-            servers.keys().cloned().collect()
-        };
-        for server_id in server_ids {
-            if let Err(e) = self.stop_server(&server_id).await {
-                error!("Failed to stop MCP server '{}': {}", server_id, e);
-            }
-        }
-        Ok(())
-    }
-}
-
-fn expand_env_var(value: &str) -> String {
-    if value.starts_with("${") && value.ends_with("}") {
-        let var_name = &value[2..value.len()-1];
-        std::env::var(var_name).unwrap_or_else(|_| {
-            warn!("Environment variable '{}' not found, using empty string", var_name);
-            String::new()
-        })
-    } else {
-        value.to_string()
-    }
-}
-
-fn load_mcp_config<P: AsRef<Path>>(config_path: P) -> Result<McpConfig> {
-    let config_content = std::fs::read_to_string(&config_path)
-        .context(format!("Failed to read MCP config file: {:?}", config_path.as_ref()))?;
-    
-    let config: McpConfig = serde_json::from_str(&config_content)
-        .context("Failed to parse MCP configuration JSON")?;
-    
-    Ok(config)
-}
-
-fn get_default_config_path() -> std::path::PathBuf {
-    let possible_paths = [
-        "mcp-servers.json",
-        "config/mcp-servers.json", 
-        "../mcp-servers.json",
-        "../../mcp-servers.json",
-    ];
-    
-    for path in &possible_paths {
-        if Path::new(path).exists() {
-            return Path::new(path).to_path_buf();
-        }
-    }
-    
-    Path::new("mcp-servers.json").to_path_buf()
-}
 
 #[derive(Parser)]
 #[command(name = "symposium-mcp")]
@@ -233,10 +73,6 @@ enum Command {
     /// Manage persistent agent sessions
     #[command(subcommand)]
     Agent(AgentCommand),
-
-    /// Manage MCP servers
-    #[command(subcommand)]
-    Mcp(McpCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -288,33 +124,6 @@ enum AgentCommand {
     },
 }
 
-#[derive(Parser, Debug)]
-enum McpCommand {
-    /// Start an MCP server
-    Start {
-        /// Server ID to start
-        server_id: String,
-    },
-
-    /// Stop an MCP server
-    Stop {
-        /// Server ID to stop
-        server_id: String,
-    },
-
-    /// List all configured MCP servers
-    List,
-
-    /// Start all configured MCP servers
-    StartAll,
-
-    /// Stop all running MCP servers
-    StopAll,
-
-    /// Show status of MCP servers
-    Status,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -358,10 +167,6 @@ async fn main() -> Result<()> {
         Some(Command::Agent(agent_cmd)) => {
             info!("🤖 AGENT MANAGER MODE");
             run_agent_manager(agent_cmd).await?;
-        }
-        Some(Command::Mcp(mcp_cmd)) => {
-            info!("MCP MANAGER MODE");
-            run_mcp_manager(mcp_cmd).await?;
         }
         None => {
             info!("Starting Symposium MCP Server (Rust)");
@@ -468,62 +273,6 @@ async fn run_agent_manager(agent_cmd: AgentCommand) -> Result<()> {
         }
     }
 
-    Ok(())
-}
-
-/// Run MCP manager commands
-async fn run_mcp_manager(mcp_cmd: McpCommand) -> Result<()> {
-    // Load MCP configuration
-    let config_path = get_default_config_path();
-    let config = load_mcp_config(&config_path)
-        .context(format!("Failed to load MCP config from {:?}", config_path))?;
-    
-    let manager = McpManager::new(config.clone());
-    
-    match mcp_cmd {
-        McpCommand::Start { server_id } => {
-            info!("Starting MCP server: {}", server_id);
-            manager.start_server(&server_id).await?;
-            println!("✅ MCP server '{}' started successfully", server_id);
-        }
-        McpCommand::Stop { server_id } => {
-            info!("Stopping MCP server: {}", server_id);
-            manager.stop_server(&server_id).await?;
-            println!("MCP server '{}' stopped successfully", server_id);
-        }
-        McpCommand::List => {
-            println!(" Configured MCP servers:");
-            for (server_id, server_config) in &config.servers {
-                println!("  • {} - {}", server_id, server_config.description);
-            }
-        }
-        McpCommand::StartAll => {
-            info!("Starting all MCP servers");
-            manager.start_all_servers().await?;
-            println!("✅ All MCP servers started");
-        }
-        McpCommand::StopAll => {
-            info!("Stopping all MCP servers");
-            manager.stop_all_servers().await?;
-            println!(" All MCP servers stopped");
-        }
-        McpCommand::Status => {
-            println!("📊 MCP Server Status:");
-            let running_servers: Vec<String> = {
-                let servers = manager.servers.lock().await;
-                servers.keys().cloned().collect()
-            };
-            for (server_id, server_config) in &config.servers {
-                let status = if running_servers.contains(server_id) {
-                    "🟢 Running"
-                } else {
-                    "🔴 Stopped"
-                };
-                println!("  • {} - {} [{}]", server_id, server_config.description, status);
-            }
-        }
-    }
-    
     Ok(())
 }
 

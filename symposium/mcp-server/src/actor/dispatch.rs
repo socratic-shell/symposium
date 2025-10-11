@@ -364,7 +364,7 @@ impl DispatchHandle {
                     let data = response.data.unwrap_or(serde_json::Value::Null);
                     Ok(<M::Reply>::deserialize(data)?)
                 }
-                _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {
+                _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
                     return Err(anyhow::anyhow!("Request timed out after 30 seconds"));
                 }
             },
