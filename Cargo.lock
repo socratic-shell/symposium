@@ -363,7 +363,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "which",
+ "which 6.0.3",
 ]
 
 [[package]]
@@ -2783,7 +2783,8 @@ dependencies = [
  "home",
  "serde",
  "serde_json",
- "which",
+ "symposium-cli-agent-util",
+ "which 6.0.3",
 ]
 
 [[package]]
@@ -2902,6 +2903,14 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "symposium-cli-agent-util"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "which 4.4.2",
+]
 
 [[package]]
 name = "symposium-mcp"
@@ -3688,6 +3697,18 @@ dependencies = [
  "phf_codegen",
  "string_cache",
  "string_cache_codegen",
+]
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix 0.38.44",
 ]
 
 [[package]]

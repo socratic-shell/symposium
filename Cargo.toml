@@ -1,5 +1,11 @@
 [workspace]
-members = ["symposium/mcp-server", "setup", "md-rfd-preprocessor", "ci"]
+members = [
+    "symposium/mcp-server", 
+    "symposium/cli-agent-util",
+    "setup", 
+    "md-rfd-preprocessor", 
+    "ci", 
+]
 resolver = "2"
 
 [workspace.dependencies]

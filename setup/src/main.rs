@@ -6,6 +6,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use symposium_cli_agent_util::{detect_cli_agents, McpServer};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -17,14 +18,13 @@ use std::process::Command;
 Build Symposium components and set up for development with AI assistants
 
 Examples:
-  cargo setup                           # Show help and usage
+  cargo setup                          # Show help and usage
   cargo setup --all                    # Build everything and setup for development
   cargo setup --vscode                 # Build/install VSCode extension only
   cargo setup --mcp                    # Build/install MCP server only
   cargo setup --mcp --restart          # Build/install MCP server and restart daemon
   cargo setup --app                    # Build macOS app only
   cargo setup --app --open             # Build macOS app and launch it
-  cargo setup --vscode --mcp --app     # Build all components (same as --all)
 
 For CI builds, use: cargo ci check / cargo ci test
 
@@ -36,7 +36,7 @@ Prerequisites:
 "#
 )]
 struct Args {
-    /// Build all components (VSCode extension, MCP server, and macOS app)
+    /// Build all components (VSCode extension, MCP server, Git MCP server, and macOS app)
     #[arg(long)]
     all: bool,
 
@@ -101,7 +101,6 @@ fn main() -> Result<()> {
     if build_mcp {
         binary_path = Some(build_and_install_rust_server()?);
     }
-
     if build_vscode {
         build_and_install_extension()?;
     }
@@ -132,25 +131,11 @@ fn show_help() {
     println!("🎭 Symposium Development Setup");
     println!("{}", "=".repeat(35));
     println!();
-    println!("Usage: cargo setup [OPTIONS]");
-    println!();
-    println!("Options:");
-    println!("  --all                Build all components (VSCode extension, MCP server, and macOS app)");
-    println!("  --vscode             Build/install VSCode extension");
-    println!("  --mcp                Build/install MCP server");
-    println!("  --app                Build the Symposium macOS app");
-    println!("  --open               Open the app after building (requires --app)");
-    println!("  --restart            Restart MCP daemon after building (requires --mcp)");
-    println!("  --help               Show this help message");
-    println!();
-    println!("For CI builds, use: cargo ci check / cargo ci test");
-    println!();
-    println!("Examples:");
-    println!("  cargo setup --all                    # Build everything");
-    println!("  cargo setup --vscode                 # Build VSCode extension only");
-    println!("  cargo setup --mcp --restart          # Build MCP server and restart daemon");
-    println!("  cargo setup --app --open             # Build and launch macOS app");
-    println!("  cargo setup --vscode --mcp --app     # Build all components");
+    println!("Common examples:");
+    println!("  cargo setup --all --open             # Install everything and open the app");
+    println!("  cargo setup --vscode --mcp           # Install VSCode extension and MCP server");
+    println!("  cargo setup --mcp                    # Install MCP server");
+    println!("  cargo setup --help                   # See all options");
 }
 
 fn check_rust() -> Result<()> {
@@ -180,17 +165,10 @@ fn check_vscode() -> Result<()> {
     Ok(())
 }
 
-fn is_claude_available() -> bool {
-    // Check both binary and config directory since claude might be an alias
-    which::which("claude").is_ok()
-        || home::home_dir().map_or(false, |home| home.join(".claude").exists())
-}
-
 fn check_cli_tools() -> Result<()> {
-    let has_q = which::which("q").is_ok();
-    let has_claude = is_claude_available();
-
-    if !has_q && !has_claude {
+    let agents = detect_cli_agents();
+    
+    if agents.is_empty() {
         return Err(anyhow!(
             "❌ No supported CLI tools found. Please install Q CLI or Claude Code.\n   Q CLI: https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/q-cli.html\n   Claude Code: https://claude.ai/code"
         ));
@@ -199,17 +177,33 @@ fn check_cli_tools() -> Result<()> {
 }
 
 fn setup_mcp_servers(binary_path: &Path) -> Result<()> {
-    let has_q = which::which("q").is_ok();
-    let has_claude = is_claude_available();
-
-    let mut success = true;
-
-    if has_q {
-        success &= setup_q_cli_mcp(binary_path)?;
+    let agents = detect_cli_agents();
+    
+    if agents.is_empty() {
+        println!("⚠️  No CLI agents detected, skipping MCP server setup");
+        return Ok(());
     }
 
-    if has_claude {
-        success &= setup_claude_code_mcp(binary_path)?;
+    let mcp_server = McpServer {
+        name: "symposium".to_string(),
+        binary_path: binary_path.to_path_buf(),
+        args: vec!["--dev-log".to_string()],
+        env: vec![("RUST_LOG".to_string(), "symposium_mcp=debug".to_string())],
+    };
+
+    let mut success = true;
+    for agent in agents {
+        println!("🔧 Registering Symposium MCP server with {}...", agent.name());
+        println!("   Binary path: {}", binary_path.display());
+        println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
+        
+        match agent.install_mcp(&mcp_server) {
+            Ok(result) => success &= result,
+            Err(e) => {
+                println!("❌ Failed to setup MCP for {}: {}", agent.name(), e);
+                success = false;
+            }
+        }
     }
 
     if !success {
@@ -235,11 +229,13 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
 
     if built_mcp {
         println!("\n🧪 Test MCP server:");
-        if which::which("q").is_ok() {
-            println!("   q chat \"Present a review of the changes you just made\"");
-        }
-        if is_claude_available() {
-            println!("   claude chat \"Present a review of the changes you just made\"");
+        let agents = detect_cli_agents();
+        for agent in agents {
+            match agent.name().as_str() {
+                "Q CLI" => println!("   q chat \"Present a review of the changes you just made\""),
+                "Claude Code" => println!("   claude chat \"Present a review of the changes you just made\""),
+                _ => {}
+            }
         }
     }
 
@@ -443,125 +439,6 @@ fn build_and_install_extension() -> Result<()> {
 
     println!("✅ VSCode extension installed successfully!");
     Ok(())
-}
-
-fn setup_q_cli_mcp(binary_path: &Path) -> Result<bool> {
-    let mut cmd = Command::new("q");
-
-    // Always use dev-log and debug logging for development setup
-    cmd.args([
-        "mcp",
-        "add",
-        "--name",
-        "symposium",
-        "--command",
-        &binary_path.to_string_lossy(),
-        "--args",
-        "--dev-log",
-        "--env",
-        "RUST_LOG=symposium_mcp=debug",
-        "--force", // Always overwrite existing configuration
-    ]);
-
-    println!("🔧 Registering Symposium MCP server with Q CLI...");
-    println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
-
-    let output = cmd.output().context("Failed to execute q mcp add")?;
-
-    if output.status.success() {
-        println!("✅ MCP server 'symposium' registered successfully with Q CLI!");
-        Ok(true)
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        println!("❌ Failed to register MCP server with Q CLI:");
-        println!("   Error: {}", stderr.trim());
-        Ok(false)
-    }
-}
-
-fn setup_claude_code_mcp(binary_path: &Path) -> Result<bool> {
-    println!("🔧 Configuring Symposium MCP server with Claude Code...");
-    println!("   Binary path: {}", binary_path.display());
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
-    // Check existing configuration
-    let list_output = Command::new("claude")
-        .args(["mcp", "list"])
-        .output()
-        .context("Failed to execute claude mcp list")?;
-
-    if !list_output.status.success() {
-        let stderr = String::from_utf8_lossy(&list_output.stderr);
-        println!("❌ Failed to list MCP servers: {}", stderr.trim());
-        return Ok(false);
-    }
-
-    let list_stdout = String::from_utf8_lossy(&list_output.stdout);
-    let desired_binary_str = binary_path.to_string_lossy();
-
-    // Check if symposium exists with correct path
-    let mut symposium_exists = false;
-    let mut symposium_has_correct_path = false;
-
-    for line in list_stdout.lines() {
-        if line.contains("symposium") {
-            symposium_exists = true;
-            if line.contains(desired_binary_str.as_ref()) {
-                symposium_has_correct_path = true;
-                break;
-            }
-        }
-    }
-
-    if symposium_exists && symposium_has_correct_path {
-        println!("✅ Symposium MCP server already configured with correct path");
-        return Ok(true);
-    }
-
-    if symposium_exists {
-        println!("🔄 Updating existing symposium MCP server...");
-        let remove_output = Command::new("claude")
-            .args(["mcp", "remove", "symposium"])
-            .output()
-            .context("Failed to execute claude mcp remove")?;
-
-        if !remove_output.status.success() {
-            let stderr = String::from_utf8_lossy(&remove_output.stderr);
-            println!("❌ Failed to remove existing MCP server: {}", stderr.trim());
-            return Ok(false);
-        }
-    }
-
-    // Add MCP server
-    println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
-    let config_json = format!(
-        r#"{{"command":"{}","args":["--dev-log"],"env":{{"RUST_LOG":"symposium_mcp=debug"}}}}"#,
-        binary_path.display()
-    );
-
-    let add_output = Command::new("claude")
-        .args([
-            "mcp",
-            "add-json",
-            "--scope",
-            "user",
-            "symposium",
-            &config_json,
-        ])
-        .output()
-        .context("Failed to execute claude mcp add")?;
-
-    if add_output.status.success() {
-        println!("✅ Symposium MCP server registered successfully with Claude Code!");
-        Ok(true)
-    } else {
-        let stderr = String::from_utf8_lossy(&add_output.stderr);
-        println!(
-            "❌ Failed to register MCP server with Claude Code: {}",
-            stderr.trim()
-        );
-        Ok(false)
-    }
 }
 
 /// Clean up existing daemon process and stale socket files
