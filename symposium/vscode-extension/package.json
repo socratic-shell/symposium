@@ -67,6 +67,11 @@
         "command": "symposium.toggleWindowTitle",
         "title": "Toggle Window Title",
         "category": "Symposium"
+      },
+      {
+        "command": "symposium.openChat",
+        "title": "Symposium Chat",
+        "category": "Symposium"
       }
     ],
     "viewsContainers": {
@@ -83,6 +88,13 @@
         {
           "id": "symposium.walkthrough",
           "name": "Walkthrough",
+          "type": "webview"
+        }
+      ],
+      "panel": [
+        {
+          "id": "symposium.chatView",
+          "name": "Symposium",
           "type": "webview"
         }
       ]

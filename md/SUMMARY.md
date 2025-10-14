@@ -103,6 +103,7 @@ People can propose an RFD by create a PR adding a new file into the early drafts
         - [Taskspace Deletion System](./design/taskspace-deletion.md)
     - [Persistent Agent Sessions](./design/persistent-agent-sessions.md)
         - [Agent manager](./design/agent-manager.md)
+    - [SCP Test Runner Architecture](./design/scp-test-runner.md)
 
 <!--
     AGENTS: "Research Reports" are in-depth documents you can read to learn more

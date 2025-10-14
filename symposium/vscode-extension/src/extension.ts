@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 import { quote } from 'shell-quote';
 
 import { WalkthroughWebviewProvider } from './walkthroughWebview';
+import { ChatWebviewProvider } from './chatWebview';
 import { Bus } from './bus';
 import { DaemonClient } from './ipc';
 import { StructuredLogger } from './structuredLogger';
@@ -300,6 +301,18 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(WalkthroughWebviewProvider.viewType, walkthroughProvider)
     );
+
+    // Create chat webview provider
+    const chatProvider = new ChatWebviewProvider(context.extensionUri);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(ChatWebviewProvider.viewType, chatProvider)
+    );
+    
+    // Register chat command to show the panel
+    const openChatCommand = vscode.commands.registerCommand('symposium.openChat', () => {
+        vscode.commands.executeCommand('symposium.chatView.focus');
+    });
+    context.subscriptions.push(openChatCommand);
 
     // Register walkthrough comment reply command (legacy - may not be needed)
     const walkthroughCommentCommand = vscode.commands.registerCommand('symposium.addWalkthroughComment',
