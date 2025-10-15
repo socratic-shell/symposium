@@ -89,12 +89,10 @@
           "id": "symposium.walkthrough",
           "name": "Walkthrough",
           "type": "webview"
-        }
-      ],
-      "panel": [
+        },
         {
           "id": "symposium.chatView",
-          "name": "Symposium",
+          "name": "Chat",
           "type": "webview"
         }
       ]
