@@ -95,19 +95,25 @@ symposium-orchestrator \
 
 The orchestrator advertises an `"orchestrator"` capability during ACP initialization to signal its role, but editors can treat it as any other ACP agent.
 
-## Example use cases for proxies
+## Motivation: User-Specific Agent Customization
 
-Proxies can implement various behaviors by intercepting and transforming ACP messages:
+The real power of SCP is enabling agents that adapt to specific users, contexts, and workflows. Proxies can inject:
 
-* **Logging/observability** - Record all requests/responses for debugging or analytics
-* **Metrics collection** - Track token usage, response times, error rates
-* **Content filtering** - Modify prompts or responses based on policies
-* **Caching** - Cache responses for repeated queries
-* **Rate limiting** - Throttle requests to manage costs
-* **A/B testing** - Route requests to different agents based on experiments
-* **Custom system prompts** - Inject additional context or instructions
+* **User-specific context** - Your coding style, project conventions, past decisions
+* **Workflow patterns** - How you like to work (TDD, documentation-first, iterative refinement)
+* **Domain knowledge** - Project-specific terminology, architecture patterns, team practices
+* **Learning and adaptation** - Remember what worked well before, avoid past mistakes
+* **Personal preferences** - Communication style, level of detail, explanation approaches
 
-The key advantage is that these behaviors are composable and reusable across different editors and agents.
+**Example:** A "Symposium collaborator" proxy learns that you prefer:
+- Detailed architectural discussions before implementation
+- Code examples with inline comments explaining the reasoning
+- Incremental commits with descriptive messages
+- Design documentation updated alongside code changes
+
+The proxy transforms generic agent responses to match your workflow, without the base agent needing to know about your preferences. Different users can use different proxies with the same underlying agent.
+
+This is fundamentally about **personalization** - making AI agents work the way *you* work, not forcing you to adapt to how they work.
 
 # Shiny future
 
