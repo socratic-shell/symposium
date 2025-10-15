@@ -680,7 +680,7 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
     }
 
     /// Create a new taskspace with specified values
-    func createTaskspace(name: String, description: String, initialPrompt: String) throws {
+    func createTaskspace(name: String, description: String, initialPrompt: String, collaborator: String? = nil) throws {
         guard let project = currentProject else {
             throw ProjectError.noCurrentProject
         }
@@ -699,7 +699,8 @@ class ProjectManager: ObservableObject, IpcMessageDelegate {
         let taskspace = Taskspace(
             name: name,
             description: description,
-            initialPrompt: initialPrompt
+            initialPrompt: initialPrompt,
+            collaborator: collaborator
         )
 
         // STAGE 1: Create taskspace directory
@@ -1656,6 +1657,12 @@ extension ProjectManager {
             hasUpdates = true
             Logger.shared.log("ProjectManager: Updated taskspace description to: \(newDescription)")
         }
+        
+        if let newCollaborator = payload.collaborator {
+            taskspace.collaborator = newCollaborator
+            hasUpdates = true
+            Logger.shared.log("ProjectManager: Updated taskspace collaborator to: \(newCollaborator)")
+        }
 
         // Determine initial_prompt based on operation type
         let initialPrompt: String?
@@ -1736,7 +1743,8 @@ extension ProjectManager {
             try createTaskspace(
                 name: payload.name,
                 description: payload.taskDescription,
-                initialPrompt: comprehensivePrompt
+                initialPrompt: comprehensivePrompt,
+                collaborator: payload.collaborator
             )
 
             // Get the newly created taskspace (it will be the last one added)

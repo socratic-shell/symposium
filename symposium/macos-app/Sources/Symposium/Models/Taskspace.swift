@@ -36,7 +36,7 @@ struct Taskspace: Codable, Identifiable {
         
         // Migration: use createdAt if lastActivatedAt doesn't exist
         lastActivatedAt = try container.decodeIfPresent(Date.self, forKey: .lastActivatedAt) ?? createdAt
-
+        
         // Migration: collaborator field is optional for backward compatibility
         collaborator = try container.decodeIfPresent(String.self, forKey: .collaborator)
     }

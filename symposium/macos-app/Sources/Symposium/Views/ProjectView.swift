@@ -791,6 +791,7 @@ struct NewTaskspaceDialog: View {
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("newTaskspaceDialogText") private var taskDescription = ""
+    @State private var selectedCollaborator = "sparkle"
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -807,6 +808,18 @@ struct NewTaskspaceDialog: View {
                         RoundedRectangle(cornerRadius: 4)
                             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                     )
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Collaboration Style:")
+                    .font(.subheadline)
+                
+                Picker("Collaborator", selection: $selectedCollaborator) {
+                    Text("Sparkle").tag("sparkle")
+                    Text("Socrates").tag("socrates") 
+                    Text("None").tag("base-agent")
+                }
+                .pickerStyle(.segmented)
             }
             
             HStack {
@@ -827,7 +840,7 @@ struct NewTaskspaceDialog: View {
             }
         }
         .padding()
-        .frame(width: 500, height: 250)
+        .frame(width: 500, height: 300)
         .onAppear {
             Logger.shared.log("NewTaskspaceDialog: Dialog appeared")
         }
@@ -840,7 +853,8 @@ struct NewTaskspaceDialog: View {
             try projectManager.createTaskspace(
                 name: "New Task",
                 description: "Getting started...",
-                initialPrompt: projectManager.generateInitialPrompt(taskDescription: trimmedDescription)
+                initialPrompt: projectManager.generateInitialPrompt(taskDescription: trimmedDescription),
+                collaborator: selectedCollaborator
             )
             taskDescription = "" // Clear persisted text after successful creation
             dismiss()
