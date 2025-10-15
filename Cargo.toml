@@ -29,7 +29,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # MCP SDK
-rmcp = { version = "0.3.2", features = ["server", "transport-io", "schemars"] }
+rmcp = { version = "0.8", features = ["server", "transport-io", "schemars"] }
 
 # CLI parsing
 clap = { version = "4.0", features = ["derive"] }

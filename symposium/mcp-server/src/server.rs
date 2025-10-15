@@ -6,15 +6,14 @@
 use anyhow::Result;
 use rmcp::{
     ErrorData as McpError, RoleServer, ServerHandler,
-    handler::server::{router::tool::ToolRouter, tool::Parameters},
+    handler::server::{router::{prompt::PromptRouter, tool::ToolRouter}, wrapper::Parameters},
     model::*,
     service::RequestContext,
-    tool, tool_handler, tool_router,
+    tool, tool_handler, tool_router, prompt_handler, prompt_router,
 };
 use rust_embed::RustEmbed;
 use serde_json;
-use std::future::Future;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use crate::structured_logging;
 
 use crate::dialect::DialectInterpreter;
@@ -110,37 +109,13 @@ pub struct SymposiumServer {
     ipc: IPCCommunicator,
     interpreter: DialectInterpreter<IPCCommunicator>,
     tool_router: ToolRouter<SymposiumServer>,
+    prompt_router: PromptRouter<SymposiumServer>,
     reference_handle: crate::actor::ReferenceHandle,
 }
 
 #[tool_router]
+#[prompt_router]  
 impl SymposiumServer {
-    /// Assemble the complete /yiasou initialization prompt
-    /// Get taskspace context via IPC
-    async fn get_taskspace_context(
-        &self,
-    ) -> Result<(Option<String>, Option<String>, Option<String>)> {
-        match self.ipc.get_taskspace_state().await {
-            Ok(state) => Ok((state.name, state.description, state.initial_prompt)),
-            Err(e) => {
-                warn!("Failed to get taskspace context via IPC: {}", e);
-                // Log the error but don't fail the prompt assembly
-                tracing::warn!("Failed to get taskspace context: {}", e);
-                Ok((None, None, None))
-            }
-        }
-    }
-
-    /// Check if we're currently in a taskspace by looking for task-UUID directory structure
-    fn is_in_taskspace(&self) -> bool {
-        let result = crate::ipc::extract_project_info().is_ok();
-        if !result {
-            if let Err(e) = crate::ipc::extract_project_info() {
-                warn!("extract_project_info failed: {}", e);
-            }
-        }
-        result
-    }
 
     pub async fn new(options: crate::Options) -> Result<Self> {
         // Try to discover VSCode PID by walking up the process tree
@@ -181,6 +156,7 @@ impl SymposiumServer {
             ipc: ipc.clone(),
             interpreter,
             tool_router: Self::tool_router(),
+            prompt_router: Self::prompt_router(),
             reference_handle,
         })
     }
@@ -216,26 +192,11 @@ impl SymposiumServer {
             ipc,
             interpreter,
             tool_router: Self::tool_router(),
+            prompt_router: Self::prompt_router(),
             reference_handle,
         }
     }
 
-    /// Display a code walkthrough in VSCode
-    ///
-    /// Walkthroughs are structured guides with introduction, highlights, changes, and actions.
-    /// Test tool to verify guidance loading by returning the assembled /yiasou prompt
-    #[tool(
-        description = "Test guidance loading by returning the assembled /yiasou prompt (temporary for Phase 1)"
-    )]
-    async fn test_yiasou_prompt(&self) -> Result<CallToolResult, McpError> {
-        match self.assemble_yiasou_prompt().await {
-            Ok(prompt) => Ok(CallToolResult::success(vec![Content::text(prompt)])),
-            Err(e) => Ok(CallToolResult::error(vec![Content::text(format!(
-                "Failed to assemble yiasou prompt: {}",
-                e
-            ))])),
-        }
-    }
 
     /// Display a code walkthrough in VSCode using markdown with embedded XML elements.
     /// Accepts markdown content with special XML tags (comment, gitdiff, action, mermaid)
@@ -488,23 +449,12 @@ impl SymposiumServer {
             )]));
         }
 
-        // Special case: "yiasou" or "hi" returns the same content as @yiasou stored prompt
+        // Special case: "yiasou" or "hi" returns a placeholder for now
         if params.id == "yiasou" || params.id == "hi" {
-            match self.assemble_yiasou_prompt().await {
-                Ok(prompt_content) => {
-                    info!("Yiasou prompt assembled successfully via expand_reference");
+            let placeholder_content = "Hi, welcome! Prompt system will be implemented in subsequent commits.";
+            info!("Yiasou prompt placeholder returned via expand_reference");
 
-                    return Ok(CallToolResult::success(vec![Content::text(prompt_content)]));
-                }
-                Err(e) => {
-                    return Err(McpError::internal_error(
-                        "Failed to assemble yiasou prompt",
-                        Some(serde_json::json!({
-                            "error": e.to_string()
-                        })),
-                    ));
-                }
-            }
+            return Ok(CallToolResult::success(vec![Content::text(placeholder_content.to_string())]));
         }
 
         // Not found in either store
@@ -873,6 +823,8 @@ impl SymposiumServer {
                         description,
                         mime_type: Some("text/markdown".into()),
                         size: Some(file.data.len() as u32),
+                        icons: None,
+                        title: None,
                     },
                     annotations: None,
                 });
@@ -882,116 +834,10 @@ impl SymposiumServer {
         resources
     }
 
-    async fn assemble_yiasou_prompt(&self) -> Result<String, McpError> {
-        use indoc::indoc;
-
-        // Check if we're in a taskspace and get context components
-        let is_in_taskspace = self.is_in_taskspace();
-        let (taskspace_name, taskspace_description, initial_prompt) = self
-            .get_taskspace_context()
-            .await
-            .ok()
-            .unwrap_or((None, None, None));
-
-        // Debug logging
-        info!(
-            "Yiasou prompt assembly: is_in_taskspace={}, name={:?}, description={:?}, initial_prompt={:?}",
-            is_in_taskspace,
-            taskspace_name,
-            taskspace_description,
-            initial_prompt.as_ref().map(|s| s.len())
-        );
-
-        let intro = match (is_in_taskspace, initial_prompt.as_ref()) {
-            (true, Some(_)) => {
-                // In taskspace with task - full introduction
-                indoc! {"
-                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-                    This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
-                    The user's description of the task to be done follows after this message. Can you start by 
-                    reading the description and using the 'update_taskspace' tool to provide a better 
-                    name/description for the taskspace? Before doing any work on the task, be sure to ask the 
-                    user clarifying questions to better understand their intent.
-                "}
-            }
-            (true, None) => {
-                // In taskspace but no task - ask user to establish task
-                indoc! {"
-                    Hi, welcome! You are a new agent just getting started as part of the project Symposium. 
-                    This is a taskspace, a separate copy of the project's files where you can work undisturbed. 
-                    Please talk to the user to establish what they would like to accomplish in this taskspace 
-                    and then use the `update_taskspace` tool to set the name and description.
-                "}
-            }
-            (false, _) => {
-                // Not in taskspace - general introduction
-                indoc! {"
-                    Hi, welcome!
-                "}
-            }
-        };
-
-        let mut prompt = format!("{}\n\n", intro);
-
-        prompt.push_str(indoc! {"
-            ## Load Collaboration Patterns
-
-            Use the `expand_reference` tool to fetch `main.md` into your working context. This contains 
-            collaboration patterns demonstrated through dialogue. Embody the collaborative spirit shown in 
-            these examples - approach our work with genuine curiosity, ask questions when 
-            something isn't clear, and trust that we'll navigate together what's worth pursuing.
-
-            Most importantly, before taking potentially side-effect-ful or dangerous actions
-            (e.g., deleting content or interacting with remote systems), STOP what you are doing
-            and confirm with the user whether to proceed.
-
-            ## Load Walkthrough Format
-
-            Use the `expand_reference` tool to fetch `walkthrough-format.md` into your working context. 
-            This defines how to create interactive code walkthroughs using markdown with embedded XML 
-            elements for comments, diffs, and actions.
-
-            ## Load Coding Guidelines
-
-            Use the `expand_reference` tool to fetch `coding-guidelines.md` into your working context. Follow these 
-            development standards and best practices in all code work.
-
-            ## Load MCP Tool Usage Suggestions
-
-            Use the `expand_reference` tool to fetch `mcp-tool-usage-suggestions.md` into your working context. 
-            This covers effective use of Symposium's MCP tools, including completion signaling 
-            and systematic code exploration patterns.
-
-        "});
-
-        // Add task context if available, otherwise add taskspace info
-        if let Some(task_description) = initial_prompt {
-            prompt.push_str(&format!("## Initial Task\n\n{}\n", task_description));
-        } else if taskspace_name.is_some() || taskspace_description.is_some() {
-            prompt.push_str("## Taskspace Context\n\n");
-
-            if let Some(name) = taskspace_name {
-                prompt.push_str(&format!("You are in a taskspace named \"{}\"", name));
-                if taskspace_description.is_some() {
-                    prompt.push_str(".\n\n");
-                } else {
-                    prompt.push_str(".\n");
-                }
-            }
-
-            if let Some(description) = taskspace_description {
-                prompt.push_str(&format!(
-                    "The description the user gave is as follows: {}\n",
-                    description
-                ));
-            }
-        }
-
-        Ok(prompt)
-    }
 }
 
 #[tool_handler]
+#[prompt_handler]
 impl ServerHandler for SymposiumServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
@@ -1000,6 +846,9 @@ impl ServerHandler for SymposiumServer {
             server_info: Implementation {
                 name: "symposium-mcp".to_string(),
                 version: "0.1.0".to_string(),
+                icons: None,
+                title: None,
+                website_url: None,
             },
             instructions: Some(
                 "This server provides tools for AI assistants to perform IDE operations and display walkthroughs in VSCode. \
@@ -1095,12 +944,12 @@ impl ServerHandler for SymposiumServer {
     ) -> Result<GetPromptResult, McpError> {
         match request.name.as_str() {
             "yiasou" | "hi" => {
-                let content = self.assemble_yiasou_prompt().await?;
+                let content = "Hi, welcome! Prompt system will be implemented in subsequent commits.";
                 Ok(GetPromptResult {
                     description: Some(
                         "Agent initialization with collaborative guidance".to_string(),
                     ),
-                    messages: vec![PromptMessage::new_text(PromptMessageRole::User, content)],
+                    messages: vec![PromptMessage::new_text(PromptMessageRole::User, content.to_string())],
                 })
             }
             _ => Err(McpError::invalid_params(
@@ -1115,7 +964,7 @@ impl ServerHandler for SymposiumServer {
 mod tests {
     use super::*;
     use crate::types::PresentWalkthroughParams;
-    use rmcp::handler::server::tool::Parameters;
+    use rmcp::handler::server::wrapper::Parameters;
 
     #[tokio::test]
     async fn test_baseuri_conversion() {
@@ -1157,6 +1006,8 @@ mod tests {
                     ),
                     mime_type: Some("text/markdown".into()),
                     size: None,
+                    icons: None,
+                    title: None,
                 },
                 annotations: None,
             },
@@ -1169,6 +1020,8 @@ mod tests {
                     ),
                     mime_type: Some("text/markdown".into()),
                     size: None,
+                    icons: None,
+                    title: None,
                 },
                 annotations: None,
             },
@@ -1179,6 +1032,8 @@ mod tests {
                     description: Some("Development best practices and standards".into()),
                     mime_type: Some("text/markdown".into()),
                     size: None,
+                    icons: None,
+                    title: None,
                 },
                 annotations: None,
             },
@@ -1217,6 +1072,7 @@ mod tests {
                 uri,
                 text,
                 mime_type,
+                ..
             } => {
                 assert_eq!(uri, "test.md");
                 assert_eq!(text, "Hello world");
@@ -1293,15 +1149,6 @@ This is test content."#;
         );
     }
 
-    #[tokio::test]
-    async fn test_yiasou_prompt_generation() {
-        let server = SymposiumServer::new_test();
-
-        let prompt = server.assemble_yiasou_prompt().await.unwrap();
-
-        // Verify the prompt contains some basic text.
-        assert!(prompt.contains("Hi, welcome!"));
-    }
 
     #[tokio::test]
     async fn test_expand_reference_yiasou() {
