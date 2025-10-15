@@ -250,8 +250,9 @@ SCP provides a logging capability that enables observability and testing through
 - ✅ Real-time message exchange with session management  
 - ✅ Modern TypeScript 5.9.3 + Node.js v22 integration
 - ✅ Comprehensive test framework for future development
+- ✅ Minimal chat GUI (basic message exchange)
 
-**Next Priority:** Implement rich content capabilities (HTML panels, file comments) to demonstrate SCP's unique value proposition.
+**Next Priority:** Build core SCP proxy framework in Rust to enable composable agent architecture.
 
 ## Phase 1: TypeScript ACP Server + Test Harness
 
@@ -293,41 +294,46 @@ SCP provides a logging capability that enables observability and testing through
 - Type in VSCode chat panel → ACP agent receives message → response appears in GUI
 - ✅ Validates direct ACP integration without intermediate processes
 - ✅ Cleaner architecture than originally planned
+- ⚠️ Current GUI is minimal (basic message exchange only) - richer chat interface still TBD
 
-## Phase 3: Rich Content Capabilities (NEXT)
+## Phase 3: Core SCP Framework (NEXT)
 
 **Status:** Ready to begin
 
-**Goal:** Implement SCP's signature rich content features: HTML panels and file comments.
+**Goal:** Build the foundational SCP proxy framework in Rust to enable composable agent architecture.
 
-**Architecture:** VSCode Extension (with SCP message handling) ↔ ACP Agent (with SCP extensions)
+**Architecture:** VSCode Extension ↔ Bootstrap Proxy ↔ Agent (echo initially, then real agents)
 
 **Planned Implementation:**
-- Extend ACP agent to send `_scp/html_panel/show` and `_scp/file_comment/show` messages
-- Implement VSCode extension handlers for SCP message types
-- Add HTML panel display in VSCode webview
-- Add file comment placement using VSCode comment API
+- Create `ScpComponent` trait for easy proxy development
+- Implement bootstrap/pass-through proxy that handles `_scp/proxy` initialization
+- Build message forwarding and lifecycle management
+- Test proxy chain with current echo agent
+- Create TypeScript SCP client library for VSCode integration
+
+**Key Test:** `bootstrap-proxy.test.ts`
+- VSCode → Bootstrap Proxy → Echo Agent → response flows back
+- ✅ Validates proxy chain initialization and message forwarding
+- ✅ Proves SCP framework foundation before adding rich features
+
+## Phase 4: Rich Content Capabilities (FUTURE)
+
+**Status:** Dependent on Phase 3 completion
+
+**Goal:** Implement SCP's signature rich content features: HTML panels and file comments.
+
+**Architecture:** VSCode Extension ↔ SCP Proxy Chain ↔ Real Agent
+
+**Implementation:**
+- Build walkthrough proxy using ScpComponent trait
+- Implement `_scp/html_panel/show` and `_scp/file_comment/show` message handling
+- Add VSCode extension handlers for SCP message types
 - Create walkthrough generation from agent responses
+- Replace echo agent with claude-code-acp via ToAgent bridge
 
 **Key Test:** `walkthrough-display.test.ts`
-- Agent sends walkthrough → HTML panel appears in VSCode → file comments placed in editor
-- Validates core SCP rich content capabilities
-
-## Phase 4: Proxy Chain Architecture (FUTURE)
-
-**Status:** Deferred (Direct integration working well)
-
-**Goal:** Implement composable proxy chain for advanced use cases.
-
-**Architecture:** VSCode Extension ↔ Proxy₁ ↔ Proxy₂ ↔ ... ↔ ACP Agent
-
-**Future Implementation:**
-- Build SCP proxy framework in Rust
-- Implement proxy chaining with `_scp/proxy` initialization
-- Add MCP-over-SCP for proxy-provided tools
-- Support for multiple simultaneous agents
-
-**Rationale for deferral:** Direct ACP integration proved simpler and more maintainable for initial SCP features. Proxy chain architecture provides value for complex scenarios but isn't needed for core rich content capabilities.
+- Request walkthrough → HTML panel appears in VSCode → file comments placed in editor
+- Validates full SCP rich content capabilities end-to-end
 
 ## Phase 5: Advanced SCP Features (FUTURE)
 
@@ -338,13 +344,15 @@ SCP provides a logging capability that enables observability and testing through
 **Architecture:** User-configurable proxy chains with marketplace ecosystem
 
 **Implementation:**
-- Build walkthrough proxy that generates `_scp/html_panel/show` and `_scp/file_comment/show` messages
-- Implement walkthrough markdown parsing and content generation
-- Handle user interactions with panels and comments
+- Multiple simultaneous agents in proxy chains
+- User-defined proxy chain configuration
+- Advanced MCP-over-SCP for proxy-provided tools
+- Proxy marketplace and discovery mechanisms
+- Enhanced collaboration and identity proxies
 
-**Key Test:** `walkthrough-display.test.ts`
-- Request walkthrough → HTML panel appears in VSCode → file comments placed in editor
-- Validates full SCP rich content capabilities end-to-end
+**Key Test:** `advanced-composition.test.ts`
+- User configures custom proxy chain → multiple agents collaborate → rich interactions
+- Validates full composable agent ecosystem
 
 ## Testing Strategy
 
@@ -388,11 +396,13 @@ SCP is complementary to protocols like A2A. While A2A focuses on agent-to-agent 
 
 Users are responsible for the proxies they choose to run, similar to how they're responsible for the software they install. Proxies can intercept and modify all communication, so trust is essential. For future versions, we're considering approaches like Microsoft's Wassette (WASM-based capability restrictions) to provide sandboxed execution environments.
 
-## Why reuse Continue.dev's GUI instead of building our own?
+## What about the chat GUI interface?
 
-Continue.dev has already solved the hard problems of building a production-quality chat interface for VS Code extensions. Their GUI is specifically designed to be reusable - they use the exact same codebase for both VS Code and JetBrains IDEs by implementing different adapter layers.
+We currently have a minimal chat GUI working in VSCode that can exchange basic messages with ACP agents. However, a richer chat interface with features like message history, streaming support, context providers, and interactive elements remains TBD.
 
-Their architecture proves that message-passing protocols can cleanly separate GUI concerns from backend logic, which aligns perfectly with SCP's composable design. Rather than rebuilding chat UI, message history, streaming support, and context providers from scratch, we can focus our effort on the novel SCP protocol and proxy architecture.
+Continue.dev has solved many of the hard problems for production-quality chat interfaces in VS Code extensions. Their GUI is specifically designed to be reusable - they use the exact same codebase for both VS Code and JetBrains IDEs by implementing different adapter layers.
+
+Their architecture proves that message-passing protocols can cleanly separate GUI concerns from backend logic, which aligns perfectly with SCP's composable design. When we're ready to enhance the chat interface, we can evaluate whether to build on Continue.dev's foundation or develop our own approach based on what we learn from the SCP proxy framework.
 
 The Apache 2.0 license makes this legally straightforward, and their well-documented message protocols provide a clear integration path.
 
