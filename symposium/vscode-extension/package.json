@@ -10,7 +10,7 @@
   },
   "license": "MIT",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
@@ -118,15 +118,16 @@
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "16.x",
+    "@types/node": "^22.18.10",
     "@types/shell-quote": "^1.7.5",
-    "@types/vscode": "^1.74.0",
+    "@types/vscode": "^1.105.0",
     "ts-loader": "^9.4.0",
-    "typescript": "^4.9.4",
+    "typescript": "^5.9.3",
     "webpack": "^5.88.0",
     "webpack-cli": "^5.1.0"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^0.4.6",
     "markdown-it": "^14.1.0",
     "mermaid": "^10.9.1",
     "shell-quote": "^1.8.3"
