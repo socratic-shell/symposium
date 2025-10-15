@@ -55,6 +55,8 @@ struct SpawnTaskspaceParams {
     task_description: String,
     /// Initial prompt to provide to the agent when it starts
     initial_prompt: String,
+    /// Collaborator for the new taskspace (optional, defaults to current taskspace's collaborator)
+    collaborator: Option<String>,
 }
 // ANCHOR_END: spawn_taskspace_params
 
@@ -86,6 +88,8 @@ struct UpdateTaskspaceParams {
     name: String,
     /// New description for the taskspace
     description: String,
+    /// Collaborator for the taskspace (optional)
+    collaborator: Option<String>,
 }
 // ANCHOR_END: update_taskspace_params
 
@@ -491,6 +495,7 @@ impl SymposiumServer {
                 params.name.clone(),
                 params.task_description,
                 params.initial_prompt,
+                params.collaborator,
             )
             .await
         {
@@ -621,7 +626,7 @@ impl SymposiumServer {
         // Send update_taskspace message to Symposium app via daemon
         match self
             .ipc
-            .update_taskspace(params.name.clone(), params.description.clone())
+            .update_taskspace(params.name.clone(), params.description.clone(), params.collaborator.clone())
             .await
         {
             Ok(state) => {

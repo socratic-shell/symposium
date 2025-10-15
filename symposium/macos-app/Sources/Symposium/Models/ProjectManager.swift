@@ -1698,7 +1698,8 @@ extension ProjectManager {
             name: taskspace.name,
             description: taskspace.description,
             initialPrompt: initialPrompt,
-            agentCommand: agentCommand
+            agentCommand: agentCommand,
+            collaborator: taskspace.collaborator
         )
 
         Logger.shared.log(

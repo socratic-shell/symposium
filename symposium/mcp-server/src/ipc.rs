@@ -195,6 +195,7 @@ impl IPCCommunicator {
                                                 initial_prompt: Some(
                                                     "Mock initial prompt".to_string(),
                                                 ),
+                                                collaborator: Some("sparkle".to_string()),
                                             },
                                         )
                                         .unwrap(),
@@ -363,6 +364,7 @@ impl IPCCommunicator {
         name: String,
         task_description: String,
         initial_prompt: String,
+        collaborator: Option<String>,
     ) -> Result<()> {
         if self.test_mode {
             info!("Spawn taskspace called (test mode): {}", name);
@@ -377,6 +379,7 @@ impl IPCCommunicator {
             name,
             task_description,
             initial_prompt,
+            collaborator,
         };
         self.dispatch_handle
             .send(spawn_payload)
@@ -446,6 +449,7 @@ impl IPCCommunicator {
         &self,
         name: String,
         description: String,
+        collaborator: Option<String>,
     ) -> Result<crate::types::TaskspaceStateResponse> {
         let (project_path, taskspace_uuid) = extract_project_info()?;
 
@@ -455,6 +459,7 @@ impl IPCCommunicator {
             taskspace_uuid,
             name: Some(name),
             description: Some(description),
+            collaborator,
         };
         let response: crate::types::TaskspaceStateResponse =
             self.dispatch_handle.send(request).await.map_err(|e| {
@@ -505,6 +510,7 @@ impl IPCCommunicator {
             taskspace_uuid,
             name: None,
             description: None,
+            collaborator: None,
         };
         let response: crate::types::TaskspaceStateResponse =
             self.dispatch_handle.send(request).await.map_err(|e| {

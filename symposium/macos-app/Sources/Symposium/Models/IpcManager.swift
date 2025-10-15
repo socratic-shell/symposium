@@ -39,11 +39,12 @@ struct TaskspaceStateRequest: Codable {
     let taskspaceUuid: String
     let name: String?        // None = don't update, Some = set new value
     let description: String? // None = don't update, Some = set new value
+    let collaborator: String? // None = don't update, Some = set new value
     
     private enum CodingKeys: String, CodingKey {
         case projectPath = "project_path"
         case taskspaceUuid = "taskspace_uuid"
-        case name, description
+        case name, description, collaborator
     }
 }
 
@@ -53,11 +54,13 @@ struct TaskspaceStateResponse: Codable {
     let description: String?  // User-visible taskspace description  
     let initialPrompt: String? // LLM task description (cleared after updates)
     let agentCommand: [String] // Command to launch the appropriate agent
+    let collaborator: String? // Collaborator for this taskspace
     
     private enum CodingKeys: String, CodingKey {
         case name, description
         case initialPrompt = "initial_prompt"
         case agentCommand = "agent_command"
+        case collaborator
     }
 }
 
@@ -68,6 +71,7 @@ struct SpawnTaskspacePayload: Codable {
     let name: String
     let taskDescription: String
     let initialPrompt: String
+    let collaborator: String?
 
     private enum CodingKeys: String, CodingKey {
         case projectPath = "project_path"
@@ -75,6 +79,7 @@ struct SpawnTaskspacePayload: Codable {
         case name
         case taskDescription = "task_description"
         case initialPrompt = "initial_prompt"
+        case collaborator
     }
 }
 
@@ -89,11 +94,13 @@ struct UpdateTaskspacePayload: Codable {
     let name: String
     let description: String
     let projectPath: String
+    let collaborator: String?
 
     private enum CodingKeys: String, CodingKey {
         case taskspaceUuid = "taskspace_uuid"
         case name, description
         case projectPath = "project_path"
+        case collaborator
     }
 }
 

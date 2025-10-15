@@ -27,6 +27,7 @@ fn test_spawn_taskspace_payload_serialization() {
         name: "test-taskspace".to_string(),
         task_description: "Test task description".to_string(),
         initial_prompt: "Test initial prompt".to_string(),
+        collaborator: Some("sparkle".to_string()),
     };
 
     // Should serialize and deserialize correctly
