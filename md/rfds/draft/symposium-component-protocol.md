@@ -2,33 +2,41 @@
 
 > What are you proposing to change?
 
-We propose to prototype **SCP (Symposium Component Protocol)**, a set of extended capabilities for Zed's Agent Client Protocol (ACP). SCP capabilities enable composable agent architectures. Instead of building monolithic AI tools, SCP allows developers to create modular components that can be mixed and matched like Unix pipes or browser extensions.
+We propose to prototype **SCP (Symposium Component Protocol)**, an extension to Zed's Agent Client Protocol (ACP) that enables composable agent architectures through proxy chains. Instead of building monolithic AI tools, SCP allows developers to create modular components that can intercept and transform messages flowing between editors and agents.
 
 This RFD builds on the concepts introduced in [SymmACP: extending Zed's ACP to support Composable Agents](https://smallcultfollowing.com/babysteps/blog/2025/10/08/symmacp), with the protocol renamed to SCP for this implementation.
 
 Key changes:
-* Extend ACP with rich content blocks (HTML panels, inline comments) and capability negotiation
-* Implement a proxy chain architecture where each component adds specific capabilities
-* Redesign Symposium as a collection of SCP components rather than a monolithic MCP server
-* Create adapters for compatibility with existing ACP agents and editors
+* Define a proxy chain architecture where components can transform ACP messages
+* Create an orchestrator that manages the proxy chain and presents as a normal ACP agent to editors
+* Establish the `_scp/successor/*` protocol for proxies to communicate with downstream components
+* Enable composition without requiring editors to understand SCP internals
 
 # Status quo
 
 > How do things work today and what problems does this cause? Why would we change things?
 
-Today's AI development tools are largely monolithic. If you want to change one piece - the UI, add a feature, or switch backends - you're stuck rebuilding everything from scratch. This creates several problems:
+Today, extending or customizing AI agent behavior requires either:
+1. Building features directly into the agent code (tight coupling)
+2. Building features into the editor/client (editor-specific)
+3. Using MCP tools (limited to tool calling, not message transformation)
 
-**For Symposium specifically:**
-* Our current architecture is a single MCP server with various tools bundled together
-* Adding new interaction patterns (like walkthroughs) requires complex IPC mechanisms and tight coupling with VSCode
-* Features like collaboration patterns, time awareness, and rich presentations are hard-coded rather than composable
-* Users can't easily customize or extend the experience
+This creates several problems:
 
-**For the broader ecosystem:**
-* Every AI tool reinvents the wheel for basic capabilities (chat UI, tool integration, etc.)
-* Innovative features developed in one tool can't be easily adopted by others
-* Users are locked into specific tool ecosystems rather than being able to mix and match capabilities
-* The lack of interoperability slows innovation and fragments the community
+**Limited composability:**
+* Can't easily combine independent enhancements (e.g., logging + metrics + custom behavior)
+* Each feature requires either agent or editor modifications
+* No standard way to chain transformations or add middleware
+
+**Lack of modularity:**
+* Features are bundled into monolithic agents or editors
+* Can't swap out individual behaviors without changing the entire system
+* Difficult to test components in isolation
+
+**Reinventing infrastructure:**
+* Each tool builds its own message routing and transformation logic
+* No standard pattern for intercepting and modifying agent interactions
+* Can't share reusable components across different agents or editors
 
 # What we propose to do about it
 
@@ -38,15 +46,15 @@ We propose to develop **SCP (Symposium Component Protocol)** as an [extension to
 
 ```mermaid
 flowchart LR
-    Editor[VSCode Extension]
+    Editor[ACP Editor]
     
-    subgraph Orchestrator[Symposium Orchestrator]
+    subgraph Orchestrator[SCP Orchestrator]
         O[Orchestrator Process]
     end
     
     subgraph ProxyChain[Proxy Chain - managed by orchestrator]
-        P1[Walkthrough Proxy]
-        P2[Collaborator Proxy]
+        P1[Proxy 1]
+        P2[Proxy 2]
         Agent[ACP Agent]
         
         P1 -->|_scp/successor/*| P2
@@ -57,14 +65,14 @@ flowchart LR
     O <-->|routes messages| ProxyChain
 ```
 
-SCP contains three kinds of actors:
+SCP defines three kinds of actors:
 
-* **Editors** (like the VSCode extension) interact directly with users and spawn the orchestrator
-* **Orchestrator** manages the proxy chain and appears as an ACP agent to the editor
-* **Proxies** transform messages using `_scp/successor/*` protocol for downstream communication
-* **Agents** provide the base model behavior
+* **Editors** spawn the orchestrator and communicate via standard ACP
+* **Orchestrator** manages the proxy chain, appears as a normal ACP agent to editors
+* **Proxies** intercept and transform messages, communicate with downstream via `_scp/successor/*` protocol
+* **Agents** provide base AI model behavior using standard ACP
 
-The orchestrator handles all the message routing, making the proxy chain transparent to the editor.
+The orchestrator handles message routing, making the proxy chain transparent to editors. Proxies can transform requests, responses, or add side-effects without editors or agents needing SCP awareness.
 
 ## The Orchestrator Component
 
@@ -87,61 +95,54 @@ symposium-orchestrator \
 
 The orchestrator advertises an `"orchestrator"` capability during ACP initialization to signal its role, but editors can treat it as any other ACP agent.
 
-## Symposium's features become proxies
+## Example use cases for proxies
 
-We will define all of Symposium's features as proxies.
+Proxies can implement various behaviors by intercepting and transforming ACP messages:
 
-* The *walkthrough* proxy adds the ability to display walkthroughs and place comments.
-* The *collaborator identity* gives the agent custom behavior, like the ability to learn from its user.
-* The *IDE integration* proxy adds tools for working with the IDE; as today, these tools will "desugar" to a base set of 
+* **Logging/observability** - Record all requests/responses for debugging or analytics
+* **Metrics collection** - Track token usage, response times, error rates
+* **Content filtering** - Modify prompts or responses based on policies
+* **Caching** - Cache responses for repeated queries
+* **Rate limiting** - Throttle requests to manage costs
+* **A/B testing** - Route requests to different agents based on experiments
+* **Custom system prompts** - Inject additional context or instructions
 
-For now, the proxy chain for a taskspace will be hard-coded. In the future we expect to give users the ability to define their own tools.
-
-## The editor provides base capabilities
-
-SCP proxies make use of capabilities provided by the editor. These capabilities are advertised as part of the ACP initialization step:
-
-* The `html_panel` capability indicates the ability to display HTML provided by the panel. This HTML can reference pre-defined classes and widgets that permit linking into files and other modes of interaction.
-* The `file_comment `capability indicates the editor will permit comments to be displayed on specific lines of the file.
-* The `ide_operation` capability family indicates the editor can provide various IDE operations ("get-selection", "find-all-references", etc).
-
-## The Symposium VSCode extension is the prototype Symposium editor
-
-Symposium's VSCode extension will serve as the prototype Symposium editor, supporting all the above capabilities. It will create a "terminal-like" window based, initially, on the (Apache-2.0 licensed) editor from `continue.dev` that allows communication with the agent. When the agent sends walkthroughs or requests IDE support, they are provided by the editor.
-
-## Bridging to ACP agents
-
-The `ToAgent` convert allows converting a "plain ACP" agent into an SCP agent. ACP agents do not support the full capabilities of SCP agents (see the [implementation section](#implementation-details-and-plan) for details) but they do support the ability for SCP proxies to define MCP tools; this is needed to support walkthroughs and collaborator identities. This support works by creating a "shim" MCP tool that receives input over stdio and communicates it via side-channel back to the `ToAgent` actor, which can then send SCP messages backwards.
-
- # Bridging to ACP editors
-
-While not planned for initial implementation, it should be possible to bridge an SCP proxy chain to an ACP editor by providing a `ToEditor` transformer that initializes the proxy chain (based on some undefined source of configuration) but without the extended capabilities (walkthroughs, etc). This would permit Symposium to be used in (e.g.) Zed. However, a preferred route would be to contribute full Symposium support upstream to Zed.
+The key advantage is that these behaviors are composable and reusable across different editors and agents.
 
 # Shiny future
 
 > How will things will play out once this feature exists?
 
-## Composable Development Experience
+## Composable Agent Ecosystems
 
-SCP enables users to mix and match development capabilities. Interactive walkthroughs display as HTML panels with inline code comments. Collaboration patterns adapt to individual working styles. A developer can add a "research assistant" proxy to their chain and gain research capabilities while keeping existing walkthroughs and collaboration patterns.
+SCP enables a marketplace of reusable proxy components. Developers can:
+* Compose custom agent pipelines from independently-developed proxies
+* Share proxies across different editors and agents
+* Test and debug proxies in isolation
+* Mix community-developed and custom proxies
 
-## Upstreaming to ACP
+## Simplified Agent Development
 
-As SCP proves useful, these extensions can be contributed to the ACP specification. Rich content blocks, capability negotiation, and proxy chaining would become standard ACP features, eliminating the need for adapter components. Existing SCP components would work unchanged, communicating over native ACP.
+Agent developers can focus on core model behavior without implementing cross-cutting concerns:
+* Logging, metrics, and observability become proxy responsibilities
+* Rate limiting and caching handled externally
+* Content filtering and safety policies applied consistently
 
-## User-Defined Tool Composition
+## Editor Simplicity
 
-Users will define their own development environments by composing proxy components. A Rust developer might configure crate-analysis, documentation-generation, and performance-profiling proxies. A web developer might prefer TypeScript-analysis, accessibility-checking, and deployment-automation proxies. This creates a marketplace where specialized components can be developed, shared, and combined.
+Editors gain enhanced functionality without custom integrations:
+* Add sophisticated agent behaviors by changing proxy chain configuration
+* Support new agent features without editor updates
+* Maintain compatibility with any ACP agent
 
-## Multiple Active Agents
+## Standardization Path
 
-SCP supports multiple agents working simultaneously within a taskspace. A user might have a coding agent for implementation, a research agent for investigation, and a review agent for quality analysis. These agents coordinate through the proxy chain, sharing context and handing off tasks.
+As the ecosystem matures, successful patterns may be:
+* Standardized in ACP specification itself
+* Adopted by other agent protocols
+* Used as reference implementations for proxy architectures
 
-## Context-Aware Proxy Selection
-
-SCP could automatically configure proxy chains based on project context. A Rust project with async dependencies might include async-analysis and tokio-debugging proxies. A web project with accessibility requirements might include WCAG-compliance and screen-reader-testing proxies. This reduces setup overhead while ensuring developers have appropriate capabilities for their projects.
-
-**Future Extensions:** Advanced features like session state manipulation (for tangent mode) and conversation history modification will require additional protocol extensions for proxy coordination. These capabilities will be designed as the ecosystem matures.
+**Future Extensions:** Additional protocol extensions can add capabilities like proxy-to-proxy communication, dynamic chain reconfiguration, or state sharing between proxies. These will be designed based on real-world usage patterns.
 
 # Implementation details and plan
 
@@ -249,200 +250,94 @@ match message {
 }
 ```
 
-### MCP tools over SCP
+### Additional Extension Messages
 
-SCP extends the ACP protocol to allow MCP tools to be provided by proxies in the chain rather than only by the final agent. This enables proxies to offer interactive capabilities while maintaining compatibility with the existing MCP ecosystem.
+Proxies can define their own extension messages beyond `_scp/successor/*` to provide specific capabilities. Examples might include:
 
-**SCP Transport Extension:** When an agent advertises support for `"symposium"`, the ACP `McpServer` structure is extended with a new transport type: `{ "type": "scp", "name": "..." }`. This transport type indicates that the MCP server is provided by a proxy in the SCP chain rather than by an external process.
+* **Logging/observability**: `_scp/log` messages for structured logging
+* **Metrics**: `_scp/metric` messages for tracking usage
+* **Configuration**: `_scp/config` messages for dynamic reconfiguration
 
-**Message Forwarding:** When the agent invokes an MCP tool using the "scp" transport, the message is forwarded to the ACP editor as an `_scp/mcp` request. The request contains an object `{"name": "...", "message": M}` that embeds the original MCP message `M` along with the name of the target proxy. This allows the editor to route the message to the appropriate proxy in the chain.
+The orchestrator can handle routing these messages appropriately, or they can be handled by specific proxies in the chain.
 
-**Bidirectional Communication:** This mechanism enables full MCP protocol support through the proxy chain, including tool invocation, resource access, and prompt templates. Proxies can provide MCP tools that appear transparent to the agent while actually being handled by components earlier in the chain.
-
-### Bridging MCP to ACP
-
-The `ToAgent` bridge component handles the translation between SCP's proxy-provided MCP tools and traditional ACP agents that expect stdio-based MCP servers.
-
-**Transport Translation:** The bridge converts "scp" transport MCP servers into stdio transport by providing a dummy binary that acts as a shim. When the ACP agent attempts to invoke an MCP tool, it launches this dummy binary as it would any other MCP server.
-
-**IPC Forwarding:** The dummy binary uses inter-process communication to forward MCP messages back to the `ToAgent` bridge, which then routes them through the SCP chain to the appropriate proxy. This maintains the agent's expectation of stdio-based MCP communication while enabling the proxy architecture.
-
-**Compatibility:** From the agent's perspective, proxy-provided MCP tools appear identical to traditional MCP servers. This ensures compatibility with existing ACP agents while unlocking the composable capabilities of the SCP ecosystem.
-
-### HTML panels
-
-HTML panels provide a content display mechanism that extends beyond simple text-based chat interactions. Panels are persistent, updateable UI elements that can display structured information alongside the conversation.
-
-**Panel Management:** If the editor provides the `html_panel` capability, agents can manage panels through three core operations:
-
-- **Show/Update Panel:** The `_scp/html_panel/show` message creates or updates a panel: `{ "id": "$UUID", ("label": "text")?, ("contents": "...html...")? }`. If a panel with the given ID already exists, it updates the provided fields (label and/or contents) and brings the panel to the front. For new panels, both label and contents must be provided or the message results in an error.
-
-- **Clear Panel:** The `_scp/html_panel/clear` message removes a panel: `{ "id": "$UUID" }`. This allows agents to clean up panels that are no longer needed.
-
-- **Query Panel:** The `_scp/html_panel/get` message retrieves current panel state: `{ "id": "$UUID" }`. This returns either null (if the panel doesn't exist) or the current contents, enabling agents to check panel state before updates.
-
-**Widget Support:** Panels can contain interactive widgets that provide structured ways for users to interact with the content. This enables interfaces beyond static HTML display.
-
-### File comments
-
-File comments enable agents to place contextual annotations directly in source code, creating a more integrated development experience than separate chat windows.
-
-**Comment Placement:** If the editor provides the `file_comment` capability, agents can place comments using the `_scp/file_comment/show` message: `{ "id": "$UUID", "url": "...", "start": {"line": L, ("column": C)? }, ("end": {"line": L, ("column": C)?})?, "can_reply": boolean }`.
-
-**Position Specification:** Comments are positioned using line and column coordinates. If the start column is omitted, it defaults to the beginning of the line. If the end column is omitted, it defaults to the end of the line. If the end position is entirely omitted, the comment spans from the start position to the end of that line.
-
-**Interactive Comments:** The `can_reply` flag determines whether the comment includes user interaction capabilities. When true, users can reply to the comment, creating a threaded discussion directly in the code. This enables collaborative code review and explanation workflows.
-
-### Logging
-
-SCP provides a logging capability that enables observability and testing throughout the proxy chain. This allows proxies and agents to send structured log messages that can be captured by the editor for debugging, testing, and monitoring purposes.
-
-**Log Messages:** Agents and proxies can send `_scp/log` messages upstream: `{ "level": "info|warn|error|debug", "message": "...", ("data": {...})? }`. The editor receives these messages and can display them in output panels, write them to log files, or use them for test assertions.
-
-**Testing Integration:** The logging capability is particularly valuable for scenario-based testing, where test frameworks can assert on expected log patterns to verify proxy behavior and message flow through the chain.
+These extensions are beyond the scope of this initial RFD and will be defined as needed by specific proxy implementations.
 
 # Implementation progress
 
 > What is the current status of implementation and what are the next steps?
 
-## Current Status: Ahead of Schedule 🚀
+## Current Status: Design Phase
 
-**Major Achievement:** We successfully implemented direct ACP SDK integration in VSCode extensions, achieving Phase 1+2 goals with a simpler, more maintainable architecture than originally planned.
+**Completed:**
+- ✅ SCP protocol design with orchestrator architecture
+- ✅ `_scp/successor/{send,receive}` message protocol defined
+- ✅ Basic `scp` Rust crate with foundational types
+- ✅ Reuse of ACP's `McpServer` for process configuration
 
-**Key Breakthrough:** Resolved TypeScript/Node.js compatibility challenges through modern configuration rather than complex proxy architecture. This enables clean, direct agent communication without intermediate processes.
+**Next Steps:**
+- Implement orchestrator CLI tool in Rust
+- Build simple pass-through proxy as proof of concept
+- Create protocol message types in scp crate
+- Test end-to-end proxy chain with real ACP agents
 
-**Working Now:**
-- ✅ ACP agent communication from VSCode chat panel
-- ✅ Real-time message exchange with session management  
-- ✅ Modern TypeScript 5.9.3 + Node.js v22 integration
-- ✅ Comprehensive test framework for future development
-- ✅ Minimal chat GUI (basic message exchange)
+## Phase 1: Core Orchestrator (NEXT)
 
-**Next Priority:** Build core SCP proxy framework in Rust to enable composable agent architecture.
-
-## Phase 1: TypeScript ACP Server + Test Harness
-
-**Status:** ✅ COMPLETE
-
-**Goal:** Build and test basic ACP communication with fast iteration cycle.
-
-**Architecture:** TypeScript ACP Server (standalone)
-
-**Implemented:**
-- ✅ Built ACP test framework using `@agentclientprotocol/sdk v0.4.6`
-- ✅ Created DirectTestRunner with session-based abstractions
-- ✅ Implemented `runMockAgent()` with real ACP library integration
-- ✅ Added scenario-based testing with `basic-echo` proof of concept
-- ✅ Vitest integration with `npm run test:direct`
-
-**Key Test:** `basic-echo.test.ts` ✅ PASSING
-- Send "Hello, world" → get "Hello, user" response
-- ✅ Validates ACP protocol implementation and basic message flow
-- ✅ Fast iteration cycle achieved
-
-## Phase 2: VSCode ACP Integration (ACHIEVED AHEAD OF SCHEDULE)
-
-**Status:** ✅ COMPLETE (Direct integration approach proved more effective)
-
-**Goal:** Enable VSCode chat panel to communicate with ACP agents.
-
-**Architecture:** VSCode Extension (with integrated ACP client) ↔ ACP Agent
-
-**Implemented:**
-- ✅ Direct ACP SDK integration in VSCode extension
-- ✅ Modern TypeScript 5.9.3 configuration with Node.js v22 features
-- ✅ Native stream conversion using `Writable.toWeb()` and `Readable.toWeb()`
-- ✅ Chat panel with real-time agent communication
-- ✅ Session management and proper cleanup
-- ✅ No polyfills or workarounds needed
-
-**Key Test:** Live VSCode Chat ✅ WORKING
-- Type in VSCode chat panel → ACP agent receives message → response appears in GUI
-- ✅ Validates direct ACP integration without intermediate processes
-- ✅ Cleaner architecture than originally planned
-- ⚠️ Current GUI is minimal (basic message exchange only) - richer chat interface still TBD
-
-## Phase 3: Core SCP Framework (NEXT)
-
-**Status:** Ready to begin
-
-**Goal:** Build the foundational SCP proxy framework in Rust to enable composable agent architecture.
-
-**Architecture:** VSCode Extension ↔ Bootstrap Proxy ↔ Agent (echo initially, then real agents)
-
-**Planned Implementation:**
-- Create `ScpComponent` trait for easy proxy development
-- Implement bootstrap/pass-through proxy that handles `_scp/proxy` initialization
-- Build message forwarding and lifecycle management
-- Test proxy chain with current echo agent
-- Create TypeScript SCP client library for VSCode integration
-
-**Key Test:** `bootstrap-proxy.test.ts`
-- VSCode → Bootstrap Proxy → Echo Agent → response flows back
-- ✅ Validates proxy chain initialization and message forwarding
-- ✅ Proves SCP framework foundation before adding rich features
-
-## Phase 4: Rich Content Capabilities (FUTURE)
-
-**Status:** Dependent on Phase 3 completion
-
-**Goal:** Implement SCP's signature rich content features: HTML panels and file comments.
-
-**Architecture:** VSCode Extension ↔ SCP Proxy Chain ↔ Real Agent
+**Goal:** Build the orchestrator that manages proxy chains and presents as an ACP agent.
 
 **Implementation:**
-- Build walkthrough proxy using ScpComponent trait
-- Implement `_scp/html_panel/show` and `_scp/file_comment/show` message handling
-- Add VSCode extension handlers for SCP message types
-- Create walkthrough generation from agent responses
-- Replace echo agent with claude-code-acp via ToAgent bridge
+- Create `symposium-orchestrator` binary
+- Parse CLI arguments for proxy chain configuration
+- Spawn proxy and agent processes using tokio
+- Implement ACP protocol handling (present as agent to editor)
+- Route `_scp/successor/*` messages between proxies
+- Handle process lifecycle and cleanup
 
-**Key Test:** `walkthrough-display.test.ts`
-- Request walkthrough → HTML panel appears in VSCode → file comments placed in editor
-- Validates full SCP rich content capabilities end-to-end
+**Key Test:** Echo through chain
+- Editor → Orchestrator → Echo Agent
+- Validates basic message routing works
 
-## Phase 5: Advanced SCP Features (FUTURE)
+## Phase 2: Simple Proxy (VALIDATION)
 
-**Status:** Planned
-
-**Goal:** Implement full SCP vision with advanced composition.
-
-**Architecture:** User-configurable proxy chains with marketplace ecosystem
+**Goal:** Prove the protocol works with a minimal proxy implementation.
 
 **Implementation:**
-- Multiple simultaneous agents in proxy chains
-- User-defined proxy chain configuration
-- Advanced MCP-over-SCP for proxy-provided tools
-- Proxy marketplace and discovery mechanisms
-- Enhanced collaboration and identity proxies
+- Create a pass-through proxy that forwards all messages
+- Test with orchestrator and real ACP agent
+- Add logging proxy that records messages without transforming
 
-**Key Test:** `advanced-composition.test.ts`
-- User configures custom proxy chain → multiple agents collaborate → rich interactions
-- Validates full composable agent ecosystem
+**Key Test:** Logging proxy
+- Editor → Orchestrator → Logging Proxy → Agent
+- Verify messages flow through correctly
+- Confirm proxy sees all traffic
+
+## Phase 3: Real Proxy Use Cases (FUTURE)
+
+**Goal:** Implement practical proxies that demonstrate value.
+
+**Possible implementations:**
+- Rate limiting proxy
+- Caching proxy
+- Metrics collection proxy
+- Content filtering proxy
+
+These implementations will inform future protocol refinements.
 
 ## Testing Strategy
 
-**Scenario-Based Testing:**
-- Each test is a directory containing mock agent scripts and test files
-- Tests instantiate SCP proxy chains with mock agents as final components
-- VSCode extension logs all key events to Output window for test assertions
-- BDD-style tests: "when user says X, expect these log messages"
+**Unit tests:**
+- Test message serialization/deserialization
+- Test process spawning logic
+- Test stdio communication
 
-**Test Structure:**
-```
-test-scenarios/
-├── basic-echo/
-│   ├── agent.ts (TypeScript mock agent)
-│   └── basic-echo.test.ts
-├── mcp-bridge/
-│   ├── agent.ts
-│   └── mcp-bridge.test.ts
-└── walkthrough-display/
-    ├── agent.ts
-    └── walkthrough-display.test.ts
-```
+**Integration tests:**
+- Spawn real proxy chains
+- Use actual ACP agents for end-to-end validation
+- Test error handling and cleanup
 
-**Observability:** All components use `_scp/log` messages for structured logging, enabling test assertions on expected behavior patterns.
+**Manual testing:**
+- Use with VSCode + ACP-aware agents
+- Verify with different proxy configurations
+- Test process management under various failure modes
 
 # Frequently asked questions
 
