@@ -4,17 +4,14 @@
 //! to interact with the VSCode extension via IPC.
 
 use anyhow::Result;
+use indoc::indoc;
 use rmcp::{
-    ErrorData as McpError, RoleServer, ServerHandler,
-    handler::server::{router::{prompt::PromptRouter, tool::ToolRouter}, wrapper::Parameters},
-    model::*,
-    service::RequestContext,
-    tool, tool_handler, tool_router, prompt_handler, prompt_router,
+    handler::server::{router::{prompt::PromptRouter, tool::ToolRouter}, wrapper::Parameters}, model::*, prompt, prompt_handler, prompt_router, service::RequestContext, tool, tool_handler, tool_router, ErrorData as McpError, RoleServer, ServerHandler
 };
 use rust_embed::RustEmbed;
 use serde_json;
-use tracing::{debug, error, info};
-use crate::structured_logging;
+use tracing::{debug, error, info, warn};
+use crate::{structured_logging, types::TaskspaceStateResponse};
 
 use crate::dialect::DialectInterpreter;
 use crate::eg::Eg;
@@ -118,9 +115,7 @@ pub struct SymposiumServer {
 }
 
 #[tool_router]
-#[prompt_router]  
 impl SymposiumServer {
-
     pub async fn new(options: crate::Options) -> Result<Self> {
         // Try to discover VSCode PID by walking up the process tree
         let current_pid = std::process::id();
@@ -453,12 +448,23 @@ impl SymposiumServer {
             )]));
         }
 
-        // Special case: "yiasou" or "hi" returns a placeholder for now
+        // Special case: "yiasou" or "hi" returns the same content as @yiasou stored prompt
         if params.id == "yiasou" || params.id == "hi" {
-            let placeholder_content = "Hi, welcome! Prompt system will be implemented in subsequent commits.";
-            info!("Yiasou prompt placeholder returned via expand_reference");
+            match self.assemble_yiasou_prompt(None).await {
+                Ok(prompt_content) => {
+                    info!("Yiasou prompt assembled successfully via expand_reference");
 
-            return Ok(CallToolResult::success(vec![Content::text(placeholder_content.to_string())]));
+                    return Ok(CallToolResult::success(vec![Content::text(prompt_content)]));
+                }
+                Err(e) => {
+                    return Err(McpError::internal_error(
+                        "Failed to assemble yiasou prompt",
+                        Some(serde_json::json!({
+                            "error": e.to_string()
+                        })),
+                    ));
+                }
+            }
         }
 
         // Not found in either store
@@ -488,6 +494,16 @@ impl SymposiumServer {
         // ANCHOR_END: spawn_taskspace_tool
         info!("Creating new taskspace: {}", params.name);
 
+        // Default collaborator to current taskspace's collaborator if none specified
+        let collaborator = if params.collaborator.is_some() {
+            params.collaborator
+        } else {
+            // Get current taskspace collaborator as fallback
+            self.get_taskspace_context()
+                .await
+                .and_then(|ts| ts.collaborator)
+        };
+
         // Send spawn_taskspace message to Symposium app via daemon
         match self
             .ipc
@@ -495,7 +511,7 @@ impl SymposiumServer {
                 params.name.clone(),
                 params.task_description,
                 params.initial_prompt,
-                params.collaborator,
+                collaborator,
             )
             .await
         {
@@ -839,6 +855,121 @@ impl SymposiumServer {
         resources
     }
 
+    async fn assemble_yiasou_prompt(&self, collaborator: Option<String>) -> Result<String, McpError> {
+        let mut prompt = String::default();
+
+        prompt.push_str(indoc! {
+            "
+            Hi, welcome! The following material will help you get acquainted 
+            "
+        });
+
+        let taskspace = self.get_taskspace_context().await;
+
+        self.push_context(&mut prompt, "walkthrough-format.md");
+        self.push_context(&mut prompt, "coding-guidelines.md");
+        self.push_context(&mut prompt, "mcp-tool-usage-suggestions.md");
+        if let Some(taskspace) = &taskspace {
+            self.push_taskspace_context(&mut prompt, taskspace);
+            self.push_collaboration_patterns(&mut prompt, collaborator, taskspace.collaborator.as_deref());
+        } else {
+            self.push_collaboration_patterns(&mut prompt, collaborator, None);
+        }
+
+        Ok(prompt)
+    }
+
+    /// Assemble the complete /yiasou initialization prompt
+    /// Get taskspace context via IPC
+    async fn get_taskspace_context(
+        &self,
+    ) -> Option<TaskspaceStateResponse> {
+        match self.ipc.get_taskspace_state().await {
+            Ok(state) => Some(state),
+            Err(e) => {
+                warn!("Failed to get taskspace context via IPC: {}", e);
+                None
+            }
+        }
+    }
+
+    fn push_context(&self, prompt: &mut String, file_name: &str) {
+        let Some(file) = GuidanceFiles::get(&file_name) else {
+            panic!("no context file named {file_name}");
+        };
+
+        let content = String::from_utf8_lossy(&file.data);
+        prompt.push_str("<context>");
+        prompt.push_str(&content);
+        prompt.push_str("</context>");
+    }
+
+    fn push_taskspace_context(&self, prompt: &mut String, taskspace: &TaskspaceStateResponse) {
+        prompt.push_str(&indoc::formatdoc! {
+            "
+            <taskspace_context>
+                This is a taskspace, a separate copy of the project's files meant to achieve a particular task.
+
+                <name>{name}</name>
+                <description>{description}</description>
+                <initial_task>{initial_task}</initial_task>
+            </taskspace_context>
+            ",
+            name = taskspace.name.as_deref().unwrap_or("(not yet set)"),
+            description = taskspace.description.as_deref().unwrap_or("(not yet set)"),
+            initial_task = match &taskspace.initial_prompt {
+                Some(initial_prompt) => {
+                    indoc::formatdoc! {
+                        "The user gave the following high-level task description for this taskspace.
+                        Please read it and then ask clarifying questions to ensure you understand their intent.
+                        When ready, use the `update_taskspace` tool to update the taskspace name
+                        and description.
+
+                        ---
+
+                        {initial_prompt}"
+                    }
+                }
+
+                None => {
+                    indoc::formatdoc! {
+                        "
+                        Please ask the user what they would like to achieve in this taskspace
+                        and, when ready, use the `update_taskspace` tool to update the taskspace name
+                        and description.
+                        "
+                    }
+                }
+            },
+        });
+    }
+
+    fn push_collaboration_patterns(&self,
+        prompt: &mut String,
+        collaborator: Option<String>,
+        taskspace_collaborator: Option<&str>,
+    ) {
+        let collaborator = collaborator.as_deref().or(taskspace_collaborator).unwrap_or("sparkle");
+
+        match collaborator {
+            "sparkle" => {
+                prompt.push_str(indoc::indoc! {
+                    "
+                    <important>
+                        Before doing anything else, you MUST use the
+                        `embody_sparkle` tool to load Sparkle identity.
+                    </important>
+                    "
+                });
+            }
+
+            "socrates" => {
+                self.push_context(prompt, "socrates.md");
+            }
+
+            _ => {}
+        }
+    }
 }
 
 #[tool_handler]
@@ -915,53 +1046,41 @@ impl ServerHandler for SymposiumServer {
         })
     }
 
-    async fn list_prompts(
-        &self,
-        _request: Option<PaginatedRequestParam>,
-        _context: RequestContext<RoleServer>,
-    ) -> Result<ListPromptsResult, McpError> {
-        let prompts = vec![
-            Prompt {
-                name: "yiasou".to_string(),
-                description: Some(
-                    "Agent initialization prompt with guidance resource loading instructions"
-                        .to_string(),
-                ),
-                arguments: None,
-            },
-            Prompt {
-                name: "hi".to_string(),
-                description: Some("Agent initialization prompt (alias for yiasou)".to_string()),
-                arguments: None,
-            },
-        ];
+}
 
-        Ok(ListPromptsResult {
-            prompts,
-            next_cursor: None,
+#[derive(Debug, Serialize, Deserialize)]
+#[derive(schemars::JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct CollaboratorPromptParams {
+    collaborator: Option<String>,
+}
+
+#[prompt_router]
+impl SymposiumServer {
+    #[prompt(
+        name = "yiasou",
+        description = "Agent initialization prompt with guidance resource loading instructions"
+    )]
+    async fn yiasou_prompt(
+        &self,
+        Parameters(CollaboratorPromptParams { collaborator }): Parameters<CollaboratorPromptParams>,
+    ) -> Result<GetPromptResult, McpError> {
+        let content = self.assemble_yiasou_prompt(collaborator).await?;
+        Ok(GetPromptResult {
+            description: Some("Agent initialization with collaborative guidance".to_string()),
+            messages: vec![PromptMessage::new_text(PromptMessageRole::User, content)],
         })
     }
 
-    async fn get_prompt(
+    #[prompt(
+        name = "hi", 
+        description = "Agent initialization prompt (alias for yiasou)"
+    )]
+    async fn hi_prompt(
         &self,
-        request: GetPromptRequestParam,
-        _context: RequestContext<RoleServer>,
+        parameters: Parameters<CollaboratorPromptParams>,
     ) -> Result<GetPromptResult, McpError> {
-        match request.name.as_str() {
-            "yiasou" | "hi" => {
-                let content = "Hi, welcome! Prompt system will be implemented in subsequent commits.";
-                Ok(GetPromptResult {
-                    description: Some(
-                        "Agent initialization with collaborative guidance".to_string(),
-                    ),
-                    messages: vec![PromptMessage::new_text(PromptMessageRole::User, content.to_string())],
-                })
-            }
-            _ => Err(McpError::invalid_params(
-                format!("Unknown prompt: {}", request.name),
-                None,
-            )),
-        }
+        Self::yiasou_prompt(&self, parameters).await
     }
 }
 
@@ -1004,7 +1123,7 @@ mod tests {
         let resources = vec![
             Resource {
                 raw: RawResource {
-                    uri: "main.md".into(),
+                    uri: "socrates.md".into(),
                     name: "Collaboration Patterns".into(),
                     description: Some(
                         "Mindful collaboration patterns demonstrated through dialogue".into(),
@@ -1045,7 +1164,7 @@ mod tests {
         ];
 
         assert_eq!(resources.len(), 3);
-        assert_eq!(resources[0].raw.uri, "main.md");
+        assert_eq!(resources[0].raw.uri, "socrates.md");
         assert_eq!(resources[0].raw.name, "Collaboration Patterns");
         assert_eq!(resources[1].raw.uri, "walkthrough-format.md");
         assert_eq!(resources[2].raw.uri, "coding-guidelines.md");
@@ -1054,9 +1173,9 @@ mod tests {
     #[test]
     fn test_resource_content_loading() {
         // Test that we can load the guidance files
-        let main_content = GuidanceFiles::get("main.md").unwrap();
-        let main_str = String::from_utf8(main_content.data.into_owned()).unwrap();
-        assert!(main_str.contains("Mindful Collaboration Patterns"));
+        let socrates_content = GuidanceFiles::get("socrates.md").unwrap();
+        let socrates_str = String::from_utf8(socrates_content.data.into_owned()).unwrap();
+        assert!(socrates_str.contains("Mindful Collaboration Patterns"));
 
         let walkthrough_content = GuidanceFiles::get("walkthrough-format.md").unwrap();
         let walkthrough_str = String::from_utf8(walkthrough_content.data.into_owned()).unwrap();
@@ -1119,13 +1238,13 @@ This is test content."#;
         assert_eq!(resources.len(), expected_count);
 
         // Check that all files have proper metadata
-        let main_resource = resources.iter().find(|r| r.raw.uri == "main.md").unwrap();
-        assert_eq!(main_resource.raw.name, "Collaboration Patterns");
+        let socrates_resource = resources.iter().find(|r| r.raw.uri == "socrates.md").unwrap();
+        assert_eq!(socrates_resource.raw.name, "Collaboration Patterns");
         assert_eq!(
-            main_resource.raw.description,
+            socrates_resource.raw.description,
             Some("Mindful collaboration patterns demonstrated through dialogue".to_string())
         );
-        assert!(main_resource.raw.size.unwrap() > 0);
+        assert!(socrates_resource.raw.size.unwrap() > 0);
 
         let walkthrough_resource = resources
             .iter()
@@ -1154,6 +1273,15 @@ This is test content."#;
         );
     }
 
+    #[tokio::test]
+    async fn test_yiasou_prompt_generation() {
+        let server = SymposiumServer::new_test();
+
+        let prompt = server.assemble_yiasou_prompt(None).await.unwrap();
+
+        // Verify the prompt contains some basic text.
+        assert!(prompt.contains("Hi, welcome!"));
+    }
 
     #[tokio::test]
     async fn test_expand_reference_yiasou() {
@@ -1191,8 +1319,8 @@ This is test content."#;
         // but we can test the static guidance loading parts
 
         // Test that the guidance files contain expected content
-        let main_content = GuidanceFiles::get("main.md").unwrap();
-        let main_str = String::from_utf8(main_content.data.into_owned()).unwrap();
+        let socrates_content = GuidanceFiles::get("socrates.md").unwrap();
+        let socrates_str = String::from_utf8(socrates_content.data.into_owned()).unwrap();
         let walkthrough_content = GuidanceFiles::get("walkthrough-format.md").unwrap();
         let walkthrough_str = String::from_utf8(walkthrough_content.data.into_owned()).unwrap();
         let coding_content = GuidanceFiles::get("coding-guidelines.md").unwrap();
@@ -1201,15 +1329,15 @@ This is test content."#;
         let proactive_str = String::from_utf8(proactive_content.data.into_owned()).unwrap();
 
         // Verify the content structure matches what we expect in the yiasou prompt
-        assert!(main_str.contains("# Mindful Collaboration Patterns"));
+        assert!(socrates_str.contains("# Mindful Collaboration Patterns"));
         assert!(walkthrough_str.contains("# Walkthrough Format Specification"));
         assert!(coding_str.contains("# Coding Guidelines"));
         assert!(proactive_str.contains("# MCP Tool Usage Suggestions"));
 
         // Verify key collaboration concepts are present
-        assert!(main_str.contains("Make it so?"));
-        assert!(main_str.contains("spacious attention"));
-        assert!(main_str.contains("beginner's mind"));
+        assert!(socrates_str.contains("Make it so?"));
+        assert!(socrates_str.contains("spacious attention"));
+        assert!(socrates_str.contains("beginner's mind"));
     }
 
     // {RFD:rust-crate-sources-tool} Tests for Rust crate source functionality
