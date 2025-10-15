@@ -1,0 +1,11 @@
+[package]
+name = "scp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+agent-client-protocol-schema = "0.4.9"
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

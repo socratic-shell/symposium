@@ -37,34 +37,55 @@ Today's AI development tools are largely monolithic. If you want to change one p
 We propose to develop **SCP (Symposium Component Protocol)** as an [extension to ACP](https://agentclientprotocol.com/protocol/extensibility) that enables composable agent architectures. The core idea is a proxy chain where each component adds specific capabilities:
 
 ```mermaid
-flowchart TD
-    subgraph Proxy Chain
-        Walkthrough[Walkthrough Proxy] 
-        Walkthrough <-->|SCP| DotDotDot[...]
-        DotDotDot <-->|SCP| Collaborator[Collaborator Identity Proxy]
+flowchart LR
+    Editor[VSCode Extension]
+    
+    subgraph Orchestrator[Symposium Orchestrator]
+        O[Orchestrator Process]
     end
-
-    VSCode[VSCode Extension] <-->|SCP| Walkthrough
-    OtherEditor[ACP-aware editor] <-->|ACP| ToEditor[ToEditorAdapter]
-    ToEditor <-->|SCP| Walkthrough
-    Collaborator <-->|SCP| ToAgent[ToAgentAdapter]
-    ToAgent <-->|ACP| ACPAgent[ACP-aware agent]
-    Collaborator <-->|SCP| SCPAgent[SCP-aware agent]
+    
+    subgraph ProxyChain[Proxy Chain - managed by orchestrator]
+        P1[Walkthrough Proxy]
+        P2[Collaborator Proxy]
+        Agent[ACP Agent]
+        
+        P1 -->|_scp/successor/*| P2
+        P2 -->|_scp/successor/*| Agent
+    end
+    
+    Editor <-->|ACP| O
+    O <-->|routes messages| ProxyChain
 ```
 
 SCP contains three kinds of actors:
 
-* *Editors* (like the VSCode extension) interact directly with users;
-* *Proxies* (like the walkthroughs or collaborator identity) sit between the editor and the agent, introducing new behavior;
-* *Agents* provide the base model behavior.
+* **Editors** (like the VSCode extension) interact directly with users and spawn the orchestrator
+* **Orchestrator** manages the proxy chain and appears as an ACP agent to the editor
+* **Proxies** transform messages using `_scp/successor/*` protocol for downstream communication
+* **Agents** provide the base model behavior
 
-For proxies, we say that the "editor" of a proxy is the upstream actor and the "agent" of a proxy is the downstream proxy.
+The orchestrator handles all the message routing, making the proxy chain transparent to the editor.
 
-## Initialization of SCP proxies
+## The Orchestrator Component
 
-The ACP protocol defines an [initialization phase](https://agentclientprotocol.com/protocol/initialization) where editors and agents advertise their [capabilities](https://agentclientprotocol.com/protocol/schema#clientcapabilities) to one another. An SCP-aware editor includes a custom `"symposium"` capability in the `_meta` field sent to downstream proxies and agents. SCP-aware proxies also advertise their capabilities upstream to the editor.
+SCP introduces an **orchestrator** component that sits between the editor and the proxy chain. The orchestrator:
 
-SCP proxies expect to be initialized by an SCP-aware editor. The editor provides the proxy with its successors on the proxy chain. The proxy can then create those processes. If initialization by a "non-SCP-aware" editor, the proxy will simply return an error. The `ToEditor` proxy can create an SCP-aware bridge in those cases.
+* Spawns and manages all proxies and the final agent based on command-line configuration
+* Routes messages through the proxy chain transparently  
+* Appears as a standard ACP agent to the editor
+* Handles the `_scp/successor/*` protocol messages that proxies use for downstream communication
+
+**From the editor's perspective**, it simply spawns one orchestrator process and communicates with it using normal ACP over stdio. The editor doesn't need to know about the proxy chain at all.
+
+**Command-line orchestration:**
+```bash
+symposium-orchestrator \
+  --proxy ./walkthrough-proxy \
+  --proxy ./collaborator-proxy \
+  --agent ./claude-acp-agent
+```
+
+The orchestrator advertises an `"orchestrator"` capability during ACP initialization to signal its role, but editors can treat it as any other ACP agent.
 
 ## Symposium's features become proxies
 
@@ -157,31 +178,76 @@ An SCP-aware editor provides the following capability during ACP initialization:
 
 SCP proxies forward the capabilities they receive from their editor.
 
-### SCP agent capabilities
+### SCP component capabilities
 
-An SCP-aware agent or proxy provides the following capability during ACP initialization:
+SCP components advertise their role during ACP initialization:
 
+**Orchestrator capability:**
 ```json
-/// Including the symposium section *at all* means that the editor
-/// supports symposium proxy initialization.
 "_meta": {
     "symposium": {
         "version": "1.0",
-        "proxy": true,    // false if this is not an SCP proxy and therefore does not expect a proxy chain
+        "orchestrator": true
     }
 }
 ```
 
-The `proxy` flag indicates whether this SCP server is a *proxy* or a *final agent*:
+**Proxy capability:**
+```json
+"_meta": {
+    "symposium": {
+        "version": "1.0",
+        "proxy": true
+    }
+}
+```
 
-* An SCP *agent* (`proxy = false`)  is the final node in the chain. It behaves like an ACP server except that it supports [MCP tools over SCP](#mcp-tools-over-scp) and other future SCP extensions.
-* An SCP *proxy* (`proxy = true`) is an intermediate node in the chain. Proxies expect to be initialized with a [`_scp/proxy` request](#the-_scpproxy-request) before they can be used. Until the `_scp/proxy` chain is established, any other requests  result in an error. Once established, the proxy chain cannot be changed.
+**Agent capability:**
+Agents don't need special SCP capabilities - they're just normal ACP agents.
 
-### The `_scp/proxy` request
+### The `_scp/successor/{send,receive}` protocol
 
-The `_scp/proxy` request contains an array of `ScpServer` structures. These structures follow the same format as ACP's [`McpServer`](https://agentclientprotocol.com/protocol/schema#mcpserver) specification, with only stdio transport mode supported initially. This allows proxies to launch and connect to their downstream components using the same patterns established by ACP.
+Proxies communicate with their downstream component (next proxy or agent) through special extension messages handled by the orchestrator:
 
-The proxy handles launching and connecting to downstream SCP servers using the same mechanisms it would use for MCP servers. This reuses existing process management and communication patterns while extending them for the proxy chain architecture.
+**`_scp/successor/send`** - Proxy wants to send a message downstream:
+```json
+{
+  "method": "_scp/successor/send",
+  "params": {
+    "message": <ACP_MESSAGE>
+  }
+}
+```
+
+**`_scp/successor/receive`** - Orchestrator delivers a response from downstream:
+```json
+{
+  "method": "_scp/successor/receive", 
+  "params": {
+    "message": <ACP_MESSAGE>
+  }
+}
+```
+
+**Message flow example:**
+1. Editor sends ACP `prompt` request to orchestrator
+2. Orchestrator forwards to Proxy1 as normal ACP message
+3. Proxy1 transforms and sends `_scp/successor/send { message: <modified_prompt> }` 
+4. Orchestrator routes that to Proxy2 as normal ACP `prompt`
+5. Eventually reaches agent, response flows back through chain
+6. Orchestrator wraps responses in `_scp/successor/receive` going upstream
+
+**Transparent proxy pattern:**
+A pass-through proxy is trivial - just forward everything:
+```rust
+match message {
+    // Forward from editor to successor
+    AcpRequest(req) => send_to_successor(req),
+    
+    // Forward from successor to editor  
+    ExtNotification("_scp/successor/receive", msg) => respond_to_editor(msg),
+}
+```
 
 ### MCP tools over SCP
 

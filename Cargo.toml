@@ -1,10 +1,11 @@
 [workspace]
 members = [
-    "symposium/mcp-server", 
+    "symposium/mcp-server",
     "symposium/cli-agent-util",
-    "setup", 
-    "md-rfd-preprocessor", 
-    "ci", 
+    "symposium/scp",
+    "setup",
+    "md-rfd-preprocessor",
+    "ci",
 ]
 resolver = "2"
 
