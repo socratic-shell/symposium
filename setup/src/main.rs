@@ -21,8 +21,8 @@ Examples:
   cargo setup                          # Show help and usage
   cargo setup --all                    # Build everything and setup for development
   cargo setup --vscode                 # Build/install VSCode extension only
-  cargo setup --mcp                    # Build/install MCP server only
-  cargo setup --mcp --restart          # Build/install MCP server and restart daemon
+  cargo setup --mcp                    # Build/install MCP servers only
+  cargo setup --mcp --restart          # Build/install MCP servers and restart daemon
   cargo setup --app                    # Build macOS app only
   cargo setup --app --open             # Build macOS app and launch it
 
@@ -36,7 +36,7 @@ Prerequisites:
 "#
 )]
 struct Args {
-    /// Build all components (VSCode extension, MCP server, Git MCP server, and macOS app)
+    /// Build all components (VSCode extension, MCP servers, and macOS app)
     #[arg(long)]
     all: bool,
 
@@ -44,7 +44,7 @@ struct Args {
     #[arg(long)]
     vscode: bool,
 
-    /// Build/install MCP server
+    /// Build/install MCP servers (Symposium and Sparkle)
     #[arg(long)]
     mcp: bool,
 
@@ -100,6 +100,7 @@ fn main() -> Result<()> {
     let mut binary_path = None;
     if build_mcp {
         binary_path = Some(build_and_install_rust_server()?);
+        build_and_install_sparkle_cli()?;
     }
     if build_vscode {
         build_and_install_extension()?;
@@ -133,8 +134,8 @@ fn show_help() {
     println!();
     println!("Common examples:");
     println!("  cargo setup --all --open             # Install everything and open the app");
-    println!("  cargo setup --vscode --mcp           # Install VSCode extension and MCP server");
-    println!("  cargo setup --mcp                    # Install MCP server");
+    println!("  cargo setup --vscode --mcp           # Install VSCode extension and MCP servers");
+    println!("  cargo setup --mcp                    # Install MCP servers");
     println!("  cargo setup --help                   # See all options");
 }
 
@@ -184,23 +185,45 @@ fn setup_mcp_servers(binary_path: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let mcp_server = McpServer {
+    // Configure Symposium MCP server
+    let symposium_server = McpServer {
         name: "symposium".to_string(),
         binary_path: binary_path.to_path_buf(),
         args: vec!["--dev-log".to_string()],
         env: vec![("RUST_LOG".to_string(), "symposium_mcp=debug".to_string())],
     };
 
+    // Configure Sparkle MCP server
+    let home = std::env::var("HOME").context("HOME environment variable not set")?;
+    let sparkle_binary_path = PathBuf::from(home).join(".cargo/bin/sparkle-mcp");
+    let sparkle_server = McpServer {
+        name: "sparkle".to_string(),
+        binary_path: sparkle_binary_path.clone(),
+        args: vec![],
+        env: vec![],
+    };
+
     let mut success = true;
-    for agent in agents {
+    for agent in &agents {
         println!("🔧 Registering Symposium MCP server with {}...", agent.name());
         println!("   Binary path: {}", binary_path.display());
         println!("   Development mode: logging to /tmp/symposium-mcp.log with RUST_LOG=symposium_mcp=debug");
         
-        match agent.install_mcp(&mcp_server) {
+        match agent.install_mcp(&symposium_server) {
             Ok(result) => success &= result,
             Err(e) => {
-                println!("❌ Failed to setup MCP for {}: {}", agent.name(), e);
+                println!("❌ Failed to setup Symposium MCP for {}: {}", agent.name(), e);
+                success = false;
+            }
+        }
+
+        println!("✨ Registering Sparkle MCP server with {}...", agent.name());
+        println!("   Binary path: {}", sparkle_binary_path.display());
+        
+        match agent.install_mcp(&sparkle_server) {
+            Ok(result) => success &= result,
+            Err(e) => {
+                println!("❌ Failed to setup Sparkle MCP for {}: {}", agent.name(), e);
                 success = false;
             }
         }
@@ -219,6 +242,7 @@ fn print_completion_message(built_vscode: bool, built_mcp: bool, built_app: bool
 
     if built_mcp {
         println!("📦 MCP server installed to ~/.cargo/bin/symposium-mcp");
+        println!("✨ Sparkle MCP server installed to ~/.cargo/bin/sparkle-mcp");
     }
     if built_vscode {
         println!("📋 VSCode extension installed and ready to use");
@@ -292,6 +316,34 @@ fn build_and_install_rust_server() -> Result<PathBuf> {
     // Return full path to the installed binary
     let home = std::env::var("HOME").context("HOME environment variable not set")?;
     Ok(PathBuf::from(home).join(".cargo/bin/symposium-mcp"))
+}
+
+fn build_and_install_sparkle_cli() -> Result<()> {
+    println!("✨ Installing Sparkle MCP server...");
+    println!("   Installing from: https://github.com/symposium-dev/sparkle.git");
+
+    // Use cargo install --git to install Sparkle MCP server
+    let output = Command::new("cargo")
+        .args([
+            "install",
+            "--git",
+            "https://github.com/symposium-dev/sparkle.git",
+            "sparkle-mcp",
+            "--force"
+        ])
+        .output()
+        .context("Failed to execute cargo install for Sparkle")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "❌ Failed to install Sparkle MCP server:\n   Error: {}",
+            stderr.trim()
+        ));
+    }
+
+    println!("✅ Sparkle MCP server installed successfully!");
+    Ok(())
 }
 
 fn build_macos_app() -> Result<()> {
