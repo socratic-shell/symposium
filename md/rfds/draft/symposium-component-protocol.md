@@ -2,65 +2,47 @@
 
 > What are you proposing to change?
 
-We propose to prototype **SCP (Symposium Component Protocol)**, an extension to Zed's Agent Client Protocol (ACP) that enables composable agent architectures through proxy chains. Instead of building monolithic AI tools, SCP allows developers to create modular components that can intercept and transform messages flowing between editors and agents.
+We propose to prototype **S/ACP** (Symposium ACP), an extension to Zed's Agent Client Protocol (ACP) that enables composable agent architectures through proxy chains. Instead of building monolithic AI tools, S/ACP allows developers to create modular components that can intercept and transform messages flowing between editors and agents.
 
-This RFD builds on the concepts introduced in [SymmACP: extending Zed's ACP to support Composable Agents](https://smallcultfollowing.com/babysteps/blog/2025/10/08/symmacp), with the protocol renamed to SCP for this implementation.
+This RFD builds on the concepts introduced in [SymmACP: extending Zed's ACP to support Composable Agents](https://smallcultfollowing.com/babysteps/blog/2025/10/08/symmacp), with the protocol renamed to S/ACP for this implementation.
 
 Key changes:
 * Define a proxy chain architecture where components can transform ACP messages
 * Create an orchestrator that manages the proxy chain and presents as a normal ACP agent to editors
-* Establish the `_scp/successor/*` protocol for proxies to communicate with downstream components
+* Establish the `_symposium/successor/*` protocol for proxies to communicate with downstream components
 * Enable composition without requiring editors to understand SCP internals
 
 # Status quo
 
 > How do things work today and what problems does this cause? Why would we change things?
 
-Today, extending or customizing AI agent behavior requires either:
-1. Building features directly into the agent code (tight coupling)
-2. Building features into the editor/client (editor-specific)
-3. Using MCP tools (limited to tool calling, not message transformation)
-
-This creates several problems:
-
-**Limited composability:**
-* Can't easily combine independent enhancements (e.g., logging + metrics + custom behavior)
-* Each feature requires either agent or editor modifications
-* No standard way to chain transformations or add middleware
-
-**Lack of modularity:**
-* Features are bundled into monolithic agents or editors
-* Can't swap out individual behaviors without changing the entire system
-* Difficult to test components in isolation
-
-**Reinventing infrastructure:**
-* Each tool builds its own message routing and transformation logic
-* No standard pattern for intercepting and modifying agent interactions
-* Can't share reusable components across different agents or editors
+Today's AI agent ecosystem is dominated by monolithic agents. We want people to be able to combine independent components to build custom agents targeting their specific needs. We want them to be able to use these with whatever editors and tooling they have. This is aligned with Symposium's core values of openness, interoperability, and extensibility.
 
 # What we propose to do about it
 
 > What are you proposing to improve the situation?
 
-We propose to develop **SCP (Symposium Component Protocol)** as an [extension to ACP](https://agentclientprotocol.com/protocol/extensibility) that enables composable agent architectures. The core idea is a proxy chain where each component adds specific capabilities:
+We propose to develop  an [extension to ACP](https://agentclientprotocol.com/protocol/extensibility) called **SCP (Symposium Component Protocol)**.
+
+The heart of SCP is a proxy chain where each component adds specific capabilities:
 
 ```mermaid
 flowchart LR
     Editor[ACP Editor]
-    
+
     subgraph Orchestrator[SCP Orchestrator]
         O[Orchestrator Process]
     end
-    
+
     subgraph ProxyChain[Proxy Chain - managed by orchestrator]
         P1[Proxy 1]
         P2[Proxy 2]
         Agent[ACP Agent]
-        
+
         P1 -->|_scp/successor/*| P2
         P2 -->|_scp/successor/*| Agent
     end
-    
+
     Editor <-->|ACP| O
     O <-->|routes messages| ProxyChain
 ```
@@ -79,7 +61,7 @@ The orchestrator handles message routing, making the proxy chain transparent to 
 SCP introduces an **orchestrator** component that sits between the editor and the proxy chain. The orchestrator:
 
 * Spawns and manages all proxies and the final agent based on command-line configuration
-* Routes messages through the proxy chain transparently  
+* Routes messages through the proxy chain transparently
 * Appears as a standard ACP agent to the editor
 * Handles the `_scp/successor/*` protocol messages that proxies use for downstream communication
 
@@ -95,25 +77,6 @@ symposium-orchestrator \
 
 The orchestrator advertises an `"orchestrator"` capability during ACP initialization to signal its role, but editors can treat it as any other ACP agent.
 
-## Motivation: User-Specific Agent Customization
-
-The real power of SCP is enabling agents that adapt to specific users, contexts, and workflows. Proxies can inject:
-
-* **User-specific context** - Your coding style, project conventions, past decisions
-* **Workflow patterns** - How you like to work (TDD, documentation-first, iterative refinement)
-* **Domain knowledge** - Project-specific terminology, architecture patterns, team practices
-* **Learning and adaptation** - Remember what worked well before, avoid past mistakes
-* **Personal preferences** - Communication style, level of detail, explanation approaches
-
-**Example:** A "Symposium collaborator" proxy learns that you prefer:
-- Detailed architectural discussions before implementation
-- Code examples with inline comments explaining the reasoning
-- Incremental commits with descriptive messages
-- Design documentation updated alongside code changes
-
-The proxy transforms generic agent responses to match your workflow, without the base agent needing to know about your preferences. Different users can use different proxies with the same underlying agent.
-
-This is fundamentally about **personalization** - making AI agents work the way *you* work, not forcing you to adapt to how they work.
 
 # Shiny future
 
@@ -229,7 +192,7 @@ Proxies communicate with their downstream component (next proxy or agent) throug
 **`_scp/successor/receive`** - Orchestrator delivers a response from downstream:
 ```json
 {
-  "method": "_scp/successor/receive", 
+  "method": "_scp/successor/receive",
   "params": {
     "message": <ACP_MESSAGE>
   }
@@ -239,7 +202,7 @@ Proxies communicate with their downstream component (next proxy or agent) throug
 **Message flow example:**
 1. Editor sends ACP `prompt` request to orchestrator
 2. Orchestrator forwards to Proxy1 as normal ACP message
-3. Proxy1 transforms and sends `_scp/successor/send { message: <modified_prompt> }` 
+3. Proxy1 transforms and sends `_scp/successor/send { message: <modified_prompt> }`
 4. Orchestrator routes that to Proxy2 as normal ACP `prompt`
 5. Eventually reaches agent, response flows back through chain
 6. Orchestrator wraps responses in `_scp/successor/receive` going upstream
@@ -250,8 +213,8 @@ A pass-through proxy is trivial - just forward everything:
 match message {
     // Forward from editor to successor
     AcpRequest(req) => send_to_successor(req),
-    
-    // Forward from successor to editor  
+
+    // Forward from successor to editor
     ExtNotification("_scp/successor/receive", msg) => respond_to_editor(msg),
 }
 ```
@@ -351,7 +314,7 @@ These implementations will inform future protocol refinements.
 
 ## What alternative approaches did you consider, and why did you settle on this one?
 
-We considered extending MCP directly, but MCP is focused on tool provision rather than conversation flow control. We also looked at building everything as VSCode extensions, but that would lock us into a single editor ecosystem. 
+We considered extending MCP directly, but MCP is focused on tool provision rather than conversation flow control. We also looked at building everything as VSCode extensions, but that would lock us into a single editor ecosystem.
 
 SCP's proxy chain approach provides the right balance of modularity and compatibility - components can be developed independently while still working together.
 
