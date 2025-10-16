@@ -17,7 +17,7 @@ Symposium is an open-source project and we are actively soliciting [contributors
   <p>We are an independent community focused on exploring what AI has to offer.</p>
   <ul class="tenet-examples">
     <li class="works"><a href="https://github.com/symposium-dev/symposium/">Open-source codebase</a></li>
-    <li class="works"><a href="../rfds/index.html">RFD process</a></li>
+    <li class="works"><a href="./rfds/index.html">RFD process</a></li>
     <li class="works"><a href="https://github.com/symposium-dev/symposium/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
   </ul>
 </div>
@@ -26,8 +26,8 @@ Symposium is an open-source project and we are actively soliciting [contributors
   <h2>Collaborative</h2>
   <p>We value rich interactions where humans and agents work together to explore complex ideas.</p>
   <ul class="tenet-examples">
-    <li class="works"><a href="./walkthroughs.md">Interactive walkthroughs</a></li>
-    <li class="works"><a href="./collaborative-prompts.md">Collaborative prompts</a></li>
+    <li class="works"><a href="./get-started/walkthroughs.md">Interactive walkthroughs</a></li>
+    <li class="works"><a href="./ref/collaborative-prompts.md">Collaborative prompts</a></li>
   </ul>
 </div>
 
@@ -35,8 +35,8 @@ Symposium is an open-source project and we are actively soliciting [contributors
   <h2>Orchestrated</h2>
   <p>We build tools to manage multiple agents, keeping you up-to-date on their progress.</p>
   <ul class="tenet-examples">
-    <li class="works"><a href="./taskspaces.md">Taskspaces on your local machine</a></li>
-    <li class="help-wanted"><a href="../rfds/persistent-agents.md">Asynchronous background agents</a></li>
+    <li class="works"><a href="./get-started/taskspaces.md">Taskspaces on your local machine</a></li>
+    <li class="help-wanted"><a href="./rfds/persistent-agents.md">Asynchronous background agents</a></li>
     <li class="help-wanted">Remotely hosted taskspaces</li>
     <li class="help-wanted">Windows, Linux apps</li>
   </ul>
@@ -47,7 +47,7 @@ Symposium is an open-source project and we are actively soliciting [contributors
   <p>We want to engage library authors in making their users successful with AI.</p>
   <ul class="tenet-examples">
     <li class="works"><a href="./api-examples.md">Help LLMs find Rust examples and crate sources</a></li>
-    <li class="works"><a href="./ide-integration.md">IDE integration for context-aware discussions</a></li>
+    <li class="works"><a href="./design/mcp-tools/ide-integration.md">IDE integration for context-aware discussions</a></li>
     <li class="help-wanted">Crate-author guidance system <a href="./rfds/crate-author-guidance.md"></a></li>
     <li class="help-wanted">Library-provided MCP servers <a href="./rfds/library-mcp-servers.md"></a></li>
     <li class="help-wanted">Community pattern sharing <a href="./rfds/community-patterns.md"></a></li>
