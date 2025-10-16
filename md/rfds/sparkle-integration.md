@@ -93,7 +93,7 @@ The system becomes a platform for experimenting with different AI collaboration 
 - Layer collaborator system on top of existing `AgentManager`/`AgentType` architecture
 
 ## Phase 1: Dual MCP Server Installation
-- Update `cargo setup` to install Sparkle MCP server via `cargo install --git https://github.com/sparkle-project/sparkle.git`
+- Update `cargo setup` to install Sparkle MCP server via `cargo install --git https://github.com/symposium-dev/sparkle.git --root sparkle-mcp`
 - Add `build_and_install_sparkle_cli()` function to `setup/src/main.rs` similar to `build_and_install_rust_server()`
 - Configure both Symposium and Sparkle MCP servers in AI assistant configurations
 - All tools from both servers available to LLM

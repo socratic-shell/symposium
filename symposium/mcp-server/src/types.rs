@@ -392,6 +392,7 @@ pub struct SpawnTaskspacePayload {
     pub name: String,
     pub task_description: String,
     pub initial_prompt: String,
+    pub collaborator: Option<String>,
 }
 // ANCHOR_END: spawn_taskspace_payload
 
@@ -487,6 +488,8 @@ pub struct TaskspaceStateRequest {
     pub name: Option<String>,
     /// New description to set (None = don't update)  
     pub description: Option<String>,
+    /// New collaborator to set (None = don't update)
+    pub collaborator: Option<String>,
 }
 
 impl IpcPayload for TaskspaceStateRequest {
@@ -539,6 +542,8 @@ pub struct TaskspaceStateResponse {
     pub description: Option<String>,
     /// Task description for LLM initialization (cleared after agent startup)
     pub initial_prompt: Option<String>,
+    /// Collaborator for this taskspace
+    pub collaborator: Option<String>,
 }
 
 /// Payload for delete_taskspace messages

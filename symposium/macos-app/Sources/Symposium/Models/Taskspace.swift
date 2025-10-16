@@ -10,6 +10,7 @@ struct Taskspace: Codable, Identifiable {
     var vscodeWindowID: Int? = nil
     let createdAt: Date
     var lastActivatedAt: Date
+    var collaborator: String?
     
     /// Timestamp of last screenshot capture (not persisted, transient UI state)
     var lastScreenshotAt: Date?
@@ -18,7 +19,7 @@ struct Taskspace: Codable, Identifiable {
     var pendingDeletion: Bool = false
     
     private enum CodingKeys: String, CodingKey {
-        case id, name, description, state, logs, vscodeWindowID, createdAt, lastActivatedAt
+        case id, name, description, state, logs, vscodeWindowID, createdAt, lastActivatedAt, collaborator
     }
     
     // Custom decoder to handle migration from older versions without lastActivatedAt
@@ -35,15 +36,19 @@ struct Taskspace: Codable, Identifiable {
         
         // Migration: use createdAt if lastActivatedAt doesn't exist
         lastActivatedAt = try container.decodeIfPresent(Date.self, forKey: .lastActivatedAt) ?? createdAt
+        
+        // Migration: collaborator field is optional for backward compatibility
+        collaborator = try container.decodeIfPresent(String.self, forKey: .collaborator)
     }
     
-    init(name: String, description: String, initialPrompt: String? = nil) {
+    init(name: String, description: String, initialPrompt: String? = nil, collaborator: String? = nil) {
         self.id = UUID()
         self.name = name
         self.description = description
         self.state = initialPrompt != nil ? .hatchling(initialPrompt: initialPrompt!) : .resume
         self.createdAt = Date()
         self.lastActivatedAt = self.createdAt  // Use creation time as initial activation time
+        self.collaborator = collaborator
     }
     
     /// Directory path for this taskspace within project

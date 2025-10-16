@@ -132,20 +132,18 @@ impl CLIAgent for ClaudeCode {
         cmd.args([
             "mcp",
             "add",
-            "--name",
             &mcp.name,
-            "--command",
             &mcp.binary_path.to_string_lossy(),
         ]);
 
         // Add arguments
         for arg in &mcp.args {
-            cmd.args(["--args", arg]);
+            cmd.arg(arg);
         }
 
         // Add environment variables
         for (key, value) in &mcp.env {
-            cmd.args(["--env", &format!("{}={}", key, value)]);
+            cmd.args(["-e", &format!("{}={}", key, value)]);
         }
 
         let output = cmd.output().context("Failed to execute claude mcp add")?;
